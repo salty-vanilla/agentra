@@ -1,0 +1,20 @@
+[
+  {
+    "machine_id": "LINE-A-01",
+    "status": "running",
+    "temperature_celsius": 61.2,
+    "last_maintenance_at": "2026-04-01T03:00:00.000Z"
+  },
+  {
+    "machine_id": "LINE-B-02",
+    "status": "warning",
+    "temperature_celsius": 74.8,
+    "last_maintenance_at": "2026-03-28T09:30:00.000Z"
+  },
+  {
+    "machine_id": "LINE-C-03",
+    "status": "stopped",
+    "temperature_celsius": 39.4,
+    "last_maintenance_at": "2026-04-10T05:15:00.000Z"
+  }
+]

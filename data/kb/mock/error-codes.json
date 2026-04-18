@@ -1,0 +1,14 @@
+[
+  {
+    "code": "E-104",
+    "title": "Feeder timeout",
+    "severity": "medium",
+    "recommended_action": "部材供給センサーとフィーダー動作を確認する"
+  },
+  {
+    "code": "E-221",
+    "title": "Inspection camera misalignment",
+    "severity": "high",
+    "recommended_action": "カメラの位置補正を行い、再度キャリブレーションする"
+  }
+]

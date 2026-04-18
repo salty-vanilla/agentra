@@ -1,0 +1,29 @@
+{
+  "name": "agentra",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.9.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "prepare:workspace": "pnpm generate:api && pnpm build:shared",
+    "dev:frontend": "pnpm prepare:workspace && pnpm --filter @agentra/frontend dev",
+    "dev:backend": "pnpm build:shared && pnpm --filter @agentra/backend dev",
+    "generate:api": "node ./scripts/generate/run-generate-api.mjs",
+    "validate:openapi": "node ./scripts/contract/validate-openapi.mjs",
+    "contract:backend": "pnpm --filter @agentra/backend exec node --import tsx ./src/contract.ts",
+    "build:shared": "pnpm --filter @agentra/shared build",
+    "typecheck": "pnpm prepare:workspace && pnpm -r --if-present typecheck",
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "synth": "pnpm --filter @agentra/infra-cdk synth",
+    "seed:dynamo": "node scripts/seed/dynamo-seed.mjs"
+  },
+  "devDependencies": {
+    "@apidevtools/swagger-parser": "^12.1.0",
+    "@biomejs/biome": "latest",
+    "orval": "^8.8.0",
+    "typescript": "latest"
+  }
+}

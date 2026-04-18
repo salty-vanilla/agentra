@@ -1,0 +1,20 @@
+{
+  "name": "@agentra/infra-cdk",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "synth": "cdk synth",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "latest",
+    "constructs": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "aws-cdk": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

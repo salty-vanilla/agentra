@@ -1,0 +1,29 @@
+{
+  "name": "@agentra/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/dev.ts",
+    "start": "node --import tsx src/dev.ts",
+    "typecheck": "tsc --noEmit",
+    "contract": "pnpm --filter @agentra/shared build && node --import tsx src/contract.ts"
+  },
+  "dependencies": {
+    "@agentra/shared": "workspace:*",
+    "@aws-sdk/client-dynamodb": "latest",
+    "@aws-sdk/lib-dynamodb": "latest",
+    "@hono/node-server": "latest",
+    "ajv-formats": "^3.0.1",
+    "hono": "latest",
+    "jose": "^6.2.2",
+    "openapi-backend": "^5.16.1",
+    "uuidv7": "^1.2.1"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "latest",
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

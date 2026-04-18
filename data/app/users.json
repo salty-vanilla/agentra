@@ -1,0 +1,8 @@
+[
+  {
+    "user_id": "user-demo-001",
+    "external_subject": "demo.user@example.internal",
+    "display_name": "Demo User",
+    "created_at": "2026-04-18T00:00:00.000Z"
+  }
+]

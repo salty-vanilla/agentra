@@ -1,0 +1,16 @@
+[
+  {
+    "message_id": "msg-demo-001",
+    "thread_id": "thread-demo-001",
+    "role": "user",
+    "content": "この PoC の狙いは？",
+    "created_at": "2026-04-18T00:05:20.000Z"
+  },
+  {
+    "message_id": "msg-demo-002",
+    "thread_id": "thread-demo-001",
+    "role": "assistant",
+    "content": "社内向け Agent チャットの UI、backend、infra を一体で検証するための PoC です。",
+    "created_at": "2026-04-18T00:05:32.000Z"
+  }
+]

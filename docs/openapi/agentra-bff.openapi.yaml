@@ -1,0 +1,380 @@
+openapi: 3.0.3
+info:
+  title: Agentra BFF API
+  version: 0.1.0
+  description: |
+    Contract for the Agentra frontend-facing BFF.
+    This spec is the source of truth for frontend client generation and API mocks.
+servers:
+  - url: http://127.0.0.1:8787
+    description: Local backend
+tags:
+  - name: health
+  - name: threads
+  - name: chat
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [health]
+      summary: Get backend health
+      responses:
+        '200':
+          description: Service health
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /chat:
+    post:
+      operationId: postChat
+      tags: [chat]
+      summary: Send a chat message to the agent backend
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+      responses:
+        '200':
+          description: Agent reply
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /threads:
+    get:
+      operationId: listThreads
+      tags: [threads]
+      summary: List chat threads
+      responses:
+        '200':
+          description: Thread summaries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadsResponse'
+    post:
+      operationId: createThread
+      tags: [threads]
+      summary: Create a chat thread
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateThreadRequest'
+      responses:
+        '201':
+          description: Created thread
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /threads/{threadId}:
+    get:
+      operationId: getThread
+      tags: [threads]
+      summary: Get a thread by id
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          description: Thread summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadResponse'
+        '404':
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    patch:
+      operationId: updateThread
+      tags: [threads]
+      summary: Update a thread by id
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateThreadRequest'
+      responses:
+        '200':
+          description: Updated thread summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: deleteThread
+      tags: [threads]
+      summary: Delete a thread by id
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          description: Deleted thread summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadResponse'
+        '404':
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /threads/{threadId}/messages:
+    get:
+      operationId: listThreadMessages
+      tags: [threads]
+      summary: List messages in a thread
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          description: Thread messages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadMessagesResponse'
+        '404':
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  parameters:
+    ThreadId:
+      name: threadId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+  schemas:
+    ChatRole:
+      type: string
+      enum:
+        - system
+        - user
+        - assistant
+    MessageRole:
+      type: string
+      enum:
+        - user
+        - assistant
+    ChatMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - role
+        - content
+      properties:
+        role:
+          $ref: '#/components/schemas/ChatRole'
+        content:
+          type: string
+          minLength: 1
+    ThreadSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - threadId
+        - title
+        - createdAt
+        - updatedAt
+      properties:
+        threadId:
+          type: string
+          minLength: 1
+        title:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        preview:
+          type: string
+    PersistedChatMessage:
+      type: object
+      additionalProperties: false
+      required:
+        - messageId
+        - threadId
+        - role
+        - content
+        - createdAt
+      properties:
+        messageId:
+          type: string
+          minLength: 1
+        threadId:
+          type: string
+          minLength: 1
+        role:
+          $ref: '#/components/schemas/MessageRole'
+        content:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+    ChatRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - message
+      properties:
+        threadId:
+          type: string
+          minLength: 1
+        message:
+          type: string
+          minLength: 1
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatMessage'
+          default: []
+    ChatResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - threadId
+        - reply
+        - model
+        - createdAt
+      properties:
+        threadId:
+          type: string
+          minLength: 1
+        reply:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+    HealthResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - status
+        - service
+        - version
+        - timestamp
+      properties:
+        status:
+          type: string
+          enum:
+            - ok
+        service:
+          type: string
+          minLength: 1
+        version:
+          type: string
+          minLength: 1
+        timestamp:
+          type: string
+          format: date-time
+    ThreadsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - threads
+      properties:
+        threads:
+          type: array
+          items:
+            $ref: '#/components/schemas/ThreadSummary'
+    ThreadResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - thread
+      properties:
+        thread:
+          $ref: '#/components/schemas/ThreadSummary'
+    CreateThreadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+          minLength: 1
+    UpdateThreadRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          minLength: 1
+    ThreadMessagesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - thread
+        - messages
+      properties:
+        thread:
+          $ref: '#/components/schemas/ThreadSummary'
+        messages:
+          type: array
+          items:
+            $ref: '#/components/schemas/PersistedChatMessage'
+    ErrorResponse:
+      type: object
+      additionalProperties: true
+      required:
+        - error
+      properties:
+        error:
+          type: string
+          minLength: 1
+        details:
+          type: object
