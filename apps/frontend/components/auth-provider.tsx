@@ -1,5 +1,6 @@
 'use client';
 
+import 'aws-amplify/auth/enable-oauth-listener';
 import { getCurrentUser, signInWithRedirect } from 'aws-amplify/auth';
 import { useEffect, useState } from 'react';
 import { isMockApiMode } from '@/lib/api-config';
