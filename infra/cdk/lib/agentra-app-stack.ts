@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CfnOutput, Stack, type StackProps } from 'aws-cdk-lib';
+import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
 import { CorsHttpMethod, HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
@@ -30,6 +30,8 @@ export class AgentraAppStack extends Stack {
       entry: backendEntry,
       handler: 'handler',
       runtime: Runtime.NODEJS_22_X,
+      timeout: Duration.seconds(30),
+      memorySize: 512,
       environment: {
         NODE_OPTIONS: '--enable-source-maps',
         STORE_TYPE: 'dynamo',
