@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import * as cdk from 'aws-cdk-lib';
-import { AgentraAgentCoreStack } from '../lib/agentra-agentcore-stack.js';
 import { AgentraAgentCoreRuntimeStack } from '../lib/agentra-agentcore-runtime-stack.js';
+import { AgentraAgentCoreStack } from '../lib/agentra-agentcore-stack.js';
 import { AgentraAppStack } from '../lib/agentra-app-stack.js';
 import { AgentraBedrockStack } from '../lib/agentra-bedrock-stack.js';
 import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';

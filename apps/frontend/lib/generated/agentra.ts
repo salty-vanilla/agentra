@@ -9,7 +9,6 @@ This spec is the source of truth for frontend client generation and API mocks.
  */
 import type {
   ChatRequest,
-  ChatResponse,
   CreateThreadRequest,
   HealthResponse,
   ThreadMessagesResponse,
@@ -59,7 +58,7 @@ export const getPostChatUrl = () => {
   return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/chat`
 }
 
-export const postChat = async (chatRequest: ChatRequest, options?: RequestInit): Promise<ChatResponse> => {
+export const postChat = async (chatRequest: ChatRequest, options?: RequestInit): Promise<string> => {
 
   const res = await fetch(getPostChatUrl(),
   {
@@ -73,7 +72,7 @@ export const postChat = async (chatRequest: ChatRequest, options?: RequestInit):
 
   const body = [204, 205, 304].includes(res.status) ? null : await res.text();
 
-  const data: ChatResponse = body ? JSON.parse(body) : {}
+  const data: string = body ? JSON.parse(body) : {}
   return data
 }
 

@@ -1,5 +1,5 @@
 import {
-  chatResponseSchema,
+  chatStreamEventSchema,
   createThreadRequestSchema,
   healthResponseSchema,
   threadMessagesResponseSchema,
@@ -21,6 +21,49 @@ async function assertJsonResponse<T>(
 
   const payload = await response.json();
   parser(payload);
+}
+
+async function assertChatStreamResponse(
+  label: string,
+  response: Response,
+  expectedStatus: number,
+) {
+  if (response.status !== expectedStatus) {
+    throw new Error(`${label}: expected status ${expectedStatus}, received ${response.status}`);
+  }
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (!contentType.includes('text/event-stream')) {
+    throw new Error(`${label}: expected text/event-stream content-type, received "${contentType}"`);
+  }
+
+  const body = await response.text();
+  const events = body
+    .split('\n')
+    .filter((line) => line.startsWith('data:'))
+    .map((line) => line.slice('data:'.length).trim())
+    .filter((line) => line.length > 0);
+
+  if (events.length === 0) {
+    throw new Error(`${label}: no SSE data events found`);
+  }
+
+  let sawDone = false;
+  let sawError = false;
+  for (const raw of events) {
+    const parsed = JSON.parse(raw) as unknown;
+    const event = chatStreamEventSchema.parse(parsed);
+    if (event.type === 'done') {
+      sawDone = true;
+    }
+    if (event.type === 'error') {
+      sawError = true;
+    }
+  }
+
+  if (!sawDone && !sawError) {
+    throw new Error(`${label}: stream completed without done or error event`);
+  }
 }
 
 async function main() {
@@ -54,12 +97,13 @@ async function main() {
     threadMessagesResponseSchema.parse,
   );
 
-  await assertJsonResponse(
+  await assertChatStreamResponse(
     'POST /chat',
     await app.request('/chat', {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        accept: 'text/event-stream',
       },
       body: JSON.stringify({
         message: 'contract check',
@@ -67,7 +111,6 @@ async function main() {
       }),
     }),
     200,
-    chatResponseSchema.parse,
   );
 
   const createdThreadResponse = await app.request('/threads', {

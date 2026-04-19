@@ -107,8 +107,8 @@ const ThreadWelcome: FC = () => {
             Frontend foundation, ready for AgentCore
           </h1>
           <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-lg delay-75 duration-200">
-            Hono backend のダミー応答を使いながら、thread UI・message actions・composer を
-            assistant-ui ベースに切り替えています。
+            Hono backend の `/chat` SSE を使いながら、thread UI・message actions・composer を
+            assistant-ui ベースに統合しています。
           </p>
         </div>
       </div>

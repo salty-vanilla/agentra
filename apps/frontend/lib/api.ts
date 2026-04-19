@@ -9,7 +9,6 @@ import {
 } from '@/lib/generated/agentra';
 import type {
   ChatRequest,
-  ChatResponse,
   CreateThreadRequest,
   ErrorResponse,
   HealthResponse,
@@ -19,6 +18,13 @@ import type {
   UpdateThreadRequest,
 } from '@/lib/generated/model';
 import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
+
+export type MockChatResponse = {
+  threadId: string;
+  reply: string;
+  model: string;
+  createdAt: string;
+};
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   if (isMockApiMode) return {};
@@ -42,11 +48,34 @@ export async function fetchHealth(): Promise<HealthResponse> {
 export async function sendChat(
   request: ChatRequest,
   options?: { signal?: AbortSignal },
-): Promise<ChatResponse> {
+): Promise<MockChatResponse> {
   const headers = await getAuthHeaders();
   const init: RequestInit = { headers };
   if (options?.signal) init.signal = options.signal;
-  return postChatRequest(request, init);
+  const response = (await postChatRequest(request, init)) as unknown;
+  const normalized =
+    typeof response === 'string'
+      ? (() => {
+          try {
+            return JSON.parse(response) as unknown;
+          } catch {
+            return response;
+          }
+        })()
+      : response;
+
+  if (
+    normalized &&
+    typeof normalized === 'object' &&
+    'threadId' in normalized &&
+    'reply' in normalized &&
+    'model' in normalized &&
+    'createdAt' in normalized
+  ) {
+    return normalized as MockChatResponse;
+  }
+
+  throw new Error('Mock chat response is invalid.');
 }
 
 export type ChatStreamEvent =

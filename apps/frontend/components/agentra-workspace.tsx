@@ -2,18 +2,18 @@
 
 import type { PersistedChatMessage } from '@agentra/shared';
 import { APP_NAME } from '@agentra/shared';
+import { AssistantRuntimeProvider as AssistantRuntimeProviderCore } from '@assistant-ui/core/react';
 import {
   type ChatModelAdapter,
   type ThreadMessage,
   type ThreadMessageLike,
   useLocalRuntime,
 } from '@assistant-ui/react';
-import { AssistantRuntimeProvider as AssistantRuntimeProviderCore } from '@assistant-ui/core/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BotMessageSquare, Database, FolderKanban, Sparkles } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
-import { toast } from 'sonner';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { toast } from 'sonner';
 import { Thread } from '@/components/assistant-ui/thread';
 import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
@@ -40,7 +40,7 @@ const stackCards = [
   {
     title: 'Hono Backend',
     description:
-      'The current runtime talks to the existing /chat endpoint and preserves the migration path to AgentCore.',
+      'The current runtime streams responses from /chat over SSE and forwards requests to AgentCore Runtime.',
     icon: Sparkles,
   },
   {
@@ -60,7 +60,7 @@ const stackCards = [
 const nextSteps = [
   'Replace LocalRuntime thread memory with backend thread persistence.',
   'Add authentication-aware user identity and access control boundaries.',
-  'Switch the dummy reply path to AgentCore and streaming responses.',
+  'Add citations/tools rendering so streamed responses can show structured outputs.',
 ];
 
 export function AgentraWorkspace() {

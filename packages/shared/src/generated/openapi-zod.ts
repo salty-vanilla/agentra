@@ -44,18 +44,6 @@ export const PostChatBody = zod.object({
 })
 
 
-
-
-
-
-export const PostChatResponse = zod.object({
-  "threadId": zod.string().min(1),
-  "reply": zod.string().min(1),
-  "model": zod.string().min(1),
-  "createdAt": zod.string().datetime({})
-})
-
-
 /**
  * @summary List chat threads
  */

@@ -26,7 +26,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja" className={cn('font-sans', geist.variable)}>
-      <body>
+      <body suppressHydrationWarning>
         <NuqsAdapter>
           <AuthProvider>
             <MockProvider>

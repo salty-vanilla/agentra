@@ -3,9 +3,9 @@
 import { getCurrentUser, signInWithRedirect } from 'aws-amplify/auth';
 import { useEffect, useState } from 'react';
 import { isMockApiMode } from '@/lib/api-config';
-import { configureAmplify } from '@/lib/auth-config';
+import { configureAmplify, isAmplifyAuthConfigured } from '@/lib/auth-config';
 
-configureAmplify();
+const amplifyConfigured = configureAmplify();
 
 type AuthState = 'loading' | 'authenticated' | 'unauthenticated';
 
@@ -13,8 +13,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>('loading');
 
   useEffect(() => {
-    // Skip auth check entirely in mock/dev mode
-    if (isMockApiMode) {
+    // Skip auth check in mock mode and in local real-mode without Cognito env.
+    if (isMockApiMode || !isAmplifyAuthConfigured() || !amplifyConfigured) {
       setAuthState('authenticated');
       return;
     }
@@ -22,7 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     getCurrentUser()
       .then(() => setAuthState('authenticated'))
       .catch(() => {
-        signInWithRedirect();
+        signInWithRedirect().catch(() => setAuthState('unauthenticated'));
       });
   }, []);
 

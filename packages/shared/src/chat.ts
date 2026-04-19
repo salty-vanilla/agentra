@@ -1,4 +1,4 @@
-import type { z } from 'zod';
+import { z } from 'zod';
 import {
   CreateThreadBody,
   GetHealthResponse,
@@ -6,7 +6,6 @@ import {
   ListThreadMessagesResponse,
   ListThreadsResponse,
   PostChatBody,
-  PostChatResponse,
   UpdateThreadBody,
 } from './generated/openapi-zod.js';
 
@@ -20,7 +19,25 @@ export const chatMessageSchema = postChatMessageSchema;
 export const threadSummarySchema = threadSummarySchemaInternal;
 export const persistedChatMessageSchema = persistedChatMessageSchemaInternal;
 export const chatRequestSchema = PostChatBody;
-export const chatResponseSchema = PostChatResponse;
+export const chatStreamTextEventSchema = z.object({
+  type: z.literal('text'),
+  text: z.string(),
+});
+export const chatStreamDoneEventSchema = z.object({
+  type: z.literal('done'),
+  threadId: z.string().min(1),
+  model: z.string().min(1),
+  createdAt: z.string().datetime(),
+});
+export const chatStreamErrorEventSchema = z.object({
+  type: z.literal('error'),
+  error: z.string().min(1),
+});
+export const chatStreamEventSchema = z.union([
+  chatStreamTextEventSchema,
+  chatStreamDoneEventSchema,
+  chatStreamErrorEventSchema,
+]);
 export const healthResponseSchema = GetHealthResponse;
 export const threadsResponseSchema = ListThreadsResponse;
 export const threadResponseSchema = GetThreadResponse;
@@ -33,7 +50,10 @@ export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ThreadSummary = z.infer<typeof threadSummarySchema>;
 export type PersistedChatMessage = z.infer<typeof persistedChatMessageSchema>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
-export type ChatResponse = z.infer<typeof chatResponseSchema>;
+export type ChatStreamTextEvent = z.infer<typeof chatStreamTextEventSchema>;
+export type ChatStreamDoneEvent = z.infer<typeof chatStreamDoneEventSchema>;
+export type ChatStreamErrorEvent = z.infer<typeof chatStreamErrorEventSchema>;
+export type ChatStreamEvent = z.infer<typeof chatStreamEventSchema>;
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 export type ThreadsResponse = z.infer<typeof threadsResponseSchema>;
 export type ThreadResponse = z.infer<typeof threadResponseSchema>;

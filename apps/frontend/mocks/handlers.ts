@@ -12,7 +12,6 @@ import {
 } from '@/mocks/generated/agentra.msw';
 import type {
   ChatRequest,
-  ChatResponse,
   CreateThreadRequest,
   HealthResponse,
   MessageRole,
@@ -165,7 +164,7 @@ export const handlers = [
       thread,
     };
   }),
-  getPostChatMockHandler(async ({ request }): Promise<ChatResponse> => {
+  getPostChatMockHandler(async ({ request }): Promise<string> => {
     const payload = await request.json().catch(() => null);
     const parsed = parseChatRequest(payload);
 
@@ -197,12 +196,12 @@ export const handlers = [
       content: reply,
     });
 
-    return {
+    return JSON.stringify({
       threadId: thread.threadId,
       reply,
       model: 'msw-dummy-agent-v1',
       createdAt: now(),
-    };
+    });
   }),
 ];
 

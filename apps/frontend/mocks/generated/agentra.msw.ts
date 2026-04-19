@@ -10,7 +10,6 @@ This spec is the source of truth for frontend client generation and API mocks.
  */
 import type {
   ChatRequest,
-  ChatResponse,
   CreateThreadRequest,
   ErrorResponse,
   HealthResponse,
@@ -83,7 +82,7 @@ export const getHealth = async ( options?: RequestInit): Promise<getHealthRespon
  * @summary Send a chat message to the agent backend
  */
 export type postChatResponse200 = {
-  data: ChatResponse
+  data: string
   status: 200
 }
 
@@ -430,7 +429,7 @@ export const listThreadMessages = async (threadId: string, options?: RequestInit
 
 export const getGetHealthResponseMock = (overrideResponse: Partial<Extract<HealthResponse, object>> = {}): HealthResponse => ({status: faker.helpers.arrayElement(['ok'] as const), service: faker.string.alpha({length: {min: 1, max: 20}}), version: faker.string.alpha({length: {min: 1, max: 20}}), timestamp: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
 
-export const getPostChatResponseMock = (overrideResponse: Partial<Extract<ChatResponse, object>> = {}): ChatResponse => ({threadId: faker.string.alpha({length: {min: 1, max: 20}}), reply: faker.string.alpha({length: {min: 1, max: 20}}), model: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+export const getPostChatResponseMock = (): string => (faker.word.sample())
 
 export const getListThreadsResponseMock = (overrideResponse: Partial<Extract<ThreadsResponse, object>> = {}): ThreadsResponse => ({threads: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({threadId: faker.string.alpha({length: {min: 1, max: 20}}), title: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', preview: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), ...overrideResponse})
 
@@ -457,13 +456,14 @@ export const getGetHealthMockHandler = (overrideResponse?: HealthResponse | ((in
   }, options)
 }
 
-export const getPostChatMockHandler = (overrideResponse?: ChatResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<ChatResponse> | ChatResponse), options?: RequestHandlerOptions) => {
+export const getPostChatMockHandler = (overrideResponse?: string | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<string> | string), options?: RequestHandlerOptions) => {
   return http.post('*/chat', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
 
-
-    return HttpResponse.json(overrideResponse !== undefined
+  const resolvedBody = overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
-    : getPostChatResponseMock(),
+    : getPostChatResponseMock();
+    const textBody = typeof resolvedBody === 'string' ? resolvedBody : JSON.stringify(resolvedBody ?? null);
+    return HttpResponse.text(textBody,
       { status: 200
       })
   }, options)

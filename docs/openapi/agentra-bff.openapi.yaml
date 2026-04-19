@@ -38,11 +38,14 @@ paths:
               $ref: '#/components/schemas/ChatRequest'
       responses:
         '200':
-          description: Agent reply
+          description: Agent reply stream (SSE)
           content:
-            application/json:
+            text/event-stream:
               schema:
-                $ref: '#/components/schemas/ChatResponse'
+                type: string
+                description: |
+                  Server-Sent Events stream. Each line is `data: <json>`.
+                  JSON payload is one of ChatStreamTextEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:
@@ -305,6 +308,55 @@ components:
         createdAt:
           type: string
           format: date-time
+    ChatStreamTextEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - text
+      properties:
+        type:
+          type: string
+          enum:
+            - text
+        text:
+          type: string
+    ChatStreamDoneEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - threadId
+        - model
+        - createdAt
+      properties:
+        type:
+          type: string
+          enum:
+            - done
+        threadId:
+          type: string
+          minLength: 1
+        model:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+    ChatStreamErrorEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - error
+      properties:
+        type:
+          type: string
+          enum:
+            - error
+        error:
+          type: string
+          minLength: 1
     HealthResponse:
       type: object
       additionalProperties: false
