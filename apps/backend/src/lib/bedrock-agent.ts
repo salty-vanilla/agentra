@@ -2,43 +2,14 @@ import {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
-import {
-  BedrockAgentRuntimeClient,
-  InvokeAgentCommand,
-} from '@aws-sdk/client-bedrock-agent-runtime';
 
 export type ModelKey = 'opus' | 'sonnet' | 'haiku';
 
-interface AgentConfig {
-  id: string;
-  aliasId: string;
-  modelId: string;
-}
-
-// NOTE: Model IDs are for reference only. The agentId/aliasId point to the
-// actual Bedrock Agent resource which has the foundationModel fixed at creation.
-// Verify model IDs with: aws bedrock list-foundation-models --region ap-northeast-1
-const AGENT_MAP: Record<ModelKey, AgentConfig> = {
-  opus: {
-    id: process.env.BEDROCK_AGENT_ID_OPUS ?? '',
-    aliasId: process.env.BEDROCK_AGENT_ALIAS_ID_OPUS ?? '',
-    modelId: 'us.anthropic.claude-opus-4-6-v1',
-  },
-  sonnet: {
-    id: process.env.BEDROCK_AGENT_ID_SONNET ?? '',
-    aliasId: process.env.BEDROCK_AGENT_ALIAS_ID_SONNET ?? '',
-    modelId: 'us.anthropic.claude-sonnet-4-6',
-  },
-  haiku: {
-    id: process.env.BEDROCK_AGENT_ID_HAIKU ?? '',
-    aliasId: process.env.BEDROCK_AGENT_ALIAS_ID_HAIKU ?? '',
-    modelId: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
-  },
+const MODEL_ID_MAP: Record<ModelKey, string> = {
+  opus: 'us.anthropic.claude-opus-4-6-v1',
+  sonnet: 'us.anthropic.claude-sonnet-4-6',
+  haiku: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
 };
-
-const client = new BedrockAgentRuntimeClient({
-  region: process.env.BEDROCK_REGION ?? 'ap-northeast-1',
-});
 
 const agentCoreClient = new BedrockAgentCoreClient({
   region: process.env.BEDROCK_REGION ?? 'us-east-1',
@@ -174,7 +145,7 @@ async function* invokeAgentCoreRuntimeStream(
   inputText: string,
 ): AsyncGenerator<string> {
   if (!AGENTCORE_RUNTIME_ARN) {
-    throw new Error('AGENTCORE_RUNTIME_ARN is not set.');
+    throw new Error('AGENTCORE_RUNTIME_ARN is not set. AgentCore runtime is required.');
   }
 
   const command = new InvokeAgentRuntimeCommand({
@@ -200,7 +171,7 @@ async function* invokeAgentCoreRuntimeStream(
 }
 
 /**
- * Streams text chunks from a Bedrock Agent invocation.
+ * Streams text chunks from an AgentCore Runtime invocation.
  * Uses thread.threadId as runtime sessionId so context is preserved
  * across messages within the same thread.
  */
@@ -209,40 +180,9 @@ export async function* invokeAgentStream(
   sessionId: string,
   inputText: string,
 ): AsyncGenerator<string> {
-  if (AGENTCORE_RUNTIME_ARN) {
-    yield* invokeAgentCoreRuntimeStream(modelKey, sessionId, inputText);
-    return;
-  }
-
-  const agent = AGENT_MAP[modelKey];
-
-  if (!agent.id || !agent.aliasId) {
-    throw new Error(
-      `Bedrock agent config missing for model "${modelKey}". ` +
-        `Set BEDROCK_AGENT_ID_${modelKey.toUpperCase()} and BEDROCK_AGENT_ALIAS_ID_${modelKey.toUpperCase()} env vars.`,
-    );
-  }
-
-  const command = new InvokeAgentCommand({
-    agentId: agent.id,
-    agentAliasId: agent.aliasId,
-    sessionId,
-    inputText,
-  });
-
-  const response = await client.send(command);
-
-  if (!response.completion) {
-    return;
-  }
-
-  for await (const event of response.completion) {
-    if (event.chunk?.bytes) {
-      yield new TextDecoder().decode(event.chunk.bytes);
-    }
-  }
+  yield* invokeAgentCoreRuntimeStream(modelKey, sessionId, inputText);
 }
 
 export function getModelId(modelKey: ModelKey): string {
-  return AGENT_MAP[modelKey].modelId;
+  return MODEL_ID_MAP[modelKey];
 }

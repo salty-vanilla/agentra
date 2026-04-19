@@ -10,6 +10,8 @@ import type { Construct } from 'constructs';
 
 export interface AgentraDataAuthStackProps extends StackProps {
   cognitoDomainPrefix?: string;
+  callbackUrls?: string[];
+  logoutUrls?: string[];
 }
 
 export class AgentraDataAuthStack extends Stack {
@@ -24,6 +26,8 @@ export class AgentraDataAuthStack extends Stack {
     super(scope, id, props);
 
     const cognitoDomainPrefix = props?.cognitoDomainPrefix ?? 'agentra-auth';
+    const callbackUrls = props?.callbackUrls ?? ['http://localhost:3000/'];
+    const logoutUrls = props?.logoutUrls ?? ['http://localhost:3000/'];
 
     this.userPool = new UserPool(this, 'UserPool', {
       selfSignUpEnabled: false,
@@ -45,8 +49,8 @@ export class AgentraDataAuthStack extends Stack {
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [OAuthScope.OPENID, OAuthScope.EMAIL, OAuthScope.PROFILE],
-        callbackUrls: ['http://localhost:3000/'],
-        logoutUrls: ['http://localhost:3000/'],
+        callbackUrls,
+        logoutUrls,
       },
     });
 

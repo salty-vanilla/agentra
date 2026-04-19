@@ -7,14 +7,12 @@ import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import type { Construct } from 'constructs';
-import type { AgentraBedrockStack } from './agentra-bedrock-stack.js';
 import type { AgentraDataAuthStack } from './agentra-data-auth-stack.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface AgentraAppStackProps extends StackProps {
   dataAuthStack: AgentraDataAuthStack;
-  bedrockStack: AgentraBedrockStack;
   agentCoreRuntimeArn?: string;
   agentCoreRuntimeQualifier?: string;
   allowedCorsOrigins?: string[];
@@ -41,26 +39,10 @@ export class AgentraAppStack extends Stack {
         COGNITO_USER_POOL_ID: props.dataAuthStack.userPool.userPoolId,
         COGNITO_REGION: Stack.of(this).region,
         BEDROCK_REGION: Stack.of(this).region,
-        BEDROCK_AGENT_ID_OPUS: props.bedrockStack.agentIds.opus,
-        BEDROCK_AGENT_ALIAS_ID_OPUS: props.bedrockStack.agentAliasIds.opus,
-        BEDROCK_AGENT_ID_SONNET: props.bedrockStack.agentIds.sonnet,
-        BEDROCK_AGENT_ALIAS_ID_SONNET: props.bedrockStack.agentAliasIds.sonnet,
-        BEDROCK_AGENT_ID_HAIKU: props.bedrockStack.agentIds.haiku,
-        BEDROCK_AGENT_ALIAS_ID_HAIKU: props.bedrockStack.agentAliasIds.haiku,
         AGENTCORE_RUNTIME_ARN: props.agentCoreRuntimeArn ?? '',
         AGENTCORE_RUNTIME_QUALIFIER: props.agentCoreRuntimeQualifier ?? '',
       },
     });
-
-    apiHandler.addToRolePolicy(
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['bedrock:InvokeAgent'],
-        resources: [
-          `arn:aws:bedrock:${Stack.of(this).region}:${Stack.of(this).account}:agent-alias/*`,
-        ],
-      }),
-    );
 
     if (props.agentCoreRuntimeArn) {
       apiHandler.addToRolePolicy(

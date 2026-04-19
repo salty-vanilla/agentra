@@ -8,14 +8,23 @@ import type { Construct } from 'constructs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
+export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
+  stage: string;
+}
+
 export class AgentraAgentCoreRuntimeStack extends Stack {
   readonly runtimeArn: string;
   readonly runtimeId: string;
   readonly runtimeVersion: string;
   readonly endpointArn: string;
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: AgentraAgentCoreRuntimeStackProps) {
     super(scope, id, props);
+    const normalizedStage = props.stage.replace(/[^a-zA-Z0-9_]/g, '_');
+    const runtimeNameSuffix =
+      normalizedStage.length > 0
+        ? normalizedStage.charAt(0).toUpperCase() + normalizedStage.slice(1)
+        : 'Default';
 
     const runtimeRole = new Role(this, 'AgentCoreRuntimeExecutionRole', {
       assumedBy: new ServicePrincipal('bedrock-agentcore.amazonaws.com'),
@@ -59,7 +68,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     );
 
     const runtime = new CfnRuntime(this, 'AgentCoreRuntime', {
-      agentRuntimeName: 'agentraRuntime',
+      agentRuntimeName: `agentraRuntime${runtimeNameSuffix}`,
       description: 'Agentra TypeScript AgentCore Runtime (Strands).',
       roleArn: runtimeRole.roleArn,
       protocolConfiguration: 'HTTP',
@@ -91,6 +100,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
 
     const endpoint = new CfnRuntimeEndpoint(this, 'AgentCoreRuntimeEndpoint', {
       agentRuntimeId: runtime.attrAgentRuntimeId,
+      agentRuntimeVersion: runtime.attrAgentRuntimeVersion,
       name: 'prod',
       description: 'Production endpoint for Agentra AgentCore Runtime.',
     });

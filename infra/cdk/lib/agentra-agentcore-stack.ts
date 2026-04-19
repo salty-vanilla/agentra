@@ -3,12 +3,16 @@ import { CfnGateway } from 'aws-cdk-lib/aws-bedrockagentcore';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import type { Construct } from 'constructs';
 
+export interface AgentraAgentCoreStackProps extends StackProps {
+  stage: string;
+}
+
 export class AgentraAgentCoreStack extends Stack {
   readonly gatewayId: string;
   readonly gatewayUrl: string;
   readonly gatewayArn: string;
 
-  constructor(scope: Construct, id: string, props?: StackProps) {
+  constructor(scope: Construct, id: string, props: AgentraAgentCoreStackProps) {
     super(scope, id, props);
 
     const gatewayRole = new Role(this, 'AgentCoreGatewayRole', {
@@ -17,7 +21,7 @@ export class AgentraAgentCoreStack extends Stack {
     });
 
     const gateway = new CfnGateway(this, 'AgentCoreGateway', {
-      name: 'agentra-gateway',
+      name: `agentra-gateway-${props.stage}`,
       description: 'Agentra tool gateway for MCP targets.',
       roleArn: gatewayRole.roleArn,
       protocolType: 'MCP',

@@ -7,6 +7,7 @@ import type { AgentraDataAuthStack } from './agentra-data-auth-stack.js';
 export interface AgentraWebHostingStackProps extends StackProps {
   appStack: AgentraAppStack;
   dataAuthStack: AgentraDataAuthStack;
+  stage: string;
 }
 
 const AMPLIFY_BUILD_SPEC = [
@@ -55,7 +56,7 @@ export class AgentraWebHostingStack extends Stack {
     });
 
     const amplifyApp = new CfnApp(this, 'WebApp', {
-      name: 'agentra-web',
+      name: `agentra-web-${props.stage}`,
       description: 'Agentra frontend hosting managed by AWS Amplify',
       repository: repositoryUrl.valueAsString,
       accessToken: githubAccessToken.valueAsString,
@@ -67,7 +68,7 @@ export class AgentraWebHostingStack extends Stack {
     const mainBranch = new CfnBranch(this, 'WebMainBranch', {
       appId: amplifyApp.attrAppId,
       branchName: branchName.valueAsString,
-      stage: 'PRODUCTION',
+      stage: props.stage === 'prod' ? 'PRODUCTION' : 'DEVELOPMENT',
       enableAutoBuild: true,
       environmentVariables: [
         {

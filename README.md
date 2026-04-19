@@ -43,8 +43,52 @@ pnpm dev:backend
 pnpm typecheck
 pnpm lint
 pnpm format
-pnpm synth
+pnpm --filter @agentra/infra-cdk exec cdk synth -c stage=dev
 ```
+
+## AWS Deploy (Stage-Aware)
+
+CDK は `stage` ごとに Stack 名と Cognito domain prefix を分離します。
+
+- `stage=dev` 例: `AgentraAppStack-dev`
+- `stage=prod` 例: `AgentraAppStack-prod`
+
+必須 context:
+
+- `stage`: `dev` or `prod`
+- `callbackUrls`: Cognito callback URL のCSV
+- `logoutUrls`: Cognito logout URL のCSV
+- `corsOrigins`: API CORS許可originのCSV
+
+### 1. Synth
+
+```bash
+pnpm --filter @agentra/infra-cdk exec cdk synth \
+  -c stage=dev \
+  -c callbackUrls=http://localhost:3000/,http://127.0.0.1:3000/ \
+  -c logoutUrls=http://localhost:3000/,http://127.0.0.1:3000/ \
+  -c corsOrigins=http://localhost:3000,http://127.0.0.1:3000
+```
+
+### 2. Deploy
+
+```bash
+pnpm --filter @agentra/infra-cdk exec cdk deploy --all \
+  --profile quick-admin \
+  --require-approval never \
+  -c stage=prod \
+  -c callbackUrls=https://<your-frontend-domain>/ \
+  -c logoutUrls=https://<your-frontend-domain>/ \
+  -c corsOrigins=https://<your-frontend-domain>
+```
+
+### 3. Amplify URL確定後の再反映
+
+Amplify の branch URL が初回デプロイ後に確定したら、その URL を `callbackUrls/logoutUrls/corsOrigins` に反映して再度 `cdk deploy` します。
+
+### 4. AgentCore Runtime endpoint
+
+`AgentraAgentCoreRuntimeStack-<stage>` では `RuntimeEndpoint` に `agentRuntimeVersion` を設定し、`prod` endpoint が最新 runtime version を指すようにしています。
 
 ## Current Scope
 
