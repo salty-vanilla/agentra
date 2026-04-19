@@ -25,7 +25,7 @@ const AMPLIFY_BUILD_SPEC = [
   '            - pnpm --filter @agentra/shared build',
   '            - pnpm --filter @agentra/frontend build',
   '      artifacts:',
-  '        baseDirectory: .next',
+  '        baseDirectory: out',
   '        files:',
   "          - '**/*'",
   '      cache:',
@@ -61,7 +61,7 @@ export class AgentraWebHostingStack extends Stack {
       description: 'Agentra frontend hosting managed by AWS Amplify',
       repository: repositoryUrl.valueAsString,
       accessToken: githubAccessToken.valueAsString,
-      platform: 'WEB_COMPUTE',
+      platform: 'WEB',
       enableBranchAutoDeletion: true,
       buildSpec: AMPLIFY_BUILD_SPEC,
     });
