@@ -15,6 +15,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export interface AgentraAppStackProps extends StackProps {
   dataAuthStack: AgentraDataAuthStack;
   bedrockStack: AgentraBedrockStack;
+  agentCoreRuntimeArn?: string;
+  agentCoreRuntimeQualifier?: string;
   allowedCorsOrigins?: string[];
 }
 
@@ -45,6 +47,8 @@ export class AgentraAppStack extends Stack {
         BEDROCK_AGENT_ALIAS_ID_SONNET: props.bedrockStack.agentAliasIds.sonnet,
         BEDROCK_AGENT_ID_HAIKU: props.bedrockStack.agentIds.haiku,
         BEDROCK_AGENT_ALIAS_ID_HAIKU: props.bedrockStack.agentAliasIds.haiku,
+        AGENTCORE_RUNTIME_ARN: props.agentCoreRuntimeArn ?? '',
+        AGENTCORE_RUNTIME_QUALIFIER: props.agentCoreRuntimeQualifier ?? '',
       },
     });
 
@@ -57,6 +61,16 @@ export class AgentraAppStack extends Stack {
         ],
       }),
     );
+
+    if (props.agentCoreRuntimeArn) {
+      apiHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [props.agentCoreRuntimeArn],
+        }),
+      );
+    }
 
     props.dataAuthStack.usersTable.grantReadWriteData(apiHandler);
     props.dataAuthStack.threadsTable.grantReadWriteData(apiHandler);

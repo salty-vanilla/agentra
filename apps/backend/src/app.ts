@@ -3,17 +3,17 @@ import {
   APP_VERSION,
   healthResponseSchema,
   threadMessagesResponseSchema,
-  updateThreadRequestSchema,
   threadResponseSchema,
   threadsResponseSchema,
+  updateThreadRequestSchema,
 } from '@agentra/shared';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
-import { authMiddleware } from './middleware/auth.js';
-import { type ModelKey, getModelId, invokeAgentStream } from './lib/bedrock-agent.js';
+import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
+import { authMiddleware } from './middleware/auth.js';
 import {
   appendMessage,
   createThread,

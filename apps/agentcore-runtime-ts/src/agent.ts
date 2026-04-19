@@ -1,0 +1,169 @@
+import { Agent, BedrockModel } from '@strands-agents/sdk'
+import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime'
+import { z } from 'zod'
+
+type ModelKey = 'opus' | 'sonnet' | 'haiku'
+type ResponsePreset = 'fast' | 'balanced' | 'deep'
+type ToneKey = 'business' | 'engineer'
+type LengthKey = 'short' | 'normal' | 'detailed'
+
+const MODEL_IDS: Record<ModelKey, string> = {
+  opus:
+    process.env.BEDROCK_MODEL_ID_OPUS ??
+    'global.anthropic.claude-opus-4-6-v1',
+  sonnet:
+    process.env.BEDROCK_MODEL_ID_SONNET ??
+    'global.anthropic.claude-sonnet-4-6',
+  haiku:
+    process.env.BEDROCK_MODEL_ID_HAIKU ??
+    'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+}
+
+const DEFAULT_REGION = process.env.AWS_REGION ?? 'us-east-1'
+const DEFAULT_PRESET: ResponsePreset = 'balanced'
+const DEFAULT_TONE: ToneKey = 'business'
+const DEFAULT_LENGTH: LengthKey = 'normal'
+
+type GenerationConfig = {
+  model: ModelKey
+  temperature: number
+}
+
+const PRESETS: Record<ResponsePreset, GenerationConfig> = {
+  fast: {
+    model: 'haiku',
+    temperature: 0.3,
+  },
+  balanced: {
+    model: 'sonnet',
+    temperature: 0.5,
+  },
+  deep: {
+    model: 'opus',
+    temperature: 0.7,
+  },
+}
+
+const LENGTH_CONFIG: Record<LengthKey, { maxTokens: number }> = {
+  short: { maxTokens: 512 },
+  normal: { maxTokens: 2048 },
+  detailed: { maxTokens: 4096 },
+}
+
+const TONE_INSTRUCTIONS: Record<ToneKey, string> = {
+  business: [
+    'あなたは社内向け業務支援AIです。',
+    '回答は丁寧で簡潔、フォーマルな文体にしてください。',
+    '曖昧な表現は避け、要点を整理して伝えてください。',
+    '必要に応じて箇条書きを使ってください。',
+  ].join('\n'),
+
+  engineer: [
+    'あなたは技術者向け支援AIです。',
+    '回答は技術者向けに、正確かつ具体的にしてください。',
+    '必要に応じて設計上のトレードオフ、実装観点、注意点を含めてください。',
+    'コード例を出す場合は実用的なものにしてください。',
+  ].join('\n'),
+}
+
+const RequestSchema = z.object({
+  prompt: z
+    .string()
+    .trim()
+    .min(1)
+    .default('Hello! How can I help you today?'),
+  preset: z.enum(['fast', 'balanced', 'deep']).default(DEFAULT_PRESET),
+  tone: z.enum(['business', 'engineer']).default(DEFAULT_TONE),
+  length: z.enum(['short', 'normal', 'detailed']).default(DEFAULT_LENGTH),
+})
+
+function resolveConfig(
+  preset: ResponsePreset,
+  length: LengthKey,
+): {
+  modelId: string
+  region: string
+  temperature: number
+  maxTokens: number
+} {
+  const base = PRESETS[preset]
+  const tokenConfig = LENGTH_CONFIG[length]
+
+  return {
+    modelId: MODEL_IDS[base.model],
+    region: DEFAULT_REGION,
+    temperature: base.temperature,
+    maxTokens: tokenConfig.maxTokens,
+  }
+}
+
+function buildPrompt(userPrompt: string, tone: ToneKey): string {
+  return [
+    TONE_INSTRUCTIONS[tone],
+    '',
+    '以下がユーザーの依頼です。',
+    userPrompt,
+  ].join('\n')
+}
+
+function createAgent(config: {
+  modelId: string
+  region: string
+  temperature: number
+  maxTokens: number
+}): Agent {
+  const model = new BedrockModel({
+    modelId: config.modelId,
+    region: config.region,
+    maxTokens: config.maxTokens,
+    temperature: config.temperature,
+  })
+
+  return new Agent({ model })
+}
+
+const AGENTS: Record<ResponsePreset, Record<LengthKey, Agent>> = {
+  fast: {
+    short: createAgent(resolveConfig('fast', 'short')),
+    normal: createAgent(resolveConfig('fast', 'normal')),
+    detailed: createAgent(resolveConfig('fast', 'detailed')),
+  },
+  balanced: {
+    short: createAgent(resolveConfig('balanced', 'short')),
+    normal: createAgent(resolveConfig('balanced', 'normal')),
+    detailed: createAgent(resolveConfig('balanced', 'detailed')),
+  },
+  deep: {
+    short: createAgent(resolveConfig('deep', 'short')),
+    normal: createAgent(resolveConfig('deep', 'normal')),
+    detailed: createAgent(resolveConfig('deep', 'detailed')),
+  },
+}
+
+const app = new BedrockAgentCoreApp({
+  invocationHandler: {
+    requestSchema: RequestSchema,
+
+    process: async function* (request) {
+      const agent = AGENTS[request.preset][request.length]
+      const finalPrompt = buildPrompt(request.prompt, request.tone)
+
+      for await (const event of agent.stream(finalPrompt)) {
+        if (
+          event.type === 'modelStreamUpdateEvent' &&
+          event.event.type === 'modelContentBlockDeltaEvent' &&
+          event.event.delta.type === 'textDelta'
+        ) {
+          yield {
+            event: 'message',
+            data: {
+              text: event.event.delta.text,
+            },
+          }
+        }
+      }
+    },
+  },
+})
+
+app.run()
