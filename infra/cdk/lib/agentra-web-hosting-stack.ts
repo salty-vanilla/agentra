@@ -22,6 +22,7 @@ const AMPLIFY_BUILD_SPEC = [
   '            - pnpm install --frozen-lockfile',
   '        build:',
   '          commands:',
+  '            - pnpm --filter @agentra/shared build',
   '            - pnpm --filter @agentra/frontend build',
   '      artifacts:',
   '        baseDirectory: .next',
