@@ -45,11 +45,12 @@ export class AgentraAppStack extends Stack {
     });
 
     if (props.agentCoreRuntimeArn) {
+      const runtimeEndpointArnPrefix = `${props.agentCoreRuntimeArn}/runtime-endpoint/*`;
       apiHandler.addToRolePolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,
           actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-          resources: [props.agentCoreRuntimeArn],
+          resources: [props.agentCoreRuntimeArn, runtimeEndpointArnPrefix],
         }),
       );
     }
