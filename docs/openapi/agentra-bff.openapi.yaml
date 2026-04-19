@@ -277,6 +277,13 @@ components:
           items:
             $ref: '#/components/schemas/ChatMessage'
           default: []
+        model:
+          type: string
+          enum:
+            - opus
+            - sonnet
+            - haiku
+          default: sonnet
     ChatResponse:
       type: object
       additionalProperties: false

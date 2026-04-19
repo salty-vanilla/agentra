@@ -3,22 +3,23 @@
 import type { PersistedChatMessage } from '@agentra/shared';
 import { APP_NAME } from '@agentra/shared';
 import {
-  AssistantRuntimeProvider,
   type ChatModelAdapter,
   type ThreadMessage,
   type ThreadMessageLike,
   useLocalRuntime,
 } from '@assistant-ui/react';
+import { AssistantRuntimeProvider as AssistantRuntimeProviderCore } from '@assistant-ui/core/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BotMessageSquare, Database, FolderKanban, Sparkles } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { toast } from 'sonner';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Thread } from '@/components/assistant-ui/thread';
+import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { createThread, deleteThreadById, sendChat, updateThreadTitle } from '@/lib/api';
+import { createThread, deleteThreadById, sendChat, sendChatStream, updateThreadTitle } from '@/lib/api';
 import { isMockApiMode } from '@/lib/api-config';
 import {
   agentraQueryKeys,
@@ -67,6 +68,11 @@ export function AgentraWorkspace() {
     'threadId',
     parseAsString.withOptions({ clearOnDefault: true }),
   );
+  const [selectedModel, setSelectedModel] = useState<ModelKey>('sonnet');
+  // Use a ref so the memoized modelAdapter can read the latest model key without
+  // invalidating the memo on every selector change.
+  const selectedModelRef = useRef<ModelKey>('sonnet');
+  selectedModelRef.current = selectedModel;
   const queryClient = useQueryClient();
 
   const healthQuery = useQuery(healthQueryOptions());
@@ -121,64 +127,92 @@ export function AgentraWorkspace() {
 
   const modelAdapter = useMemo<ChatModelAdapter>(
     () => ({
-      async run({ abortSignal, messages }) {
+      async *run({ abortSignal, messages }) {
         const normalizedHistory = normalizeThreadMessages(messages);
         const lastUserMessageIndex = findLastUserMessageIndex(normalizedHistory);
 
         if (lastUserMessageIndex < 0) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: 'ユーザーメッセージが見つかりませんでした。入力後に再度お試しください。',
-              },
-            ],
+          yield {
+            content: [{
+              type: 'text',
+              text: 'ユーザーメッセージが見つかりませんでした。入力後に再度お試しください。',
+            }],
           };
+          return;
         }
 
         const latestUserMessage = normalizedHistory[lastUserMessageIndex];
 
         if (!latestUserMessage) {
-          return {
-            content: [
-              {
-                type: 'text',
-                text: 'ユーザーメッセージの読込に失敗しました。新しい thread で再試行してください。',
-              },
-            ],
+          yield {
+            content: [{
+              type: 'text',
+              text: 'ユーザーメッセージの読込に失敗しました。新しい thread で再試行してください。',
+            }],
           };
+          return;
         }
 
-        const response = await sendChat(
-          {
-            message: latestUserMessage.content,
-            history: normalizedHistory.slice(0, lastUserMessageIndex),
-            ...(selectedThreadId ? { threadId: selectedThreadId } : {}),
-          },
-          { signal: abortSignal },
-        ).catch((error: unknown) => {
+        const chatRequest = {
+          message: latestUserMessage.content,
+          history: normalizedHistory.slice(0, lastUserMessageIndex),
+          ...(selectedThreadId ? { threadId: selectedThreadId } : {}),
+          model: selectedModelRef.current,
+        };
+
+        if (isMockApiMode) {
+          // Mock mode: non-streaming, existing sendChat path
+          const response = await sendChat(chatRequest, { signal: abortSignal }).catch(
+            (error: unknown) => {
+              toast.error('メッセージ送信に失敗しました', {
+                description: getErrorMessage(
+                  error,
+                  'バックエンドまたはモック API の状態を確認してください。',
+                ),
+                duration: 6000,
+              });
+              throw error;
+            },
+          );
+          await setSelectedThreadId(response.threadId);
+          await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
+          await queryClient.fetchQuery(threadMessagesQueryOptions(response.threadId));
+          yield { content: [{ type: 'text', text: response.reply }] };
+          return;
+        }
+
+        // Real mode: SSE streaming
+        let fullText = '';
+        let doneThreadId: string | null = null;
+
+        try {
+          for await (const event of sendChatStream(chatRequest, abortSignal)) {
+            if (event.type === 'text') {
+              fullText += event.text;
+              yield { content: [{ type: 'text', text: fullText }] };
+            } else if (event.type === 'done') {
+              doneThreadId = event.threadId;
+            } else if (event.type === 'error') {
+              throw new Error(event.error);
+            }
+          }
+        } catch (error: unknown) {
           toast.error('メッセージ送信に失敗しました', {
             description: getErrorMessage(
               error,
-              'バックエンドまたはモック API の状態を確認してください。',
+              'バックエンドまたは AgentCore の状態を確認してください。',
             ),
             duration: 6000,
           });
           throw error;
-        });
+        }
 
-        await setSelectedThreadId(response.threadId);
-        await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
-        await queryClient.fetchQuery(threadMessagesQueryOptions(response.threadId));
-
-        return {
-          content: [
-            {
-              type: 'text',
-              text: response.reply,
-            },
-          ],
-        };
+        const resolvedThreadId = doneThreadId ?? selectedThreadId;
+        if (resolvedThreadId) {
+          await setSelectedThreadId(resolvedThreadId);
+          await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
+          await queryClient.fetchQuery(threadMessagesQueryOptions(resolvedThreadId));
+        }
       },
     }),
     [queryClient, selectedThreadId],
@@ -272,7 +306,7 @@ export function AgentraWorkspace() {
   const displayedThreadCount = threads.length;
 
   return (
-    <AssistantRuntimeProvider runtime={runtime}>
+    <AssistantRuntimeProviderCore runtime={runtime}>
       <SidebarProvider defaultOpen>
         <div className="flex h-svh w-full overflow-hidden bg-transparent">
           <ServerThreadSidebar
@@ -315,7 +349,7 @@ export function AgentraWorkspace() {
 
             <main className="grid h-[calc(100svh-4rem)] min-h-0 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem]">
               <section className="min-h-0 border-b border-border/50 xl:border-r xl:border-b-0">
-                <Thread />
+                <Thread modelValue={selectedModel} onModelChange={setSelectedModel} />
               </section>
 
               <aside className="hidden min-h-0 flex-col justify-between bg-background/65 p-6 xl:flex">
@@ -378,7 +412,7 @@ export function AgentraWorkspace() {
           </SidebarInset>
         </div>
       </SidebarProvider>
-    </AssistantRuntimeProvider>
+    </AssistantRuntimeProviderCore>
   );
 }
 

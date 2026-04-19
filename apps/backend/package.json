@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@agentra/shared": "workspace:*",
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.1032.0",
     "@aws-sdk/client-dynamodb": "latest",
     "@aws-sdk/lib-dynamodb": "latest",
     "@hono/node-server": "latest",

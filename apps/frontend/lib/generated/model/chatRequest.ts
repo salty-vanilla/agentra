@@ -8,6 +8,7 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 import type { ChatMessage } from './chatMessage';
+import type { ChatRequestModel } from './chatRequestModel';
 
 export interface ChatRequest {
   /** @minLength 1 */
@@ -15,4 +16,5 @@ export interface ChatRequest {
   /** @minLength 1 */
   message: string;
   history?: ChatMessage[];
+  model?: ChatRequestModel;
 }

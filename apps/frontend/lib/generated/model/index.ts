@@ -10,6 +10,7 @@ This spec is the source of truth for frontend client generation and API mocks.
 
 export * from './chatMessage';
 export * from './chatRequest';
+export * from './chatRequestModel';
 export * from './chatResponse';
 export * from './chatRole';
 export * from './createThreadRequest';

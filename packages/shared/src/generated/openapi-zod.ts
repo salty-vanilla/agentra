@@ -31,6 +31,7 @@ export const GetHealthResponse = zod.object({
 
 
 export const postChatBodyHistoryDefault = [];
+export const postChatBodyModelDefault = `sonnet`;
 
 export const PostChatBody = zod.object({
   "threadId": zod.string().min(1).optional(),
@@ -38,7 +39,8 @@ export const PostChatBody = zod.object({
   "history": zod.array(zod.object({
   "role": zod.enum(['system', 'user', 'assistant']),
   "content": zod.string().min(1)
-})).default(postChatBodyHistoryDefault)
+})).default(postChatBodyHistoryDefault),
+  "model": zod.enum(['opus', 'sonnet', 'haiku']).default(postChatBodyModelDefault)
 })
 
 

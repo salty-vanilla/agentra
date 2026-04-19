@@ -18,7 +18,7 @@ import type {
   ThreadsResponse,
   UpdateThreadRequest,
 } from '@/lib/generated/model';
-import { isMockApiMode } from '@/lib/api-config';
+import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
 
 async function getAuthHeaders(): Promise<HeadersInit> {
   if (isMockApiMode) return {};
@@ -47,6 +47,66 @@ export async function sendChat(
   const init: RequestInit = { headers };
   if (options?.signal) init.signal = options.signal;
   return postChatRequest(request, init);
+}
+
+export type ChatStreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'done'; threadId: string; model: string; createdAt: string }
+  | { type: 'error'; error: string };
+
+/**
+ * Streams a chat response from the real backend via SSE.
+ * Yields ChatStreamEvent objects as SSE data lines arrive.
+ */
+export async function* sendChatStream(
+  request: ChatRequest,
+  signal?: AbortSignal,
+): AsyncGenerator<ChatStreamEvent> {
+  const headers = {
+    ...(await getAuthHeaders()),
+    'Content-Type': 'application/json',
+    Accept: 'text/event-stream',
+  };
+
+  const response = await fetch(`${API_BASE_URL}/chat`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(request),
+    ...(signal ? { signal } : {}),
+  });
+
+  if (!response.ok || !response.body) {
+    throw new Error(`Chat request failed: ${response.status} ${response.statusText}`);
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      // Keep the last incomplete line in the buffer
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data:')) continue;
+        const jsonStr = line.slice('data:'.length).trim();
+        if (!jsonStr) continue;
+        try {
+          yield JSON.parse(jsonStr) as ChatStreamEvent;
+        } catch {
+          // Ignore malformed SSE data lines
+        }
+      }
+    }
+  } finally {
+    reader.releaseLock();
+  }
 }
 
 export async function fetchThreads(): Promise<ThreadsResponse> {

@@ -1,7 +1,6 @@
 import {
   APP_NAME,
   APP_VERSION,
-  chatResponseSchema,
   healthResponseSchema,
   threadMessagesResponseSchema,
   updateThreadRequestSchema,
@@ -11,7 +10,9 @@ import {
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
+import { streamSSE } from 'hono/streaming';
 import { authMiddleware } from './middleware/auth.js';
+import { type ModelKey, getModelId, invokeAgentStream } from './lib/bedrock-agent.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import {
   appendMessage,
@@ -68,10 +69,11 @@ app.post('/chat', async (context) => {
     history?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
     message: string;
     threadId?: string;
+    model?: ModelKey;
   };
 
-  const history = parsed.history ?? [];
   const { message, threadId } = parsed;
+  const modelKey: ModelKey = parsed.model ?? 'sonnet';
   const userId = context.get('userId');
   let thread;
 
@@ -93,21 +95,37 @@ app.post('/chat', async (context) => {
     content: message,
   });
 
-  const reply = buildDummyReply(message, history.length);
-  await appendMessage({
-    threadId: thread.threadId,
-    role: 'assistant',
-    content: reply,
-  });
+  return streamSSE(context, async (stream) => {
+    let fullReply = '';
 
-  const response = chatResponseSchema.parse({
-    threadId: thread.threadId,
-    reply,
-    model: 'dummy-agent-v1',
-    createdAt: new Date().toISOString(),
-  });
+    try {
+      for await (const chunk of invokeAgentStream(modelKey, thread.threadId, message)) {
+        fullReply += chunk;
+        await stream.writeSSE({ data: JSON.stringify({ type: 'text', text: chunk }) });
+      }
+    } catch (err) {
+      console.error('Bedrock agent stream error:', err);
+      await stream.writeSSE({
+        data: JSON.stringify({ type: 'error', error: 'Agent invocation failed.' }),
+      });
+      return;
+    }
 
-  return jsonWithValidation(context, 'postChat', 200, response);
+    await appendMessage({
+      threadId: thread.threadId,
+      role: 'assistant',
+      content: fullReply,
+    });
+
+    await stream.writeSSE({
+      data: JSON.stringify({
+        type: 'done',
+        threadId: thread.threadId,
+        model: getModelId(modelKey),
+        createdAt: new Date().toISOString(),
+      }),
+    });
+  });
 });
 
 app.get('/threads', async (context) => {
@@ -253,29 +271,6 @@ app.onError((error, context) => {
   );
 });
 
-function buildDummyReply(message: string, historyLength: number) {
-  const normalized = message.toLowerCase();
 
-  if (normalized.includes('phase 2') || normalized.includes('認証')) {
-    return [
-      'Phase 2 では認証境界を先に固めるのが筋です。',
-      'frontend では認証済み UI の分岐、backend ではトークン検証後の app user 解決を追加してください。',
-      `現在の会話履歴件数は ${historyLength} 件で、thread 単位の制御をあとから足せる形にしてあります。`,
-    ].join('\n');
-  }
-
-  if (normalized.includes('製造') || normalized.includes('line') || normalized.includes('ライン')) {
-    return [
-      '製造ライン向けには、設備マニュアル、エラーコード、センサー状態を AgentCore 側のツールとして追加するのが自然です。',
-      'UI には通常チャットに加えて、設備別スレッド、引用表示、構造化データ照会結果の表示面を持たせると拡張しやすくなります。',
-    ].join('\n');
-  }
-
-  return [
-    `受け取ったメッセージ: 「${message}」`,
-    '現在は Hono backend のダミー応答です。次の段階で AgentCore 呼び出しに置き換える想定です。',
-    `thread と history を受け取る API 形状にしてあるため、将来の履歴保存や Agent セッション連携へそのまま進められます。`,
-  ].join('\n');
-}
 
 export { app, serve };

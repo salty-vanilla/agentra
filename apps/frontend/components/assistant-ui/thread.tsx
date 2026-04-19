@@ -28,11 +28,15 @@ import type { FC } from 'react';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
+import { type ModelKey, ModelSelector } from '@/components/model-selector';
 import { Button } from '@/components/ui/button';
 import { isMockApiMode } from '@/lib/api-config';
 import { cn } from '@/lib/utils';
 
-export const Thread: FC = () => {
+export const Thread: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void }> = ({
+  modelValue,
+  onModelChange,
+}) => {
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
@@ -58,7 +62,7 @@ export const Thread: FC = () => {
 
           <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mt-auto flex flex-col gap-3 overflow-visible rounded-t-(--composer-radius) bg-transparent pb-2 md:pb-3">
             <ThreadScrollToBottom />
-            <Composer />
+            <Composer modelValue={modelValue} onModelChange={onModelChange} />
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -112,7 +116,10 @@ const ThreadWelcome: FC = () => {
   );
 };
 
-const Composer: FC = () => {
+const Composer: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void }> = ({
+  modelValue,
+  onModelChange,
+}) => {
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
       <div
@@ -126,20 +133,28 @@ const Composer: FC = () => {
           autoFocus
           aria-label="Message input"
         />
-        <ComposerAction />
+        <ComposerAction modelValue={modelValue} onModelChange={onModelChange} />
       </div>
     </ComposerPrimitive.Root>
   );
 };
 
-const ComposerAction: FC = () => {
+const ComposerAction: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void }> = ({
+  modelValue,
+  onModelChange,
+}) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between gap-3">
-      <p className="px-1 text-muted-foreground text-xs">
-        {isMockApiMode
-          ? '現在は local runtime 経由で MSW の `/chat` モックを実行しています。'
-          : '現在は local runtime 経由で backend の `/chat` を実行しています。'}
-      </p>
+      <div className="flex min-w-0 items-center gap-1">
+        {!isMockApiMode && (
+          <ModelSelector value={modelValue} onChange={onModelChange} />
+        )}
+        <p className="truncate px-1 text-muted-foreground text-xs">
+          {isMockApiMode
+            ? '現在は local runtime 経由で MSW の `/chat` モックを実行しています。'
+            : '現在は local runtime 経由で backend の `/chat` を実行しています。'}
+        </p>
+      </div>
       <AuiIf condition={(s) => !s.thread.isRunning}>
         <ComposerPrimitive.Send
           render={
