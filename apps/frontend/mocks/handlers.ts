@@ -346,7 +346,10 @@ function parseChatRequest(payload: unknown) {
     };
   }
 
-  if (threadId !== undefined && (typeof threadId !== 'string' || threadId.trim().length === 0)) {
+  if (
+    threadId !== undefined &&
+    (typeof threadId !== 'string' || threadId.trim().length === 0)
+  ) {
     return {
       success: false as const,
     };
@@ -392,7 +395,11 @@ function buildDummyReply(message: string, historyLength: number) {
     ].join('\n');
   }
 
-  if (normalized.includes('製造') || normalized.includes('line') || normalized.includes('ライン')) {
+  if (
+    normalized.includes('製造') ||
+    normalized.includes('line') ||
+    normalized.includes('ライン')
+  ) {
     return [
       '製造ライン向けには、設備マニュアル、エラーコード、センサー状態を AgentCore 側のツールとして追加するのが自然です。',
       'UI には通常チャットに加えて、設備別スレッド、引用表示、構造化データ照会結果の表示面を持たせると拡張しやすくなります。',
@@ -431,7 +438,8 @@ function seedStore() {
       messageId: 'msg-mock-002',
       threadId,
       role: 'assistant',
-      content: 'MSW で API 契約を保ったままモックすれば、frontend 単体でも十分に進められます。',
+      content:
+        'MSW で API 契約を保ったままモックすれば、frontend 単体でも十分に進められます。',
       createdAt: '2026-04-18T00:05:32.000Z',
     },
   ]);

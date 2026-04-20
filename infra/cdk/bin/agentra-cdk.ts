@@ -37,18 +37,26 @@ const resolvedCorsOrigins =
       ? ['http://localhost:3000', 'http://127.0.0.1:3000']
       : [];
 
-if (resolvedCallbackUrls.length === 0 || resolvedLogoutUrls.length === 0 || resolvedCorsOrigins.length === 0) {
+if (
+  resolvedCallbackUrls.length === 0 ||
+  resolvedLogoutUrls.length === 0 ||
+  resolvedCorsOrigins.length === 0
+) {
   throw new Error(
     `Missing URLs for stage="${stageLabel}". Provide all of -c callbackUrls=... -c logoutUrls=... -c corsOrigins=...`,
   );
 }
 
-const dataAuthStack = new AgentraDataAuthStack(app, `AgentraDataAuthStack-${stageLabel}`, {
-  description: `Agentra ${stageLabel} data/auth stack (Cognito and DynamoDB).`,
-  cognitoDomainPrefix: `agentra-${stageLabel}-auth`,
-  callbackUrls: resolvedCallbackUrls,
-  logoutUrls: resolvedLogoutUrls,
-});
+const dataAuthStack = new AgentraDataAuthStack(
+  app,
+  `AgentraDataAuthStack-${stageLabel}`,
+  {
+    description: `Agentra ${stageLabel} data/auth stack (Cognito and DynamoDB).`,
+    cognitoDomainPrefix: `agentra-${stageLabel}-auth`,
+    callbackUrls: resolvedCallbackUrls,
+    logoutUrls: resolvedLogoutUrls,
+  },
+);
 
 new AgentraAgentCoreStack(app, `AgentraAgentCoreStack-${stageLabel}`, {
   description: `Agentra ${stageLabel} AgentCore stack (gateway foundation).`,
@@ -74,11 +82,15 @@ const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
 appStack.addDependency(dataAuthStack);
 appStack.addDependency(agentCoreRuntimeStack);
 
-const webHostingStack = new AgentraWebHostingStack(app, `AgentraWebHostingStack-${stageLabel}`, {
-  description: `Agentra ${stageLabel} web hosting stack (Amplify Hosting).`,
-  appStack,
-  dataAuthStack,
-  stage: stageLabel,
-});
+const webHostingStack = new AgentraWebHostingStack(
+  app,
+  `AgentraWebHostingStack-${stageLabel}`,
+  {
+    description: `Agentra ${stageLabel} web hosting stack (Amplify Hosting).`,
+    appStack,
+    dataAuthStack,
+    stage: stageLabel,
+  },
+);
 webHostingStack.addDependency(appStack);
 webHostingStack.addDependency(dataAuthStack);

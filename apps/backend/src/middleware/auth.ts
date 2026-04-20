@@ -1,5 +1,5 @@
-import { createRemoteJWKSet, jwtVerify } from 'jose';
 import type { MiddlewareHandler } from 'hono';
+import { createRemoteJWKSet, jwtVerify } from 'jose';
 import { userStore } from '../store/user-store.js';
 
 // HonoEnv is defined in app.ts — this file only uses the c.set interface
@@ -8,9 +8,11 @@ let jwks: ReturnType<typeof createRemoteJWKSet> | null = null;
 
 function getJwks(): ReturnType<typeof createRemoteJWKSet> {
   if (!jwks) {
-    const region = process.env.COGNITO_REGION ?? process.env.AWS_REGION ?? 'ap-northeast-1';
+    const region =
+      process.env.COGNITO_REGION ?? process.env.AWS_REGION ?? 'ap-northeast-1';
     const userPoolId = process.env.COGNITO_USER_POOL_ID;
-    if (!userPoolId) throw new Error('COGNITO_USER_POOL_ID environment variable is not set');
+    if (!userPoolId)
+      throw new Error('COGNITO_USER_POOL_ID environment variable is not set');
 
     const url = new URL(
       `https://cognito-idp.${region}.amazonaws.com/${userPoolId}/.well-known/jwks.json`,

@@ -1,33 +1,29 @@
-import { Agent, BedrockModel } from '@strands-agents/sdk'
-import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime'
-import { z } from 'zod'
+import { Agent, BedrockModel } from '@strands-agents/sdk';
+import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
+import { z } from 'zod';
 
-type ModelKey = 'opus' | 'sonnet' | 'haiku'
-type ResponsePreset = 'fast' | 'balanced' | 'deep'
-type ToneKey = 'business' | 'engineer'
-type LengthKey = 'short' | 'normal' | 'detailed'
+type ModelKey = 'opus' | 'sonnet' | 'haiku';
+type ResponsePreset = 'fast' | 'balanced' | 'deep';
+type ToneKey = 'business' | 'engineer';
+type LengthKey = 'short' | 'normal' | 'detailed';
 
 const MODEL_IDS: Record<ModelKey, string> = {
-  opus:
-    process.env.BEDROCK_MODEL_ID_OPUS ??
-    'global.anthropic.claude-opus-4-6-v1',
-  sonnet:
-    process.env.BEDROCK_MODEL_ID_SONNET ??
-    'global.anthropic.claude-sonnet-4-6',
+  opus: process.env.BEDROCK_MODEL_ID_OPUS ?? 'global.anthropic.claude-opus-4-6-v1',
+  sonnet: process.env.BEDROCK_MODEL_ID_SONNET ?? 'global.anthropic.claude-sonnet-4-6',
   haiku:
     process.env.BEDROCK_MODEL_ID_HAIKU ??
     'global.anthropic.claude-haiku-4-5-20251001-v1:0',
-}
+};
 
-const DEFAULT_REGION = process.env.AWS_REGION ?? 'us-east-1'
-const DEFAULT_PRESET: ResponsePreset = 'balanced'
-const DEFAULT_TONE: ToneKey = 'business'
-const DEFAULT_LENGTH: LengthKey = 'normal'
+const DEFAULT_REGION = process.env.AWS_REGION ?? 'us-east-1';
+const DEFAULT_PRESET: ResponsePreset = 'balanced';
+const DEFAULT_TONE: ToneKey = 'business';
+const DEFAULT_LENGTH: LengthKey = 'normal';
 
 type GenerationConfig = {
-  model: ModelKey
-  temperature: number
-}
+  model: ModelKey;
+  temperature: number;
+};
 
 const PRESETS: Record<ResponsePreset, GenerationConfig> = {
   fast: {
@@ -42,13 +38,13 @@ const PRESETS: Record<ResponsePreset, GenerationConfig> = {
     model: 'opus',
     temperature: 0.7,
   },
-}
+};
 
 const LENGTH_CONFIG: Record<LengthKey, { maxTokens: number }> = {
   short: { maxTokens: 512 },
   normal: { maxTokens: 2048 },
   detailed: { maxTokens: 4096 },
-}
+};
 
 const TONE_INSTRUCTIONS: Record<ToneKey, string> = {
   business: [
@@ -64,62 +60,55 @@ const TONE_INSTRUCTIONS: Record<ToneKey, string> = {
     '必要に応じて設計上のトレードオフ、実装観点、注意点を含めてください。',
     'コード例を出す場合は実用的なものにしてください。',
   ].join('\n'),
-}
+};
 
 const RequestSchema = z.object({
-  prompt: z
-    .string()
-    .trim()
-    .min(1)
-    .default('Hello! How can I help you today?'),
+  prompt: z.string().trim().min(1).default('Hello! How can I help you today?'),
   preset: z.enum(['fast', 'balanced', 'deep']).default(DEFAULT_PRESET),
   tone: z.enum(['business', 'engineer']).default(DEFAULT_TONE),
   length: z.enum(['short', 'normal', 'detailed']).default(DEFAULT_LENGTH),
-})
+});
 
 function resolveConfig(
   preset: ResponsePreset,
   length: LengthKey,
 ): {
-  modelId: string
-  region: string
-  temperature: number
-  maxTokens: number
+  modelId: string;
+  region: string;
+  temperature: number;
+  maxTokens: number;
 } {
-  const base = PRESETS[preset]
-  const tokenConfig = LENGTH_CONFIG[length]
+  const base = PRESETS[preset];
+  const tokenConfig = LENGTH_CONFIG[length];
 
   return {
     modelId: MODEL_IDS[base.model],
     region: DEFAULT_REGION,
     temperature: base.temperature,
     maxTokens: tokenConfig.maxTokens,
-  }
+  };
 }
 
 function buildPrompt(userPrompt: string, tone: ToneKey): string {
-  return [
-    TONE_INSTRUCTIONS[tone],
-    '',
-    '以下がユーザーの依頼です。',
-    userPrompt,
-  ].join('\n')
+  return [TONE_INSTRUCTIONS[tone], '', '以下がユーザーの依頼です。', userPrompt].join(
+    '\n',
+  );
 }
 
 function createAgent(config: {
-  modelId: string
-  region: string
-  temperature: number
-  maxTokens: number
+  modelId: string;
+  region: string;
+  temperature: number;
+  maxTokens: number;
 }): Agent {
   const model = new BedrockModel({
     modelId: config.modelId,
     region: config.region,
     maxTokens: config.maxTokens,
     temperature: config.temperature,
-  })
+  });
 
-  return new Agent({ model })
+  return new Agent({ model });
 }
 
 const AGENTS: Record<ResponsePreset, Record<LengthKey, Agent>> = {
@@ -138,15 +127,15 @@ const AGENTS: Record<ResponsePreset, Record<LengthKey, Agent>> = {
     normal: createAgent(resolveConfig('deep', 'normal')),
     detailed: createAgent(resolveConfig('deep', 'detailed')),
   },
-}
+};
 
 const app = new BedrockAgentCoreApp({
   invocationHandler: {
     requestSchema: RequestSchema,
 
     process: async function* (request) {
-      const agent = AGENTS[request.preset][request.length]
-      const finalPrompt = buildPrompt(request.prompt, request.tone)
+      const agent = AGENTS[request.preset][request.length];
+      const finalPrompt = buildPrompt(request.prompt, request.tone);
 
       for await (const event of agent.stream(finalPrompt)) {
         if (
@@ -159,11 +148,11 @@ const app = new BedrockAgentCoreApp({
             data: {
               text: event.event.delta.text,
             },
-          }
+          };
         }
       }
     },
   },
-})
+});
 
-app.run()
+app.run();

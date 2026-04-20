@@ -47,7 +47,11 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   );
 };
 
-const useCopyToClipboard = ({ copiedDuration = 3000 }: { copiedDuration?: number } = {}) => {
+const useCopyToClipboard = ({
+  copiedDuration = 3000,
+}: {
+  copiedDuration?: number;
+} = {}) => {
   const [isCopied, setIsCopied] = useState<boolean>(false);
 
   const copyToClipboard = (value: string) => {
@@ -101,13 +105,19 @@ const defaultComponents = memoizeMarkdownComponents({
   ),
   h5: ({ className, ...props }) => (
     <h5
-      className={cn('aui-md-h5 mt-2 mb-1 font-medium text-sm first:mt-0 last:mb-0', className)}
+      className={cn(
+        'aui-md-h5 mt-2 mb-1 font-medium text-sm first:mt-0 last:mb-0',
+        className,
+      )}
       {...props}
     />
   ),
   h6: ({ className, ...props }) => (
     <h6
-      className={cn('aui-md-h6 mt-2 mb-1 font-medium text-sm first:mt-0 last:mb-0', className)}
+      className={cn(
+        'aui-md-h6 mt-2 mb-1 font-medium text-sm first:mt-0 last:mb-0',
+        className,
+      )}
       {...props}
     />
   ),
@@ -154,7 +164,10 @@ const defaultComponents = memoizeMarkdownComponents({
     />
   ),
   hr: ({ className, ...props }) => (
-    <hr className={cn('aui-md-hr my-2 border-muted-foreground/20', className)} {...props} />
+    <hr
+      className={cn('aui-md-hr my-2 border-muted-foreground/20', className)}
+      {...props}
+    />
   ),
   table: ({ className, ...props }) => (
     <table
@@ -196,7 +209,10 @@ const defaultComponents = memoizeMarkdownComponents({
     <li className={cn('aui-md-li leading-normal', className)} {...props} />
   ),
   sup: ({ className, ...props }) => (
-    <sup className={cn('aui-md-sup [&>a]:text-xs [&>a]:no-underline', className)} {...props} />
+    <sup
+      className={cn('aui-md-sup [&>a]:text-xs [&>a]:no-underline', className)}
+      {...props}
+    />
   ),
   pre: ({ className, ...props }) => (
     <pre

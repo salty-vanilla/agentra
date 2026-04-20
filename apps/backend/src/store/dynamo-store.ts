@@ -1,6 +1,5 @@
 import type { PersistedChatMessage, ThreadSummary } from '@agentra/shared';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { uuidv7 } from 'uuidv7';
 import {
   BatchWriteCommand,
   DeleteCommand,
@@ -10,6 +9,7 @@ import {
   QueryCommand,
   UpdateCommand,
 } from '@aws-sdk/lib-dynamodb';
+import { uuidv7 } from 'uuidv7';
 import type { CreateThreadInput, Store } from './index.js';
 
 function getThreadsTable(): string {
@@ -168,7 +168,10 @@ export class DynamoStore implements Store {
     }
   }
 
-  async deleteThread(input: { threadId: string; userId: string }): Promise<ThreadSummary | undefined> {
+  async deleteThread(input: {
+    threadId: string;
+    userId: string;
+  }): Promise<ThreadSummary | undefined> {
     const existingThread = await this.getThread(input.threadId, input.userId);
     if (!existingThread) {
       return undefined;

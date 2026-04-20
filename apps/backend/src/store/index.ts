@@ -39,11 +39,16 @@ function createStore(): Store {
 const activeStore: Store = createStore();
 
 export const listThreads = (userId: string) => activeStore.listThreads(userId);
-export const getThread = (threadId: string, userId: string) => activeStore.getThread(threadId, userId);
-export const getThreadMessages = (threadId: string) => activeStore.getThreadMessages(threadId);
+export const getThread = (threadId: string, userId: string) =>
+  activeStore.getThread(threadId, userId);
+export const getThreadMessages = (threadId: string) =>
+  activeStore.getThreadMessages(threadId);
 export const createThread = (input: CreateThreadInput) => activeStore.createThread(input);
-export const updateThreadTitle = (input: { threadId: string; userId: string; title: string }) =>
-  activeStore.updateThreadTitle(input);
+export const updateThreadTitle = (input: {
+  threadId: string;
+  userId: string;
+  title: string;
+}) => activeStore.updateThreadTitle(input);
 export const deleteThread = (input: { threadId: string; userId: string }) =>
   activeStore.deleteThread(input);
 export const appendMessage = (input: {

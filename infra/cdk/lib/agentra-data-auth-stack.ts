@@ -5,7 +5,12 @@ import {
   UserPoolClient,
   UserPoolClientIdentityProvider,
 } from 'aws-cdk-lib/aws-cognito';
-import { AttributeType, BillingMode, ProjectionType, Table } from 'aws-cdk-lib/aws-dynamodb';
+import {
+  AttributeType,
+  BillingMode,
+  ProjectionType,
+  Table,
+} from 'aws-cdk-lib/aws-dynamodb';
 import type { Construct } from 'constructs';
 
 export interface AgentraDataAuthStackProps extends StackProps {
@@ -83,7 +88,9 @@ export class AgentraDataAuthStack extends Stack {
     this.cognitoDomain = `${cognitoDomainPrefix}.auth.${Stack.of(this).region}.amazoncognito.com`;
 
     new CfnOutput(this, 'UserPoolId', { value: this.userPool.userPoolId });
-    new CfnOutput(this, 'UserPoolClientId', { value: this.userPoolClient.userPoolClientId });
+    new CfnOutput(this, 'UserPoolClientId', {
+      value: this.userPoolClient.userPoolClientId,
+    });
     new CfnOutput(this, 'CognitoDomain', { value: this.cognitoDomain });
     new CfnOutput(this, 'UsersTableName', { value: this.usersTable.tableName });
     new CfnOutput(this, 'ThreadsTableName', { value: this.threadsTable.tableName });

@@ -2,6 +2,7 @@ import {
   APP_NAME,
   APP_VERSION,
   healthResponseSchema,
+  type ThreadSummary,
   threadMessagesResponseSchema,
   threadResponseSchema,
   threadsResponseSchema,
@@ -43,7 +44,13 @@ app.get('/', (context) => {
   return context.json({
     name: APP_NAME,
     version: APP_VERSION,
-    endpoints: ['/health', '/chat', '/threads', '/threads/:threadId', '/threads/:threadId/messages'],
+    endpoints: [
+      '/health',
+      '/chat',
+      '/threads',
+      '/threads/:threadId',
+      '/threads/:threadId/messages',
+    ],
   });
 });
 
@@ -75,7 +82,7 @@ app.post('/chat', async (context) => {
   const { message, threadId } = parsed;
   const modelKey: ModelKey = parsed.model ?? 'sonnet';
   const userId = context.get('userId');
-  let thread;
+  let thread: ThreadSummary;
 
   if (threadId) {
     const existingThread = await getThread(threadId, userId);
@@ -270,7 +277,5 @@ app.onError((error, context) => {
     500,
   );
 });
-
-
 
 export { app, serve };

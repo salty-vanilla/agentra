@@ -128,7 +128,7 @@ export class MemoryStore implements Store {
   }
 
   private seed() {
-    const threadId = 'thread-demo-001';
+    const threadId = '018f3f85-1f27-7b2d-bc95-1234567890ab';
     const createdAt = '2026-04-18T00:05:00.000Z';
     const updatedAt = '2026-04-18T00:06:30.000Z';
 
@@ -138,7 +138,8 @@ export class MemoryStore implements Store {
       title: '初期構成の確認',
       createdAt,
       updatedAt,
-      preview: '社内向け Agent チャットの UI、backend、infra を一体で検証するための PoC です。',
+      preview:
+        '社内向け Agent チャットの UI、backend、infra を一体で検証するための PoC です。',
     });
 
     this.messageStore.set(threadId, [
@@ -153,7 +154,8 @@ export class MemoryStore implements Store {
         messageId: 'msg-demo-002',
         threadId,
         role: 'assistant',
-        content: '社内向け Agent チャットの UI、backend、infra を一体で検証するための PoC です。',
+        content:
+          '社内向け Agent チャットの UI、backend、infra を一体で検証するための PoC です。',
         createdAt: '2026-04-18T00:05:32.000Z',
       },
     ]);

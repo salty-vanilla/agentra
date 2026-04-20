@@ -1,3 +1,4 @@
+import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
 import {
   createThread as createThreadRequest,
   deleteThread as deleteThreadRequest,
@@ -17,7 +18,6 @@ import type {
   ThreadsResponse,
   UpdateThreadRequest,
 } from '@/lib/generated/model';
-import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
 
 export type MockChatResponse = {
   threadId: string;
@@ -143,12 +143,16 @@ export async function fetchThreads(): Promise<ThreadsResponse> {
   return listThreadsRequest({ cache: 'no-store', headers });
 }
 
-export async function fetchThreadMessages(threadId: string): Promise<ThreadMessagesResponse> {
+export async function fetchThreadMessages(
+  threadId: string,
+): Promise<ThreadMessagesResponse> {
   const headers = await getAuthHeaders();
   return listThreadMessagesRequest(threadId, { cache: 'no-store', headers });
 }
 
-export async function createThread(request: CreateThreadRequest = {}): Promise<ThreadResponse> {
+export async function createThread(
+  request: CreateThreadRequest = {},
+): Promise<ThreadResponse> {
   const headers = await getAuthHeaders();
   return expectThreadResponse(createThreadRequest(request, { headers }));
 }

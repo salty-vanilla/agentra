@@ -42,7 +42,11 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['bedrock:GetInferenceProfile', 'bedrock:ListInferenceProfiles', 'bedrock:UseInferenceProfile'],
+        actions: [
+          'bedrock:GetInferenceProfile',
+          'bedrock:ListInferenceProfiles',
+          'bedrock:UseInferenceProfile',
+        ],
         resources: ['*'],
       }),
     );
@@ -62,7 +66,11 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['ecr:BatchGetImage', 'ecr:GetDownloadUrlForLayer', 'ecr:BatchCheckLayerAvailability'],
+        actions: [
+          'ecr:BatchGetImage',
+          'ecr:GetDownloadUrlForLayer',
+          'ecr:BatchCheckLayerAvailability',
+        ],
         resources: [runtimeImageAsset.repository.repositoryArn],
       }),
     );

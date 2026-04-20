@@ -12,7 +12,8 @@ import {
 const postChatHistorySchema = PostChatBody.shape.history.unwrap();
 const postChatMessageSchema = postChatHistorySchema.element;
 const threadSummarySchemaInternal = GetThreadResponse.shape.thread;
-const persistedChatMessageSchemaInternal = ListThreadMessagesResponse.shape.messages.element;
+const persistedChatMessageSchemaInternal =
+  ListThreadMessagesResponse.shape.messages.element;
 
 export const chatRoleSchema = postChatMessageSchema.shape.role;
 export const chatMessageSchema = postChatMessageSchema;

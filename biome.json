@@ -9,6 +9,8 @@
       "!apps/frontend/public/mockServiceWorker.js",
       "!apps/frontend/lib/generated",
       "!apps/frontend/mocks/generated",
+      "!apps/frontend/out",
+      "!apps/frontend/out",
       "!packages/shared/src/generated"
     ]
   },
@@ -16,7 +18,7 @@
     "enabled": true,
     "indentStyle": "space",
     "indentWidth": 2,
-    "lineWidth": 100
+    "lineWidth": 90
   },
   "linter": {
     "enabled": true,

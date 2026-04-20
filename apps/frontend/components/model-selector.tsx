@@ -54,7 +54,9 @@ export function ModelSelector({ value, onChange }: ModelSelectorProps) {
             className="flex flex-col items-start gap-0.5"
             aria-selected={option.key === value}
           >
-            <span className={option.key === value ? 'font-medium' : ''}>{option.label}</span>
+            <span className={option.key === value ? 'font-medium' : ''}>
+              {option.label}
+            </span>
             <span className="text-muted-foreground text-xs">{option.description}</span>
           </DropdownMenuItem>
         ))}

@@ -3,7 +3,15 @@
 import type { ThreadSummary } from '@agentra/shared';
 import { APP_NAME } from '@agentra/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { MessageSquarePlus, MessagesSquare, MoreHorizontal, Orbit, Pencil, Trash2 } from 'lucide-react';
+import { cva } from 'class-variance-authority';
+import {
+  MessageSquarePlus,
+  MessagesSquare,
+  MoreHorizontal,
+  Orbit,
+  Pencil,
+  Trash2,
+} from 'lucide-react';
 import type * as React from 'react';
 import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -33,7 +41,37 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar';
 import { isMockApiMode } from '@/lib/api-config';
-import { cn } from '@/lib/utils';
+
+const threadRowVariants = cva(
+  'group w-full rounded-xl border px-3 py-1.5 text-left transition-colors',
+  {
+    variants: {
+      selected: {
+        true: 'border-teal-700/20 bg-teal-600/10',
+        false:
+          'border-transparent bg-transparent hover:border-border/60 hover:bg-muted/70',
+      },
+    },
+    defaultVariants: {
+      selected: false,
+    },
+  },
+);
+
+const threadActionButtonVariants = cva(
+  'size-7 shrink-0 rounded-md text-muted-foreground/70 opacity-0 transition-[opacity,color,background-color] hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:bg-accent data-[state=open]:text-foreground data-[state=open]:opacity-100',
+  {
+    variants: {
+      selected: {
+        true: 'opacity-100 text-foreground',
+        false: '',
+      },
+    },
+    defaultVariants: {
+      selected: false,
+    },
+  },
+);
 
 type ServerThreadSidebarProps = React.ComponentProps<typeof Sidebar> & {
   threads: ThreadSummary[];
@@ -153,14 +191,7 @@ export function ServerThreadSidebar({
                           transform: `translateY(${virtualRow.start}px)`,
                         }}
                       >
-                        <div
-                          className={cn(
-                            'group w-full rounded-xl border px-3 py-1.5 text-left transition-colors',
-                            isSelected
-                              ? 'border-teal-700/20 bg-teal-600/10'
-                              : 'border-transparent bg-transparent hover:border-border/60 hover:bg-muted/70',
-                          )}
-                        >
+                        <div className={threadRowVariants({ selected: isSelected })}>
                           <ThreadRowContent
                             isEditing={editingThreadId === thread.threadId}
                             isRenaming={isRenamingThreadId === thread.threadId}
@@ -228,12 +259,16 @@ export function ServerThreadSidebar({
             <DialogTitle>Delete Thread</DialogTitle>
           </DialogHeader>
           <DialogDescription>
-              {deleteTarget
-                ? `「${deleteTarget.title}」を削除します。この操作は取り消せません。`
-                : 'このスレッドを削除します。この操作は取り消せません。'}
+            {deleteTarget
+              ? `「${deleteTarget.title}」を削除します。この操作は取り消せません。`
+              : 'このスレッドを削除します。この操作は取り消せません。'}
           </DialogDescription>
           <DialogFooter>
-            <Button onClick={() => setDeleteTarget(null)} type="button" variant="secondary">
+            <Button
+              onClick={() => setDeleteTarget(null)}
+              type="button"
+              variant="secondary"
+            >
               Cancel
             </Button>
             <Button
@@ -326,10 +361,7 @@ function ThreadRowContent({
         <DropdownMenuTrigger asChild>
           <Button
             aria-label={`Thread actions for ${thread.title}`}
-            className={cn(
-              'size-7 shrink-0 rounded-md text-muted-foreground/70 opacity-0 transition-[opacity,color,background-color] hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 data-[state=open]:bg-accent data-[state=open]:text-foreground data-[state=open]:opacity-100',
-              isSelected && 'opacity-100 text-foreground',
-            )}
+            className={threadActionButtonVariants({ selected: isSelected })}
             size="icon-sm"
             type="button"
             variant="ghost"
@@ -339,15 +371,15 @@ function ThreadRowContent({
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onSelect={onStartEdit}>
-              <Pencil className="size-3.5" />
-              Rename
+            <Pencil className="size-3.5" />
+            Rename
           </DropdownMenuItem>
           <DropdownMenuItem
             className="text-destructive focus:bg-destructive/10 focus:text-destructive"
             onSelect={onDelete}
           >
-              <Trash2 className="size-3.5" />
-              Delete
+            <Trash2 className="size-3.5" />
+            Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

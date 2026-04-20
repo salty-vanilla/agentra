@@ -16,7 +16,9 @@ async function assertJsonResponse<T>(
   parser: (value: unknown) => T,
 ) {
   if (response.status !== expectedStatus) {
-    throw new Error(`${label}: expected status ${expectedStatus}, received ${response.status}`);
+    throw new Error(
+      `${label}: expected status ${expectedStatus}, received ${response.status}`,
+    );
   }
 
   const payload = await response.json();
@@ -29,12 +31,16 @@ async function assertChatStreamResponse(
   expectedStatus: number,
 ) {
   if (response.status !== expectedStatus) {
-    throw new Error(`${label}: expected status ${expectedStatus}, received ${response.status}`);
+    throw new Error(
+      `${label}: expected status ${expectedStatus}, received ${response.status}`,
+    );
   }
 
   const contentType = response.headers.get('content-type') ?? '';
   if (!contentType.includes('text/event-stream')) {
-    throw new Error(`${label}: expected text/event-stream content-type, received "${contentType}"`);
+    throw new Error(
+      `${label}: expected text/event-stream content-type, received "${contentType}"`,
+    );
   }
 
   const body = await response.text();
@@ -118,10 +124,14 @@ async function main() {
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(createThreadRequestSchema.parse({ title: 'contract created thread' })),
+    body: JSON.stringify(
+      createThreadRequestSchema.parse({ title: 'contract created thread' }),
+    ),
   });
   if (createdThreadResponse.status !== 201) {
-    throw new Error(`POST /threads: expected status 201, received ${createdThreadResponse.status}`);
+    throw new Error(
+      `POST /threads: expected status 201, received ${createdThreadResponse.status}`,
+    );
   }
   const createdPayload = threadResponseSchema.parse(await createdThreadResponse.json());
   const createdThreadId = createdPayload.thread.threadId as string;
@@ -133,7 +143,9 @@ async function main() {
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(updateThreadRequestSchema.parse({ title: 'updated thread title' })),
+      body: JSON.stringify(
+        updateThreadRequestSchema.parse({ title: 'updated thread title' }),
+      ),
     }),
     200,
     threadResponseSchema.parse,
@@ -149,7 +161,9 @@ async function main() {
     threadResponseSchema.parse,
   );
 
-  const deletedMessageResponse = await app.request(`/threads/${createdThreadId}/messages`);
+  const deletedMessageResponse = await app.request(
+    `/threads/${createdThreadId}/messages`,
+  );
   if (deletedMessageResponse.status !== 404) {
     throw new Error(
       `GET /threads/${createdThreadId}/messages after delete: expected status 404, received ${deletedMessageResponse.status}`,

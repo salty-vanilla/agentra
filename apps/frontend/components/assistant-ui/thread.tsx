@@ -11,6 +11,7 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
+import { cva } from 'class-variance-authority';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -33,10 +34,29 @@ import { Button } from '@/components/ui/button';
 import { isMockApiMode } from '@/lib/api-config';
 import { cn } from '@/lib/utils';
 
-export const Thread: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void }> = ({
-  modelValue,
-  onModelChange,
-}) => {
+const threadMessageRootVariants = cva(
+  'fade-in slide-in-from-bottom-1 animate-in duration-150',
+  {
+    variants: {
+      role: {
+        assistant: 'relative',
+        user: 'grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 [&:where(>*)]:col-start-2',
+      },
+    },
+    defaultVariants: {
+      role: 'assistant',
+    },
+  },
+);
+
+const actionBarMoreItemVariants = cva(
+  'aui-action-bar-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
+);
+
+export const Thread: FC<{
+  modelValue: ModelKey;
+  onModelChange: (m: ModelKey) => void;
+}> = ({ modelValue, onModelChange }) => {
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
@@ -56,7 +76,10 @@ export const Thread: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => 
             <ThreadWelcome />
           </AuiIf>
 
-          <div data-slot="aui_message-group" className="mb-10 flex flex-col gap-y-8 empty:hidden">
+          <div
+            data-slot="aui_message-group"
+            className="mb-10 flex flex-col gap-y-8 empty:hidden"
+          >
             <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
           </div>
 
@@ -107,8 +130,8 @@ const ThreadWelcome: FC = () => {
             Frontend foundation, ready for AgentCore
           </h1>
           <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-lg delay-75 duration-200">
-            Hono backend の `/chat` SSE を使いながら、thread UI・message actions・composer を
-            assistant-ui ベースに統合しています。
+            Hono backend の `/chat` SSE を使いながら、thread UI・message actions・composer
+            を assistant-ui ベースに統合しています。
           </p>
         </div>
       </div>
@@ -139,16 +162,14 @@ const Composer: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void 
   );
 };
 
-const ComposerAction: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void }> = ({
-  modelValue,
-  onModelChange,
-}) => {
+const ComposerAction: FC<{
+  modelValue: ModelKey;
+  onModelChange: (m: ModelKey) => void;
+}> = ({ modelValue, onModelChange }) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-1">
-        {!isMockApiMode && (
-          <ModelSelector value={modelValue} onChange={onModelChange} />
-        )}
+        {!isMockApiMode && <ModelSelector value={modelValue} onChange={onModelChange} />}
         <p className="truncate px-1 text-muted-foreground text-xs">
           {isMockApiMode
             ? '現在は local runtime 経由で MSW の `/chat` モックを実行しています。'
@@ -212,7 +233,7 @@ const AssistantMessage: FC = () => {
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
       data-role="assistant"
-      className="fade-in slide-in-from-bottom-1 relative animate-in duration-150"
+      className={threadMessageRootVariants({ role: 'assistant' })}
     >
       <div
         data-slot="aui_assistant-message-content"
@@ -270,7 +291,7 @@ const AssistantActionBar: FC = () => {
         >
           <ActionBarPrimitive.ExportMarkdown
             render={
-              <ActionBarMorePrimitive.Item className="aui-action-bar-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground" />
+              <ActionBarMorePrimitive.Item className={actionBarMoreItemVariants()} />
             }
           >
             <DownloadIcon className="size-4" />
@@ -286,7 +307,7 @@ const UserMessage: FC = () => {
   return (
     <MessagePrimitive.Root
       data-slot="aui_user-message-root"
-      className="fade-in slide-in-from-bottom-1 grid animate-in auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [&:where(>*)]:col-start-2"
+      className={threadMessageRootVariants({ role: 'user' })}
       data-role="user"
     >
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
@@ -324,7 +345,10 @@ const UserActionBar: FC = () => {
 
 const EditComposer: FC = () => {
   return (
-    <MessagePrimitive.Root data-slot="aui_edit-composer-wrapper" className="flex flex-col px-2">
+    <MessagePrimitive.Root
+      data-slot="aui_edit-composer-wrapper"
+      className="flex flex-col px-2"
+    >
       <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
         <ComposerPrimitive.Input
           className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none"
@@ -334,7 +358,9 @@ const EditComposer: FC = () => {
           <ComposerPrimitive.Cancel render={<Button variant="ghost" size="sm" />}>
             Cancel
           </ComposerPrimitive.Cancel>
-          <ComposerPrimitive.Send render={<Button size="sm" />}>Update</ComposerPrimitive.Send>
+          <ComposerPrimitive.Send render={<Button size="sm" />}>
+            Update
+          </ComposerPrimitive.Send>
         </div>
       </ComposerPrimitive.Root>
     </MessagePrimitive.Root>

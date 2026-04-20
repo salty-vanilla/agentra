@@ -19,7 +19,13 @@ import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
 import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
-import { createThread, deleteThreadById, sendChat, sendChatStream, updateThreadTitle } from '@/lib/api';
+import {
+  createThread,
+  deleteThreadById,
+  sendChat,
+  sendChatStream,
+  updateThreadTitle,
+} from '@/lib/api';
 import { isMockApiMode } from '@/lib/api-config';
 import {
   agentraQueryKeys,
@@ -34,7 +40,8 @@ type HealthState = 'checking' | 'online' | 'offline';
 const stackCards = [
   {
     title: 'Assistant UI',
-    description: 'Chat surface, composer, threads, and message actions now come from assistant-ui.',
+    description:
+      'Chat surface, composer, threads, and message actions now come from assistant-ui.',
     icon: BotMessageSquare,
   },
   {
@@ -87,9 +94,12 @@ export function AgentraWorkspace() {
     onSuccess: async (response) => {
       await setSelectedThreadId(response.thread.threadId);
       await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
-      queryClient.setQueryData(agentraQueryKeys.threadMessages(response.thread.threadId), {
-        messages: [],
-      });
+      queryClient.setQueryData(
+        agentraQueryKeys.threadMessages(response.thread.threadId),
+        {
+          messages: [],
+        },
+      );
     },
   });
 
@@ -107,16 +117,21 @@ export function AgentraWorkspace() {
   const deleteThreadMutation = useMutation({
     mutationFn: ({ threadId }: { threadId: string }) => deleteThreadById(threadId),
     onSuccess: async (_, variables) => {
-      const remainingThreads = threads.filter((thread) => thread.threadId !== variables.threadId);
+      const remainingThreads = threads.filter(
+        (thread) => thread.threadId !== variables.threadId,
+      );
       const nextSelectedThreadId = remainingThreads[0]?.threadId ?? null;
       await setSelectedThreadId(nextSelectedThreadId);
       await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
-      queryClient.removeQueries({ queryKey: agentraQueryKeys.threadMessages(variables.threadId) });
+      queryClient.removeQueries({
+        queryKey: agentraQueryKeys.threadMessages(variables.threadId),
+      });
     },
   });
 
   const threads = threadsQuery.data?.threads ?? [];
-  const persistedMessages: PersistedChatMessage[] = threadMessagesQuery.data?.messages ?? [];
+  const persistedMessages: PersistedChatMessage[] =
+    threadMessagesQuery.data?.messages ?? [];
   const isThreadsLoading = threadsQuery.isLoading;
   const isMessagesLoading = threadMessagesQuery.isFetching;
 
@@ -133,10 +148,12 @@ export function AgentraWorkspace() {
 
         if (lastUserMessageIndex < 0) {
           yield {
-            content: [{
-              type: 'text',
-              text: 'ユーザーメッセージが見つかりませんでした。入力後に再度お試しください。',
-            }],
+            content: [
+              {
+                type: 'text',
+                text: 'ユーザーメッセージが見つかりませんでした。入力後に再度お試しください。',
+              },
+            ],
           };
           return;
         }
@@ -145,10 +162,12 @@ export function AgentraWorkspace() {
 
         if (!latestUserMessage) {
           yield {
-            content: [{
-              type: 'text',
-              text: 'ユーザーメッセージの読込に失敗しました。新しい thread で再試行してください。',
-            }],
+            content: [
+              {
+                type: 'text',
+                text: 'ユーザーメッセージの読込に失敗しました。新しい thread で再試行してください。',
+              },
+            ],
           };
           return;
         }
@@ -215,7 +234,7 @@ export function AgentraWorkspace() {
         }
       },
     }),
-    [queryClient, selectedThreadId],
+    [queryClient, selectedThreadId, setSelectedThreadId],
   );
 
   const runtime = useLocalRuntime(modelAdapter, {
@@ -224,7 +243,7 @@ export function AgentraWorkspace() {
 
   useEffect(() => {
     runtime.thread.reset(initialMessages);
-  }, [initialMessages, runtime, selectedThreadId]);
+  }, [initialMessages, runtime]);
 
   useEffect(() => {
     if (threads.length === 0) {
@@ -235,7 +254,10 @@ export function AgentraWorkspace() {
       return;
     }
 
-    if (!selectedThreadId || !threads.some((thread) => thread.threadId === selectedThreadId)) {
+    if (
+      !selectedThreadId ||
+      !threads.some((thread) => thread.threadId === selectedThreadId)
+    ) {
       void setSelectedThreadId(threads[0]?.threadId ?? null);
     }
   }, [selectedThreadId, setSelectedThreadId, threads]);
@@ -284,7 +306,10 @@ export function AgentraWorkspace() {
       await updateThreadMutation.mutateAsync({ threadId, title });
     } catch (error) {
       toast.error('スレッド名の更新に失敗しました', {
-        description: getErrorMessage(error, '保存処理に失敗しました。再試行してください。'),
+        description: getErrorMessage(
+          error,
+          '保存処理に失敗しました。再試行してください。',
+        ),
         duration: 6000,
       });
       throw error;
@@ -296,7 +321,10 @@ export function AgentraWorkspace() {
       await deleteThreadMutation.mutateAsync({ threadId });
     } catch (error) {
       toast.error('スレッド削除に失敗しました', {
-        description: getErrorMessage(error, '削除処理に失敗しました。再試行してください。'),
+        description: getErrorMessage(
+          error,
+          '削除処理に失敗しました。再試行してください。',
+        ),
         duration: 6000,
       });
       throw error;
@@ -324,7 +352,9 @@ export function AgentraWorkspace() {
               <div className="flex min-w-0 items-center gap-2 md:gap-3">
                 <SidebarTrigger className="-ml-1" />
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-base tracking-tight">{APP_NAME}</p>
+                  <p className="truncate font-semibold text-base tracking-tight">
+                    {APP_NAME}
+                  </p>
                   <p className="truncate text-muted-foreground text-xs md:text-sm">
                     assistant-ui + shadcn/ui based internal agent workspace
                   </p>
@@ -334,7 +364,11 @@ export function AgentraWorkspace() {
               <div className="flex items-center gap-3">
                 <div className="hidden text-right text-muted-foreground text-xs sm:block">
                   <p>{displayedThreadCount} server thread(s)</p>
-                  <p>{isMessagesLoading ? 'Loading messages...' : 'Current phase: backend sync'}</p>
+                  <p>
+                    {isMessagesLoading
+                      ? 'Loading messages...'
+                      : 'Current phase: backend sync'}
+                  </p>
                 </div>
                 <span
                   className={cn(
@@ -362,8 +396,8 @@ export function AgentraWorkspace() {
                       Frontend-first, without painting ourselves into a corner
                     </h2>
                     <p className="text-muted-foreground text-sm leading-7">
-                      The current surface is designed to keep the chat UX moving while preserving
-                      the contract boundary to Hono, DynamoDB, and AgentCore.
+                      The current surface is designed to keep the chat UX moving while
+                      preserving the contract boundary to Hono, DynamoDB, and AgentCore.
                     </p>
                   </div>
 
@@ -379,7 +413,9 @@ export function AgentraWorkspace() {
                           </div>
                           <h3 className="font-medium text-sm">{title}</h3>
                         </div>
-                        <p className="text-muted-foreground text-sm leading-6">{description}</p>
+                        <p className="text-muted-foreground text-sm leading-6">
+                          {description}
+                        </p>
                       </article>
                     ))}
                   </div>
@@ -389,8 +425,8 @@ export function AgentraWorkspace() {
                   <div className="space-y-1">
                     <p className="font-semibold text-sm">Next implementation slice</p>
                     <p className="text-muted-foreground text-sm">
-                      Once this UI baseline is accepted, the next meaningful step is thread and
-                      message persistence.
+                      Once this UI baseline is accepted, the next meaningful step is
+                      thread and message persistence.
                     </p>
                   </div>
 
@@ -403,7 +439,11 @@ export function AgentraWorkspace() {
                     ))}
                   </ul>
 
-                  <Button className="w-full rounded-full" type="button" variant="secondary">
+                  <Button
+                    className="w-full rounded-full"
+                    type="button"
+                    variant="secondary"
+                  >
                     UI foundation in place
                   </Button>
                 </div>
@@ -424,7 +464,9 @@ function getErrorMessage(error: unknown, fallback: string) {
   return fallback;
 }
 
-function convertPersistedMessageToRuntimeMessage(message: PersistedChatMessage): ThreadMessageLike {
+function convertPersistedMessageToRuntimeMessage(
+  message: PersistedChatMessage,
+): ThreadMessageLike {
   return {
     role: message.role,
     content: [{ type: 'text', text: message.content }],

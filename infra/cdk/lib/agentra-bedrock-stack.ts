@@ -43,7 +43,11 @@ export class AgentraBedrockStack extends Stack {
     bedrockAgentRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['bedrock:GetInferenceProfile', 'bedrock:ListInferenceProfiles', 'bedrock:UseInferenceProfile'],
+        actions: [
+          'bedrock:GetInferenceProfile',
+          'bedrock:ListInferenceProfiles',
+          'bedrock:UseInferenceProfile',
+        ],
         resources: ['*'],
       }),
     );
@@ -118,7 +122,9 @@ export class AgentraBedrockStack extends Stack {
     new CfnOutput(this, 'BedrockAgentIdOpus', { value: this.agentIds.opus });
     new CfnOutput(this, 'BedrockAgentAliasIdOpus', { value: this.agentAliasIds.opus });
     new CfnOutput(this, 'BedrockAgentIdSonnet', { value: this.agentIds.sonnet });
-    new CfnOutput(this, 'BedrockAgentAliasIdSonnet', { value: this.agentAliasIds.sonnet });
+    new CfnOutput(this, 'BedrockAgentAliasIdSonnet', {
+      value: this.agentAliasIds.sonnet,
+    });
     new CfnOutput(this, 'BedrockAgentIdHaiku', { value: this.agentIds.haiku });
     new CfnOutput(this, 'BedrockAgentAliasIdHaiku', { value: this.agentAliasIds.haiku });
   }

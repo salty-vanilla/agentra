@@ -53,7 +53,8 @@ export class AgentraWebHostingStack extends Stack {
     const githubAccessToken = new CfnParameter(this, 'AmplifyGithubAccessToken', {
       type: 'String',
       noEcho: true,
-      description: 'GitHub personal access token used by Amplify to connect the repository',
+      description:
+        'GitHub personal access token used by Amplify to connect the repository',
     });
 
     const amplifyApp = new CfnApp(this, 'WebApp', {
@@ -94,7 +95,12 @@ export class AgentraWebHostingStack extends Stack {
         },
         {
           name: 'NEXT_PUBLIC_APP_URL',
-          value: Fn.join('', ['https://', branchName.valueAsString, '.', amplifyApp.attrDefaultDomain]),
+          value: Fn.join('', [
+            'https://',
+            branchName.valueAsString,
+            '.',
+            amplifyApp.attrDefaultDomain,
+          ]),
         },
       ],
     });
@@ -105,7 +111,12 @@ export class AgentraWebHostingStack extends Stack {
     new CfnOutput(this, 'AmplifyDefaultDomain', { value: amplifyApp.attrDefaultDomain });
     new CfnOutput(this, 'AmplifyMainBranchName', { value: mainBranch.attrBranchName });
     new CfnOutput(this, 'AmplifyMainBranchUrl', {
-      value: Fn.join('', ['https://', branchName.valueAsString, '.', amplifyApp.attrDefaultDomain]),
+      value: Fn.join('', [
+        'https://',
+        branchName.valueAsString,
+        '.',
+        amplifyApp.attrDefaultDomain,
+      ]),
     });
   }
 }

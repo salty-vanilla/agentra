@@ -10,7 +10,6 @@
  *   AWS_ENDPOINT_URL - for DynamoDB Local (e.g. http://localhost:8000)
  */
 
-import { createReadStream } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';

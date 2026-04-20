@@ -5,7 +5,11 @@ import os from 'node:os';
 import path from 'node:path';
 
 const workspaceHash = createHash('sha1').update(process.cwd()).digest('hex').slice(0, 12);
-const lockRootDir = path.resolve(os.tmpdir(), 'agentra-generate-api-locks', workspaceHash);
+const lockRootDir = path.resolve(
+  os.tmpdir(),
+  'agentra-generate-api-locks',
+  workspaceHash,
+);
 const lockDir = path.resolve(lockRootDir, 'lock');
 const lockMetaPath = path.join(lockDir, 'meta.json');
 const lockWaitMs = 200;
@@ -32,7 +36,9 @@ async function run(command, args) {
         return;
       }
 
-      reject(new Error(`${command} ${args.join(' ')} failed with exit code ${code ?? 'null'}`));
+      reject(
+        new Error(`${command} ${args.join(' ')} failed with exit code ${code ?? 'null'}`),
+      );
     });
   });
 }
@@ -58,7 +64,12 @@ async function acquireLock() {
 
       return;
     } catch (error) {
-      if (error && typeof error === 'object' && 'code' in error && error.code === 'EEXIST') {
+      if (
+        error &&
+        typeof error === 'object' &&
+        'code' in error &&
+        error.code === 'EEXIST'
+      ) {
         if (Date.now() - startedAt > lockTimeoutMs) {
           throw new Error(
             `Timed out while waiting for generate:api lock after ${lockTimeoutMs / 1000}s`,

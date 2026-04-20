@@ -16,7 +16,8 @@ const agentCoreClient = new BedrockAgentCoreClient({
 });
 
 const AGENTCORE_RUNTIME_ARN = process.env.AGENTCORE_RUNTIME_ARN ?? '';
-const AGENTCORE_RUNTIME_QUALIFIER = process.env.AGENTCORE_RUNTIME_QUALIFIER?.trim() || undefined;
+const AGENTCORE_RUNTIME_QUALIFIER =
+  process.env.AGENTCORE_RUNTIME_QUALIFIER?.trim() || undefined;
 
 function decodeRuntimeChunk(chunk: unknown): string {
   if (typeof chunk === 'string') {
@@ -117,7 +118,6 @@ async function* streamAgentCoreBody(
             yield text;
           }
         }
-        continue;
       }
     }
 

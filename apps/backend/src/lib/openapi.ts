@@ -137,6 +137,9 @@ function buildQuery(url: string) {
   }
 
   return Object.fromEntries(
-    Array.from(query.entries(), ([key, values]) => [key, values.length === 1 ? values[0] : values]),
+    Array.from(query.entries(), ([key, values]) => [
+      key,
+      values.length === 1 ? values[0] : values,
+    ]),
   );
 }
