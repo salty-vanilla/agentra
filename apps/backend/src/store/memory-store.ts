@@ -1,4 +1,9 @@
-import type { ChatRole, PersistedChatMessage, ThreadSummary } from '@agentra/shared';
+import type {
+  ChatObservationSummary,
+  ChatRole,
+  PersistedChatMessage,
+  ThreadSummary,
+} from '@agentra/shared';
 import { uuidv7 } from 'uuidv7';
 import type { CreateThreadInput, Store } from './index.js';
 
@@ -97,6 +102,7 @@ export class MemoryStore implements Store {
     threadId: string;
     role: Exclude<ChatRole, 'system'>;
     content: string;
+    observabilitySummary?: ChatObservationSummary;
   }): Promise<PersistedChatMessage> {
     const timestamp = now();
     const message: PersistedChatMessage = {
@@ -105,6 +111,9 @@ export class MemoryStore implements Store {
       role: input.role,
       content: input.content,
       createdAt: timestamp,
+      ...(input.observabilitySummary
+        ? { observabilitySummary: input.observabilitySummary }
+        : {}),
     };
 
     const currentMessages = this.messageStore.get(input.threadId) ?? [];
@@ -157,6 +166,33 @@ export class MemoryStore implements Store {
         content:
           '社内向け Agent チャットの UI、backend、infra を一体で検証するための PoC です。',
         createdAt: '2026-04-18T00:05:32.000Z',
+        observabilitySummary: {
+          traceId: 'trace-demo-002',
+          startedAt: '2026-04-18T00:05:28.000Z',
+          completedAt: '2026-04-18T00:05:32.000Z',
+          durationMs: 4000,
+          status: 'success',
+          tokenUsage: {
+            inputTokens: 120,
+            outputTokens: 42,
+            totalTokens: 162,
+          },
+          reasoning: {
+            stepCount: 2,
+            summary: 'Reasoning steps: 2',
+          },
+          toolCalls: [
+            {
+              toolName: 'date_resolver',
+              startedAt: '2026-04-18T00:05:29.000Z',
+              completedAt: '2026-04-18T00:05:29.100Z',
+              durationMs: 100,
+              status: 'success',
+            },
+          ],
+          toolCallCount: 1,
+          toolFailureCount: 0,
+        },
       },
     ]);
   }

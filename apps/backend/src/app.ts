@@ -1,6 +1,7 @@
 import {
   APP_NAME,
   APP_VERSION,
+  type ChatObservationSummary,
   healthResponseSchema,
   type ThreadSummary,
   threadMessagesResponseSchema,
@@ -30,6 +31,61 @@ type HonoEnv = {
     userId: string;
   };
 };
+
+type ObservationStatus = 'success' | 'error' | 'cancelled';
+const OBSERVABILITY_DEBUG_LOG = process.env.OBSERVABILITY_DEBUG_LOG === 'true';
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function toMillis(iso: string): number {
+  return new Date(iso).getTime();
+}
+
+function createFallbackObservabilitySummary(input: {
+  traceId: string;
+  startedAt: string;
+  completedAt: string;
+  status: ObservationStatus;
+}): ChatObservationSummary {
+  return {
+    traceId: input.traceId,
+    startedAt: input.startedAt,
+    completedAt: input.completedAt,
+    durationMs: Math.max(0, toMillis(input.completedAt) - toMillis(input.startedAt)),
+    status: input.status,
+    toolCalls: [],
+    toolCallCount: 0,
+    toolFailureCount: 0,
+  };
+}
+
+function logObservabilityDebug(
+  stage: 'observation' | 'done' | 'error',
+  summary: ChatObservationSummary | undefined,
+  extra?: Record<string, unknown>,
+) {
+  if (!OBSERVABILITY_DEBUG_LOG || !summary) {
+    return;
+  }
+
+  const payload = {
+    stage,
+    traceId: summary.traceId,
+    status: summary.status,
+    durationMs: summary.durationMs,
+    totalTokens: summary.tokenUsage?.totalTokens,
+    inputTokens: summary.tokenUsage?.inputTokens,
+    outputTokens: summary.tokenUsage?.outputTokens,
+    toolCallCount: summary.toolCallCount,
+    toolFailureCount: summary.toolFailureCount,
+    toolNames: summary.toolCalls.map((tool) => tool.toolName),
+    ...extra,
+  };
+
+  console.info('[observability-debug]', JSON.stringify(payload));
+}
 
 const app = new Hono<HonoEnv>();
 
@@ -82,6 +138,7 @@ app.post('/chat', async (context) => {
   const { message, threadId } = parsed;
   const modelKey: ModelKey = parsed.model ?? 'sonnet';
   const userId = context.get('userId');
+  const traceId = crypto.randomUUID();
   let thread: ThreadSummary;
 
   if (threadId) {
@@ -103,25 +160,89 @@ app.post('/chat', async (context) => {
   });
 
   return streamSSE(context, async (stream) => {
+    const startedAt = nowIso();
     let fullReply = '';
+    let latestObservabilitySummary: ChatObservationSummary | undefined;
 
     try {
-      for await (const chunk of invokeAgentStream(modelKey, thread.threadId, message)) {
-        fullReply += chunk;
-        await stream.writeSSE({ data: JSON.stringify({ type: 'text', text: chunk }) });
+      for await (const runtimeEvent of invokeAgentStream(
+        modelKey,
+        thread.threadId,
+        message,
+        traceId,
+      )) {
+        if (runtimeEvent.type === 'text') {
+          fullReply += runtimeEvent.text;
+          await stream.writeSSE({
+            data: JSON.stringify({ type: 'text', text: runtimeEvent.text }),
+          });
+          continue;
+        }
+
+        if (runtimeEvent.type === 'observation') {
+          latestObservabilitySummary = runtimeEvent.observation;
+          logObservabilityDebug('observation', latestObservabilitySummary, {
+            threadId: thread.threadId,
+          });
+          await stream.writeSSE({
+            data: JSON.stringify({
+              type: 'observation',
+              observation: runtimeEvent.observation,
+            }),
+          });
+          continue;
+        }
+
+        if (runtimeEvent.type === 'done') {
+          latestObservabilitySummary =
+            runtimeEvent.observabilitySummary ?? latestObservabilitySummary;
+          continue;
+        }
+
+        if (runtimeEvent.type === 'error') {
+          latestObservabilitySummary =
+            runtimeEvent.observabilitySummary ?? latestObservabilitySummary;
+          throw new Error(runtimeEvent.error);
+        }
       }
     } catch (err) {
       console.error('Bedrock agent stream error:', err);
+      const completedAt = nowIso();
+      const fallbackSummary =
+        latestObservabilitySummary ??
+        createFallbackObservabilitySummary({
+          traceId,
+          startedAt,
+          completedAt,
+          status: 'error',
+        });
+      logObservabilityDebug('error', fallbackSummary, { threadId: thread.threadId });
       await stream.writeSSE({
-        data: JSON.stringify({ type: 'error', error: 'Agent invocation failed.' }),
+        data: JSON.stringify({
+          type: 'error',
+          error: 'Agent invocation failed.',
+          observabilitySummary: fallbackSummary,
+        }),
       });
       return;
     }
+
+    const completedAt = nowIso();
+    const finalSummary =
+      latestObservabilitySummary ??
+      createFallbackObservabilitySummary({
+        traceId,
+        startedAt,
+        completedAt,
+        status: 'success',
+      });
+    logObservabilityDebug('done', finalSummary, { threadId: thread.threadId });
 
     await appendMessage({
       threadId: thread.threadId,
       role: 'assistant',
       content: fullReply,
+      observabilitySummary: finalSummary,
     });
 
     await stream.writeSSE({
@@ -129,7 +250,8 @@ app.post('/chat', async (context) => {
         type: 'done',
         threadId: thread.threadId,
         model: getModelId(modelKey),
-        createdAt: new Date().toISOString(),
+        createdAt: completedAt,
+        observabilitySummary: finalSummary,
       }),
     });
   });

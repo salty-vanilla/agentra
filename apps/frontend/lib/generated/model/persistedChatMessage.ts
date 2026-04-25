@@ -7,6 +7,7 @@ This spec is the source of truth for frontend client generation and API mocks.
 
  * OpenAPI spec version: 0.1.0
  */
+import type { ChatObservationSummary } from './chatObservationSummary';
 import type { MessageRole } from './messageRole';
 
 export interface PersistedChatMessage {
@@ -18,4 +19,5 @@ export interface PersistedChatMessage {
   /** @minLength 1 */
   content: string;
   createdAt: string;
+  observabilitySummary?: ChatObservationSummary;
 }

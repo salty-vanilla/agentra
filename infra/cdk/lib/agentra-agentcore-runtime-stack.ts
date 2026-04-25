@@ -1,6 +1,13 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CfnOutput, CfnParameter, CfnResource, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  CfnParameter,
+  CfnResource,
+  SecretValue,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import { CfnRuntime, CfnRuntimeEndpoint } from 'aws-cdk-lib/aws-bedrockagentcore';
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';

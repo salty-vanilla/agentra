@@ -1,9 +1,15 @@
+import type { ChatObservationSummary } from '@agentra/shared';
 import {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
 
 export type ModelKey = 'opus' | 'sonnet' | 'haiku';
+export type RuntimeStreamEvent =
+  | { type: 'text'; text: string }
+  | { type: 'observation'; observation: ChatObservationSummary }
+  | { type: 'done'; observabilitySummary?: ChatObservationSummary }
+  | { type: 'error'; error: string; observabilitySummary?: ChatObservationSummary };
 
 const MODEL_ID_MAP: Record<ModelKey, string> = {
   opus: 'us.anthropic.claude-opus-4-6-v1',
@@ -37,54 +43,69 @@ function decodeRuntimeChunk(chunk: unknown): string {
   return String(chunk ?? '');
 }
 
-function extractTextFromRuntimeEvent(raw: string): string {
+function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
   try {
-    const parsed = JSON.parse(raw) as {
+    const parsed = JSON.parse(raw) as
+      | {
+          event?: string;
+          data?: unknown;
+        }
+      | {
+          type?: string;
+          text?: string;
+          observation?: ChatObservationSummary;
+          observabilitySummary?: ChatObservationSummary;
+          error?: string;
+        };
+
+    const payload =
+      parsed && typeof parsed === 'object' && 'event' in parsed ? parsed.data : parsed;
+    if (!payload || typeof payload !== 'object') {
+      return undefined;
+    }
+
+    const typed = payload as {
       type?: string;
       text?: string;
-      delta?: string;
-      data?: string;
-      result?: string;
-      message?: string;
-      output?: string;
+      observation?: ChatObservationSummary;
+      observabilitySummary?: ChatObservationSummary;
+      error?: string;
     };
-    if (parsed.type === 'text' && parsed.text) {
-      return parsed.text;
+
+    if (typed.type === 'text' && typeof typed.text === 'string') {
+      return { type: 'text', text: typed.text };
     }
-    if (typeof parsed.text === 'string') {
-      return parsed.text;
+    // BedrockAgentCoreApp streaming may emit payloads as {"text":"..."} (without type).
+    if (typeof typed.text === 'string') {
+      return { type: 'text', text: typed.text };
     }
-    if (parsed.data && typeof parsed.data === 'object' && 'text' in parsed.data) {
-      const text = (parsed.data as { text?: unknown }).text;
-      if (typeof text === 'string') {
-        return text;
-      }
+    if (typed.type === 'observation' && typed.observation) {
+      return { type: 'observation', observation: typed.observation };
     }
-    if (typeof parsed.delta === 'string') {
-      return parsed.delta;
+    if (typed.type === 'done') {
+      return typed.observabilitySummary
+        ? { type: 'done', observabilitySummary: typed.observabilitySummary }
+        : { type: 'done' };
     }
-    if (typeof parsed.data === 'string') {
-      return parsed.data;
-    }
-    if (typeof parsed.result === 'string') {
-      return parsed.result;
-    }
-    if (typeof parsed.message === 'string') {
-      return parsed.message;
-    }
-    if (typeof parsed.output === 'string') {
-      return parsed.output;
+    if (typed.type === 'error' && typeof typed.error === 'string') {
+      return {
+        type: 'error',
+        error: typed.error,
+        ...(typed.observabilitySummary
+          ? { observabilitySummary: typed.observabilitySummary }
+          : {}),
+      };
     }
   } catch {
-    return raw;
+    return undefined;
   }
-  return '';
+  return undefined;
 }
 
 async function* streamAgentCoreBody(
   contentType: string | undefined,
   body: unknown,
-): AsyncGenerator<string> {
+): AsyncGenerator<RuntimeStreamEvent> {
   const streamBody = body as {
     transformToString?: () => Promise<string>;
     [Symbol.asyncIterator]?: () => AsyncIterator<unknown>;
@@ -113,18 +134,32 @@ async function* streamAgentCoreBody(
             continue;
           }
 
-          const text = extractTextFromRuntimeEvent(data);
-          if (text) {
-            yield text;
+          const parsed = parseWrappedRuntimeEvent(data);
+          if (parsed) {
+            yield parsed;
+            continue;
           }
+
+          yield { type: 'text', text: data };
+        }
+      } else if (buffer.trim()) {
+        const parsed = parseWrappedRuntimeEvent(buffer.trim());
+        if (parsed) {
+          yield parsed;
+          buffer = '';
+        } else {
+          yield { type: 'text', text: buffer.trim() };
+          buffer = '';
         }
       }
     }
 
     if (!isSse && buffer.trim()) {
-      const text = extractTextFromRuntimeEvent(buffer.trim());
-      if (text) {
-        yield text;
+      const parsed = parseWrappedRuntimeEvent(buffer.trim());
+      if (parsed) {
+        yield parsed;
+      } else {
+        yield { type: 'text', text: buffer.trim() };
       }
     }
     return;
@@ -132,9 +167,11 @@ async function* streamAgentCoreBody(
 
   if (streamBody?.transformToString) {
     const payload = await streamBody.transformToString();
-    const text = extractTextFromRuntimeEvent(payload);
-    if (text) {
-      yield text;
+    const parsed = parseWrappedRuntimeEvent(payload);
+    if (parsed) {
+      yield parsed;
+    } else if (payload.trim()) {
+      yield { type: 'text', text: payload.trim() };
     }
   }
 }
@@ -143,7 +180,8 @@ async function* invokeAgentCoreRuntimeStream(
   modelKey: ModelKey,
   sessionId: string,
   inputText: string,
-): AsyncGenerator<string> {
+  traceId?: string,
+): AsyncGenerator<RuntimeStreamEvent> {
   if (!AGENTCORE_RUNTIME_ARN) {
     throw new Error('AGENTCORE_RUNTIME_ARN is not set. AgentCore runtime is required.');
   }
@@ -152,12 +190,14 @@ async function* invokeAgentCoreRuntimeStream(
     agentRuntimeArn: AGENTCORE_RUNTIME_ARN,
     qualifier: AGENTCORE_RUNTIME_QUALIFIER,
     runtimeSessionId: sessionId,
+    ...(traceId ? { traceId } : {}),
     contentType: 'application/json',
     accept: 'text/event-stream',
     payload: new TextEncoder().encode(
       JSON.stringify({
         prompt: inputText,
         model: modelKey,
+        ...(traceId ? { traceId } : {}),
       }),
     ),
   });
@@ -171,7 +211,7 @@ async function* invokeAgentCoreRuntimeStream(
 }
 
 /**
- * Streams text chunks from an AgentCore Runtime invocation.
+ * Streams runtime events from an AgentCore Runtime invocation.
  * Uses thread.threadId as runtime sessionId so context is preserved
  * across messages within the same thread.
  */
@@ -179,8 +219,9 @@ export async function* invokeAgentStream(
   modelKey: ModelKey,
   sessionId: string,
   inputText: string,
-): AsyncGenerator<string> {
-  yield* invokeAgentCoreRuntimeStream(modelKey, sessionId, inputText);
+  traceId?: string,
+): AsyncGenerator<RuntimeStreamEvent> {
+  yield* invokeAgentCoreRuntimeStream(modelKey, sessionId, inputText, traceId);
 }
 
 export function getModelId(modelKey: ModelKey): string {

@@ -1,5 +1,6 @@
 'use client';
 
+import type { ChatObservationSummary } from '@agentra/shared';
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -16,14 +17,18 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  Clock3Icon,
   CopyIcon,
   DownloadIcon,
+  FingerprintIcon,
   MoreHorizontalIcon,
   PencilIcon,
   RefreshCwIcon,
   SquareIcon,
+  WrenchIcon,
 } from 'lucide-react';
 import type { FC } from 'react';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
@@ -31,6 +36,11 @@ import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { type ModelKey, ModelSelector } from '@/components/model-selector';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { isMockApiMode } from '@/lib/api-config';
 import { cn } from '@/lib/utils';
 
@@ -245,6 +255,7 @@ const AssistantMessage: FC = () => {
             tools: { Fallback: ToolFallback },
           }}
         />
+        <AssistantObservabilityPanel />
         <MessageError />
       </div>
 
@@ -256,6 +267,54 @@ const AssistantMessage: FC = () => {
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
+  );
+};
+
+const AssistantObservabilityPanel: FC = () => {
+  const summary = useAuiState((s) => {
+    const custom = s.message.metadata.custom as
+      | { observabilitySummary?: ChatObservationSummary }
+      | undefined;
+    if (custom?.observabilitySummary) {
+      return custom.observabilitySummary;
+    }
+
+    for (const part of s.message.content) {
+      if (part.type === 'data' && part.name === 'observability') {
+        return part.data as ChatObservationSummary;
+      }
+    }
+    return undefined;
+  });
+
+  return (
+    <Collapsible className="mt-3 rounded-lg border border-border/70 bg-muted/20">
+      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted/30">
+        <span className="inline-flex items-center gap-2">
+          <FingerprintIcon className="size-3.5" />
+          Observability
+        </span>
+        <ChevronDownIcon className="size-3.5" />
+      </CollapsibleTrigger>
+      <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-2 text-xs">
+        {summary ? (
+          <>
+            <p className="inline-flex items-center gap-1.5">
+              <Clock3Icon className="size-3.5 text-muted-foreground" />
+              {formatDuration(summary.durationMs)} / tokens:{' '}
+              {summary.tokenUsage?.totalTokens ?? 'n/a'}
+            </p>
+            <p className="inline-flex items-center gap-1.5">
+              <WrenchIcon className="size-3.5 text-muted-foreground" />
+              tools: {summary.toolCallCount} (failed: {summary.toolFailureCount})
+            </p>
+            <p className="truncate text-muted-foreground">trace: {summary.traceId}</p>
+          </>
+        ) : (
+          <p className="text-muted-foreground">Observability data not available.</p>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
@@ -389,3 +448,13 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest
     </BranchPickerPrimitive.Root>
   );
 };
+
+function formatDuration(durationMs: number): string {
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    return '0ms';
+  }
+  if (durationMs < 1000) {
+    return `${durationMs}ms`;
+  }
+  return `${(durationMs / 1000).toFixed(2)}s`;
+}

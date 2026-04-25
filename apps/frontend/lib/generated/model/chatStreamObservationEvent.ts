@@ -8,14 +8,9 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 import type { ChatObservationSummary } from './chatObservationSummary';
-import type { ChatStreamDoneEventType } from './chatStreamDoneEventType';
+import type { ChatStreamObservationEventType } from './chatStreamObservationEventType';
 
-export interface ChatStreamDoneEvent {
-  type: ChatStreamDoneEventType;
-  /** @minLength 1 */
-  threadId: string;
-  /** @minLength 1 */
-  model: string;
-  createdAt: string;
-  observabilitySummary?: ChatObservationSummary;
+export interface ChatStreamObservationEvent {
+  type: ChatStreamObservationEventType;
+  observation: ChatObservationSummary;
 }

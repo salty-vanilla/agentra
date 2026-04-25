@@ -1,6 +1,6 @@
 'use client';
 
-import type { PersistedChatMessage } from '@agentra/shared';
+import type { ChatObservationSummary, PersistedChatMessage } from '@agentra/shared';
 import { APP_NAME } from '@agentra/shared';
 import { AssistantRuntimeProvider as AssistantRuntimeProviderCore } from '@assistant-ui/core/react';
 import {
@@ -76,6 +76,8 @@ export function AgentraWorkspace() {
     parseAsString.withOptions({ clearOnDefault: true }),
   );
   const [selectedModel, setSelectedModel] = useState<ModelKey>('sonnet');
+  const [liveObservabilitySummary, setLiveObservabilitySummary] =
+    useState<ChatObservationSummary | null>(null);
   // Use a ref so the memoized modelAdapter can read the latest model key without
   // invalidating the memo on every selector change.
   const selectedModelRef = useRef<ModelKey>('sonnet');
@@ -139,10 +141,15 @@ export function AgentraWorkspace() {
     () => persistedMessages.map(convertPersistedMessageToRuntimeMessage),
     [persistedMessages],
   );
+  const persistedLatestObservabilitySummary = useMemo(
+    () => findLatestAssistantObservabilitySummary(persistedMessages),
+    [persistedMessages],
+  );
 
   const modelAdapter = useMemo<ChatModelAdapter>(
     () => ({
       async *run({ abortSignal, messages }) {
+        setLiveObservabilitySummary(null);
         const normalizedHistory = normalizeThreadMessages(messages);
         const lastUserMessageIndex = findLastUserMessageIndex(normalizedHistory);
 
@@ -203,15 +210,27 @@ export function AgentraWorkspace() {
         // Real mode: SSE streaming
         let fullText = '';
         let doneThreadId: string | null = null;
+        let doneObservabilitySummary: ChatObservationSummary | null = null;
 
         try {
           for await (const event of sendChatStream(chatRequest, abortSignal)) {
             if (event.type === 'text') {
               fullText += event.text;
               yield { content: [{ type: 'text', text: fullText }] };
+            } else if (event.type === 'observation') {
+              doneObservabilitySummary = event.observation;
+              setLiveObservabilitySummary(event.observation);
             } else if (event.type === 'done') {
               doneThreadId = event.threadId;
+              if (event.observabilitySummary) {
+                doneObservabilitySummary = event.observabilitySummary;
+                setLiveObservabilitySummary(event.observabilitySummary);
+              }
             } else if (event.type === 'error') {
+              if (event.observabilitySummary) {
+                doneObservabilitySummary = event.observabilitySummary;
+                setLiveObservabilitySummary(event.observabilitySummary);
+              }
               throw new Error(event.error);
             }
           }
@@ -232,6 +251,9 @@ export function AgentraWorkspace() {
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
           await queryClient.fetchQuery(threadMessagesQueryOptions(resolvedThreadId));
         }
+        if (doneObservabilitySummary) {
+          setLiveObservabilitySummary(doneObservabilitySummary);
+        }
       },
     }),
     [queryClient, selectedThreadId, setSelectedThreadId],
@@ -244,6 +266,17 @@ export function AgentraWorkspace() {
   useEffect(() => {
     runtime.thread.reset(initialMessages);
   }, [initialMessages, runtime]);
+
+  useEffect(() => {
+    void selectedThreadId;
+    setLiveObservabilitySummary(null);
+  }, [selectedThreadId]);
+
+  useEffect(() => {
+    if (persistedLatestObservabilitySummary) {
+      setLiveObservabilitySummary(persistedLatestObservabilitySummary);
+    }
+  }, [persistedLatestObservabilitySummary]);
 
   useEffect(() => {
     if (threads.length === 0) {
@@ -332,6 +365,8 @@ export function AgentraWorkspace() {
   }
 
   const displayedThreadCount = threads.length;
+  const visibleObservabilitySummary =
+    liveObservabilitySummary ?? persistedLatestObservabilitySummary;
 
   return (
     <AssistantRuntimeProviderCore runtime={runtime}>
@@ -364,11 +399,19 @@ export function AgentraWorkspace() {
               <div className="flex items-center gap-3">
                 <div className="hidden text-right text-muted-foreground text-xs sm:block">
                   <p>{displayedThreadCount} server thread(s)</p>
-                  <p>
-                    {isMessagesLoading
-                      ? 'Loading messages...'
-                      : 'Current phase: backend sync'}
-                  </p>
+                  {visibleObservabilitySummary ? (
+                    <p>
+                      {formatTokenUsage(visibleObservabilitySummary)} / tools:{' '}
+                      {visibleObservabilitySummary.toolCallCount} /{' '}
+                      {formatDuration(visibleObservabilitySummary.durationMs)}
+                    </p>
+                  ) : (
+                    <p>
+                      {isMessagesLoading
+                        ? 'Loading messages...'
+                        : 'Current phase: backend sync'}
+                    </p>
+                  )}
                 </div>
                 <span
                   className={cn(
@@ -467,10 +510,61 @@ function getErrorMessage(error: unknown, fallback: string) {
 function convertPersistedMessageToRuntimeMessage(
   message: PersistedChatMessage,
 ): ThreadMessageLike {
+  const contentParts: ThreadMessageLike['content'] =
+    message.observabilitySummary && message.role === 'assistant'
+      ? [
+          { type: 'text', text: message.content },
+          {
+            type: 'data',
+            name: 'observability',
+            data: message.observabilitySummary,
+          },
+        ]
+      : [{ type: 'text', text: message.content }];
+
   return {
     role: message.role,
-    content: [{ type: 'text', text: message.content }],
+    content: contentParts,
+    ...(message.observabilitySummary
+      ? {
+          metadata: {
+            custom: {
+              observabilitySummary: message.observabilitySummary,
+            },
+          },
+        }
+      : {}),
   };
+}
+
+function findLatestAssistantObservabilitySummary(
+  messages: readonly PersistedChatMessage[],
+): ChatObservationSummary | null {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role === 'assistant' && message.observabilitySummary) {
+      return message.observabilitySummary;
+    }
+  }
+  return null;
+}
+
+function formatDuration(durationMs: number): string {
+  if (!Number.isFinite(durationMs) || durationMs < 0) {
+    return '0ms';
+  }
+  if (durationMs < 1000) {
+    return `${durationMs}ms`;
+  }
+  return `${(durationMs / 1000).toFixed(2)}s`;
+}
+
+function formatTokenUsage(summary: ChatObservationSummary): string {
+  const total = summary.tokenUsage?.totalTokens;
+  if (typeof total === 'number') {
+    return `tokens:${total}`;
+  }
+  return 'tokens:n/a';
 }
 
 function normalizeThreadMessages(messages: readonly ThreadMessage[]) {

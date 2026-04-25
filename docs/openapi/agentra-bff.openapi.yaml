@@ -45,7 +45,8 @@ paths:
                 type: string
                 description: |
                   Server-Sent Events stream. Each line is `data: <json>`.
-                  JSON payload is one of ChatStreamTextEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
+                  JSON payload is one of ChatStreamTextEvent, ChatStreamObservationEvent,
+                  ChatStreamDoneEvent, ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:
@@ -263,6 +264,8 @@ components:
         createdAt:
           type: string
           format: date-time
+        observabilitySummary:
+          $ref: '#/components/schemas/ChatObservationSummary'
     ChatRequest:
       type: object
       additionalProperties: false
@@ -321,6 +324,118 @@ components:
             - text
         text:
           type: string
+    ChatObservationToolCall:
+      type: object
+      additionalProperties: false
+      required:
+        - toolName
+        - startedAt
+        - durationMs
+        - status
+      properties:
+        toolName:
+          type: string
+          minLength: 1
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        error:
+          type: string
+          minLength: 1
+    ChatObservationSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - traceId
+        - startedAt
+        - completedAt
+        - durationMs
+        - status
+        - toolCalls
+        - toolCallCount
+        - toolFailureCount
+      properties:
+        traceId:
+          type: string
+          minLength: 1
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        tokenUsage:
+          type: object
+          additionalProperties: false
+          required:
+            - inputTokens
+            - outputTokens
+            - totalTokens
+          properties:
+            inputTokens:
+              type: integer
+              minimum: 0
+            outputTokens:
+              type: integer
+              minimum: 0
+            totalTokens:
+              type: integer
+              minimum: 0
+        reasoning:
+          type: object
+          additionalProperties: false
+          required:
+            - stepCount
+          properties:
+            stepCount:
+              type: integer
+              minimum: 0
+            summary:
+              type: string
+        toolCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/ChatObservationToolCall'
+        toolCallCount:
+          type: integer
+          minimum: 0
+        toolFailureCount:
+          type: integer
+          minimum: 0
+    ChatStreamObservationEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - observation
+      properties:
+        type:
+          type: string
+          enum:
+            - observation
+        observation:
+          $ref: '#/components/schemas/ChatObservationSummary'
     ChatStreamDoneEvent:
       type: object
       additionalProperties: false
@@ -343,6 +458,8 @@ components:
         createdAt:
           type: string
           format: date-time
+        observabilitySummary:
+          $ref: '#/components/schemas/ChatObservationSummary'
     ChatStreamErrorEvent:
       type: object
       additionalProperties: false

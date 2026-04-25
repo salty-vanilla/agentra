@@ -89,7 +89,10 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
-function getZonedParts(date: Date, timeZone: string): {
+function getZonedParts(
+  date: Date,
+  timeZone: string,
+): {
   year: number;
   month: number;
   day: number;
@@ -221,7 +224,15 @@ function addYears(local: LocalDate, years: number): LocalDate {
 
 function rangeForDay(local: LocalDate, timeZone: string): RangeResolution {
   const start = zonedDateTimeToUtc(local.year, local.month, local.day, 0, 0, 0, timeZone);
-  const end = zonedDateTimeToUtc(local.year, local.month, local.day, 23, 59, 59, timeZone);
+  const end = zonedDateTimeToUtc(
+    local.year,
+    local.month,
+    local.day,
+    23,
+    59,
+    59,
+    timeZone,
+  );
   const date = toDateString(local);
 
   return {
@@ -233,7 +244,11 @@ function rangeForDay(local: LocalDate, timeZone: string): RangeResolution {
   };
 }
 
-function rangeForWeek(local: LocalDate, currentWeekday: number, timeZone: string): RangeResolution {
+function rangeForWeek(
+  local: LocalDate,
+  currentWeekday: number,
+  timeZone: string,
+): RangeResolution {
   const mondayOffset = (currentWeekday + 6) % 7;
   const startLocal = addDays(local, -mondayOffset);
   const endLocal = addDays(startLocal, 6);
@@ -246,7 +261,15 @@ function rangeForWeek(local: LocalDate, currentWeekday: number, timeZone: string
     0,
     timeZone,
   );
-  const end = zonedDateTimeToUtc(endLocal.year, endLocal.month, endLocal.day, 23, 59, 59, timeZone);
+  const end = zonedDateTimeToUtc(
+    endLocal.year,
+    endLocal.month,
+    endLocal.day,
+    23,
+    59,
+    59,
+    timeZone,
+  );
 
   return {
     resolved_start: start.toISOString(),
@@ -353,7 +376,11 @@ function parseReferenceDateTime(reference: string | undefined, timeZone: string)
   );
 }
 
-function resolveWeekdayTarget(baseWeekday: number, targetWeekday: number, mode: 'next' | 'last' | 'this') {
+function resolveWeekdayTarget(
+  baseWeekday: number,
+  targetWeekday: number,
+  mode: 'next' | 'last' | 'this',
+) {
   if (mode === 'this') {
     return targetWeekday - baseWeekday;
   }
@@ -398,7 +425,10 @@ function resolveExpression(
   });
 
   if (normalized === 'today' || expr === '今日') {
-    return build(rangeForDay(baseLocal, timeZone), 'Interpreted as today in the provided timezone.');
+    return build(
+      rangeForDay(baseLocal, timeZone),
+      'Interpreted as today in the provided timezone.',
+    );
   }
   if (normalized === 'tomorrow' || expr === '明日') {
     return build(
@@ -437,7 +467,10 @@ function resolveExpression(
   }
 
   if (normalized === 'this month' || expr === '今月') {
-    return build(rangeForMonth(baseLocal, timeZone), 'Interpreted as this month in the provided timezone.');
+    return build(
+      rangeForMonth(baseLocal, timeZone),
+      'Interpreted as this month in the provided timezone.',
+    );
   }
   if (normalized === 'next month' || expr === '来月') {
     return build(
@@ -453,7 +486,10 @@ function resolveExpression(
   }
 
   if (normalized === 'this year' || expr === '今年') {
-    return build(rangeForYear(baseLocal, timeZone), 'Interpreted as this year in the provided timezone.');
+    return build(
+      rangeForYear(baseLocal, timeZone),
+      'Interpreted as this year in the provided timezone.',
+    );
   }
   if (normalized === 'next year' || expr === '来年') {
     return build(
@@ -468,7 +504,7 @@ function resolveExpression(
     );
   }
 
-  const absoluteDate = expr.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  const absoluteDate = expr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
   if (absoluteDate) {
     const [, y, m, d] = absoluteDate;
     const local = { year: Number(y), month: Number(m), day: Number(d) };
@@ -478,7 +514,9 @@ function resolveExpression(
     );
   }
 
-  const inRelative = normalized.match(/^(?:in\s+)?(\d+)\s+(day|days|week|weeks|month|months|year|years)$/);
+  const inRelative = normalized.match(
+    /^(?:in\s+)?(\d+)\s+(day|days|week|weeks|month|months|year|years)$/,
+  );
   if (inRelative) {
     const amount = Number(inRelative[1]);
     const unit = inRelative[2];
@@ -486,21 +524,36 @@ function resolveExpression(
       throw new Error('Failed to parse relative date expression.');
     }
     if (unit.startsWith('day')) {
-      return build(rangeForDay(addDays(baseLocal, amount), timeZone), `Interpreted as ${amount} day(s) from reference date.`);
+      return build(
+        rangeForDay(addDays(baseLocal, amount), timeZone),
+        `Interpreted as ${amount} day(s) from reference date.`,
+      );
     }
     if (unit.startsWith('week')) {
       return build(
-        rangeForWeek(addDays(baseLocal, amount * 7), (baseWeekday + amount * 7) % 7, timeZone),
+        rangeForWeek(
+          addDays(baseLocal, amount * 7),
+          (baseWeekday + amount * 7) % 7,
+          timeZone,
+        ),
         `Interpreted as ${amount} week(s) from reference date.`,
       );
     }
     if (unit.startsWith('month')) {
-      return build(rangeForMonth(addMonths(baseLocal, amount), timeZone), `Interpreted as ${amount} month(s) from reference date.`);
+      return build(
+        rangeForMonth(addMonths(baseLocal, amount), timeZone),
+        `Interpreted as ${amount} month(s) from reference date.`,
+      );
     }
-    return build(rangeForYear(addYears(baseLocal, amount), timeZone), `Interpreted as ${amount} year(s) from reference date.`);
+    return build(
+      rangeForYear(addYears(baseLocal, amount), timeZone),
+      `Interpreted as ${amount} year(s) from reference date.`,
+    );
   }
 
-  const agoRelative = normalized.match(/^(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+ago$/);
+  const agoRelative = normalized.match(
+    /^(\d+)\s+(day|days|week|weeks|month|months|year|years)\s+ago$/,
+  );
   if (agoRelative) {
     const amount = Number(agoRelative[1]);
     const unit = agoRelative[2];
@@ -508,32 +561,50 @@ function resolveExpression(
       throw new Error('Failed to parse relative date expression.');
     }
     if (unit.startsWith('day')) {
-      return build(rangeForDay(addDays(baseLocal, -amount), timeZone), `Interpreted as ${amount} day(s) before reference date.`);
+      return build(
+        rangeForDay(addDays(baseLocal, -amount), timeZone),
+        `Interpreted as ${amount} day(s) before reference date.`,
+      );
     }
     if (unit.startsWith('week')) {
       return build(
-        rangeForWeek(addDays(baseLocal, -amount * 7), (baseWeekday + 7 - ((amount * 7) % 7)) % 7, timeZone),
+        rangeForWeek(
+          addDays(baseLocal, -amount * 7),
+          (baseWeekday + 7 - ((amount * 7) % 7)) % 7,
+          timeZone,
+        ),
         `Interpreted as ${amount} week(s) before reference date.`,
       );
     }
     if (unit.startsWith('month')) {
-      return build(rangeForMonth(addMonths(baseLocal, -amount), timeZone), `Interpreted as ${amount} month(s) before reference date.`);
+      return build(
+        rangeForMonth(addMonths(baseLocal, -amount), timeZone),
+        `Interpreted as ${amount} month(s) before reference date.`,
+      );
     }
-    return build(rangeForYear(addYears(baseLocal, -amount), timeZone), `Interpreted as ${amount} year(s) before reference date.`);
+    return build(
+      rangeForYear(addYears(baseLocal, -amount), timeZone),
+      `Interpreted as ${amount} year(s) before reference date.`,
+    );
   }
 
-  const japaneseRelative = expr.match(/^(\d+)\s*(日|週間|週|か月|ヶ月|ヵ月|月|年)\s*(後|前)$/);
+  const japaneseRelative = expr.match(
+    /^(\d+)\s*(日|週間|週|か月|ヶ月|ヵ月|月|年)\s*(後|前)$/,
+  );
   if (japaneseRelative) {
     const amount = Number(japaneseRelative[1]);
     const unit = japaneseRelative[2];
     const direction = japaneseRelative[3] === '後' ? 1 : -1;
 
     if (unit === '日') {
-      return build(rangeForDay(addDays(baseLocal, amount * direction), timeZone), `「${amount}${unit}${japaneseRelative[3]}」として解釈しました。`);
+      return build(
+        rangeForDay(addDays(baseLocal, amount * direction), timeZone),
+        `「${amount}${unit}${japaneseRelative[3]}」として解釈しました。`,
+      );
     }
     if (unit === '週' || unit === '週間') {
       const dayDelta = amount * 7 * direction;
-      const weekday = ((baseWeekday + dayDelta) % 7 + 7) % 7;
+      const weekday = (((baseWeekday + dayDelta) % 7) + 7) % 7;
       return build(
         rangeForWeek(addDays(baseLocal, dayDelta), weekday, timeZone),
         `「${amount}${unit}${japaneseRelative[3]}」として解釈しました。`,
@@ -569,7 +640,9 @@ function resolveExpression(
     }
   }
 
-  const jpWeekday = expr.match(/^(来週|先週|今週)の?(月曜日|火曜日|水曜日|木曜日|金曜日|土曜日|日曜日|月|火|水|木|金|土|日)$/);
+  const jpWeekday = expr.match(
+    /^(来週|先週|今週)の?(月曜日|火曜日|水曜日|木曜日|金曜日|土曜日|日曜日|月|火|水|木|金|土|日)$/,
+  );
   if (jpWeekday) {
     const scope = jpWeekday[1];
     const weekdayLabel = jpWeekday[2];
@@ -585,7 +658,7 @@ function resolveExpression(
         dayShift = -7;
       }
       const shiftedBase = addDays(baseLocal, dayShift);
-      const shiftedWeekday = ((baseWeekday + dayShift) % 7 + 7) % 7;
+      const shiftedWeekday = (((baseWeekday + dayShift) % 7) + 7) % 7;
       const delta = resolveWeekdayTarget(shiftedWeekday, target, 'this');
       return build(
         rangeForDay(addDays(shiftedBase, delta), timeZone),
@@ -638,12 +711,17 @@ const dateResolverTool = tool({
     timezone: z
       .string()
       .optional()
-      .describe('IANA timezone like Asia/Tokyo or America/Los_Angeles. Defaults to runtime timezone.'),
+      .describe(
+        'IANA timezone like Asia/Tokyo or America/Los_Angeles. Defaults to runtime timezone.',
+      ),
     reference_datetime: z
       .string()
       .optional()
       .describe('Optional ISO reference datetime. If omitted, current time is used.'),
-    locale: z.string().optional().describe('Optional locale hint. Currently reserved for future use.'),
+    locale: z
+      .string()
+      .optional()
+      .describe('Optional locale hint. Currently reserved for future use.'),
   }),
   callback: async (input) => {
     try {
@@ -653,7 +731,9 @@ const dateResolverTool = tool({
       }
 
       const timezone =
-        input.timezone?.trim() || Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+        input.timezone?.trim() ||
+        Intl.DateTimeFormat().resolvedOptions().timeZone ||
+        'UTC';
 
       try {
         // Validate timezone identifier early.

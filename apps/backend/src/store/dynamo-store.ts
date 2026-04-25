@@ -1,4 +1,8 @@
-import type { PersistedChatMessage, ThreadSummary } from '@agentra/shared';
+import type {
+  ChatObservationSummary,
+  PersistedChatMessage,
+  ThreadSummary,
+} from '@agentra/shared';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
   BatchWriteCommand,
@@ -57,6 +61,7 @@ function toPersistedChatMessage(item: Record<string, unknown>): PersistedChatMes
     role: item.role as 'user' | 'assistant',
     content: item.content as string,
     createdAt: item.createdAt as string,
+    observabilitySummary: item.observabilitySummary as ChatObservationSummary | undefined,
   };
 }
 
@@ -198,6 +203,7 @@ export class DynamoStore implements Store {
     threadId: string;
     role: 'user' | 'assistant';
     content: string;
+    observabilitySummary?: ChatObservationSummary;
   }): Promise<PersistedChatMessage> {
     const timestamp = new Date().toISOString();
     const messageId = uuidv7();
@@ -207,6 +213,9 @@ export class DynamoStore implements Store {
       role: input.role,
       content: input.content,
       createdAt: timestamp,
+      ...(input.observabilitySummary
+        ? { observabilitySummary: input.observabilitySummary }
+        : {}),
     };
 
     await this.client.send(
@@ -219,6 +228,9 @@ export class DynamoStore implements Store {
           role: input.role,
           content: input.content,
           createdAt: timestamp,
+          ...(input.observabilitySummary
+            ? { observabilitySummary: input.observabilitySummary }
+            : {}),
         },
       }),
     );

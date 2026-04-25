@@ -9,6 +9,12 @@ This spec is the source of truth for frontend client generation and API mocks.
  */
 
 export * from './chatMessage';
+export * from './chatObservationSummary';
+export * from './chatObservationSummaryReasoning';
+export * from './chatObservationSummaryStatus';
+export * from './chatObservationSummaryTokenUsage';
+export * from './chatObservationToolCall';
+export * from './chatObservationToolCallStatus';
 export * from './chatRequest';
 export * from './chatRequestModel';
 export * from './chatResponse';
@@ -17,6 +23,8 @@ export * from './chatStreamDoneEvent';
 export * from './chatStreamDoneEventType';
 export * from './chatStreamErrorEvent';
 export * from './chatStreamErrorEventType';
+export * from './chatStreamObservationEvent';
+export * from './chatStreamObservationEventType';
 export * from './chatStreamTextEvent';
 export * from './chatStreamTextEventType';
 export * from './createThreadRequest';

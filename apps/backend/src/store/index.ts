@@ -1,4 +1,9 @@
-import type { ChatRole, PersistedChatMessage, ThreadSummary } from '@agentra/shared';
+import type {
+  ChatObservationSummary,
+  ChatRole,
+  PersistedChatMessage,
+  ThreadSummary,
+} from '@agentra/shared';
 import { DynamoStore } from './dynamo-store.js';
 import { MemoryStore } from './memory-store.js';
 
@@ -26,6 +31,7 @@ export interface Store {
     threadId: string;
     role: Exclude<ChatRole, 'system'>;
     content: string;
+    observabilitySummary?: ChatObservationSummary;
   }): Promise<PersistedChatMessage>;
 }
 
@@ -55,4 +61,5 @@ export const appendMessage = (input: {
   threadId: string;
   role: Exclude<ChatRole, 'system'>;
   content: string;
+  observabilitySummary?: ChatObservationSummary;
 }) => activeStore.appendMessage(input);

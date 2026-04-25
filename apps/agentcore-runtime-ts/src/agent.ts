@@ -1,6 +1,7 @@
 import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
+import { ObservationCollector } from './observability.js';
 import { dateResolverTool } from './tools/date-resolver.js';
 import {
   tavilyCrawlTool,
@@ -24,6 +25,7 @@ const MODEL_IDS: Record<ModelKey, string> = {
 };
 
 const DEFAULT_REGION = process.env.AWS_REGION ?? 'us-east-1';
+const OBSERVABILITY_DEBUG_LOG = process.env.OBSERVABILITY_DEBUG_LOG === 'true';
 const DEFAULT_PRESET: ResponsePreset = 'balanced';
 const DEFAULT_TONE: ToneKey = 'business';
 const DEFAULT_LENGTH: LengthKey = 'normal';
@@ -81,7 +83,16 @@ const RequestSchema = z.object({
   preset: z.enum(['fast', 'balanced', 'deep']).default(DEFAULT_PRESET),
   tone: z.enum(['business', 'engineer']).default(DEFAULT_TONE),
   length: z.enum(['short', 'normal', 'detailed']).default(DEFAULT_LENGTH),
+  traceId: z.string().trim().min(1).optional(),
 });
+
+function nowIso(): string {
+  return new Date().toISOString();
+}
+
+function createTraceId(): string {
+  return crypto.randomUUID();
+}
 
 function resolveConfig(
   preset: ResponsePreset,
@@ -165,20 +176,135 @@ const app = new BedrockAgentCoreApp({
     process: async function* (request) {
       const agent = AGENTS[request.preset][request.length];
       const finalPrompt = buildPrompt(request.prompt, request.tone);
+      const traceId = request.traceId ?? createTraceId();
+      const startedAt = nowIso();
+      const observability = new ObservationCollector(
+        traceId,
+        startedAt,
+        OBSERVABILITY_DEBUG_LOG,
+      );
 
-      for await (const event of agent.stream(finalPrompt)) {
-        if (
-          event.type === 'modelStreamUpdateEvent' &&
-          event.event.type === 'modelContentBlockDeltaEvent' &&
-          event.event.delta.type === 'textDelta'
-        ) {
-          yield {
-            event: 'message',
-            data: {
-              text: event.event.delta.text,
-            },
-          };
+      try {
+        const stream = agent.stream(finalPrompt);
+        while (true) {
+          const { value, done } = await stream.next();
+          if (done) {
+            observability.onAgentMetrics(value.metrics);
+            observability.finalizeMissingToolCounts();
+            break;
+          }
+
+          const event = value;
+          observability.logStreamEventType(event.type);
+
+          if (
+            event.type === 'modelStreamUpdateEvent' &&
+            event.event.type === 'modelContentBlockDeltaEvent' &&
+            event.event.delta.type === 'textDelta'
+          ) {
+            yield {
+              event: 'message',
+              data: {
+                type: 'text',
+                text: event.event.delta.text,
+              },
+            };
+            continue;
+          }
+
+          if (
+            event.type === 'modelStreamUpdateEvent' &&
+            event.event.type === 'modelContentBlockDeltaEvent' &&
+            event.event.delta.type === 'reasoningContentDelta'
+          ) {
+            observability.onReasoningDelta(event.event.delta.text);
+            continue;
+          }
+
+          if (
+            event.type === 'modelStreamUpdateEvent' &&
+            event.event.type === 'modelContentBlockStartEvent' &&
+            event.event.start?.type === 'toolUseStart'
+          ) {
+            observability.onModelToolUseStart(
+              event.event.start.toolUseId,
+              event.event.start.name,
+            );
+            continue;
+          }
+
+          if (
+            event.type === 'modelStreamUpdateEvent' &&
+            event.event.type === 'modelMetadataEvent'
+          ) {
+            observability.onModelMetadataUsage(event.event.usage);
+            yield {
+              event: 'message',
+              data: {
+                type: 'observation',
+                observation: observability.createSnapshot('success'),
+              },
+            };
+            continue;
+          }
+
+          if (
+            event.type === 'contentBlockEvent' &&
+            event.contentBlock.type === 'toolUseBlock'
+          ) {
+            observability.onContentToolUseBlock(
+              event.contentBlock.toolUseId,
+              event.contentBlock.name,
+            );
+            continue;
+          }
+
+          if (event.type === 'toolResultEvent') {
+            observability.onToolResult(
+              event.result.toolUseId,
+              event.result.status === 'error' ? 'error' : 'success',
+              event.result.content,
+            );
+            yield {
+              event: 'message',
+              data: {
+                type: 'observation',
+                observation: observability.createSnapshot('success'),
+              },
+            };
+            continue;
+          }
+
+          if (event.type === 'agentResultEvent') {
+            observability.onAgentMetrics(event.result.metrics);
+          }
         }
+
+        const finalObservation = observability.createSnapshot('success');
+        observability.logFinalSummary();
+
+        yield {
+          event: 'message',
+          data: {
+            type: 'done',
+            observabilitySummary: finalObservation,
+          },
+        };
+      } catch (error: unknown) {
+        const finalObservation = observability.createSnapshot('error');
+        const message =
+          error instanceof Error && error.message.trim().length > 0
+            ? error.message
+            : 'Runtime processing failed.';
+
+        yield {
+          event: 'message',
+          data: {
+            type: 'error',
+            error: message,
+            observabilitySummary: finalObservation,
+          },
+        };
       }
     },
   },

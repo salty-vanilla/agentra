@@ -171,6 +171,25 @@ export const ListThreadMessagesParams = zod.object({
 
 
 
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryDurationMsMin = 0;
+
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsageInputTokensMin = 0;
+
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsageOutputTokensMin = 0;
+
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsageTotalTokensMin = 0;
+
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryReasoningStepCountMin = 0;
+
+
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallsItemDurationMsMin = 0;
+
+
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallCountMin = 0;
+
+export const listThreadMessagesResponseMessagesItemObservabilitySummaryToolFailureCountMin = 0;
+
+
 
 export const ListThreadMessagesResponse = zod.object({
   "thread": zod.object({
@@ -185,6 +204,32 @@ export const ListThreadMessagesResponse = zod.object({
   "threadId": zod.string().min(1),
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string().min(1),
-  "createdAt": zod.string().datetime({})
+  "createdAt": zod.string().datetime({}),
+  "observabilitySummary": zod.object({
+  "traceId": zod.string().min(1),
+  "startedAt": zod.string().datetime({}),
+  "completedAt": zod.string().datetime({}),
+  "durationMs": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryDurationMsMin),
+  "status": zod.enum(['success', 'error', 'cancelled']),
+  "tokenUsage": zod.object({
+  "inputTokens": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsageInputTokensMin),
+  "outputTokens": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsageOutputTokensMin),
+  "totalTokens": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsageTotalTokensMin)
+}).optional(),
+  "reasoning": zod.object({
+  "stepCount": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryReasoningStepCountMin),
+  "summary": zod.string().optional()
+}).optional(),
+  "toolCalls": zod.array(zod.object({
+  "toolName": zod.string().min(1),
+  "startedAt": zod.string().datetime({}),
+  "completedAt": zod.string().datetime({}).optional(),
+  "durationMs": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallsItemDurationMsMin),
+  "status": zod.enum(['success', 'error', 'cancelled']),
+  "error": zod.string().min(1).optional()
+})),
+  "toolCallCount": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallCountMin),
+  "toolFailureCount": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolFailureCountMin)
+}).optional()
 }))
 })
