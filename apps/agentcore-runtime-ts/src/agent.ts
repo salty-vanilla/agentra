@@ -1,6 +1,14 @@
 import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
+import { dateResolverTool } from './tools/date-resolver.js';
+import {
+  tavilyCrawlTool,
+  tavilyExtractTool,
+  tavilyMapTool,
+  tavilySearchTool,
+} from './tools/tavily.js';
+import { weatherTool } from './tools/weather.js';
 
 type ModelKey = 'opus' | 'sonnet' | 'haiku';
 type ResponsePreset = 'fast' | 'balanced' | 'deep';
@@ -62,6 +70,12 @@ const TONE_INSTRUCTIONS: Record<ToneKey, string> = {
   ].join('\n'),
 };
 
+const DATE_TOOL_INSTRUCTIONS = [
+  '日付・期間・締切・スケジュールに関する問い合わせでは、必要に応じて必ず date_resolver ツールを先に使ってください。',
+  'today/tomorrow/next week/来週/3日後 などの相対表現は、date_resolver で絶対日付・絶対日時へ正規化してから回答してください。',
+  '回答時は、可能な限り YYYY-MM-DD などの具体的な絶対日付を明示してください。',
+].join('\n');
+
 const RequestSchema = z.object({
   prompt: z.string().trim().min(1).default('Hello! How can I help you today?'),
   preset: z.enum(['fast', 'balanced', 'deep']).default(DEFAULT_PRESET),
@@ -90,9 +104,14 @@ function resolveConfig(
 }
 
 function buildPrompt(userPrompt: string, tone: ToneKey): string {
-  return [TONE_INSTRUCTIONS[tone], '', '以下がユーザーの依頼です。', userPrompt].join(
-    '\n',
-  );
+  return [
+    TONE_INSTRUCTIONS[tone],
+    '',
+    DATE_TOOL_INSTRUCTIONS,
+    '',
+    '以下がユーザーの依頼です。',
+    userPrompt,
+  ].join('\n');
 }
 
 function createAgent(config: {
@@ -108,7 +127,17 @@ function createAgent(config: {
     temperature: config.temperature,
   });
 
-  return new Agent({ model });
+  return new Agent({
+    model,
+    tools: [
+      dateResolverTool,
+      weatherTool,
+      tavilySearchTool,
+      tavilyExtractTool,
+      tavilyCrawlTool,
+      tavilyMapTool,
+    ],
+  });
 }
 
 const AGENTS: Record<ResponsePreset, Record<LengthKey, Agent>> = {

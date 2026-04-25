@@ -1,9 +1,10 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CfnOutput, CfnResource, Stack, type StackProps } from 'aws-cdk-lib';
+import { CfnOutput, CfnParameter, CfnResource, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
 import { CfnRuntime, CfnRuntimeEndpoint } from 'aws-cdk-lib/aws-bedrockagentcore';
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -25,6 +26,19 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       normalizedStage.length > 0
         ? normalizedStage.charAt(0).toUpperCase() + normalizedStage.slice(1)
         : 'Default';
+    const tavilyApiKeyParam = new CfnParameter(this, 'TavilyApiKey', {
+      type: 'String',
+      noEcho: true,
+      description: 'Tavily API key for runtime web search tools.',
+    });
+
+    const tavilyApiKeySecret = new Secret(this, 'TavilyApiKeySecret', {
+      secretName: `agentra/${props.stage}/tavily-api-key`,
+      description: `Tavily API key for Agentra ${props.stage} runtime.`,
+      secretObjectValue: {
+        TAVILY_API_KEY: SecretValue.cfnParameter(tavilyApiKeyParam),
+      },
+    });
 
     const runtimeRole = new Role(this, 'AgentCoreRuntimeExecutionRole', {
       assumedBy: new ServicePrincipal('bedrock-agentcore.amazonaws.com'),
@@ -38,6 +52,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         resources: ['*'],
       }),
     );
+    tavilyApiKeySecret.grantRead(runtimeRole);
 
     runtimeRole.addToPolicy(
       new PolicyStatement({
@@ -85,6 +100,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       },
       environmentVariables: {
         BEDROCK_REGION: Stack.of(this).region,
+        TAVILY_API_KEY_SECRET_ID: tavilyApiKeySecret.secretArn,
       },
       agentRuntimeArtifact: {
         containerConfiguration: {
@@ -123,5 +139,8 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     new CfnOutput(this, 'AgentCoreRuntimeId', { value: this.runtimeId });
     new CfnOutput(this, 'AgentCoreRuntimeVersion', { value: this.runtimeVersion });
     new CfnOutput(this, 'AgentCoreRuntimeEndpointArn', { value: this.endpointArn });
+    new CfnOutput(this, 'TavilyApiKeySecretArn', {
+      value: tavilyApiKeySecret.secretArn,
+    });
   }
 }
