@@ -10,14 +10,12 @@ import {
   useLocalRuntime,
 } from '@assistant-ui/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { BotMessageSquare, Database, FolderKanban, Sparkles } from 'lucide-react';
 import { parseAsString, useQueryState } from 'nuqs';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Thread } from '@/components/assistant-ui/thread';
 import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
-import { Button } from '@/components/ui/button';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import {
   createThread,
@@ -26,7 +24,7 @@ import {
   sendChatStream,
   updateThreadTitle,
 } from '@/lib/api';
-import { isMockApiMode } from '@/lib/api-config';
+import { API_BASE_URL, API_MODE, isMockApiMode } from '@/lib/api-config';
 import {
   agentraQueryKeys,
   healthQueryOptions,
@@ -37,45 +35,15 @@ import { cn } from '@/lib/utils';
 
 type HealthState = 'checking' | 'online' | 'offline';
 
-const stackCards = [
-  {
-    title: 'Assistant UI',
-    description:
-      'Chat surface, composer, threads, and message actions now come from assistant-ui.',
-    icon: BotMessageSquare,
-  },
-  {
-    title: 'Hono Backend',
-    description:
-      'The current runtime streams responses from /chat over SSE and forwards requests to AgentCore Runtime.',
-    icon: Sparkles,
-  },
-  {
-    title: 'Shared Contract',
-    description:
-      'Request and response validation still flows through packages/shared and zod schemas.',
-    icon: FolderKanban,
-  },
-  {
-    title: 'Phase 3 Ready',
-    description:
-      'The sidebar layout is ready for DynamoDB-backed thread metadata and persisted history.',
-    icon: Database,
-  },
-];
-
-const nextSteps = [
-  'Replace LocalRuntime thread memory with backend thread persistence.',
-  'Add authentication-aware user identity and access control boundaries.',
-  'Add citations/tools rendering so streamed responses can show structured outputs.',
-];
-
 export function AgentraWorkspace() {
   const [selectedThreadId, setSelectedThreadId] = useQueryState(
     'threadId',
     parseAsString.withOptions({ clearOnDefault: true }),
   );
   const [selectedModel, setSelectedModel] = useState<ModelKey>('sonnet');
+  const [pendingCreatedThreadId, setPendingCreatedThreadId] = useState<string | null>(
+    null,
+  );
   const [liveObservabilitySummary, setLiveObservabilitySummary] =
     useState<ChatObservationSummary | null>(null);
   // Use a ref so the memoized modelAdapter can read the latest model key without
@@ -94,6 +62,7 @@ export function AgentraWorkspace() {
   const createThreadMutation = useMutation({
     mutationFn: createThread,
     onSuccess: async (response) => {
+      setPendingCreatedThreadId(response.thread.threadId);
       await setSelectedThreadId(response.thread.threadId);
       await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
       queryClient.setQueryData(
@@ -253,6 +222,16 @@ export function AgentraWorkspace() {
         }
         if (doneObservabilitySummary) {
           setLiveObservabilitySummary(doneObservabilitySummary);
+          yield {
+            content: [
+              { type: 'text', text: fullText },
+              {
+                type: 'data',
+                name: 'observability',
+                data: doneObservabilitySummary,
+              },
+            ],
+          };
         }
       },
     }),
@@ -279,6 +258,15 @@ export function AgentraWorkspace() {
   }, [persistedLatestObservabilitySummary]);
 
   useEffect(() => {
+    if (
+      pendingCreatedThreadId &&
+      threads.some((thread) => thread.threadId === pendingCreatedThreadId)
+    ) {
+      setPendingCreatedThreadId(null);
+    }
+  }, [pendingCreatedThreadId, threads]);
+
+  useEffect(() => {
     if (threads.length === 0) {
       if (selectedThreadId !== null) {
         void setSelectedThreadId(null);
@@ -288,12 +276,20 @@ export function AgentraWorkspace() {
     }
 
     if (
+      pendingCreatedThreadId &&
+      selectedThreadId === pendingCreatedThreadId &&
+      !threads.some((thread) => thread.threadId === pendingCreatedThreadId)
+    ) {
+      return;
+    }
+
+    if (
       !selectedThreadId ||
       !threads.some((thread) => thread.threadId === selectedThreadId)
     ) {
       void setSelectedThreadId(threads[0]?.threadId ?? null);
     }
-  }, [selectedThreadId, setSelectedThreadId, threads]);
+  }, [pendingCreatedThreadId, selectedThreadId, setSelectedThreadId, threads]);
 
   const health: HealthState = useMemo(() => {
     if (healthQuery.isPending) {
@@ -399,6 +395,9 @@ export function AgentraWorkspace() {
               <div className="flex items-center gap-3">
                 <div className="hidden text-right text-muted-foreground text-xs sm:block">
                   <p>{displayedThreadCount} server thread(s)</p>
+                  <p>
+                    mode:{API_MODE} / target:{API_BASE_URL}
+                  </p>
                   {visibleObservabilitySummary ? (
                     <p>
                       {formatTokenUsage(visibleObservabilitySummary)} / tools:{' '}
@@ -409,7 +408,7 @@ export function AgentraWorkspace() {
                     <p>
                       {isMessagesLoading
                         ? 'Loading messages...'
-                        : 'Current phase: backend sync'}
+                        : 'Current phase: thread sync'}
                     </p>
                   )}
                 </div>
@@ -424,73 +423,10 @@ export function AgentraWorkspace() {
               </div>
             </header>
 
-            <main className="grid h-[calc(100svh-4rem)] min-h-0 grid-cols-1 xl:grid-cols-[minmax(0,1fr)_22rem]">
-              <section className="min-h-0 border-b border-border/50 xl:border-r xl:border-b-0">
+            <main className="h-[calc(100svh-4rem)] min-h-0">
+              <section className="h-full min-h-0">
                 <Thread modelValue={selectedModel} onModelChange={setSelectedModel} />
               </section>
-
-              <aside className="hidden min-h-0 flex-col justify-between bg-background/65 p-6 xl:flex">
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <p className="font-semibold text-sm uppercase tracking-[0.18em] text-teal-800/80">
-                      Build Surface
-                    </p>
-                    <h2 className="font-semibold text-2xl tracking-tight text-foreground">
-                      Frontend-first, without painting ourselves into a corner
-                    </h2>
-                    <p className="text-muted-foreground text-sm leading-7">
-                      The current surface is designed to keep the chat UX moving while
-                      preserving the contract boundary to Hono, DynamoDB, and AgentCore.
-                    </p>
-                  </div>
-
-                  <div className="grid gap-3">
-                    {stackCards.map(({ description, icon: Icon, title }) => (
-                      <article
-                        className="rounded-2xl border border-border/70 bg-card/90 p-4 shadow-sm"
-                        key={title}
-                      >
-                        <div className="mb-3 flex items-center gap-3">
-                          <div className="flex size-10 items-center justify-center rounded-2xl bg-teal-600/10 text-teal-800">
-                            <Icon className="size-4" />
-                          </div>
-                          <h3 className="font-medium text-sm">{title}</h3>
-                        </div>
-                        <p className="text-muted-foreground text-sm leading-6">
-                          {description}
-                        </p>
-                      </article>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="space-y-4 rounded-3xl border border-border/70 bg-card/95 p-5 shadow-sm">
-                  <div className="space-y-1">
-                    <p className="font-semibold text-sm">Next implementation slice</p>
-                    <p className="text-muted-foreground text-sm">
-                      Once this UI baseline is accepted, the next meaningful step is
-                      thread and message persistence.
-                    </p>
-                  </div>
-
-                  <ul className="space-y-2 text-sm leading-6">
-                    {nextSteps.map((step) => (
-                      <li className="flex gap-2 text-muted-foreground" key={step}>
-                        <span className="mt-2 size-1.5 shrink-0 rounded-full bg-teal-700" />
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                  </ul>
-
-                  <Button
-                    className="w-full rounded-full"
-                    type="button"
-                    variant="secondary"
-                  >
-                    UI foundation in place
-                  </Button>
-                </div>
-              </aside>
             </main>
           </SidebarInset>
         </div>

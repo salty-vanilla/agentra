@@ -40,7 +40,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
 } from '@/components/ui/sidebar';
-import { isMockApiMode } from '@/lib/api-config';
+import { API_BASE_URL, API_MODE, isMockApiMode } from '@/lib/api-config';
 
 const threadRowVariants = cva(
   'group w-full rounded-xl border px-3 py-1.5 text-left transition-colors',
@@ -237,7 +237,8 @@ export function ServerThreadSidebar({
                 </div>
                 <div className="flex flex-col gap-0.5 leading-none">
                   <span className="font-semibold">Current mode</span>
-                  <span>{isMockApiMode ? 'MSW mock API' : 'Hono memory store'}</span>
+                  <span>{API_MODE === 'mock' ? 'MSW mock API' : 'Backend API'}</span>
+                  <span className="text-xs text-muted-foreground">{API_BASE_URL}</span>
                 </div>
               </SidebarMenuButton>
             </SidebarMenuItem>

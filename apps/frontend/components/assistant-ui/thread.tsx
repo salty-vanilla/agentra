@@ -17,10 +17,10 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
-  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   Clock3Icon,
+  CoinsIcon,
   CopyIcon,
   DownloadIcon,
   FingerprintIcon,
@@ -37,11 +37,11 @@ import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button
 import { type ModelKey, ModelSelector } from '@/components/model-selector';
 import { Button } from '@/components/ui/button';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import { isMockApiMode } from '@/lib/api-config';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { API_BASE_URL, API_MODE, isMockApiMode } from '@/lib/api-config';
 import { cn } from '@/lib/utils';
 
 const threadMessageRootVariants = cva(
@@ -182,8 +182,8 @@ const ComposerAction: FC<{
         {!isMockApiMode && <ModelSelector value={modelValue} onChange={onModelChange} />}
         <p className="truncate px-1 text-muted-foreground text-xs">
           {isMockApiMode
-            ? '現在は local runtime 経由で MSW の `/chat` モックを実行しています。'
-            : '現在は local runtime 経由で backend の `/chat` を実行しています。'}
+            ? `mode:${API_MODE} / target:MSW intercept (${API_BASE_URL}/chat)`
+            : `mode:${API_MODE} / target:${API_BASE_URL}/chat`}
         </p>
       </div>
       <AuiIf condition={(s) => !s.thread.isRunning}>
@@ -255,7 +255,6 @@ const AssistantMessage: FC = () => {
             tools: { Fallback: ToolFallback },
           }}
         />
-        <AssistantObservabilityPanel />
         <MessageError />
       </div>
 
@@ -270,7 +269,7 @@ const AssistantMessage: FC = () => {
   );
 };
 
-const AssistantObservabilityPanel: FC = () => {
+const AssistantObservabilityDetails: FC = () => {
   const summary = useAuiState((s) => {
     const custom = s.message.metadata.custom as
       | { observabilitySummary?: ChatObservationSummary }
@@ -287,34 +286,36 @@ const AssistantObservabilityPanel: FC = () => {
     return undefined;
   });
 
+  if (!summary) {
+    return <p className="text-muted-foreground">Observability data not available.</p>;
+  }
+
   return (
-    <Collapsible className="mt-3 rounded-lg border border-border/70 bg-muted/20">
-      <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-left text-xs text-muted-foreground hover:bg-muted/30">
-        <span className="inline-flex items-center gap-2">
+    <div className="space-y-2.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="inline-flex items-center gap-2 font-medium text-foreground">
           <FingerprintIcon className="size-3.5" />
           Observability
-        </span>
-        <ChevronDownIcon className="size-3.5" />
-      </CollapsibleTrigger>
-      <CollapsibleContent className="space-y-2 border-t border-border/60 px-3 py-2 text-xs">
-        {summary ? (
-          <>
-            <p className="inline-flex items-center gap-1.5">
-              <Clock3Icon className="size-3.5 text-muted-foreground" />
-              {formatDuration(summary.durationMs)} / tokens:{' '}
-              {summary.tokenUsage?.totalTokens ?? 'n/a'}
-            </p>
-            <p className="inline-flex items-center gap-1.5">
-              <WrenchIcon className="size-3.5 text-muted-foreground" />
-              tools: {summary.toolCallCount} (failed: {summary.toolFailureCount})
-            </p>
-            <p className="truncate text-muted-foreground">trace: {summary.traceId}</p>
-          </>
-        ) : (
-          <p className="text-muted-foreground">Observability data not available.</p>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+        </div>
+        <p className="text-muted-foreground break-all text-right">
+          trace: {summary.traceId}
+        </p>
+      </div>
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+        <p className="inline-flex items-center gap-2">
+          <Clock3Icon className="size-3.5 text-muted-foreground" />
+          {formatDuration(summary.durationMs)}
+          <span className="inline-flex items-center gap-1">
+            <CoinsIcon className="size-3.5 text-muted-foreground" />
+            tokens: {summary.tokenUsage?.totalTokens ?? 'n/a'}
+          </span>
+        </p>
+        <p className="inline-flex items-center gap-2">
+          <WrenchIcon className="size-3.5 text-muted-foreground" />
+          tools: {summary.toolCallCount} (failed: {summary.toolFailureCount})
+        </p>
+      </div>
+    </div>
   );
 };
 
@@ -336,6 +337,20 @@ const AssistantActionBar: FC = () => {
       <ActionBarPrimitive.Reload render={<TooltipIconButton tooltip="Refresh" />}>
         <RefreshCwIcon />
       </ActionBarPrimitive.Reload>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <TooltipIconButton tooltip="Observability">
+            <FingerprintIcon />
+          </TooltipIconButton>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          side="bottom"
+          align="start"
+          className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
+        >
+          <AssistantObservabilityDetails />
+        </DropdownMenuContent>
+      </DropdownMenu>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger
           className="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent data-[state=open]:bg-accent"
