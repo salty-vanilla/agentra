@@ -69,7 +69,13 @@ export class DynamoStore implements Store {
   private client: DynamoDBDocumentClient;
 
   constructor() {
-    this.client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
+    this.client = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
+      marshallOptions: {
+        // Observability payloads can include optional undefined fields.
+        // Strip them so Put/Update calls remain compatible with Dynamo marshalling.
+        removeUndefinedValues: true,
+      },
+    });
   }
 
   async listThreads(userId: string): Promise<ThreadSummary[]> {
