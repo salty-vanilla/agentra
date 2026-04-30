@@ -14,6 +14,9 @@
     "validate:openapi": "node ./scripts/contract/validate-openapi.mjs",
     "contract:backend": "pnpm --filter @agentra/backend exec node --import tsx ./src/contract.ts",
     "build:shared": "pnpm --filter @agentra/shared build",
+    "build:deck-forge": "pnpm -r --filter \"@deck-forge/*\" build",
+    "test:deck-forge": "vitest run packages/deck-forge",
+    "ci:deck-forge": "pnpm build:deck-forge && pnpm test:deck-forge",
     "typecheck": "pnpm prepare:workspace && pnpm -r --if-present typecheck",
     "lint": "biome check .",
     "format": "biome format --write .",
@@ -23,7 +26,10 @@
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
     "@biomejs/biome": "latest",
+    "@types/node": "^24.10.1",
+    "jszip": "^3.10.1",
     "orval": "^8.8.0",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vitest": "^3.2.4"
   }
 }

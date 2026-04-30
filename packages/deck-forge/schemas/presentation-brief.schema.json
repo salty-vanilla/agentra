@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://deck-forge.dev/schemas/presentation-brief.schema.json",
+  "title": "PresentationBrief",
+  "description": "High-level intent spec created from a user request. Input to generateDeckPlan.",
+  "type": "object",
+  "required": ["id", "title", "audience", "goal", "tone", "narrative", "output", "constraints", "visualDirection"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "title": { "type": "string" },
+    "context": { "type": "string" },
+    "audience": {
+      "type": "object",
+      "required": ["primary", "expertiseLevel"],
+      "properties": {
+        "primary": { "type": "string" },
+        "secondary": { "type": "array", "items": { "type": "string" } },
+        "expertiseLevel": { "type": "string", "enum": ["beginner", "intermediate", "expert", "executive"] },
+        "expectedConcern": { "type": "array", "items": { "type": "string" } },
+        "expectedQuestions": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "goal": {
+      "type": "object",
+      "required": ["type", "mainMessage", "desiredOutcome"],
+      "properties": {
+        "type": { "type": "string", "enum": ["inform", "persuade", "proposal", "report", "training", "sales", "research", "decision_support"] },
+        "mainMessage": { "type": "string" },
+        "desiredOutcome": { "type": "string" },
+        "successCriteria": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "tone": {
+      "type": "object",
+      "required": ["formality", "energy", "technicalDepth"],
+      "properties": {
+        "formality": { "type": "string", "enum": ["casual", "business", "executive", "academic"] },
+        "energy": { "type": "string", "enum": ["calm", "confident", "bold", "inspiring"] },
+        "technicalDepth": { "type": "string", "enum": ["low", "medium", "high"] },
+        "styleKeywords": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "narrative": {
+      "type": "object",
+      "required": ["structure", "arc"],
+      "properties": {
+        "structure": { "type": "string", "enum": ["problem_solution", "before_after", "proposal", "analysis", "story", "pyramid", "research_paper", "demo"] },
+        "arc": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["role", "message"],
+            "properties": {
+              "role": { "type": "string", "enum": ["hook", "problem", "insight", "solution", "evidence", "implementation", "impact", "call_to_action"] },
+              "message": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "output": {
+      "type": "object",
+      "required": ["formats", "aspectRatio"],
+      "properties": {
+        "formats": { "type": "array", "items": { "type": "string", "enum": ["pptx", "html", "pdf", "json"] } },
+        "aspectRatio": { "type": "string", "enum": ["16:9", "4:3"] },
+        "language": { "type": "string" }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "slideCount": { "type": "integer", "minimum": 1 },
+        "maxSlideCount": { "type": "integer", "minimum": 1 },
+        "minSlideCount": { "type": "integer", "minimum": 1 },
+        "durationMinutes": { "type": "number" },
+        "mustInclude": { "type": "array", "items": { "type": "string" } },
+        "mustAvoid": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "visualDirection": {
+      "type": "object",
+      "required": ["style", "mood"],
+      "properties": {
+        "style": { "type": "string", "enum": ["minimal", "corporate", "technical", "industrial", "isometric", "flat_vector", "photorealistic", "abstract", "diagrammatic"] },
+        "mood": { "type": "string", "enum": ["calm", "trustworthy", "futuristic", "energetic", "premium", "practical"] },
+        "colorMood": { "type": "string" },
+        "composition": { "type": "string" },
+        "avoid": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "brand": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "voice": { "type": "string" },
+        "colors": { "type": "object" },
+        "fonts": { "type": "object" },
+        "logoAssetId": { "type": "string" }
+      }
+    }
+  }
+}

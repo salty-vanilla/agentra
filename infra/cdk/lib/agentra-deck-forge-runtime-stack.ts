@@ -119,7 +119,8 @@ export class AgentraDeckForgeRuntimeStack extends Stack {
     );
 
     const runtimeImageAsset = new DockerImageAsset(this, 'DeckForgeRuntimeImageAsset', {
-      directory: join(__dirname, '../../../apps/deck-forge-runtime'),
+      directory: join(__dirname, '../../..'),
+      file: 'apps/deck-forge-runtime/Dockerfile',
     });
     runtimeImageAsset.repository.grantPull(runtimeRole);
     runtimeRole.addToPolicy(

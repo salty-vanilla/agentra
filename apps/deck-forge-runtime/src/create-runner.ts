@@ -6,8 +6,9 @@ import type {
 import {
   BedrockImageGenerator,
   createLocalRuntime,
-  HtmlSlideImageRenderer,
+  type HtmlSlideImageRenderer,
   LocalFileImageGenerator,
+  PptxSlideImageRenderer,
 } from '@deck-forge/core';
 import type { DeckForgeRunnerOptions } from '@deck-forge/runner';
 import { DeckForgeRunner } from '@deck-forge/runner';
@@ -32,7 +33,7 @@ export type CreateDeckForgeRunnerOptions = {
 let sharedRuntime: ReturnType<typeof createLocalRuntime> | undefined;
 let sharedDesigner: SlideDesigner | undefined;
 let sharedVisualReviewer: VisualReviewer | undefined;
-let sharedSlideImageRenderer: HtmlSlideImageRenderer | undefined;
+let sharedSlideImageRenderer: HtmlSlideImageRenderer | PptxSlideImageRenderer | undefined;
 let globalRegistrationDone = false;
 
 /**
@@ -58,9 +59,11 @@ export function getSharedVisualReviewer(): VisualReviewer {
   return sharedVisualReviewer;
 }
 
-export function getSharedSlideImageRenderer(): HtmlSlideImageRenderer {
+export function getSharedSlideImageRenderer():
+  | HtmlSlideImageRenderer
+  | PptxSlideImageRenderer {
   if (!sharedSlideImageRenderer) {
-    sharedSlideImageRenderer = new HtmlSlideImageRenderer();
+    sharedSlideImageRenderer = new PptxSlideImageRenderer();
   }
   return sharedSlideImageRenderer;
 }

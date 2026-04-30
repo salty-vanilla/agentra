@@ -9,6 +9,7 @@ cdk.out
 playwright-report/
 test-results/
 *.tsbuildinfo
+asset-local-*.png
 .DS_Store
 .env
 .env.local

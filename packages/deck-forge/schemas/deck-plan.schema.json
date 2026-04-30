@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://deck-forge.dev/schemas/deck-plan.schema.json",
+  "title": "DeckPlan",
+  "description": "Overall deck structure derived from a PresentationBrief. Input to generateSlideSpecs.",
+  "type": "object",
+  "required": ["id", "briefId", "title", "slideCountTarget", "sections", "globalStoryline"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "briefId": { "type": "string" },
+    "title": { "type": "string" },
+    "slideCountTarget": { "type": "integer", "minimum": 1 },
+    "globalStoryline": { "type": "string" },
+    "sections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "title", "role", "slides"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "title": { "type": "string" },
+          "role": {
+            "type": "string",
+            "enum": ["intro", "background", "problem", "proposal", "analysis", "solution", "implementation", "result", "appendix"]
+          },
+          "slides": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "title", "intent", "expectedLayout", "contentRequirements"],
+              "additionalProperties": false,
+              "properties": {
+                "id": { "type": "string" },
+                "title": { "type": "string" },
+                "intent": {
+                  "type": "object",
+                  "required": ["type", "keyMessage", "audienceTakeaway"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "enum": ["title", "agenda", "summary", "problem", "comparison", "timeline", "process", "architecture", "data_insight", "case_study", "proposal", "decision", "closing"]
+                    },
+                    "keyMessage": { "type": "string" },
+                    "audienceTakeaway": { "type": "string" }
+                  }
+                },
+                "expectedLayout": {
+                  "type": "string",
+                  "enum": ["title", "section", "single_column", "two_column", "three_column", "hero", "image_left_text_right", "text_left_image_right", "comparison", "dashboard", "timeline", "matrix", "diagram_focus", "custom"]
+                },
+                "contentRequirements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "description", "priority"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "description": { "type": "string" },
+                      "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+                      "expectedBlockType": { "type": "string" }
+                    }
+                  }
+                },
+                "assetRequirements": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "required": ["id", "purpose", "description"],
+                    "properties": {
+                      "id": { "type": "string" },
+                      "purpose": { "type": "string" },
+                      "description": { "type": "string" },
+                      "targetSlideIds": { "type": "array", "items": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
