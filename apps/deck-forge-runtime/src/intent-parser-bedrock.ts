@@ -153,6 +153,116 @@ Fix every issue and call the tool again with a corrected payload.`;
 }
 
 /* ------------------------------------------------------------------ */
+/*  Workarounds for deck-forge core@0.2.1 IR-builder gaps              */
+/*  Remove these once upstream is fixed.                               */
+/* ------------------------------------------------------------------ */
+
+/**
+ * deck-forge core's `buildElements()` has no handler for ContentBlock
+ * `type:'metric'`, so metric blocks are silently dropped from the IR.
+ * Convert them to `callout` blocks with formatted text so the data still
+ * appears on the slide.
+ */
+function convertMetricsToCallouts(slideSpec: SlideSpec): SlideSpec {
+  if (!Array.isArray(slideSpec.content)) return slideSpec;
+  const content = slideSpec.content.map((block) => {
+    if (
+      typeof block === 'object' &&
+      block !== null &&
+      (block as { type?: string }).type === 'metric'
+    ) {
+      const m = block as {
+        id: string;
+        label: string;
+        value: string;
+        unit?: string;
+        trend?: 'up' | 'down' | 'flat';
+      };
+      const arrow = m.trend === 'up' ? ' ↑' : m.trend === 'down' ? ' ↓' : '';
+      const valuePart = m.unit ? `${m.value} ${m.unit}` : m.value;
+      return {
+        id: m.id,
+        type: 'callout' as const,
+        text: `${m.label}: ${valuePart}${arrow}`,
+        tone: 'info' as const,
+      };
+    }
+    return block;
+  });
+  return { ...slideSpec, content } as SlideSpec;
+}
+
+/**
+ * Predefined hex palettes per (style, mood) combination, used to seed
+ * `brief.brand.colors` so deck-forge core's `createTheme()` (which only
+ * consults `brief.brand`) reflects the user's `visualDirection`.
+ */
+const PALETTE_BY_MOOD: Record<
+  string,
+  { primary: string; secondary: string; accent: string; background: string }
+> = {
+  energetic: {
+    primary: '#F59E0B',
+    secondary: '#0EA5E9',
+    accent: '#EF4444',
+    background: '#FFFBEB',
+  },
+  calm: {
+    primary: '#0EA5E9',
+    secondary: '#A5F3FC',
+    accent: '#6366F1',
+    background: '#F0F9FF',
+  },
+  trustworthy: {
+    primary: '#1D4ED8',
+    secondary: '#0EA5E9',
+    accent: '#14B8A6',
+    background: '#FFFFFF',
+  },
+  futuristic: {
+    primary: '#6366F1',
+    secondary: '#8B5CF6',
+    accent: '#22D3EE',
+    background: '#0F172A',
+  },
+  premium: {
+    primary: '#0F172A',
+    secondary: '#334155',
+    accent: '#D4AF37',
+    background: '#F8FAFC',
+  },
+  practical: {
+    primary: '#475569',
+    secondary: '#94A3B8',
+    accent: '#0EA5E9',
+    background: '#FFFFFF',
+  },
+};
+
+/**
+ * deck-forge core's `createTheme()` ignores `brief.visualDirection` and
+ * only reads `brief.brand`. Inject brand colors derived from the brief's
+ * mood so theme application reflects the user's intent.
+ */
+function injectBrandFromVisualDirection(brief: PresentationBrief): PresentationBrief {
+  if (brief.brand?.colors?.primary) {
+    return brief; // user/LLM already set explicit colors
+  }
+  const mood = brief.visualDirection?.mood as string | undefined;
+  const palette = (mood && PALETTE_BY_MOOD[mood]) ?? PALETTE_BY_MOOD.trustworthy;
+  return {
+    ...brief,
+    brand: {
+      ...(brief.brand ?? {}),
+      colors: {
+        ...palette,
+        ...(brief.brand?.colors ?? {}),
+      },
+    },
+  } as PresentationBrief;
+}
+
+/* ------------------------------------------------------------------ */
 /*  Pipeline                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -163,17 +273,20 @@ export function createBedrockIntentParser(): IntentParser {
 
       // Step 1: Brief
       log('brief', 'invoking tool_use...');
-      const brief = await generateAndValidate<PresentationBrief>({
+      const rawBrief = await generateAndValidate<PresentationBrief>({
         step: 'brief',
         system: getBriefGenerationPrompt({ goal: userRequest, language }),
         userMessage: userRequest,
         tool: BRIEF_TOOL,
         validate: (v) => validateBrief(v, { expectedLanguage: language }),
       });
+      // Workaround: seed brand.colors from visualDirection so theme reflects intent.
+      const brief = injectBrandFromVisualDirection(rawBrief);
       log('brief', 'done', {
         id: brief.id,
         title: brief.title,
         language: brief.output?.language,
+        injectedBrandColors: brief.brand?.colors?.primary,
       });
 
       // Step 2: DeckPlan
@@ -200,17 +313,28 @@ export function createBedrockIntentParser(): IntentParser {
       );
       log('slideSpecs', 'invoking tool_use in parallel', { count: slideIds.length });
 
-      const slideSpecs = await Promise.all(
+      // Forward brief constraints to the per-slide validator so generic filler
+      // and missing must-haves are caught before the IR is built.
+      const mustInclude = brief.constraints?.mustInclude;
+      const mustAvoid = brief.constraints?.mustAvoid;
+      const slideValidatorOptions: Parameters<typeof validateSlideSpec>[1] = {
+        ...(mustInclude && mustInclude.length > 0 ? { mustInclude } : {}),
+        ...(mustAvoid && mustAvoid.length > 0 ? { mustAvoid } : {}),
+      };
+
+      const rawSlideSpecs = await Promise.all(
         slideIds.map((slideId) =>
           generateAndValidate<SlideSpec>({
             step: `slideSpec[${slideId}]`,
             system: getSlideSpecGenerationPrompt({ brief, deckPlan, slideId }),
             userMessage: `Brief:\n${JSON.stringify(brief, null, 2)}\n\nDeckPlan:\n${JSON.stringify(deckPlan, null, 2)}\n\nGenerate the SlideSpec for slideId="${slideId}".`,
             tool: SLIDE_SPEC_TOOL,
-            validate: (v) => validateSlideSpec(v),
+            validate: (v) => validateSlideSpec(v, slideValidatorOptions),
           }),
         ),
       );
+      // Workaround: convert metric blocks to callouts so they survive IR build.
+      const slideSpecs = rawSlideSpecs.map(convertMetricsToCallouts);
       log('slideSpecs', 'done', { count: slideSpecs.length });
 
       // Step 4: AssetSpecs (optional — skip if no visual needs)
