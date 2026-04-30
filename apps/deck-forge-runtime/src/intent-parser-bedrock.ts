@@ -266,114 +266,179 @@ function injectBrandFromVisualDirection(brief: PresentationBrief): PresentationB
 /*  Pipeline                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * The intermediate artifacts produced by the create pipeline. We expose
+ * these so callers can re-build a StructuredIntent after revising
+ * SlideSpecs (vision-reviewer revision loop).
+ */
+export type CreatePipelineResult = {
+  brief: PresentationBrief;
+  deckPlan: DeckPlan;
+  slideSpecs: SlideSpec[];
+  assetSpecs: AssetSpec[];
+  intent: StructuredIntent;
+};
+
+/**
+ * Run the full create pipeline (brief -> deckPlan -> slideSpecs -> assetSpecs)
+ * once and return both the StructuredIntent (ready to feed into the runner)
+ * and the intermediate artifacts (so they can be revised and rebuilt).
+ */
+export async function runCreatePipeline(
+  userRequest: string,
+): Promise<CreatePipelineResult> {
+  const language = detectLanguage(userRequest);
+
+  // Step 1: Brief
+  log('brief', 'invoking tool_use...');
+  const rawBrief = await generateAndValidate<PresentationBrief>({
+    step: 'brief',
+    system: getBriefGenerationPrompt({ goal: userRequest, language }),
+    userMessage: userRequest,
+    tool: BRIEF_TOOL,
+    validate: (v) => validateBrief(v, { expectedLanguage: language }),
+  });
+  // Workaround: seed brand.colors from visualDirection so theme reflects intent.
+  const brief = injectBrandFromVisualDirection(rawBrief);
+  log('brief', 'done', {
+    id: brief.id,
+    title: brief.title,
+    language: brief.output?.language,
+    injectedBrandColors: brief.brand?.colors?.primary,
+  });
+
+  // Step 2: DeckPlan
+  log('deckPlan', 'invoking tool_use...');
+  const expectedSlideCount = brief.constraints?.slideCount;
+  const deckPlanOptions = expectedSlideCount !== undefined ? { expectedSlideCount } : {};
+  const deckPlan = await generateAndValidate<DeckPlan>({
+    step: 'deckPlan',
+    system: getDeckPlanGenerationPrompt({ brief }),
+    userMessage: `PresentationBrief:\n${JSON.stringify(brief, null, 2)}`,
+    tool: DECK_PLAN_TOOL,
+    validate: (v) => validateDeckPlan(v, deckPlanOptions),
+  });
+  log('deckPlan', 'done', {
+    id: deckPlan.id,
+    sections: deckPlan.sections?.length,
+    slides: deckPlan.sections?.reduce((n, s) => n + (s.slides?.length ?? 0), 0),
+  });
+
+  // Step 3: SlideSpecs — generate each slide in parallel
+  const slideIds = deckPlan.sections.flatMap((section) =>
+    section.slides.map((slide) => slide.id),
+  );
+  log('slideSpecs', 'invoking tool_use in parallel', { count: slideIds.length });
+
+  const mustInclude = brief.constraints?.mustInclude;
+  const mustAvoid = brief.constraints?.mustAvoid;
+  const slideValidatorOptions: Parameters<typeof validateSlideSpec>[1] = {
+    ...(mustInclude && mustInclude.length > 0 ? { mustInclude } : {}),
+    ...(mustAvoid && mustAvoid.length > 0 ? { mustAvoid } : {}),
+  };
+
+  const rawSlideSpecs = await Promise.all(
+    slideIds.map((slideId) =>
+      generateAndValidate<SlideSpec>({
+        step: `slideSpec[${slideId}]`,
+        system: getSlideSpecGenerationPrompt({ brief, deckPlan, slideId }),
+        userMessage: `Brief:\n${JSON.stringify(brief, null, 2)}\n\nDeckPlan:\n${JSON.stringify(deckPlan, null, 2)}\n\nGenerate the SlideSpec for slideId="${slideId}".`,
+        tool: SLIDE_SPEC_TOOL,
+        validate: (v) => validateSlideSpec(v, slideValidatorOptions),
+      }),
+    ),
+  );
+  // Workaround: convert metric blocks to callouts so they survive IR build.
+  const slideSpecs = rawSlideSpecs.map(convertMetricsToCallouts);
+  log('slideSpecs', 'done', { count: slideSpecs.length });
+
+  // Step 4: AssetSpecs (optional — skip if no visual needs)
+  let assetSpecs: AssetSpec[] = [];
+  const hasVisualNeeds = deckPlan.sections?.some((s) =>
+    s.slides?.some((sl) => sl.assetRequirements && sl.assetRequirements.length > 0),
+  );
+  if (hasVisualNeeds) {
+    log('assetSpecs', 'invoking tool_use...');
+    const result = await invokeBedrockToolUse<{ assetSpecs: AssetSpec[] }>({
+      system: ASSET_SPECS_SYSTEM,
+      userMessage: `User request: ${userRequest}\n\nPresentationBrief:\n${JSON.stringify(brief, null, 2)}\n\nSlideSpecs:\n${JSON.stringify(slideSpecs, null, 2)}`,
+      tool: ASSET_SPECS_TOOL,
+    });
+    assetSpecs = result.assetSpecs ?? [];
+    log('assetSpecs', 'done', { count: assetSpecs.length });
+  } else {
+    log('assetSpecs', 'skipped (no asset requirements in deckPlan)');
+  }
+
+  const intent = buildStructuredIntent({
+    brief,
+    deckPlan,
+    slideSpecs,
+    assetSpecs,
+    userRequest,
+    language,
+  });
+
+  return { brief, deckPlan, slideSpecs, assetSpecs, intent };
+}
+
+/**
+ * Assemble a StructuredIntent from already-generated artifacts. Used both
+ * by the initial pipeline and by the vision-revision loop after slideSpecs
+ * have been rewritten by the reviewer.
+ */
+export function buildStructuredIntent(input: {
+  brief: PresentationBrief;
+  deckPlan: DeckPlan;
+  slideSpecs: SlideSpec[];
+  assetSpecs: AssetSpec[];
+  userRequest: string;
+  language: 'ja' | 'en';
+}): StructuredIntent {
+  const { brief, deckPlan, slideSpecs, assetSpecs, userRequest, language } = input;
+  return {
+    mode: 'create',
+    confidence: 0.95,
+    goal: brief.goal?.mainMessage ?? userRequest,
+    audience: brief.audience?.primary,
+    slideCount: deckPlan.slideCountTarget,
+    grounding: {
+      language: brief.output?.language ?? language,
+      requestedSlideCount: brief.constraints?.slideCount ?? deckPlan.slideCountTarget,
+    },
+    createArtifacts: {
+      brief,
+      deckPlan,
+      slideSpecs,
+      assetSpecs,
+    },
+  };
+}
+
+/**
+ * Build an IntentParser that returns a pre-computed StructuredIntent
+ * instead of calling Bedrock. Used to plug pre-pipeline-run results into
+ * the DeckForgeRunner and to re-run after vision-revision without redoing
+ * brief/deckPlan/slideSpec generation.
+ */
+export function createStaticIntentParser(intent: StructuredIntent): IntentParser {
+  return {
+    async parseCreate(): Promise<StructuredIntent> {
+      return intent;
+    },
+    async parseModify(): Promise<StructuredIntent> {
+      throw new Error(
+        'createStaticIntentParser does not support parseModify. Use createBedrockIntentParser instead.',
+      );
+    },
+  };
+}
+
 export function createBedrockIntentParser(): IntentParser {
   return {
     async parseCreate({ userRequest }): Promise<StructuredIntent> {
-      const language = detectLanguage(userRequest);
-
-      // Step 1: Brief
-      log('brief', 'invoking tool_use...');
-      const rawBrief = await generateAndValidate<PresentationBrief>({
-        step: 'brief',
-        system: getBriefGenerationPrompt({ goal: userRequest, language }),
-        userMessage: userRequest,
-        tool: BRIEF_TOOL,
-        validate: (v) => validateBrief(v, { expectedLanguage: language }),
-      });
-      // Workaround: seed brand.colors from visualDirection so theme reflects intent.
-      const brief = injectBrandFromVisualDirection(rawBrief);
-      log('brief', 'done', {
-        id: brief.id,
-        title: brief.title,
-        language: brief.output?.language,
-        injectedBrandColors: brief.brand?.colors?.primary,
-      });
-
-      // Step 2: DeckPlan
-      log('deckPlan', 'invoking tool_use...');
-      const expectedSlideCount = brief.constraints?.slideCount;
-      const deckPlanOptions =
-        expectedSlideCount !== undefined ? { expectedSlideCount } : {};
-      const deckPlan = await generateAndValidate<DeckPlan>({
-        step: 'deckPlan',
-        system: getDeckPlanGenerationPrompt({ brief }),
-        userMessage: `PresentationBrief:\n${JSON.stringify(brief, null, 2)}`,
-        tool: DECK_PLAN_TOOL,
-        validate: (v) => validateDeckPlan(v, deckPlanOptions),
-      });
-      log('deckPlan', 'done', {
-        id: deckPlan.id,
-        sections: deckPlan.sections?.length,
-        slides: deckPlan.sections?.reduce((n, s) => n + (s.slides?.length ?? 0), 0),
-      });
-
-      // Step 3: SlideSpecs — generate each slide in parallel
-      const slideIds = deckPlan.sections.flatMap((section) =>
-        section.slides.map((slide) => slide.id),
-      );
-      log('slideSpecs', 'invoking tool_use in parallel', { count: slideIds.length });
-
-      // Forward brief constraints to the per-slide validator so generic filler
-      // and missing must-haves are caught before the IR is built.
-      const mustInclude = brief.constraints?.mustInclude;
-      const mustAvoid = brief.constraints?.mustAvoid;
-      const slideValidatorOptions: Parameters<typeof validateSlideSpec>[1] = {
-        ...(mustInclude && mustInclude.length > 0 ? { mustInclude } : {}),
-        ...(mustAvoid && mustAvoid.length > 0 ? { mustAvoid } : {}),
-      };
-
-      const rawSlideSpecs = await Promise.all(
-        slideIds.map((slideId) =>
-          generateAndValidate<SlideSpec>({
-            step: `slideSpec[${slideId}]`,
-            system: getSlideSpecGenerationPrompt({ brief, deckPlan, slideId }),
-            userMessage: `Brief:\n${JSON.stringify(brief, null, 2)}\n\nDeckPlan:\n${JSON.stringify(deckPlan, null, 2)}\n\nGenerate the SlideSpec for slideId="${slideId}".`,
-            tool: SLIDE_SPEC_TOOL,
-            validate: (v) => validateSlideSpec(v, slideValidatorOptions),
-          }),
-        ),
-      );
-      // Workaround: convert metric blocks to callouts so they survive IR build.
-      const slideSpecs = rawSlideSpecs.map(convertMetricsToCallouts);
-      log('slideSpecs', 'done', { count: slideSpecs.length });
-
-      // Step 4: AssetSpecs (optional — skip if no visual needs)
-      let assetSpecs: AssetSpec[] = [];
-      const hasVisualNeeds = deckPlan.sections?.some((s) =>
-        s.slides?.some((sl) => sl.assetRequirements && sl.assetRequirements.length > 0),
-      );
-      if (hasVisualNeeds) {
-        log('assetSpecs', 'invoking tool_use...');
-        const result = await invokeBedrockToolUse<{ assetSpecs: AssetSpec[] }>({
-          system: ASSET_SPECS_SYSTEM,
-          userMessage: `User request: ${userRequest}\n\nPresentationBrief:\n${JSON.stringify(brief, null, 2)}\n\nSlideSpecs:\n${JSON.stringify(slideSpecs, null, 2)}`,
-          tool: ASSET_SPECS_TOOL,
-        });
-        assetSpecs = result.assetSpecs ?? [];
-        log('assetSpecs', 'done', { count: assetSpecs.length });
-      } else {
-        log('assetSpecs', 'skipped (no asset requirements in deckPlan)');
-      }
-
-      const intent: StructuredIntent = {
-        mode: 'create',
-        confidence: 0.95,
-        goal: brief.goal?.mainMessage ?? userRequest,
-        audience: brief.audience?.primary,
-        slideCount: deckPlan.slideCountTarget,
-        grounding: {
-          language: brief.output?.language ?? language,
-          requestedSlideCount: brief.constraints?.slideCount ?? deckPlan.slideCountTarget,
-        },
-        createArtifacts: {
-          brief,
-          deckPlan,
-          slideSpecs,
-          assetSpecs,
-        },
-      };
-
-      return intent;
+      const result = await runCreatePipeline(userRequest);
+      return result.intent;
     },
 
     async parseModify({ userRequest, inspectSummary }): Promise<StructuredIntent> {

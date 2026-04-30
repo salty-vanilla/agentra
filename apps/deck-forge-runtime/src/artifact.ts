@@ -1,4 +1,4 @@
-import { access, readFile } from 'node:fs/promises';
+import { access, mkdir, readFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
@@ -20,6 +20,9 @@ export type DeckForgeArtifact =
       irS3Uri?: string;
       requestS3Uri?: string;
       assetCount?: number;
+      visionReviewS3Uri?: string;
+      v1DeckS3Uri?: string;
+      v1IrS3Uri?: string;
     }
   | undefined;
 
@@ -32,7 +35,62 @@ type PublishInput = {
   format: 'pptx' | 'html' | 'json' | 'pdf';
   request: unknown;
   result: unknown;
+  /**
+   * Optional vision-reviewer report. When provided, the report is uploaded
+   * to `<runPrefix>vision-review.json`.
+   */
+  visionReview?: unknown;
+  /**
+   * Optional pre-revision artifact archive. When the vision-revision loop
+   * runs, the v1 (pre-revision) deck and IR are uploaded under `<runPrefix>v1/`
+   * so the before/after pair is reproducible.
+   */
+  v1Archive?: {
+    presentation?: PresentationIR;
+    pptxLocalPath?: string;
+  };
 };
+
+/**
+ * Materialize `generated://` virtual asset uris into real on-disk files and
+ * export the presentation to `outputPath` as pptx. Returns the materialized
+ * presentation (with file:// asset uris) and the local path.
+ *
+ * Exported separately from `publishArtifactIfNeeded` so the index flow can
+ * render pptx for vision review BEFORE revision, then publish the (possibly
+ * revised) version afterwards.
+ */
+export async function materializeAndExportPptx(input: {
+  presentation: PresentationIR;
+  outputPath: string;
+}): Promise<{ presentation: PresentationIR; outputPath: string; exists: boolean }> {
+  const outputDir = dirname(input.outputPath);
+  await mkdir(outputDir, { recursive: true });
+
+  let materialized: PresentationIR = input.presentation;
+  try {
+    materialized = await materializeGeneratedAssets(input.presentation, {
+      outputDir,
+      generators: buildImageGenerators(),
+      fallbackPolicy: 'local-file',
+      safety: { allowOutsideWorkspace: true },
+    });
+  } catch (error) {
+    getLogger().warn(
+      { error: String(error) },
+      '[deck-forge-runtime] [artifact] materializeGeneratedAssets failed in materializeAndExportPptx; continuing with virtual uris',
+    );
+  }
+
+  const runtime = getOrCreateRuntime();
+  await runtime.export(materialized, {
+    format: 'pptx',
+    outputPath: input.outputPath,
+  });
+
+  const exists = await pathExists(input.outputPath);
+  return { presentation: materialized, outputPath: input.outputPath, exists };
+}
 
 /**
  * Persist the deck artifact (pptx/html/...) and a full reproducibility bundle
@@ -181,6 +239,55 @@ export async function publishArtifactIfNeeded(
   const bundleS3Uri = `s3://${bucket}/${bundleKey}`;
   const bundlePresignedUrl = await presign(client, bucket, bundleKey);
 
+  // 6) Upload vision-review.json (optional)
+  let visionReviewS3Uri: string | undefined;
+  if (input.visionReview !== undefined) {
+    const reviewKey = `${runPrefix}vision-review.json`;
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: reviewKey,
+        Body: JSON.stringify(input.visionReview, null, 2),
+        ContentType: 'application/json',
+      }),
+    );
+    visionReviewS3Uri = `s3://${bucket}/${reviewKey}`;
+  }
+
+  // 7) Upload v1 archive (pre-revision deck + IR), optional
+  let v1DeckS3Uri: string | undefined;
+  let v1IrS3Uri: string | undefined;
+  if (input.v1Archive) {
+    if (input.v1Archive.pptxLocalPath) {
+      const v1Exists = await pathExists(input.v1Archive.pptxLocalPath);
+      if (v1Exists) {
+        const v1Key = `${runPrefix}v1/deck.pptx`;
+        await client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: v1Key,
+            Body: await readFile(input.v1Archive.pptxLocalPath),
+            ContentType:
+              'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          }),
+        );
+        v1DeckS3Uri = `s3://${bucket}/${v1Key}`;
+      }
+    }
+    if (input.v1Archive.presentation) {
+      const v1IrKey = `${runPrefix}v1/presentation.ir.json`;
+      await client.send(
+        new PutObjectCommand({
+          Bucket: bucket,
+          Key: v1IrKey,
+          Body: JSON.stringify(input.v1Archive.presentation, null, 2),
+          ContentType: 'application/json',
+        }),
+      );
+      v1IrS3Uri = `s3://${bucket}/${v1IrKey}`;
+    }
+  }
+
   return {
     ...deckArtifact,
     bundleS3Uri,
@@ -188,6 +295,9 @@ export async function publishArtifactIfNeeded(
     ...(irS3Uri !== undefined ? { irS3Uri } : {}),
     requestS3Uri,
     assetCount,
+    ...(visionReviewS3Uri !== undefined ? { visionReviewS3Uri } : {}),
+    ...(v1DeckS3Uri !== undefined ? { v1DeckS3Uri } : {}),
+    ...(v1IrS3Uri !== undefined ? { v1IrS3Uri } : {}),
   };
 }
 

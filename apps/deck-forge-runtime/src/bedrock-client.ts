@@ -122,3 +122,81 @@ export function extractJson<T>(raw: string): T {
   const toParse = fenced?.[1]?.trim() ?? raw.trim();
   return JSON.parse(toParse) as T;
 }
+
+/* ------------------------------------------------------------------ */
+/*  Vision (multimodal) tool_use                                       */
+/* ------------------------------------------------------------------ */
+
+export type VisionImage = {
+  /** Base64 encoded image bytes. */
+  base64: string;
+  /** e.g. 'image/png' or 'image/jpeg'. */
+  mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+};
+
+/**
+ * tool_use call with one or more images attached to the user message.
+ * Use this for the vision reviewer that critiques rendered slides.
+ */
+export async function invokeBedrockVisionToolUse<T>(input: {
+  system: string;
+  text: string;
+  images: VisionImage[];
+  tool: ToolDefinition;
+  maxTokens?: number;
+}): Promise<T> {
+  const modelId = resolveTextModelId();
+  const content: Array<Record<string, unknown>> = [
+    ...input.images.map((img) => ({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: img.mediaType,
+        data: img.base64,
+      },
+    })),
+    { type: 'text', text: input.text },
+  ];
+
+  const body = JSON.stringify({
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: input.maxTokens ?? 4096,
+    system: input.system,
+    messages: [{ role: 'user', content }],
+    tools: [input.tool],
+    tool_choice: { type: 'tool', name: input.tool.name },
+  });
+
+  const command = new InvokeModelCommand({
+    modelId,
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: new TextEncoder().encode(body),
+  });
+
+  const response = await getClient().send(command);
+  const decoded = new TextDecoder().decode(response.body);
+  const parsed: {
+    content?: Array<{
+      type: string;
+      text?: string;
+      id?: string;
+      name?: string;
+      input?: unknown;
+    }>;
+    stop_reason?: string;
+  } = JSON.parse(decoded);
+
+  const toolBlock = parsed.content?.find(
+    (block): block is ToolUseBlock =>
+      block.type === 'tool_use' && block.name === input.tool.name,
+  );
+
+  if (!toolBlock) {
+    throw new Error(
+      `Bedrock vision tool_use response did not contain a ${input.tool.name} call. stop_reason=${parsed.stop_reason}`,
+    );
+  }
+
+  return toolBlock.input as T;
+}
