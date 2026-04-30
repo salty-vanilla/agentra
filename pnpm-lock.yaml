@@ -128,8 +128,8 @@ importers:
         specifier: 3.1037.0
         version: 3.1037.0
       '@deck-forge/core':
-        specifier: ^0.2.1
-        version: 0.2.1(playwright@1.59.1)
+        specifier: file:/Users/van/workspace/deck-forge/packages/core/deck-forge-core-0.2.2.tgz
+        version: file:../deck-forge/packages/core/deck-forge-core-0.2.2.tgz(playwright@1.59.1)
       '@deck-forge/runner':
         specifier: ^0.2.1
         version: 0.2.1(playwright@1.59.1)
@@ -1066,6 +1066,15 @@ packages:
 
   '@deck-forge/core@0.2.1':
     resolution: {integrity: sha512-iX31zQsYj+xyeEeFKysZEktVaAwYu693+AWwiX8i5nc0a6WS/VmHaAMvitQ4N+4kor5JAwkptGgCcEiHh88trg==}
+    peerDependencies:
+      playwright: '>=1.40.0'
+    peerDependenciesMeta:
+      playwright:
+        optional: true
+
+  '@deck-forge/core@file:../deck-forge/packages/core/deck-forge-core-0.2.2.tgz':
+    resolution: {integrity: sha512-fr8TlB6alJEVCowPWKIoeHEe6mN9MpgjjeZr01808nTroJAv/zFqlgag+79X5qKclpxqg9lOjABvpmXpcQcEJg==, tarball: file:../deck-forge/packages/core/deck-forge-core-0.2.2.tgz}
+    version: 0.2.2
     peerDependencies:
       playwright: '>=1.40.0'
     peerDependenciesMeta:
@@ -7214,6 +7223,17 @@ snapshots:
       commander: 14.0.3
 
   '@deck-forge/core@0.2.1(playwright@1.59.1)':
+    dependencies:
+      '@aws-sdk/client-bedrock-runtime': 3.1038.0
+      pdf-lib: 1.17.1
+      pptxgenjs: 3.12.0
+      zod: 4.4.1
+    optionalDependencies:
+      playwright: 1.59.1
+    transitivePeerDependencies:
+      - aws-crt
+
+  '@deck-forge/core@file:../deck-forge/packages/core/deck-forge-core-0.2.2.tgz(playwright@1.59.1)':
     dependencies:
       '@aws-sdk/client-bedrock-runtime': 3.1038.0
       pdf-lib: 1.17.1

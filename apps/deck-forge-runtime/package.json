@@ -14,7 +14,7 @@
     "@aws-sdk/client-s3": "3.1037.0",
     "@aws-sdk/client-secrets-manager": "3.1037.0",
     "@aws-sdk/s3-request-presigner": "3.1037.0",
-    "@deck-forge/core": "^0.2.1",
+    "@deck-forge/core": "file:/Users/van/workspace/deck-forge/packages/core/deck-forge-core-0.2.2.tgz",
     "@deck-forge/runner": "^0.2.1",
     "@deck-forge/tools": "^0.2.1",
     "@serdnam/pino-cloudwatch-transport": "^1.0.4",
