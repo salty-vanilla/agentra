@@ -83,3 +83,5 @@ function buildImageGenerators() {
 
   return [new LocalFileImageGenerator()];
 }
+
+export { buildImageGenerators };

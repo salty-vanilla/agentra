@@ -1,9 +1,11 @@
 import { access, readFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { Asset, PresentationIR } from '@deck-forge/core';
-import { getOrCreateRuntime } from './create-runner.js';
+import { materializeGeneratedAssets } from '@deck-forge/core';
+import { buildImageGenerators, getOrCreateRuntime } from './create-runner.js';
 import { getLogger } from './logging.js';
 
 export type DeckForgeArtifact =
@@ -54,9 +56,34 @@ export async function publishArtifactIfNeeded(
 
   // 1) Render and upload the deck binary (pptx only — html/json/pdf already in result.exportResult)
   let deckArtifact: NonNullable<DeckForgeArtifact> = { exists: false };
-  if (input.outputPath && input.format === 'pptx' && input.presentation !== undefined) {
+  // Materialize `generated://` virtual asset URIs into real on-disk files so that
+  // (a) the saved IR points at concrete files we can upload to S3, and
+  // (b) the pptx export and the bundle reference the exact same bytes.
+  let materializedPresentation: PresentationIR | undefined = input.presentation;
+  if (input.presentation && input.outputPath) {
+    const outputDir = dirname(input.outputPath);
+    try {
+      materializedPresentation = await materializeGeneratedAssets(input.presentation, {
+        outputDir,
+        generators: buildImageGenerators(),
+        fallbackPolicy: 'local-file',
+        safety: { allowOutsideWorkspace: true },
+      });
+    } catch (error) {
+      getLogger().warn(
+        { error: String(error) },
+        '[deck-forge-runtime] [artifact] materializeGeneratedAssets failed; uploading IR with virtual uris',
+      );
+    }
+  }
+
+  if (
+    input.outputPath &&
+    input.format === 'pptx' &&
+    materializedPresentation !== undefined
+  ) {
     const runtime = getOrCreateRuntime();
-    await runtime.export(input.presentation, {
+    await runtime.export(materializedPresentation, {
       format: input.format,
       outputPath: input.outputPath,
     });
@@ -92,10 +119,10 @@ export async function publishArtifactIfNeeded(
 
   // 2) Upload referenced assets (images etc.) and rewrite IR uris to S3
   let assetCount = 0;
-  let republishedPresentation: PresentationIR | undefined = input.presentation;
-  if (input.presentation?.assets?.assets?.length) {
+  let republishedPresentation: PresentationIR | undefined = materializedPresentation;
+  if (materializedPresentation?.assets?.assets?.length) {
     const { presentation: rewritten, count } = await uploadAssetsAndRewriteIr({
-      presentation: input.presentation,
+      presentation: materializedPresentation,
       bucket,
       runPrefix,
       client,
