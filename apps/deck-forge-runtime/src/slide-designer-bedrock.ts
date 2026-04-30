@@ -121,6 +121,20 @@ Hard rules:
 - Aim for 0-4 operations per slide. Do not exceed maxOperations if it is provided.
 - Do NOT touch element style colors unless the focus explicitly includes "color".
 
+House style targets (apply silently):
+- Titles ≤25 chars (ja) / ≤60 chars (en). Statement-style. 体言止め for ja decks.
+- Body bullets ≤30 chars per line (ja) / ≤60 chars (en). Max 5 lines per block.
+- Numbers always carry units. Unit goes in its own field, not glued to the value.
+- Never repeat the slide title in the body.
+- Don't mix 敬体 and 常体 in the same deck.
+
+GOOD example (refining a verbose KPI title):
+  Input element: { id: "title-1", text: "今四半期における製造ライン#4の稼働状況について" }
+  Operation:    { type: "update_text", slideId: "slide-3", elementId: "title-1",
+                  text: "ライン#4 稼働率 92%" }
+BAD example (same intent — too long, redundant):
+  { type: "update_text", ..., text: "今四半期の稼働率は92%でした" }
+
 Call the propose_slide_operations tool exactly once.`;
 
 /* ------------------------------------------------------------------ */

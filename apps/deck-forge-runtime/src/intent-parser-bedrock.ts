@@ -230,14 +230,64 @@ export async function runCreatePipeline(
   // editing the prompt source.
   const slideSpecExtraGuidance = `
 
-Renderer capabilities (deck-forge 0.3.0 — both HTML and PPTX):
-- MetricBlock is rendered natively as a card-decorated callout (KPI grid auto-laid out). Prefer it over hand-written "label: value" paragraphs.
-- DiagramBlock (cycle / matrix / flowchart / timeline / funnel / layered) is rendered as native shapes/arrows in PPTX and inline SVG in HTML. Use it for processes and relationships instead of bullet lists.
-- ChartBlock (bar / line / area / pie / scatter) is rendered as a native pptx chart and inline SVG in HTML.
-- BulletListBlock supports nested indentation; the renderer produces semantic <ul><li> with proper indent levels.
-- The title automatically gets an accent stripe; you do NOT need to fake it with extra elements.
+============================================================
+ADDITIONAL DRAFTING RULES (deck-forge 0.3.0 renderer + house style)
+============================================================
 
-Use these blocks aggressively when they fit the slide intent — they produce a much more professional result than long paragraph blocks.`;
+Renderer capabilities — prefer these block types over plain paragraphs:
+- MetricBlock → rendered as a card-decorated callout with KPI grid auto-layout. Use it for ALL numeric KPIs.
+- DiagramBlock kinds:
+    cycle      → 3–6 nodes that loop back. Use for repeating processes.
+    flowchart  → 3–8 sequential steps. Use for procedures / pipelines / "before → after" flows.
+    timeline   → time-ordered milestones. Use for schedules, roadmaps, history.
+    funnel     → top-down narrowing. Use for conversion / filtering.
+    layered    → vertical stack of layers. Use for architectures.
+    matrix     → 2×2 / 3×3 grid. Use for categorisations.
+- ChartBlock (bar / line / area / pie / scatter) → rendered as native pptx chart. Use for trends and comparisons.
+- TableBlock → use for ≥2-column comparisons.
+- BulletListBlock → semantic <ul><li> with nested indent levels. Use for lists, NOT for processes (use Diagram).
+
+House style — the difference between "auto-generated" and "consultant-quality":
+
+1. Title rules
+   - ≤25 characters when possible. Punchy, statement-style, NOT a question.
+   - 体言止め (noun-ending) preferred for ja; sentence case for en.
+   - The cover slide title MUST include the subject; the subtitle MUST include 対象期間 + 作成日 (when ja).
+
+2. KPI rules
+   - Every KPI is its own MetricBlock with: label, value (number), unit, optional delta vs prior period.
+   - Format value as "92" + unit "%" — never embed unit in value.
+   - When a delta is provided, use ↑ / ↓ glyphs and absolute pp/% (e.g. "+2.1pt", "−0.3%").
+   - 1 slide should hold 3–6 KPIs max. If more, split into two slides.
+
+3. Body text rules
+   - 1 slide = 1 message. The title states the message; the body proves it.
+   - Bullet lines: max 5 per block, max 30 chars each (ja) / 60 chars (en). No nested bullets unless the structure is genuinely hierarchical.
+   - Never write a paragraph longer than 80 chars (ja) / 160 chars (en) — split or convert to bullets.
+   - Do NOT mix 敬体 (です・ます) and 常体 (だ・である) in the same deck. Pick one and stick to it. Default: 常体 + 体言止め for executive decks.
+
+4. Structure rules
+   - Process / steps → flowchart Diagram, NOT bulleted list.
+   - Trend over time → Chart (line/area), NOT a table.
+   - Comparison across categories → Table or kpi-grid layout, NOT bullets.
+   - Narrative summary → CalloutBlock above body, NOT paragraph at top.
+
+5. Speaker notes
+   - Add concise speakerNotes to every slide. 2–4 sentences explaining what the presenter should say to expand on the visible content. Audience-appropriate.
+
+6. Anti-patterns to AVOID:
+   ✗ Long paragraph blocks ("製造ラインの稼働率は今四半期において…")
+   ✗ Bulleted lists of single-word items (use a Table or shape diagram instead)
+   ✗ Repeating the slide title in the body
+   ✗ Numbers without units, units without numbers
+   ✗ "図1" / "Figure 1" style captions — let the layout speak
+
+GOOD example (KPI slide body block):
+  { type: "metric", label: "稼働率", value: 92, unit: "%", delta: { value: 2.1, direction: "up", unit: "pt" } }
+BAD example (same intent):
+  { type: "paragraph", text: "稼働率は92%で、前期比+2.1ポイントの改善となりました。" }
+
+Apply these rules silently — do not mention them in the output content.`;
 
   const rawSlideSpecs = await Promise.all(
     slideIds.map((slideId) =>

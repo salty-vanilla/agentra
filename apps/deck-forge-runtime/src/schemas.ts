@@ -25,15 +25,17 @@ const baseSchema = z.object({
   visionRevision: z.boolean().default(false),
   /**
    * Run a single Bedrock-backed `SlideDesigner` pass against the freshly
-   * built IR before any review loop runs.
+   * built IR before any review loop runs. ON by default — the design pass
+   * is fast and almost always improves typography / hierarchy.
    */
-  designPass: z.boolean().default(false),
+  designPass: z.boolean().default(true),
   /**
    * Number of `runDesignReviewLoop` iterations (designer → render →
    * visualReviewer → applyOps). 0 disables the loop. Capped at 3 to keep
-   * latency bounded.
+   * latency bounded. Defaults to 2 — enough to catch most overlap /
+   * truncation issues without ballooning latency.
    */
-  designReviewIterations: z.number().int().min(0).max(3).default(0),
+  designReviewIterations: z.number().int().min(0).max(3).default(2),
   includeTrace: z.boolean().default(false),
   presentation: z.unknown().optional(),
   operations: z.array(z.unknown()).optional(),
