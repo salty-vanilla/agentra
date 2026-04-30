@@ -1,23 +1,36 @@
 # Deck Forge Runtime
 
-AgentCore Runtime app for invoking `DeckForgeRunner`.
+AgentCore Runtime app for invoking `DeckForgeRunner` from `@deck-forge/runner@0.2.0`.
 
 ## Deck Forge dependency
 
-`@deck-forge/runner@0.1.0` is published to npm and should be consumed directly.
-It is the generated bundled runner distribution for the `deck-forge` source
-monorepo.
+`@deck-forge/core`, `@deck-forge/tools`, and `@deck-forge/runner` at `^0.2.0`
+are consumed from npm. The source monorepo lives in `salty-vanilla/deck-forge`.
 
-This app depends on the published package exactly:
+v0.2.0 uses Node-compatible `#src/*` package imports internally, so the
+`#/` import patch script from v0.1.0 has been removed.
 
-```json
-{
-  "@deck-forge/runner": "0.1.0"
-}
-```
+## Create mode
 
-The source monorepo still lives in `salty-vanilla/deck-forge`; this package is
-the deployable bridge that `agentra` consumes.
+Create mode uses a Bedrock-backed `IntentParser` that calls a text model
+(default Claude Sonnet 4) to produce `createArtifacts` (brief, deckPlan,
+slideSpecs, assetPlan) directly from the user request.
+
+- `DECK_FORGE_BEDROCK_TEXT_MODEL_ID` selects the Bedrock text model for intent
+  parsing, review, and operation planning. Defaults to
+  `anthropic.claude-sonnet-4-20250514-v1:0`.
+
+## AI review
+
+When `revisionPolicy` is `ai_review`, a Bedrock-backed reviewer and operation
+planner are wired in. The `reviewTrigger` field (default `warnings`) controls
+when AI review runs: `errors`, `warnings`, or `always`.
+
+## Slide images
+
+`renderSlideImages: true` in the request enables Playwright-based slide image
+rendering via `HtmlSlideImageRenderer`. The Dockerfile uses a Playwright base
+image with Chromium pre-installed.
 
 ## Image assets
 
@@ -28,11 +41,6 @@ the deployable bridge that `agentra` consumes.
 - Default model is `amazon.nova-canvas-v1:0`.
 - To use Stability, set the model id to a supported Bedrock Stability model such as
   `stability.stable-image-core-v1:0` or `stability.stable-image-ultra-v1:0`.
-
-`acquisitionMode` defaults to `generate` in Agentra so the runtime does not rely
-on Deck Forge 0.1.0's retrieved-image provider default. Pexels-first retrieval
-requires a Deck Forge release that threads `imageProvider: "pexels"` through the
-runner/core asset plan.
 
 ## Artifacts
 

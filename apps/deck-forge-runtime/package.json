@@ -6,20 +6,19 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
-    "check:deck-forge-import": "node --input-type=module --eval \"import('@deck-forge/runner').then((m) => console.log(typeof m.DeckForgeRunner)).catch((error) => { console.error(error); process.exit(1); })\"",
-    "patch:deck-forge-imports": "node scripts/patch-deck-forge-imports.mjs",
-    "postinstall": "node scripts/patch-deck-forge-imports.mjs",
     "start": "node dist/index.js",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "3.1038.0",
     "@aws-sdk/client-secrets-manager": "3.1037.0",
     "@aws-sdk/client-s3": "3.1037.0",
     "@aws-sdk/s3-request-presigner": "3.1037.0",
-    "@deck-forge/core": "0.1.0",
-    "@deck-forge/tools": "0.1.0",
-    "@deck-forge/runner": "0.1.0",
+    "@deck-forge/core": "^0.2.0",
+    "@deck-forge/tools": "^0.2.0",
+    "@deck-forge/runner": "^0.2.0",
     "bedrock-agentcore": "latest",
+    "playwright": "^1.40.0",
     "uuidv7": "^1.2.1",
     "zod": "latest"
   },

@@ -1,12 +1,15 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
-import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import type { DeckForgeRunInput } from '@deck-forge/runner';
+import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { publishArtifactIfNeeded } from './artifact.js';
 import { createDeckForgeRunner } from './create-runner.js';
-import { DeckForgeRequestSchema } from './schemas.js';
+import { createBedrockIntentParser } from './intent-parser-bedrock.js';
+import { createBedrockOperationPlanner } from './operation-planner-bedrock.js';
+import { createBedrockReviewer } from './reviewer-bedrock.js';
 import { bootstrapDeckForgeRuntimeEnv } from './runtime-env.js';
+import { DeckForgeRequestSchema } from './schemas.js';
 
 type DeckForgeRunInputWithImageProvider = DeckForgeRunInput & {
   imageProvider?: 'pexels' | 'unsplash' | 'pixabay';
@@ -45,14 +48,28 @@ async function main() {
         }
 
         const outputPath =
-          request.exportFormat === 'pptx' ? `/tmp/deck-forge/${runId}/deck.pptx` : undefined;
+          request.exportFormat === 'pptx'
+            ? `/tmp/deck-forge/${runId}/deck.pptx`
+            : undefined;
 
         if (outputPath) {
           await mkdir(dirname(outputPath), { recursive: true });
         }
 
+        const intentParser = createBedrockIntentParser();
+        const useAiReview = request.revisionPolicy === 'ai_review';
+
         const runner = createDeckForgeRunner({
           revisionPolicy: request.revisionPolicy,
+          reviewTrigger: request.reviewTrigger,
+          renderSlideImages: request.renderSlideImages,
+          intentParser,
+          ...(useAiReview
+            ? {
+                reviewer: createBedrockReviewer(),
+                operationPlanner: createBedrockOperationPlanner(),
+              }
+            : {}),
         });
 
         const runInput: DeckForgeRunInputWithImageProvider = {
@@ -89,15 +106,18 @@ async function main() {
               type: 'deck_forge_error',
               runId,
               error:
-                result.errors.map((error) => error.message).filter(Boolean).join('\n') ||
-                'Deck Forge failed without a detailed error.',
+                result.errors
+                  .map((error) => error.message)
+                  .filter(Boolean)
+                  .join('\n') || 'Deck Forge failed without a detailed error.',
             },
           };
           return;
         }
 
         const artifact = await publishArtifactIfNeeded({
-          presentation: result.finalStatus === 'success' ? result.artifacts.presentation : undefined,
+          presentation:
+            result.finalStatus === 'success' ? result.artifacts.presentation : undefined,
           outputPath,
           runId,
           format: request.exportFormat,

@@ -71,8 +71,13 @@ const deckForgeRuntimeStack = new AgentraDeckForgeRuntimeStack(
     description: `Agentra ${stageLabel} Deck Forge runtime stack.`,
     stage: stageLabel,
     bedrockImageModelId:
-      (app.node.tryGetContext('deckForgeBedrockImageModelId') as string | undefined)?.trim() ||
-      'amazon.nova-canvas-v1:0',
+      (
+        app.node.tryGetContext('deckForgeBedrockImageModelId') as string | undefined
+      )?.trim() || 'amazon.nova-canvas-v1:0',
+    bedrockTextModelId:
+      (
+        app.node.tryGetContext('deckForgeBedrockTextModelId') as string | undefined
+      )?.trim() || 'anthropic.claude-sonnet-4-20250514-v1:0',
     artifactPrefix:
       (app.node.tryGetContext('deckForgeArtifactPrefix') as string | undefined)?.trim() ||
       'deck-forge/',

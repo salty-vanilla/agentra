@@ -8,7 +8,11 @@ export const DeckForgeRequestSchema = z.object({
   acquisitionMode: z.enum(['generate', 'retrieve', 'auto']).default('generate'),
   imageProvider: z.enum(['pexels', 'unsplash', 'pixabay']).default('pexels'),
   autoFix: z.boolean().default(true),
-  revisionPolicy: z.enum(['none', 'validation_only', 'ai_review']).default('validation_only'),
+  revisionPolicy: z
+    .enum(['none', 'validation_only', 'ai_review'])
+    .default('validation_only'),
+  reviewTrigger: z.enum(['errors', 'warnings', 'always']).default('warnings'),
+  renderSlideImages: z.boolean().default(false),
   includeTrace: z.boolean().default(false),
   presentation: z.unknown().optional(),
   operations: z.array(z.unknown()).optional(),

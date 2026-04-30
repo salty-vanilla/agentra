@@ -1,9 +1,8 @@
-import { access } from 'node:fs/promises';
-import { readFile } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { BedrockImageGenerator, createLocalRuntime, LocalFileImageGenerator } from '@deck-forge/core';
 import type { PresentationIR } from '@deck-forge/core';
+import { getOrCreateRuntime } from './create-runner.js';
 
 export type DeckForgeArtifact =
   | {
@@ -27,12 +26,7 @@ export async function publishArtifactIfNeeded(input: {
     return undefined;
   }
 
-  const runtime = createLocalRuntime({
-    imageGenerators: buildImageGenerators(),
-    safety: {
-      allowOutsideWorkspace: true,
-    },
-  });
+  const runtime = getOrCreateRuntime();
   await runtime.export(input.presentation, {
     format: input.format,
     outputPath: input.outputPath,
@@ -60,21 +54,6 @@ export async function publishArtifactIfNeeded(input: {
   };
 }
 
-function buildImageGenerators() {
-  const region = process.env.AWS_REGION?.trim() || process.env.BEDROCK_REGION?.trim();
-  const modelId = process.env.DECK_FORGE_BEDROCK_IMAGE_MODEL_ID?.trim() || undefined;
-
-  if (region) {
-    const bedrockOptions = modelId ? { region, modelId } : { region };
-    return [
-      new BedrockImageGenerator(bedrockOptions),
-      new LocalFileImageGenerator(),
-    ];
-  }
-
-  return [new LocalFileImageGenerator()];
-}
-
 async function pathExists(path: string): Promise<boolean> {
   try {
     await access(path);
@@ -88,7 +67,9 @@ async function publishToS3IfConfigured(input: {
   localPath: string;
   runId: string;
   format: 'pptx' | 'html' | 'json' | 'pdf';
-}): Promise<Pick<NonNullable<DeckForgeArtifact>, 's3Uri' | 'presignedUrl' | 'expiresIn'>> {
+}): Promise<
+  Pick<NonNullable<DeckForgeArtifact>, 's3Uri' | 'presignedUrl' | 'expiresIn'>
+> {
   const bucket = process.env.DECK_FORGE_ARTIFACT_BUCKET?.trim();
   if (!bucket) {
     return {};

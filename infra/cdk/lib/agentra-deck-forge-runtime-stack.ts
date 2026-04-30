@@ -20,6 +20,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 export interface AgentraDeckForgeRuntimeStackProps extends StackProps {
   stage: string;
   bedrockImageModelId?: string;
+  bedrockTextModelId?: string;
   artifactPrefix?: string;
 }
 
@@ -128,6 +129,8 @@ export class AgentraDeckForgeRuntimeStack extends Stack {
         BEDROCK_REGION: Stack.of(this).region,
         DECK_FORGE_BEDROCK_IMAGE_MODEL_ID:
           props.bedrockImageModelId ?? 'amazon.nova-canvas-v1:0',
+        DECK_FORGE_BEDROCK_TEXT_MODEL_ID:
+          props.bedrockTextModelId ?? 'anthropic.claude-sonnet-4-20250514-v1:0',
         DECK_FORGE_ARTIFACT_BUCKET: artifactBucket.bucketName,
         DECK_FORGE_ARTIFACT_PREFIX: props.artifactPrefix ?? 'deck-forge/',
         PEXELS_API_KEY_SECRET_ID: pexelsApiKeySecret.secretArn,

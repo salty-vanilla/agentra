@@ -1,13 +1,14 @@
-FROM node:22-slim AS build
+FROM mcr.microsoft.com/playwright:v1.52.0-noble AS build
 
 WORKDIR /app
 COPY package.json tsconfig.json ./
-COPY scripts ./scripts
 COPY src ./src
 RUN npm install
 RUN npm run build
 
-FROM node:22-slim
+FROM mcr.microsoft.com/playwright:v1.52.0-noble
+
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
 WORKDIR /app
 COPY --from=build /app/package.json ./package.json

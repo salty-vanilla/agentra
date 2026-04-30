@@ -1,4 +1,7 @@
-import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore';
+import {
+  BedrockAgentCoreClient,
+  InvokeAgentRuntimeCommand,
+} from '@aws-sdk/client-bedrock-agentcore';
 import { tool } from '@strands-agents/sdk';
 import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
@@ -70,7 +73,9 @@ function summarizeDeckForgeResult(result: unknown): DeckForgeRunResultSummary {
 
   const summary: DeckForgeRunResultSummary = {};
   const artifacts = isRecord(result.artifacts) ? result.artifacts : undefined;
-  const presentation = isRecord(artifacts?.presentation) ? artifacts.presentation : undefined;
+  const presentation = isRecord(artifacts?.presentation)
+    ? artifacts.presentation
+    : undefined;
   const slides = Array.isArray(presentation?.slides) ? presentation.slides : undefined;
   const validationReport = isRecord(result.validationReport)
     ? result.validationReport
@@ -99,7 +104,9 @@ function deckForgeResultErrorMessage(result: unknown): string {
 
   if (Array.isArray(result.errors)) {
     const messages = result.errors
-      .map((entry) => (isRecord(entry) && typeof entry.message === 'string' ? entry.message : undefined))
+      .map((entry) =>
+        isRecord(entry) && typeof entry.message === 'string' ? entry.message : undefined,
+      )
       .filter((message): message is string => !!message);
     if (messages.length > 0) {
       return messages.join('\n');
@@ -188,7 +195,9 @@ function parseRuntimeMessage(raw: string): DeckForgeRuntimeMessage | undefined {
   return undefined;
 }
 
-async function collectDeckForgeRuntimeMessage(body: unknown): Promise<DeckForgeRuntimeMessage> {
+async function collectDeckForgeRuntimeMessage(
+  body: unknown,
+): Promise<DeckForgeRuntimeMessage> {
   const streamBody = body as {
     transformToString?: () => Promise<string>;
     [Symbol.asyncIterator]?: () => AsyncIterator<unknown>;
@@ -242,7 +251,9 @@ async function collectDeckForgeRuntimeMessage(body: unknown): Promise<DeckForgeR
   throw new Error('Deck Forge runtime returned an unrecognized response payload.');
 }
 
-async function invokeDeckForgeRuntime(input: DeckForgeRequest): Promise<DeckForgeRuntimeMessage> {
+async function invokeDeckForgeRuntime(
+  input: DeckForgeRequest,
+): Promise<DeckForgeRuntimeMessage> {
   if (!DECK_FORGE_RUNTIME_ARN) {
     throw new Error('DECK_FORGE_RUNTIME_ARN is not set. Deck Forge runtime is required.');
   }
@@ -274,7 +285,9 @@ const DeckForgeRequestSchema = z.object({
   acquisitionMode: z.enum(['generate', 'retrieve', 'auto']).default('generate'),
   imageProvider: z.enum(['pexels', 'unsplash', 'pixabay']).default('pexels'),
   autoFix: z.boolean().default(true),
-  revisionPolicy: z.enum(['none', 'validation_only', 'ai_review']).default('validation_only'),
+  revisionPolicy: z
+    .enum(['none', 'validation_only', 'ai_review'])
+    .default('validation_only'),
   includeTrace: z.boolean().default(false),
   presentation: z.unknown().optional(),
   operations: z.array(z.unknown()).optional(),

@@ -3,8 +3,8 @@ import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import { ObservationCollector } from './observability.js';
-import { deckForgeTool } from './tools/deck-forge.js';
 import { dateResolverTool } from './tools/date-resolver.js';
+import { deckForgeTool } from './tools/deck-forge.js';
 import {
   tavilyCrawlTool,
   tavilyExtractTool,
@@ -127,14 +127,14 @@ function resolveConfig(
 
 function buildPrompt(userPrompt: string, tone: ToneKey): string {
   return [
-  TONE_INSTRUCTIONS[tone],
-  '',
-  DATE_TOOL_INSTRUCTIONS,
-  '',
-  DECK_FORGE_TOOL_INSTRUCTIONS,
-  '',
-  '以下がユーザーの依頼です。',
-  userPrompt,
+    TONE_INSTRUCTIONS[tone],
+    '',
+    DATE_TOOL_INSTRUCTIONS,
+    '',
+    DECK_FORGE_TOOL_INSTRUCTIONS,
+    '',
+    '以下がユーザーの依頼です。',
+    userPrompt,
   ].join('\n');
 }
 
