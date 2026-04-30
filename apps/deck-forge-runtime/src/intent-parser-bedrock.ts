@@ -330,13 +330,13 @@ export async function runCreatePipeline(
   );
   log('slideSpecs', 'invoking tool_use in parallel', { count: slideIds.length });
 
-  const mustInclude = brief.constraints?.mustInclude;
-  const mustAvoid = brief.constraints?.mustAvoid;
-  const slideValidatorOptions: Parameters<typeof validateSlideSpec>[1] = {
-    ...(mustInclude && mustInclude.length > 0 ? { mustInclude } : {}),
-    ...(mustAvoid && mustAvoid.length > 0 ? { mustAvoid } : {}),
-  };
-
+  // NOTE: We intentionally do NOT forward brief.constraints.mustInclude /
+  // mustAvoid to validateSlideSpec. The brief LLM tends to populate mustInclude
+  // with verbatim formatted strings (e.g. "天気：晴れ（Sunny）") that will
+  // never match the structured SlideSpec JSON, causing permanent validation
+  // failures. The constraints are already present in the system prompt via
+  // getSlideSpecGenerationPrompt({ brief }), so the LLM is guided to include
+  // the required content without us needing to enforce it at the schema level.
   const rawSlideSpecs = await Promise.all(
     slideIds.map((slideId) =>
       generateAndValidate<SlideSpec>({
@@ -344,7 +344,7 @@ export async function runCreatePipeline(
         system: getSlideSpecGenerationPrompt({ brief, deckPlan, slideId }),
         userMessage: `Brief:\n${JSON.stringify(brief, null, 2)}\n\nDeckPlan:\n${JSON.stringify(deckPlan, null, 2)}\n\nGenerate the SlideSpec for slideId="${slideId}".`,
         tool: SLIDE_SPEC_TOOL,
-        validate: (v) => validateSlideSpec(v, slideValidatorOptions),
+        validate: (v) => validateSlideSpec(v),
       }),
     ),
   );
