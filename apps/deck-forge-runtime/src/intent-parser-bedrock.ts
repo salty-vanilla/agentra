@@ -224,11 +224,26 @@ export async function runCreatePipeline(
   // failures. The constraints are already present in the system prompt via
   // getSlideSpecGenerationPrompt({ brief }), so the LLM is guided to include
   // the required content without us needing to enforce it at the schema level.
+  // Hint to the LLM that 0.3.0 renderers natively support these block types
+  // and decoration tokens, so it should prefer them over plain paragraph
+  // walls of text. Appended to the upstream system prompt rather than
+  // editing the prompt source.
+  const slideSpecExtraGuidance = `
+
+Renderer capabilities (deck-forge 0.3.0 — both HTML and PPTX):
+- MetricBlock is rendered natively as a card-decorated callout (KPI grid auto-laid out). Prefer it over hand-written "label: value" paragraphs.
+- DiagramBlock (cycle / matrix / flowchart / timeline / funnel / layered) is rendered as native shapes/arrows in PPTX and inline SVG in HTML. Use it for processes and relationships instead of bullet lists.
+- ChartBlock (bar / line / area / pie / scatter) is rendered as a native pptx chart and inline SVG in HTML.
+- BulletListBlock supports nested indentation; the renderer produces semantic <ul><li> with proper indent levels.
+- The title automatically gets an accent stripe; you do NOT need to fake it with extra elements.
+
+Use these blocks aggressively when they fit the slide intent — they produce a much more professional result than long paragraph blocks.`;
+
   const rawSlideSpecs = await Promise.all(
     slideIds.map((slideId) =>
       generateAndValidate<SlideSpec>({
         step: `slideSpec[${slideId}]`,
-        system: getSlideSpecGenerationPrompt({ brief, deckPlan, slideId }),
+        system: `${getSlideSpecGenerationPrompt({ brief, deckPlan, slideId })}${slideSpecExtraGuidance}`,
         userMessage: `Brief:\n${JSON.stringify(brief, null, 2)}\n\nDeckPlan:\n${JSON.stringify(deckPlan, null, 2)}\n\nGenerate the SlideSpec for slideId="${slideId}".`,
         tool: SLIDE_SPEC_TOOL,
         validate: (v) => validateSlideSpec(v),

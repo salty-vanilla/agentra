@@ -1,24 +1,25 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { PresentationIR } from '@deck-forge/core';
+import { runDesignReviewLoop } from '@deck-forge/core';
 import type { DeckForgeRunInput } from '@deck-forge/runner';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { materializeAndExportPptx, publishArtifactIfNeeded } from './artifact.js';
-import { createDeckForgeRunner } from './create-runner.js';
 import {
-  buildStructuredIntent,
-  createStaticIntentParser,
-  runCreatePipeline,
-} from './intent-parser-bedrock.js';
+  createDeckForgeRunner,
+  getOrCreateRuntime,
+  getSharedDesigner,
+  getSharedSlideImageRenderer,
+  getSharedVisualReviewer,
+} from './create-runner.js';
+import { createStaticIntentParser, runCreatePipeline } from './intent-parser-bedrock.js';
 import { buildLoggerOptions, getLogger } from './logging.js';
 import { createBedrockOperationPlanner } from './operation-planner-bedrock.js';
 import { renderPptxToPngs } from './pptx-renderer.js';
 import { createBedrockReviewer } from './reviewer-bedrock.js';
-import { reviseSlideSpecs } from './revise-slide-specs.js';
 import { bootstrapDeckForgeRuntimeEnv } from './runtime-env.js';
 import { DeckForgeRequestSchema } from './schemas.js';
-import { reviewSlidesWithVision, type VisionReviewReport } from './vision-reviewer.js';
 
 type DeckForgeRunInputWithImageProvider = DeckForgeRunInput & {
   imageProvider?: 'pexels' | 'unsplash' | 'pixabay';
@@ -67,26 +68,22 @@ async function main() {
           }
 
           // Run the create pipeline ourselves so we get the brief / deckPlan /
-          // slideSpecs intermediates needed for the vision-revision loop. The
-          // runner is then driven by a static parser that returns the same
-          // StructuredIntent without re-calling Bedrock.
-          const wantVisionReview = request.visionReview || request.visionRevision;
+          // slideSpecs intermediates needed for downstream design + review.
           const pipeline = await runCreatePipeline(request.goal);
           const useAiReview = request.revisionPolicy === 'ai_review';
 
-          const buildRunner = (intent: typeof pipeline.intent) =>
-            createDeckForgeRunner({
-              revisionPolicy: request.revisionPolicy,
-              reviewTrigger: request.reviewTrigger,
-              renderSlideImages: request.renderSlideImages,
-              intentParser: createStaticIntentParser(intent),
-              ...(useAiReview
-                ? {
-                    reviewer: createBedrockReviewer(),
-                    operationPlanner: createBedrockOperationPlanner(),
-                  }
-                : {}),
-            });
+          const runner = createDeckForgeRunner({
+            revisionPolicy: request.revisionPolicy,
+            reviewTrigger: request.reviewTrigger,
+            renderSlideImages: request.renderSlideImages,
+            intentParser: createStaticIntentParser(pipeline.intent),
+            ...(useAiReview
+              ? {
+                  reviewer: createBedrockReviewer(),
+                  operationPlanner: createBedrockOperationPlanner(),
+                }
+              : {}),
+          });
 
           const runInput: DeckForgeRunInputWithImageProvider = {
             goal: request.goal,
@@ -106,9 +103,8 @@ async function main() {
             runInput.operations = request.operations;
           }
 
-          const result = await buildRunner(pipeline.intent).run(runInput);
+          const result = await runner.run(runInput);
           if (result.finalStatus !== 'success') {
-            // Persist a failure bundle so we can debug after the fact.
             const failureArtifact = await publishArtifactIfNeeded({
               presentation: undefined,
               outputPath: undefined,
@@ -143,91 +139,120 @@ async function main() {
             return;
           }
 
-          // ----- Vision review + (optional) revision loop ----------------
-          let finalResult: typeof result = result;
+          // ----- Design pass + design-review loop ----------------------
+          const finalResult: typeof result = result;
           let finalPresentation: PresentationIR | undefined =
             result.artifacts.presentation;
-          let visionReview: VisionReviewReport | undefined;
+          const initialPresentation = finalPresentation;
+          let designReviewTrace: unknown;
           let v1Archive:
             | { presentation?: PresentationIR; pptxLocalPath?: string }
             | undefined;
+          let visionReview: unknown;
 
+          // Single Bedrock SlideDesigner pass over the freshly built IR.
+          if (request.designPass && finalPresentation) {
+            try {
+              const runtime = getOrCreateRuntime();
+              const pass = await runtime.runDesignPass(finalPresentation);
+              finalPresentation = pass.presentation;
+              logDeckForgeEvent('design-pass-applied', {
+                runId,
+                operationCount: pass.operations.length,
+                rationaleCount: pass.rationales.length,
+              });
+            } catch (error) {
+              logDeckForgeEvent('design-pass-failed', {
+                runId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+
+          // Iterative designer → render → visualReviewer → applyOps loop.
+          if (request.designReviewIterations > 0 && finalPresentation) {
+            try {
+              const beforeLoopIr = finalPresentation;
+              const loop = await runDesignReviewLoop({
+                presentation: finalPresentation,
+                designer: getSharedDesigner(),
+                visualReviewer: getSharedVisualReviewer(),
+                renderer: getSharedSlideImageRenderer(),
+                maxIterations: request.designReviewIterations,
+                // Stop early once the reviewer reports no error-severity findings.
+                stopWhen: (iter) =>
+                  iter.findings.every((f) => f.severity !== 'error') &&
+                  iter.operations.length === 0,
+              });
+
+              finalPresentation = loop.presentation;
+
+              // Strip slideImages bytes before persisting the trace (they can
+              // be megabytes per iteration).
+              designReviewTrace = {
+                stoppedReason: loop.stoppedReason,
+                iterations: loop.iterations.map((iter) => ({
+                  iteration: iter.iteration,
+                  converged: iter.converged,
+                  operationCount: iter.operations.length,
+                  operations: iter.operations,
+                  findings: iter.findings,
+                  designerRationales: iter.designerRationales,
+                  slideImageCount: iter.slideImages.length,
+                })),
+              };
+
+              // Archive the pre-loop IR so the before/after diff is reproducible.
+              v1Archive = { presentation: beforeLoopIr };
+
+              logDeckForgeEvent('design-review-loop-complete', {
+                runId,
+                stoppedReason: loop.stoppedReason,
+                iterationCount: loop.iterations.length,
+                totalOperations: loop.iterations.reduce(
+                  (sum, it) => sum + it.operations.length,
+                  0,
+                ),
+              });
+            } catch (error) {
+              logDeckForgeEvent('design-review-loop-failed', {
+                runId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+
+          // Optional separate vision-review report (no IR mutation). Useful
+          // when the caller wants the human-readable critique persisted
+          // alongside an export from the *final* IR.
           if (
-            wantVisionReview &&
+            request.visionReview &&
             outputPath &&
             request.exportFormat === 'pptx' &&
             finalPresentation
           ) {
             try {
-              // Export v1 pptx first so we can rasterize it.
-              const v1OutputPath = `/tmp/deck-forge/${runId}/v1/deck.pptx`;
-              const v1Export = await materializeAndExportPptx({
+              const reviewExport = await materializeAndExportPptx({
                 presentation: finalPresentation,
-                outputPath: v1OutputPath,
+                outputPath,
               });
-
-              if (!v1Export.exists) {
-                logDeckForgeEvent('vision-review-skipped', {
-                  runId,
-                  reason: 'v1 pptx export did not produce a file',
-                });
-              } else {
-                const slides = await renderPptxToPngs({ pptxPath: v1OutputPath });
-                visionReview = await reviewSlidesWithVision({
-                  slides,
-                  slideSpecs: pipeline.slideSpecs,
-                  brief: pipeline.brief,
+              if (reviewExport.exists) {
+                const slides = await renderPptxToPngs({ pptxPath: outputPath });
+                const reviewer = getSharedVisualReviewer();
+                visionReview = await reviewer.review({
+                  presentation: finalPresentation,
+                  slideImages: slides.map((s, idx) => ({
+                    slideId: finalPresentation?.slides[idx]?.id ?? `slide-${idx + 1}`,
+                    mimeType: 'image/png',
+                    data: new Uint8Array(s.png),
+                    source: 'pptx',
+                  })),
                 });
                 logDeckForgeEvent('vision-review-complete', {
                   runId,
-                  slideCount: visionReview.slideCount,
-                  averageScore: visionReview.averageScore,
-                  slidesNeedingRevision: visionReview.slidesNeedingRevision,
+                  findingCount: (visionReview as { findings?: unknown[] }).findings
+                    ?.length,
                 });
-
-                if (request.visionRevision && visionReview.slidesNeedingRevision > 0) {
-                  const { slideSpecs: revisedSpecs, revisedCount } =
-                    await reviseSlideSpecs({
-                      slideSpecs: pipeline.slideSpecs,
-                      review: visionReview,
-                      brief: pipeline.brief,
-                    });
-
-                  if (revisedCount > 0) {
-                    const revisedIntent = buildStructuredIntent({
-                      brief: pipeline.brief,
-                      deckPlan: pipeline.deckPlan,
-                      slideSpecs: revisedSpecs,
-                      assetSpecs: pipeline.assetSpecs,
-                      userRequest: request.goal,
-                      language: (pipeline.brief.output?.language as 'ja' | 'en') ?? 'en',
-                    });
-                    const result2 = await buildRunner(revisedIntent).run(runInput);
-                    if (result2.finalStatus === 'success') {
-                      // v1 (pre-revision) becomes the archive; v2 takes over as primary.
-                      v1Archive = {
-                        presentation: finalPresentation,
-                        pptxLocalPath: v1OutputPath,
-                      };
-                      finalResult = result2;
-                      finalPresentation = result2.artifacts.presentation;
-                      logDeckForgeEvent('vision-revision-applied', {
-                        runId,
-                        revisedCount,
-                      });
-                    } else {
-                      logDeckForgeEvent('vision-revision-failed', {
-                        runId,
-                        errors: result2.errors,
-                      });
-                    }
-                  } else {
-                    logDeckForgeEvent('vision-revision-skipped', {
-                      runId,
-                      reason: 'no slide specs were successfully revised',
-                    });
-                  }
-                }
               }
             } catch (error) {
               logDeckForgeEvent('vision-review-error', {
@@ -236,7 +261,35 @@ async function main() {
               });
             }
           }
-          // ---------------------------------------------------------------
+          // -------------------------------------------------------------
+
+          // Make sure v1 archive captures the pre-loop pptx as well, so
+          // before/after pptx pairs are observable from S3.
+          if (
+            v1Archive &&
+            initialPresentation &&
+            outputPath &&
+            request.exportFormat === 'pptx'
+          ) {
+            try {
+              const v1OutputPath = `/tmp/deck-forge/${runId}/v1/deck.pptx`;
+              const v1Export = await materializeAndExportPptx({
+                presentation: initialPresentation,
+                outputPath: v1OutputPath,
+              });
+              if (v1Export.exists) {
+                v1Archive = {
+                  presentation: initialPresentation,
+                  pptxLocalPath: v1OutputPath,
+                };
+              }
+            } catch (error) {
+              logDeckForgeEvent('v1-archive-export-failed', {
+                runId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
 
           const artifact = await publishArtifactIfNeeded({
             presentation: finalPresentation,
@@ -246,6 +299,7 @@ async function main() {
             request,
             result: finalResult,
             ...(visionReview !== undefined ? { visionReview } : {}),
+            ...(designReviewTrace !== undefined ? { designReviewTrace } : {}),
             ...(v1Archive !== undefined ? { v1Archive } : {}),
           });
 
@@ -258,6 +312,7 @@ async function main() {
             bundleS3Uri: artifact?.bundleS3Uri,
             irS3Uri: artifact?.irS3Uri,
             visionReviewS3Uri: artifact?.visionReviewS3Uri,
+            designReviewS3Uri: artifact?.designReviewS3Uri,
             v1DeckS3Uri: artifact?.v1DeckS3Uri,
             assetCount: artifact?.assetCount,
             durationMs: Date.now() - startedAt,

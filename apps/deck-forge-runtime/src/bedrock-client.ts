@@ -26,8 +26,9 @@ export async function invokeBedrockText(input: {
   system: string;
   userMessage: string;
   maxTokens?: number;
+  modelId?: string;
 }): Promise<string> {
-  const modelId = resolveTextModelId();
+  const modelId = input.modelId?.trim() || resolveTextModelId();
   const body = JSON.stringify({
     anthropic_version: 'bedrock-2023-05-31',
     max_tokens: input.maxTokens ?? 8192,
@@ -72,8 +73,9 @@ export async function invokeBedrockToolUse<T>(input: {
   userMessage: string;
   tool: ToolDefinition;
   maxTokens?: number;
+  modelId?: string;
 }): Promise<T> {
-  const modelId = resolveTextModelId();
+  const modelId = input.modelId?.trim() || resolveTextModelId();
   const body = JSON.stringify({
     anthropic_version: 'bedrock-2023-05-31',
     max_tokens: input.maxTokens ?? 16384,
@@ -144,8 +146,9 @@ export async function invokeBedrockVisionToolUse<T>(input: {
   images: VisionImage[];
   tool: ToolDefinition;
   maxTokens?: number;
+  modelId?: string;
 }): Promise<T> {
-  const modelId = resolveTextModelId();
+  const modelId = input.modelId?.trim() || resolveTextModelId();
   const content: Array<Record<string, unknown>> = [
     ...input.images.map((img) => ({
       type: 'image',

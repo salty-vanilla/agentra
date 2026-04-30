@@ -79,4 +79,10 @@ export async function bootstrapDeckForgeRuntimeEnv(): Promise<void> {
 
   process.env.AWS_REGION ??= process.env.BEDROCK_REGION ?? 'us-east-1';
   process.env.DECK_FORGE_BEDROCK_TEXT_MODEL_ID ??= 'global.anthropic.claude-sonnet-4-6';
+  // Designer / VisualReviewer fall back to the shared text model when their
+  // own dedicated env var is not set.
+  process.env.DECK_FORGE_DESIGNER_MODEL_ID ??=
+    process.env.DECK_FORGE_BEDROCK_TEXT_MODEL_ID;
+  process.env.DECK_FORGE_VISUAL_REVIEWER_MODEL_ID ??=
+    process.env.DECK_FORGE_BEDROCK_TEXT_MODEL_ID;
 }

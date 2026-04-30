@@ -23,6 +23,7 @@ export type DeckForgeArtifact =
       visionReviewS3Uri?: string;
       v1DeckS3Uri?: string;
       v1IrS3Uri?: string;
+      designReviewS3Uri?: string;
     }
   | undefined;
 
@@ -40,6 +41,12 @@ type PublishInput = {
    * to `<runPrefix>vision-review.json`.
    */
   visionReview?: unknown;
+  /**
+   * Optional design-review loop trace (iterations summary). Persisted to
+   * `<runPrefix>design-review.json` so before/after diffs are reproducible.
+   * `slideImages` bytes are stripped before serialization.
+   */
+  designReviewTrace?: unknown;
   /**
    * Optional pre-revision artifact archive. When the vision-revision loop
    * runs, the v1 (pre-revision) deck and IR are uploaded under `<runPrefix>v1/`
@@ -254,6 +261,21 @@ export async function publishArtifactIfNeeded(
     visionReviewS3Uri = `s3://${bucket}/${reviewKey}`;
   }
 
+  // 6b) Upload design-review.json (optional)
+  let designReviewS3Uri: string | undefined;
+  if (input.designReviewTrace !== undefined) {
+    const traceKey = `${runPrefix}design-review.json`;
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: traceKey,
+        Body: JSON.stringify(input.designReviewTrace, null, 2),
+        ContentType: 'application/json',
+      }),
+    );
+    designReviewS3Uri = `s3://${bucket}/${traceKey}`;
+  }
+
   // 7) Upload v1 archive (pre-revision deck + IR), optional
   let v1DeckS3Uri: string | undefined;
   let v1IrS3Uri: string | undefined;
@@ -296,6 +318,7 @@ export async function publishArtifactIfNeeded(
     requestS3Uri,
     assetCount,
     ...(visionReviewS3Uri !== undefined ? { visionReviewS3Uri } : {}),
+    ...(designReviewS3Uri !== undefined ? { designReviewS3Uri } : {}),
     ...(v1DeckS3Uri !== undefined ? { v1DeckS3Uri } : {}),
     ...(v1IrS3Uri !== undefined ? { v1IrS3Uri } : {}),
   };
