@@ -2,6 +2,7 @@ import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
+import { buildLoggerOptions } from './logging.js';
 import { ObservationCollector } from './observability.js';
 import { dateResolverTool } from './tools/date-resolver.js';
 import { deckForgeTool } from './tools/deck-forge.js';
@@ -166,6 +167,11 @@ function createAgent(config: {
 }
 
 const app = new BedrockAgentCoreApp({
+  config: {
+    logging: {
+      options: buildLoggerOptions(),
+    },
+  },
   invocationHandler: {
     requestSchema: RequestSchema,
 

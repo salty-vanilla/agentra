@@ -14,6 +14,7 @@
     "@aws-sdk/client-bedrock-runtime": "^3.1032.0",
     "@aws-sdk/client-secrets-manager": "^3.1032.0",
     "@aws-sdk/client-ssm": "^3.1032.0",
+    "@serdnam/pino-cloudwatch-transport": "^1.0.4",
     "@strands-agents/sdk": "latest",
     "bedrock-agentcore": "latest",
     "uuidv7": "^1.2.1",
@@ -21,6 +22,7 @@
   },
   "devDependencies": {
     "@types/node": "latest",
+    "fastify": "^5.8.5",
     "tsx": "latest",
     "typescript": "latest"
   }

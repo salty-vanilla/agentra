@@ -78,6 +78,5 @@ export async function bootstrapDeckForgeRuntimeEnv(): Promise<void> {
   }
 
   process.env.AWS_REGION ??= process.env.BEDROCK_REGION ?? 'us-east-1';
-  process.env.DECK_FORGE_BEDROCK_TEXT_MODEL_ID ??=
-    'anthropic.claude-sonnet-4-20250514-v1:0';
+  process.env.DECK_FORGE_BEDROCK_TEXT_MODEL_ID ??= 'global.anthropic.claude-sonnet-4-6';
 }

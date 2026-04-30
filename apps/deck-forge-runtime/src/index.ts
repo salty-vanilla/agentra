@@ -6,6 +6,7 @@ import { uuidv7 } from 'uuidv7';
 import { publishArtifactIfNeeded } from './artifact.js';
 import { createDeckForgeRunner } from './create-runner.js';
 import { createBedrockIntentParser } from './intent-parser-bedrock.js';
+import { buildLoggerOptions } from './logging.js';
 import { createBedrockOperationPlanner } from './operation-planner-bedrock.js';
 import { createBedrockReviewer } from './reviewer-bedrock.js';
 import { bootstrapDeckForgeRuntimeEnv } from './runtime-env.js';
@@ -30,117 +31,144 @@ async function main() {
         const runId = request.traceId ?? uuidv7();
         const startedAt = Date.now();
 
-        if (request.mode === 'modify') {
-          logDeckForgeEvent('unsupported-mode', {
-            runId,
-            traceId: request.traceId,
-            mode: request.mode,
-          });
-          yield {
-            event: 'message',
-            data: {
-              type: 'deck_forge_error',
+        try {
+          if (request.mode === 'modify') {
+            logDeckForgeEvent('unsupported-mode', {
               runId,
-              error: 'Deck Forge modify mode is not supported by this runtime yet.',
-            },
+              traceId: request.traceId,
+              mode: request.mode,
+            });
+            yield {
+              event: 'message',
+              data: {
+                type: 'deck_forge_error',
+                runId,
+                error: 'Deck Forge modify mode is not supported by this runtime yet.',
+              },
+            };
+            return;
+          }
+
+          const outputPath =
+            request.exportFormat === 'pptx'
+              ? `/tmp/deck-forge/${runId}/deck.pptx`
+              : undefined;
+
+          if (outputPath) {
+            await mkdir(dirname(outputPath), { recursive: true });
+          }
+
+          const intentParser = createBedrockIntentParser();
+          const useAiReview = request.revisionPolicy === 'ai_review';
+
+          const runner = createDeckForgeRunner({
+            revisionPolicy: request.revisionPolicy,
+            reviewTrigger: request.reviewTrigger,
+            renderSlideImages: request.renderSlideImages,
+            intentParser,
+            ...(useAiReview
+              ? {
+                  reviewer: createBedrockReviewer(),
+                  operationPlanner: createBedrockOperationPlanner(),
+                }
+              : {}),
+          });
+
+          const runInput: DeckForgeRunInputWithImageProvider = {
+            goal: request.goal,
+            mode: request.mode,
+            exportFormat: request.exportFormat === 'pptx' ? 'json' : request.exportFormat,
+            validationLevel: request.validationLevel,
+            acquisitionMode: request.acquisitionMode,
+            imageProvider: request.imageProvider,
+            autoFix: request.autoFix,
+            includeTrace: request.includeTrace,
           };
-          return;
-        }
 
-        const outputPath =
-          request.exportFormat === 'pptx'
-            ? `/tmp/deck-forge/${runId}/deck.pptx`
-            : undefined;
+          if (request.presentation !== undefined) {
+            runInput.presentation = request.presentation;
+          }
+          if (request.operations !== undefined) {
+            runInput.operations = request.operations;
+          }
 
-        if (outputPath) {
-          await mkdir(dirname(outputPath), { recursive: true });
-        }
+          const result = await runner.run(runInput);
+          if (result.finalStatus !== 'success') {
+            logDeckForgeEvent('failed', {
+              runId,
+              traceId: request.traceId,
+              finalStatus: result.finalStatus,
+              errors: result.errors,
+              durationMs: Date.now() - startedAt,
+            });
 
-        const intentParser = createBedrockIntentParser();
-        const useAiReview = request.revisionPolicy === 'ai_review';
+            yield {
+              event: 'message',
+              data: {
+                type: 'deck_forge_error',
+                runId,
+                error:
+                  result.errors
+                    .map((error) => error.message)
+                    .filter(Boolean)
+                    .join('\n') || 'Deck Forge failed without a detailed error.',
+              },
+            };
+            return;
+          }
 
-        const runner = createDeckForgeRunner({
-          revisionPolicy: request.revisionPolicy,
-          reviewTrigger: request.reviewTrigger,
-          renderSlideImages: request.renderSlideImages,
-          intentParser,
-          ...(useAiReview
-            ? {
-                reviewer: createBedrockReviewer(),
-                operationPlanner: createBedrockOperationPlanner(),
-              }
-            : {}),
-        });
+          const artifact = await publishArtifactIfNeeded({
+            presentation:
+              result.finalStatus === 'success'
+                ? result.artifacts.presentation
+                : undefined,
+            outputPath,
+            runId,
+            format: request.exportFormat,
+          });
 
-        const runInput: DeckForgeRunInputWithImageProvider = {
-          goal: request.goal,
-          mode: request.mode,
-          exportFormat: request.exportFormat === 'pptx' ? 'json' : request.exportFormat,
-          validationLevel: request.validationLevel,
-          acquisitionMode: request.acquisitionMode,
-          imageProvider: request.imageProvider,
-          autoFix: request.autoFix,
-          includeTrace: request.includeTrace,
-        };
-
-        if (request.presentation !== undefined) {
-          runInput.presentation = request.presentation;
-        }
-        if (request.operations !== undefined) {
-          runInput.operations = request.operations;
-        }
-
-        const result = await runner.run(runInput);
-        if (result.finalStatus !== 'success') {
-          logDeckForgeEvent('failed', {
+          logDeckForgeEvent('success', {
             runId,
             traceId: request.traceId,
             finalStatus: result.finalStatus,
-            errors: result.errors,
+            artifactExists: artifact?.exists,
+            s3Uri: artifact?.s3Uri,
             durationMs: Date.now() - startedAt,
           });
 
           yield {
             event: 'message',
             data: {
-              type: 'deck_forge_error',
+              type: 'deck_forge_result',
               runId,
-              error:
-                result.errors
-                  .map((error) => error.message)
-                  .filter(Boolean)
-                  .join('\n') || 'Deck Forge failed without a detailed error.',
+              result,
+              artifact,
             },
           };
-          return;
-        }
-
-        const artifact = await publishArtifactIfNeeded({
-          presentation:
-            result.finalStatus === 'success' ? result.artifacts.presentation : undefined,
-          outputPath,
-          runId,
-          format: request.exportFormat,
-        });
-
-        logDeckForgeEvent('success', {
-          runId,
-          traceId: request.traceId,
-          finalStatus: result.finalStatus,
-          artifactExists: artifact?.exists,
-          s3Uri: artifact?.s3Uri,
-          durationMs: Date.now() - startedAt,
-        });
-
-        yield {
-          event: 'message',
-          data: {
-            type: 'deck_forge_result',
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          const errorStack = error instanceof Error ? error.stack : undefined;
+          logDeckForgeEvent('unhandled-error', {
             runId,
-            result,
-            artifact,
-          },
-        };
+            traceId: request.traceId,
+            error: errorMessage,
+            stack: errorStack,
+            durationMs: Date.now() - startedAt,
+          });
+          yield {
+            event: 'message',
+            data: {
+              type: 'deck_forge_error',
+              runId,
+              error: errorMessage,
+            },
+          };
+        }
+      },
+    },
+    config: {
+      logging: {
+        options: buildLoggerOptions(),
       },
     },
   });

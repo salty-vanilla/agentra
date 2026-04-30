@@ -18,7 +18,7 @@ function getClient(): BedrockRuntimeClient {
 function resolveTextModelId(): string {
   return (
     process.env.DECK_FORGE_BEDROCK_TEXT_MODEL_ID?.trim() ||
-    'anthropic.claude-sonnet-4-20250514-v1:0'
+    'global.anthropic.claude-sonnet-4-6'
   );
 }
 
@@ -52,6 +52,62 @@ export async function invokeBedrockText(input: {
     throw new Error('Bedrock response contained no text content.');
   }
   return textBlock.text;
+}
+
+type ToolDefinition = {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+};
+
+type ToolUseBlock = {
+  type: 'tool_use';
+  id: string;
+  name: string;
+  input: unknown;
+};
+
+export async function invokeBedrockToolUse<T>(input: {
+  system: string;
+  userMessage: string;
+  tool: ToolDefinition;
+  maxTokens?: number;
+}): Promise<T> {
+  const modelId = resolveTextModelId();
+  const body = JSON.stringify({
+    anthropic_version: 'bedrock-2023-05-31',
+    max_tokens: input.maxTokens ?? 16384,
+    system: input.system,
+    messages: [{ role: 'user', content: input.userMessage }],
+    tools: [input.tool],
+    tool_choice: { type: 'tool', name: input.tool.name },
+  });
+
+  const command = new InvokeModelCommand({
+    modelId,
+    contentType: 'application/json',
+    accept: 'application/json',
+    body: new TextEncoder().encode(body),
+  });
+
+  const response = await getClient().send(command);
+  const decoded = new TextDecoder().decode(response.body);
+  const parsed: {
+    content?: Array<{ type: string; text?: string; id?: string; name?: string; input?: unknown }>;
+    stop_reason?: string;
+  } = JSON.parse(decoded);
+
+  const toolBlock = parsed.content?.find(
+    (block): block is ToolUseBlock => block.type === 'tool_use' && block.name === input.tool.name,
+  );
+
+  if (!toolBlock) {
+    throw new Error(
+      `Bedrock tool_use response did not contain a ${input.tool.name} call. stop_reason=${parsed.stop_reason}`,
+    );
+  }
+
+  return toolBlock.input as T;
 }
 
 export function extractJson<T>(raw: string): T {

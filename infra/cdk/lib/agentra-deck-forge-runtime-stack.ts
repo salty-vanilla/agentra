@@ -89,6 +89,29 @@ export class AgentraDeckForgeRuntimeStack extends Stack {
 
     runtimeRole.addToPolicy(
       new PolicyStatement({
+        actions: ['logs:CreateLogGroup', 'logs:DescribeLogStreams'],
+        resources: [
+          `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/bedrock-agentcore/runtimes/*`,
+        ],
+      }),
+    );
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['logs:DescribeLogGroups'],
+        resources: [`arn:aws:logs:${this.region}:${this.account}:log-group:*`],
+      }),
+    );
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+        resources: [
+          `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*`,
+        ],
+      }),
+    );
+
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['ecr:GetAuthorizationToken'],
         resources: ['*'],
@@ -127,10 +150,11 @@ export class AgentraDeckForgeRuntimeStack extends Stack {
       environmentVariables: {
         AWS_REGION: Stack.of(this).region,
         BEDROCK_REGION: Stack.of(this).region,
+        CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/deck-forge-${props.stage}`,
         DECK_FORGE_BEDROCK_IMAGE_MODEL_ID:
           props.bedrockImageModelId ?? 'amazon.nova-canvas-v1:0',
         DECK_FORGE_BEDROCK_TEXT_MODEL_ID:
-          props.bedrockTextModelId ?? 'anthropic.claude-sonnet-4-20250514-v1:0',
+          props.bedrockTextModelId ?? 'global.anthropic.claude-sonnet-4-6',
         DECK_FORGE_ARTIFACT_BUCKET: artifactBucket.bucketName,
         DECK_FORGE_ARTIFACT_PREFIX: props.artifactPrefix ?? 'deck-forge/',
         PEXELS_API_KEY_SECRET_ID: pexelsApiKeySecret.secretArn,

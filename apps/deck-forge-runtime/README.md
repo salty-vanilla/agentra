@@ -18,7 +18,7 @@ slideSpecs, assetPlan) directly from the user request.
 
 - `DECK_FORGE_BEDROCK_TEXT_MODEL_ID` selects the Bedrock text model for intent
   parsing, review, and operation planning. Defaults to
-  `anthropic.claude-sonnet-4-20250514-v1:0`.
+  `global.anthropic.claude-sonnet-4-6`.
 
 ## AI review
 

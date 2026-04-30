@@ -77,7 +77,7 @@ const deckForgeRuntimeStack = new AgentraDeckForgeRuntimeStack(
     bedrockTextModelId:
       (
         app.node.tryGetContext('deckForgeBedrockTextModelId') as string | undefined
-      )?.trim() || 'anthropic.claude-sonnet-4-20250514-v1:0',
+      )?.trim() || 'global.anthropic.claude-sonnet-4-6',
     artifactPrefix:
       (app.node.tryGetContext('deckForgeArtifactPrefix') as string | undefined)?.trim() ||
       'deck-forge/',

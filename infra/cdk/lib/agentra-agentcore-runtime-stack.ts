@@ -75,6 +75,29 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       }),
     );
 
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['logs:CreateLogGroup', 'logs:DescribeLogStreams'],
+        resources: [
+          `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/bedrock-agentcore/runtimes/*`,
+        ],
+      }),
+    );
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['logs:DescribeLogGroups'],
+        resources: [`arn:aws:logs:${this.region}:${this.account}:log-group:*`],
+      }),
+    );
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
+        actions: ['logs:CreateLogStream', 'logs:PutLogEvents'],
+        resources: [
+          `arn:aws:logs:${this.region}:${this.account}:log-group:/aws/bedrock-agentcore/runtimes/*:log-stream:*`,
+        ],
+      }),
+    );
+
     if (props.deckForgeRuntimeArn) {
       runtimeRole.addToPolicy(
         new PolicyStatement({
@@ -122,6 +145,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       },
       environmentVariables: {
         BEDROCK_REGION: Stack.of(this).region,
+        CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentcore-${props.stage}`,
         TAVILY_API_KEY_SECRET_ID: tavilyApiKeySecret.secretArn,
         DECK_FORGE_RUNTIME_ARN: props.deckForgeRuntimeArn ?? '',
         DECK_FORGE_RUNTIME_QUALIFIER: props.deckForgeRuntimeQualifier ?? '',
