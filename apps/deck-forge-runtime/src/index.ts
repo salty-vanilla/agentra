@@ -6,7 +6,7 @@ import { uuidv7 } from 'uuidv7';
 import { publishArtifactIfNeeded } from './artifact.js';
 import { createDeckForgeRunner } from './create-runner.js';
 import { createBedrockIntentParser } from './intent-parser-bedrock.js';
-import { buildLoggerOptions } from './logging.js';
+import { buildLoggerOptions, getLogger } from './logging.js';
 import { createBedrockOperationPlanner } from './operation-planner-bedrock.js';
 import { createBedrockReviewer } from './reviewer-bedrock.js';
 import { bootstrapDeckForgeRuntimeEnv } from './runtime-env.js';
@@ -17,7 +17,7 @@ type DeckForgeRunInputWithImageProvider = DeckForgeRunInput & {
 };
 
 function logDeckForgeEvent(message: string, data: Record<string, unknown>) {
-  console.info('[deck-forge-runtime]', message, JSON.stringify(data));
+  getLogger().info(data, `[deck-forge-runtime] ${message}`);
 }
 
 async function main() {

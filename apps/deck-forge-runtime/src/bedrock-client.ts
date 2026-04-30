@@ -93,12 +93,19 @@ export async function invokeBedrockToolUse<T>(input: {
   const response = await getClient().send(command);
   const decoded = new TextDecoder().decode(response.body);
   const parsed: {
-    content?: Array<{ type: string; text?: string; id?: string; name?: string; input?: unknown }>;
+    content?: Array<{
+      type: string;
+      text?: string;
+      id?: string;
+      name?: string;
+      input?: unknown;
+    }>;
     stop_reason?: string;
   } = JSON.parse(decoded);
 
   const toolBlock = parsed.content?.find(
-    (block): block is ToolUseBlock => block.type === 'tool_use' && block.name === input.tool.name,
+    (block): block is ToolUseBlock =>
+      block.type === 'tool_use' && block.name === input.tool.name,
   );
 
   if (!toolBlock) {

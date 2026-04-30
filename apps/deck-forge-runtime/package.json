@@ -19,6 +19,7 @@
     "@deck-forge/tools": "^0.2.1",
     "@serdnam/pino-cloudwatch-transport": "^1.0.4",
     "bedrock-agentcore": "latest",
+    "pino": "^10.3.1",
     "playwright": "^1.40.0",
     "uuidv7": "^1.2.1",
     "zod": "latest"

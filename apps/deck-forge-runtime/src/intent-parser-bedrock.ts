@@ -17,6 +17,7 @@ import {
   invokeBedrockText,
   invokeBedrockToolUse,
 } from './bedrock-client.js';
+import { getLogger } from './logging.js';
 
 /* ------------------------------------------------------------------ */
 /*  Tool definitions wrapping v0.2.1 JSON Schemas                      */
@@ -88,11 +89,11 @@ Return ONLY the JSON, wrapped in a code fence.`;
 /* ------------------------------------------------------------------ */
 
 function log(step: string, msg: string, data?: unknown) {
-  console.info(
-    `[deck-forge-runtime] [${step}]`,
-    msg,
-    data !== undefined ? JSON.stringify(data) : '',
-  );
+  if (data !== undefined) {
+    getLogger().info({ step, data }, `[deck-forge-runtime] [${step}] ${msg}`);
+  } else {
+    getLogger().info({ step }, `[deck-forge-runtime] [${step}] ${msg}`);
+  }
 }
 
 function detectLanguage(text: string): 'ja' | 'en' {
