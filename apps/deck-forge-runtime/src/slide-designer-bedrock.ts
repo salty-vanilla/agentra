@@ -88,7 +88,7 @@ const PROPOSE_OPS_TOOL = {
                 layout: {
                   type: 'object',
                   description:
-                    'Replacement LayoutSpec (`type` + `regions[]`). Use one of the catalog layouts: title, two-column, single-stack, hero, kpi-grid.',
+                    'Replacement LayoutSpec (`type` + `regions[]`). `type` MUST be one of the deck-forge 0.3.1 LayoutType values: title, section, single_column, two_column, three_column, hero, image_left_text_right, text_left_image_right, comparison, dashboard, timeline, matrix, diagram_focus, custom.',
                 },
               },
             },

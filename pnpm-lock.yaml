@@ -128,14 +128,14 @@ importers:
         specifier: 3.1037.0
         version: 3.1037.0
       '@deck-forge/core':
-        specifier: ^0.3.0
-        version: 0.3.0(playwright@1.59.1)
+        specifier: ^0.3.1
+        version: 0.3.1(playwright@1.59.1)
       '@deck-forge/runner':
-        specifier: ^0.3.0
-        version: 0.3.0(playwright@1.59.1)
+        specifier: ^0.3.1
+        version: 0.3.1(playwright@1.59.1)
       '@deck-forge/tools':
-        specifier: ^0.3.0
-        version: 0.3.0(playwright@1.59.1)
+        specifier: ^0.3.1
+        version: 0.3.1(playwright@1.59.1)
       '@serdnam/pino-cloudwatch-transport':
         specifier: ^1.0.4
         version: 1.0.4
@@ -1064,19 +1064,19 @@ packages:
     peerDependencies:
       commander: ~14.0.0
 
-  '@deck-forge/core@0.3.0':
-    resolution: {integrity: sha512-GNpmeppZZNG2bNyGVsRZUyX0boPZa2GhCTujJDsufjEKbsvPLyzu+OfEPE0xO0r+uxbwsgJmJETnTWTE9MFm5w==}
+  '@deck-forge/core@0.3.1':
+    resolution: {integrity: sha512-WwWMcpQ1NiTfik02p+H3XD/OUhMHHHgSDOGbVjmJskd3Qmt4sdt1adPKu2dG5KsHS7Dx7h8CnIvrvZd3cGISrw==}
     peerDependencies:
       playwright: '>=1.40.0'
     peerDependenciesMeta:
       playwright:
         optional: true
 
-  '@deck-forge/runner@0.3.0':
-    resolution: {integrity: sha512-10HSnPBFQKYxYK2jzXKbKEjFmxdEGoXseQPOqkifotWEB0B5kBH6dGzftPWG9J7j4UJyjDOHFkrOleo+J+dpwQ==}
+  '@deck-forge/runner@0.3.1':
+    resolution: {integrity: sha512-4fNu6I9h+M+9GJvKXM0aLCl++PYkEcerMkytIqbwG7Xec5gj/Au9KMgJ/hq4Iv4Gfr9WP2PcvTkIZAcKF0J7Nw==}
 
-  '@deck-forge/tools@0.3.0':
-    resolution: {integrity: sha512-XF2Uw5IoYddBtRpKoDLFo4Gj/p+Snsrgdr9PwDXFHIbCm+zpjajsGwG76p7lnQlapm7qlwgOLpZw50gdlxaOUQ==}
+  '@deck-forge/tools@0.3.1':
+    resolution: {integrity: sha512-JBsncR/vsQcO27LpU3t9V9ceTs8S+H5y2TeF1eVA7UI47PGDqz5tEUmURca/Uq4NTdbvCCanW7AP1lnVBMCcAw==}
 
   '@dotenvx/dotenvx@1.61.1':
     resolution: {integrity: sha512-2OUX4KDKvQA6oa7oESG8eNcV4K/2C5jgrbxUcT0VoH9Zelg6dT+rDYew4w2GmXRV3db0tUaM4QZG3MyJL3fU5Q==}
@@ -7213,7 +7213,7 @@ snapshots:
     dependencies:
       commander: 14.0.3
 
-  '@deck-forge/core@0.3.0(playwright@1.59.1)':
+  '@deck-forge/core@0.3.1(playwright@1.59.1)':
     dependencies:
       '@aws-sdk/client-bedrock-runtime': 3.1038.0
       pdf-lib: 1.17.1
@@ -7224,17 +7224,17 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@deck-forge/runner@0.3.0(playwright@1.59.1)':
+  '@deck-forge/runner@0.3.1(playwright@1.59.1)':
     dependencies:
-      '@deck-forge/core': 0.3.0(playwright@1.59.1)
-      '@deck-forge/tools': 0.3.0(playwright@1.59.1)
+      '@deck-forge/core': 0.3.1(playwright@1.59.1)
+      '@deck-forge/tools': 0.3.1(playwright@1.59.1)
     transitivePeerDependencies:
       - aws-crt
       - playwright
 
-  '@deck-forge/tools@0.3.0(playwright@1.59.1)':
+  '@deck-forge/tools@0.3.1(playwright@1.59.1)':
     dependencies:
-      '@deck-forge/core': 0.3.0(playwright@1.59.1)
+      '@deck-forge/core': 0.3.1(playwright@1.59.1)
       zod: 4.4.1
     transitivePeerDependencies:
       - aws-crt

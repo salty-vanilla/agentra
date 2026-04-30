@@ -1,4 +1,4 @@
-FROM mcr.microsoft.com/playwright:v1.52.0-noble AS build
+FROM mcr.microsoft.com/playwright:v1.59.1-noble AS build
 
 WORKDIR /app
 COPY package.json tsconfig.json ./
@@ -6,7 +6,7 @@ COPY src ./src
 RUN npm install
 RUN npm run build
 
-FROM mcr.microsoft.com/playwright:v1.52.0-noble
+FROM mcr.microsoft.com/playwright:v1.59.1-noble
 
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
