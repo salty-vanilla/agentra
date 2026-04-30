@@ -94,11 +94,22 @@ async function main() {
 
           const result = await runner.run(runInput);
           if (result.finalStatus !== 'success') {
+            // Persist a failure bundle so we can debug after the fact.
+            const failureArtifact = await publishArtifactIfNeeded({
+              presentation: undefined,
+              outputPath: undefined,
+              runId,
+              format: request.exportFormat,
+              request,
+              result,
+            });
+
             logDeckForgeEvent('failed', {
               runId,
               traceId: request.traceId,
               finalStatus: result.finalStatus,
               errors: result.errors,
+              bundleS3Uri: failureArtifact?.bundleS3Uri,
               durationMs: Date.now() - startedAt,
             });
 
@@ -112,6 +123,7 @@ async function main() {
                     .map((error) => error.message)
                     .filter(Boolean)
                     .join('\n') || 'Deck Forge failed without a detailed error.',
+                artifact: failureArtifact,
               },
             };
             return;
@@ -125,6 +137,8 @@ async function main() {
             outputPath,
             runId,
             format: request.exportFormat,
+            request,
+            result,
           });
 
           logDeckForgeEvent('success', {
@@ -133,6 +147,9 @@ async function main() {
             finalStatus: result.finalStatus,
             artifactExists: artifact?.exists,
             s3Uri: artifact?.s3Uri,
+            bundleS3Uri: artifact?.bundleS3Uri,
+            irS3Uri: artifact?.irS3Uri,
+            assetCount: artifact?.assetCount,
             durationMs: Date.now() - startedAt,
           });
 
