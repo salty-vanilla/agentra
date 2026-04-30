@@ -1,0 +1,31 @@
+{
+  "name": "@agentra/deck-forge-runtime",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "check:deck-forge-import": "node --input-type=module --eval \"import('@deck-forge/runner').then((m) => console.log(typeof m.DeckForgeRunner)).catch((error) => { console.error(error); process.exit(1); })\"",
+    "patch:deck-forge-imports": "node scripts/patch-deck-forge-imports.mjs",
+    "postinstall": "node scripts/patch-deck-forge-imports.mjs",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aws-sdk/client-secrets-manager": "3.1037.0",
+    "@aws-sdk/client-s3": "3.1037.0",
+    "@aws-sdk/s3-request-presigner": "3.1037.0",
+    "@deck-forge/core": "0.1.0",
+    "@deck-forge/tools": "0.1.0",
+    "@deck-forge/runner": "0.1.0",
+    "bedrock-agentcore": "latest",
+    "uuidv7": "^1.2.1",
+    "zod": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "tsx": "latest",
+    "typescript": "latest"
+  }
+}

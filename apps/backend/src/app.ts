@@ -13,6 +13,7 @@ import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
+import { uuidv7 } from 'uuidv7';
 import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -138,7 +139,7 @@ app.post('/chat', async (context) => {
   const { message, threadId } = parsed;
   const modelKey: ModelKey = parsed.model ?? 'sonnet';
   const userId = context.get('userId');
-  const traceId = crypto.randomUUID();
+  const traceId = uuidv7();
   let thread: ThreadSummary;
 
   if (threadId) {
@@ -220,7 +221,7 @@ app.post('/chat', async (context) => {
       await stream.writeSSE({
         data: JSON.stringify({
           type: 'error',
-          error: 'Agent invocation failed.',
+          error: `Agent invocation failed. traceId=${traceId}`,
           observabilitySummary: fallbackSummary,
         }),
       });

@@ -11,48 +11,60 @@ import {
 import { CfnRuntime, CfnRuntimeEndpoint } from 'aws-cdk-lib/aws-bedrockagentcore';
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
-export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
+export interface AgentraDeckForgeRuntimeStackProps extends StackProps {
   stage: string;
-  deckForgeRuntimeArn?: string;
-  deckForgeRuntimeQualifier?: string;
+  bedrockImageModelId?: string;
+  artifactPrefix?: string;
 }
 
-export class AgentraAgentCoreRuntimeStack extends Stack {
+export class AgentraDeckForgeRuntimeStack extends Stack {
   readonly runtimeArn: string;
   readonly runtimeId: string;
   readonly runtimeVersion: string;
   readonly endpointArn: string;
 
-  constructor(scope: Construct, id: string, props: AgentraAgentCoreRuntimeStackProps) {
+  constructor(scope: Construct, id: string, props: AgentraDeckForgeRuntimeStackProps) {
     super(scope, id, props);
+
     const normalizedStage = props.stage.replace(/[^a-zA-Z0-9_]/g, '_');
     const runtimeNameSuffix =
       normalizedStage.length > 0
         ? normalizedStage.charAt(0).toUpperCase() + normalizedStage.slice(1)
         : 'Default';
-    const tavilyApiKeyParam = new CfnParameter(this, 'TavilyApiKey', {
-      type: 'String',
-      noEcho: true,
-      description: 'Tavily API key for runtime web search tools.',
+
+    const runtimeRole = new Role(this, 'DeckForgeRuntimeExecutionRole', {
+      assumedBy: new ServicePrincipal('bedrock-agentcore.amazonaws.com'),
+      description: 'Execution role for Deck Forge AgentCore Runtime.',
     });
 
-    const tavilyApiKeySecret = new Secret(this, 'TavilyApiKeySecret', {
-      secretName: `agentra/${props.stage}/tavily-api-key`,
-      description: `Tavily API key for Agentra ${props.stage} runtime.`,
+    const pexelsApiKeyParam = new CfnParameter(this, 'PexelsApiKey', {
+      type: 'String',
+      noEcho: true,
+      description: 'Pexels API key for Deck Forge image retrieval.',
+    });
+
+    const pexelsApiKeySecret = new Secret(this, 'PexelsApiKeySecret', {
+      secretName: `agentra/${props.stage}/pexels-api-key`,
+      description: `Pexels API key for Agentra ${props.stage} Deck Forge runtime.`,
       secretObjectValue: {
-        TAVILY_API_KEY: SecretValue.cfnParameter(tavilyApiKeyParam),
+        PEXELS_API_KEY: SecretValue.cfnParameter(pexelsApiKeyParam),
       },
     });
 
-    const runtimeRole = new Role(this, 'AgentCoreRuntimeExecutionRole', {
-      assumedBy: new ServicePrincipal('bedrock-agentcore.amazonaws.com'),
-      description: 'Execution role for Agentra AgentCore Runtime.',
+    pexelsApiKeySecret.grantRead(runtimeRole);
+
+    const artifactBucket = new Bucket(this, 'DeckForgeArtifactBucket', {
+      blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+      encryption: BucketEncryption.S3_MANAGED,
+      enforceSSL: true,
     });
+    artifactBucket.grantReadWrite(runtimeRole);
 
     runtimeRole.addToPolicy(
       new PolicyStatement({
@@ -61,7 +73,6 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         resources: ['*'],
       }),
     );
-    tavilyApiKeySecret.grantRead(runtimeRole);
 
     runtimeRole.addToPolicy(
       new PolicyStatement({
@@ -75,19 +86,6 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       }),
     );
 
-    if (props.deckForgeRuntimeArn) {
-      runtimeRole.addToPolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-          resources: [
-            props.deckForgeRuntimeArn,
-            `${props.deckForgeRuntimeArn}/runtime-endpoint/*`,
-          ],
-        }),
-      );
-    }
-
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -96,8 +94,8 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       }),
     );
 
-    const runtimeImageAsset = new DockerImageAsset(this, 'AgentCoreRuntimeImageAsset', {
-      directory: join(__dirname, '../../../apps/agentcore-runtime-ts'),
+    const runtimeImageAsset = new DockerImageAsset(this, 'DeckForgeRuntimeImageAsset', {
+      directory: join(__dirname, '../../../apps/deck-forge-runtime'),
     });
     runtimeImageAsset.repository.grantPull(runtimeRole);
     runtimeRole.addToPolicy(
@@ -112,30 +110,34 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       }),
     );
 
-    const runtime = new CfnRuntime(this, 'AgentCoreRuntime', {
-      agentRuntimeName: `agentraRuntime${runtimeNameSuffix}`,
-      description: 'Agentra TypeScript AgentCore Runtime (Strands).',
+    const runtime = new CfnRuntime(this, 'DeckForgeRuntime', {
+      agentRuntimeName: `deckForgeRuntime${runtimeNameSuffix}`,
+      description: 'Agentra Deck Forge TypeScript AgentCore Runtime.',
       roleArn: runtimeRole.roleArn,
       protocolConfiguration: 'HTTP',
       networkConfiguration: {
         networkMode: 'PUBLIC',
-      },
-      environmentVariables: {
-        BEDROCK_REGION: Stack.of(this).region,
-        TAVILY_API_KEY_SECRET_ID: tavilyApiKeySecret.secretArn,
-        DECK_FORGE_RUNTIME_ARN: props.deckForgeRuntimeArn ?? '',
-        DECK_FORGE_RUNTIME_QUALIFIER: props.deckForgeRuntimeQualifier ?? '',
       },
       agentRuntimeArtifact: {
         containerConfiguration: {
           containerUri: runtimeImageAsset.imageUri,
         },
       },
+      environmentVariables: {
+        AWS_REGION: Stack.of(this).region,
+        BEDROCK_REGION: Stack.of(this).region,
+        DECK_FORGE_BEDROCK_IMAGE_MODEL_ID:
+          props.bedrockImageModelId ?? 'amazon.nova-canvas-v1:0',
+        DECK_FORGE_ARTIFACT_BUCKET: artifactBucket.bucketName,
+        DECK_FORGE_ARTIFACT_PREFIX: props.artifactPrefix ?? 'deck-forge/',
+        PEXELS_API_KEY_SECRET_ID: pexelsApiKeySecret.secretArn,
+      },
       tags: {
         Project: 'agentra',
         ManagedBy: 'cdk',
       },
     });
+
     const rolePolicyResource = runtimeRole.node
       .findAll()
       .find(
@@ -146,11 +148,11 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       runtime.node.addDependency(rolePolicyResource);
     }
 
-    const endpoint = new CfnRuntimeEndpoint(this, 'AgentCoreRuntimeEndpoint', {
+    const endpoint = new CfnRuntimeEndpoint(this, 'DeckForgeRuntimeEndpoint', {
       agentRuntimeId: runtime.attrAgentRuntimeId,
       agentRuntimeVersion: runtime.attrAgentRuntimeVersion,
       name: 'prod',
-      description: 'Production endpoint for Agentra AgentCore Runtime.',
+      description: 'Production endpoint for Agentra Deck Forge Runtime.',
     });
     endpoint.node.addDependency(runtime);
 
@@ -159,12 +161,15 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     this.runtimeVersion = runtime.attrAgentRuntimeVersion;
     this.endpointArn = endpoint.attrAgentRuntimeEndpointArn;
 
-    new CfnOutput(this, 'AgentCoreRuntimeArn', { value: this.runtimeArn });
-    new CfnOutput(this, 'AgentCoreRuntimeId', { value: this.runtimeId });
-    new CfnOutput(this, 'AgentCoreRuntimeVersion', { value: this.runtimeVersion });
-    new CfnOutput(this, 'AgentCoreRuntimeEndpointArn', { value: this.endpointArn });
-    new CfnOutput(this, 'TavilyApiKeySecretArn', {
-      value: tavilyApiKeySecret.secretArn,
+    new CfnOutput(this, 'DeckForgeRuntimeArn', { value: this.runtimeArn });
+    new CfnOutput(this, 'DeckForgeRuntimeId', { value: this.runtimeId });
+    new CfnOutput(this, 'DeckForgeRuntimeVersion', { value: this.runtimeVersion });
+    new CfnOutput(this, 'DeckForgeRuntimeEndpointArn', { value: this.endpointArn });
+    new CfnOutput(this, 'DeckForgeArtifactBucketName', {
+      value: artifactBucket.bucketName,
+    });
+    new CfnOutput(this, 'PexelsApiKeySecretArn', {
+      value: pexelsApiKeySecret.secretArn,
     });
   }
 }

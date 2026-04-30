@@ -1,7 +1,9 @@
 import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
+import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import { ObservationCollector } from './observability.js';
+import { deckForgeTool } from './tools/deck-forge.js';
 import { dateResolverTool } from './tools/date-resolver.js';
 import {
   tavilyCrawlTool,
@@ -78,6 +80,15 @@ const DATE_TOOL_INSTRUCTIONS = [
   '回答時は、可能な限り YYYY-MM-DD などの具体的な絶対日付を明示してください。',
 ].join('\n');
 
+const DECK_FORGE_TOOL_INSTRUCTIONS = [
+  'プレゼン資料の作成、修正、書き出し、確認に関する依頼は deck_forge_runtime ツールを優先してください。',
+  'ユーザーが資料化したい事実・箇条書き・イベント情報・分析材料を本文中に提供している場合は、Web検索ツールを使わず、その提供内容をそのまま deck_forge_runtime の goal に含めてください。',
+  'deck_forge_runtime を呼ぶ前に追加調査が明示的に依頼されていない限り、tavily_search / tavily_extract / tavily_crawl / tavily_map は使わないでください。',
+  'Deck Forge に渡す goal は、ユーザーの要求を簡潔に要約したものにしてください。',
+  'ただし、ユーザーが具体的な資料内容を提供している場合は、要約しすぎず、主要な項目名・場所・日時・概要を保持してください。',
+  'modify が必要な場合は、必要な presentation / operations をツール入力に含めてください。',
+].join('\n');
+
 const RequestSchema = z.object({
   prompt: z.string().trim().min(1).default('Hello! How can I help you today?'),
   preset: z.enum(['fast', 'balanced', 'deep']).default(DEFAULT_PRESET),
@@ -91,7 +102,7 @@ function nowIso(): string {
 }
 
 function createTraceId(): string {
-  return crypto.randomUUID();
+  return uuidv7();
 }
 
 function resolveConfig(
@@ -116,12 +127,14 @@ function resolveConfig(
 
 function buildPrompt(userPrompt: string, tone: ToneKey): string {
   return [
-    TONE_INSTRUCTIONS[tone],
-    '',
-    DATE_TOOL_INSTRUCTIONS,
-    '',
-    '以下がユーザーの依頼です。',
-    userPrompt,
+  TONE_INSTRUCTIONS[tone],
+  '',
+  DATE_TOOL_INSTRUCTIONS,
+  '',
+  DECK_FORGE_TOOL_INSTRUCTIONS,
+  '',
+  '以下がユーザーの依頼です。',
+  userPrompt,
   ].join('\n');
 }
 
@@ -147,34 +160,17 @@ function createAgent(config: {
       tavilyExtractTool,
       tavilyCrawlTool,
       tavilyMapTool,
+      deckForgeTool,
     ],
   });
 }
-
-const AGENTS: Record<ResponsePreset, Record<LengthKey, Agent>> = {
-  fast: {
-    short: createAgent(resolveConfig('fast', 'short')),
-    normal: createAgent(resolveConfig('fast', 'normal')),
-    detailed: createAgent(resolveConfig('fast', 'detailed')),
-  },
-  balanced: {
-    short: createAgent(resolveConfig('balanced', 'short')),
-    normal: createAgent(resolveConfig('balanced', 'normal')),
-    detailed: createAgent(resolveConfig('balanced', 'detailed')),
-  },
-  deep: {
-    short: createAgent(resolveConfig('deep', 'short')),
-    normal: createAgent(resolveConfig('deep', 'normal')),
-    detailed: createAgent(resolveConfig('deep', 'detailed')),
-  },
-};
 
 const app = new BedrockAgentCoreApp({
   invocationHandler: {
     requestSchema: RequestSchema,
 
     process: async function* (request) {
-      const agent = AGENTS[request.preset][request.length];
+      const agent = createAgent(resolveConfig(request.preset, request.length));
       const finalPrompt = buildPrompt(request.prompt, request.tone);
       const traceId = request.traceId ?? createTraceId();
       const startedAt = nowIso();

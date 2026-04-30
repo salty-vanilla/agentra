@@ -204,6 +204,12 @@ export function AgentraWorkspace() {
             }
           }
         } catch (error: unknown) {
+          if (selectedThreadId) {
+            await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
+            await queryClient.invalidateQueries({
+              queryKey: agentraQueryKeys.threadMessages(selectedThreadId),
+            });
+          }
           toast.error('メッセージ送信に失敗しました', {
             description: getErrorMessage(
               error,
