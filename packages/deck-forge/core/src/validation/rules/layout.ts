@@ -34,28 +34,28 @@ export function validateLayout(
     );
 
     if (!hasTitle) {
-      issues.push(
-        factory.issue(
-          "warning",
-          "layout",
-          `Title text element is missing on slide: ${slide.id}`,
-          `slide/${slide.id}`,
-        ),
+      const issue = factory.issue(
+        "warning",
+        "layout",
+        `Title text element is missing on slide: ${slide.id}`,
+        `slide/${slide.id}`,
       );
+      issue.id = `layout/missing-title/${slide.id}`;
+      issues.push(issue);
     }
 
     for (const element of slide.elements) {
       const frame = element.frame;
 
       if (frame.width <= 0 || frame.height <= 0) {
-        issues.push(
-          factory.issue(
-            "error",
-            "layout",
-            `Element frame has non-positive size: ${element.id}`,
-            `element/${element.id}`,
-          ),
+        const issue = factory.issue(
+          "error",
+          "layout",
+          `Element frame has non-positive size: ${element.id}`,
+          `element/${element.id}`,
         );
+        issue.id = `layout/non-positive-size/${slide.id}/${element.id}`;
+        issues.push(issue);
       }
 
       if (
@@ -72,31 +72,32 @@ export function validateLayout(
           `Element frame is out of slide bounds: ${element.id}`,
           `element/${element.id}`,
         );
+        issue.id = `layout/out-of-bounds/${slide.id}/${element.id}`;
         issue.autoFixable = true;
         issue.suggestedFix = suggestMoveInBounds(element.id, clampedX, clampedY);
         issues.push(issue);
       }
 
       if (frame.x < 12 || frame.y < 12) {
-        issues.push(
-          factory.issue(
-            "warning",
-            "layout",
-            `Element margin is very tight: ${element.id}`,
-            `element/${element.id}`,
-          ),
+        const issue = factory.issue(
+          "warning",
+          "layout",
+          `Element margin is very tight: ${element.id}`,
+          `element/${element.id}`,
         );
+        issue.id = `layout/tight-margin/${slide.id}/${element.id}`;
+        issues.push(issue);
       }
 
       if (frame.height > 0 && frame.height < 60) {
-        issues.push(
-          factory.issue(
-            "warning",
-            "layout",
-            `Element ${element.id} frame height ${frame.height} is below the minimum readable height of 60`,
-            `element/${element.id}`,
-          ),
+        const issue = factory.issue(
+          "warning",
+          "layout",
+          `Element ${element.id} frame height ${frame.height} is below the minimum readable height of 60`,
+          `element/${element.id}`,
         );
+        issue.id = `layout/min-height/${slide.id}/${element.id}`;
+        issues.push(issue);
       }
     }
 
@@ -121,14 +122,15 @@ export function validateLayout(
           ) {
             severity = "error";
           }
-          issues.push(
-            factory.issue(
-              severity,
-              "layout",
-              `Elements overlap on slide ${slide.id}: ${left.id} and ${right.id}`,
-              `slide/${slide.id}`,
-            ),
+          const sortedIds = [left.id, right.id].sort();
+          const issue = factory.issue(
+            severity,
+            "layout",
+            `Elements overlap on slide ${slide.id}: ${left.id} and ${right.id}`,
+            `slide/${slide.id}`,
           );
+          issue.id = `layout/overlap/${slide.id}/${sortedIds.join("+")}`;
+          issues.push(issue);
         }
       }
     }
@@ -145,14 +147,15 @@ export function validateLayout(
         .map((index) => contentElements[index]?.id)
         .filter((id): id is string => Boolean(id));
       if (ids.length < 2) continue;
-      issues.push(
-        factory.issue(
-          "error",
-          "layout",
-          `Duplicate element frames on slide ${slide.id}: ${ids.join(", ")}`,
-          `slide/${slide.id}`,
-        ),
+      const sortedIds = [...ids].sort();
+      const issue = factory.issue(
+        "error",
+        "layout",
+        `Duplicate element frames on slide ${slide.id}: ${ids.join(", ")}`,
+        `slide/${slide.id}`,
       );
+      issue.id = `layout/duplicate-frame/${slide.id}/${sortedIds.join("+")}`;
+      issues.push(issue);
     }
 
     // unhonored-region-ref: a region's contentRefs names an element whose frame
@@ -165,14 +168,14 @@ export function validateLayout(
         if (!element) continue;
         const overlap = frameOverlapRatio(element.frame, region.frame);
         if (overlap < REGION_REF_HONORED_OVERLAP) {
-          issues.push(
-            factory.issue(
-              "warning",
-              "layout",
-              `Region '${region.id}' on slide ${slide.id} declares contentRef '${ref}' but the element frame does not occupy the region`,
-              `slide/${slide.id}`,
-            ),
+          const issue = factory.issue(
+            "warning",
+            "layout",
+            `Region '${region.id}' on slide ${slide.id} declares contentRef '${ref}' but the element frame does not occupy the region`,
+            `slide/${slide.id}`,
           );
+          issue.id = `layout/unhonored-region-ref/${slide.id}/${region.id}/${ref}`;
+          issues.push(issue);
         }
       }
     }

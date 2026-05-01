@@ -67,6 +67,15 @@ export {
 } from "#src/json.js";
 export { validatePresentation } from "#src/validation/validate-presentation.js";
 export { autoFixPresentation } from "#src/validation/autofix/auto-fix-presentation.js";
+export { repairPresentationLayout } from "#src/repair/index.js";
+export type {
+  RepairOperationRecord,
+  RepairOptions,
+  RepairResult,
+  RepairRuleName,
+  RepairRuleResult,
+  RepairSummary,
+} from "#src/repair/index.js";
 export { NoopImageGenerator } from "#src/assets/generators/noop-image-generator.js";
 export {
   BedrockImageGenerator,
