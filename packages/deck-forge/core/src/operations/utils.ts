@@ -235,7 +235,7 @@ export function reindexSlides(presentation: PresentationIR): void {
 export function appendOperationRecord(
   presentation: PresentationIR,
   operation: PresentationOperation,
-  result: "success" | "failed",
+  result: "success" | "failed" | "skipped",
   error?: string,
 ): void {
   const recordId = `op-${presentation.operationLog.length + 1}`;

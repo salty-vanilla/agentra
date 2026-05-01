@@ -156,7 +156,21 @@ const PROPOSE_OPS_TOOL = {
                 style: {
                   type: 'object',
                   description:
-                    'Partial style properties to merge into the element style.',
+                    'Only safe typography/contrast fields. Use move_element/resize_element for layout.',
+                  properties: {
+                    fontSize: { type: 'number' },
+                    fontFamily: { type: 'string' },
+                    color: { type: 'string' },
+                    bold: { type: 'boolean' },
+                    italic: { type: 'boolean' },
+                    underline: { type: 'boolean' },
+                    align: { type: 'string', enum: ['left', 'center', 'right'] },
+                    fill: { type: 'string' },
+                    stroke: { type: 'string' },
+                    strokeWidth: { type: 'number' },
+                    opacity: { type: 'number' },
+                  },
+                  additionalProperties: false,
                 },
               },
             },
@@ -188,6 +202,7 @@ Hard rules:
 - If the slide is already clean, return operations=[] and a short rationale.
 - Aim for 0-4 operations per slide. Do not exceed maxOperations if it is provided.
 - Do NOT touch element style colors unless the focus explicitly includes "color".
+- Use update_element_style only for small typography/contrast fixes. For layout, use set_element_frame / move_element / resize_element.
 
 House style targets (apply silently):
 - Titles ≤25 chars (ja) / ≤60 chars (en). Statement-style. 体言止め for ja decks.

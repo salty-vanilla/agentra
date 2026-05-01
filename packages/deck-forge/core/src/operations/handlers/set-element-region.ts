@@ -1,20 +1,24 @@
-import { clampFrameToSlide } from "#src/geometry/frame-geometry.js";
 import type { PresentationIR } from "#src/index.js";
+import type { OperationHandlerResult } from "#src/operations/handler-result.js";
 import type { SetElementRegionOperation } from "#src/operations/types.js";
-import { findElementOrNull, findSlideOrNull } from "#src/operations/utils.js";
+import {
+  findElementOrNull,
+  findSlideOrNull,
+  reflowElementsIntoLayoutRegions,
+} from "#src/operations/utils.js";
 
 export function setElementRegion(
   presentation: PresentationIR,
   operation: SetElementRegionOperation,
-): void {
+): OperationHandlerResult {
   const slide = findSlideOrNull(presentation, operation.slideId);
-  if (!slide) return;
+  if (!slide) return { status: "skipped", reason: "slide_not_found" };
 
   const element = findElementOrNull(slide, operation.elementId);
-  if (!element) return;
+  if (!element) return { status: "skipped", reason: "element_not_found" };
 
   const region = slide.layout.regions.find((r) => r.id === operation.regionId);
-  if (!region) return;
+  if (!region) return { status: "skipped", reason: "region_not_found" };
 
   // Remove element from any previous region's contentRefs
   for (const r of slide.layout.regions) {
@@ -31,7 +35,8 @@ export function setElementRegion(
     region.contentRefs.push(operation.elementId);
   }
 
-  // Assign element frame to region frame (clamped to slide bounds)
-  const slideSize = slide.layout.slideSize;
-  element.frame = clampFrameToSlide(region.frame, slideSize);
+  // Reflow all elements into layout regions to avoid duplicate frames
+  reflowElementsIntoLayoutRegions(slide);
+
+  return { status: "applied" };
 }

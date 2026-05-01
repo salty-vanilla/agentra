@@ -68,21 +68,46 @@ export async function applyOperations(
         case "apply_theme":
           applyTheme(next, operation);
           break;
-        case "set_element_frame":
-          setElementFrame(next, operation);
+        case "set_element_frame": {
+          const r1 = setElementFrame(next, operation);
+          if (r1.status === "skipped") {
+            appendOperationRecord(next, operation, "skipped", r1.reason);
+            continue;
+          }
           break;
-        case "move_element":
-          moveElement(next, operation);
+        }
+        case "move_element": {
+          const r2 = moveElement(next, operation);
+          if (r2.status === "skipped") {
+            appendOperationRecord(next, operation, "skipped", r2.reason);
+            continue;
+          }
           break;
-        case "resize_element":
-          resizeElement(next, operation);
+        }
+        case "resize_element": {
+          const r3 = resizeElement(next, operation);
+          if (r3.status === "skipped") {
+            appendOperationRecord(next, operation, "skipped", r3.reason);
+            continue;
+          }
           break;
-        case "set_element_region":
-          setElementRegion(next, operation);
+        }
+        case "set_element_region": {
+          const r4 = setElementRegion(next, operation);
+          if (r4.status === "skipped") {
+            appendOperationRecord(next, operation, "skipped", r4.reason);
+            continue;
+          }
           break;
-        case "update_element_style":
-          updateElementStyle(next, operation);
+        }
+        case "update_element_style": {
+          const r5 = updateElementStyle(next, operation);
+          if (r5.status === "skipped") {
+            appendOperationRecord(next, operation, "skipped", r5.reason);
+            continue;
+          }
           break;
+        }
         default:
           throw new Error(`Unsupported operation type: ${(operation as { type: string }).type}`);
       }

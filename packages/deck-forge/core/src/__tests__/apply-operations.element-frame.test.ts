@@ -293,4 +293,182 @@ describe("applyOperations – element frame operations", () => {
       expect(next.slides).toHaveLength(presentationFixture.slides.length);
     });
   });
+
+  describe("skipped operation observability", () => {
+    it("records skipped for invalid slideId in set_element_frame", async () => {
+      const ops: PresentationOperation[] = [
+        {
+          type: "set_element_frame",
+          slideId: "nonexistent-slide",
+          elementId: "el-title",
+          frame: { x: 100, y: 100, width: 200, height: 100 },
+        },
+      ];
+
+      const next = await applyOperations(presentationFixture, ops);
+      expect(next.operationLog[0]?.result).toBe("skipped");
+      expect(next.operationLog[0]?.error).toBe("slide_not_found");
+    });
+
+    it("records skipped for invalid elementId in move_element", async () => {
+      const ops: PresentationOperation[] = [
+        {
+          type: "move_element",
+          slideId: "slide-title",
+          elementId: "nonexistent",
+          x: 100,
+          y: 100,
+        },
+      ];
+
+      const next = await applyOperations(presentationFixture, ops);
+      expect(next.operationLog[0]?.result).toBe("skipped");
+      expect(next.operationLog[0]?.error).toBe("element_not_found");
+    });
+
+    it("records skipped for invalid regionId in set_element_region", async () => {
+      const ops: PresentationOperation[] = [
+        {
+          type: "set_element_region",
+          slideId: "slide-text",
+          elementId: "el-body",
+          regionId: "nonexistent-region",
+        },
+      ];
+
+      const next = await applyOperations(presentationFixture, ops);
+      expect(next.operationLog[0]?.result).toBe("skipped");
+      expect(next.operationLog[0]?.error).toBe("region_not_found");
+    });
+
+    it("records success for valid set_element_frame", async () => {
+      const ops: PresentationOperation[] = [
+        {
+          type: "set_element_frame",
+          slideId: "slide-title",
+          elementId: "el-title",
+          frame: { x: 100, y: 100, width: 400, height: 100 },
+        },
+      ];
+
+      const next = await applyOperations(presentationFixture, ops);
+      expect(next.operationLog[0]?.result).toBe("success");
+    });
+  });
+
+  describe("set_element_region reflow", () => {
+    it("distributes elements when moving into populated region", async () => {
+      // Create a fixture with two elements and one region
+      const twoElementFixture = structuredClone(presentationFixture);
+      const slide = twoElementFixture.slides.find((s) => s.id === "slide-text")!;
+      // Add a second element
+      slide.elements.push({
+        id: "el-callout",
+        type: "text",
+        role: "callout",
+        text: { paragraphs: [{ runs: [{ text: "Important note" }], alignment: "left" }] },
+        frame: { x: 200, y: 500, width: 400, height: 100 },
+        style: { fontFamily: "Arial", fontSize: 18, color: "#333333" },
+      });
+
+      const ops: PresentationOperation[] = [
+        {
+          type: "set_element_region",
+          slideId: "slide-text",
+          elementId: "el-callout",
+          regionId: "body-region",
+        },
+      ];
+
+      const next = await applyOperations(twoElementFixture, ops);
+      const resultSlide = next.slides.find((s) => s.id === "slide-text")!;
+      const region = resultSlide.layout.regions.find((r) => r.id === "body-region")!;
+      const elBody = resultSlide.elements.find((e) => e.id === "el-body")!;
+      const elCallout = resultSlide.elements.find((e) => e.id === "el-callout")!;
+
+      // Both elements should be in the region's contentRefs
+      expect(region.contentRefs).toContain("el-body");
+      expect(region.contentRefs).toContain("el-callout");
+      // Their frames should NOT be identical (reflow distributes them)
+      expect(elBody.frame).not.toEqual(elCallout.frame);
+      // Both frames should be within slide bounds
+      expect(elBody.frame.x + elBody.frame.width).toBeLessThanOrEqual(1280);
+      expect(elBody.frame.y + elBody.frame.height).toBeLessThanOrEqual(720);
+      expect(elCallout.frame.x + elCallout.frame.width).toBeLessThanOrEqual(1280);
+      expect(elCallout.frame.y + elCallout.frame.height).toBeLessThanOrEqual(720);
+    });
+  });
+
+  describe("update_element_style deep merge", () => {
+    it("preserves nested textStyle.color when updating textStyle.fontSize", async () => {
+      // Set up element with nested style
+      const fixture = structuredClone(presentationFixture);
+      const el = fixture.slides[0]!.elements[0]!;
+      (el as unknown as { style: Record<string, unknown> }).style = {
+        textStyle: { fontSize: 14, color: "#000000" },
+        borderColor: "#cccccc",
+      };
+
+      const ops: PresentationOperation[] = [
+        {
+          type: "update_element_style",
+          slideId: "slide-title",
+          elementId: "el-title",
+          style: { textStyle: { fontSize: 12 } },
+        },
+      ];
+
+      const next = await applyOperations(fixture, ops);
+      const resultEl = next.slides[0]!.elements.find((e) => e.id === "el-title")!;
+      const style = (resultEl as unknown as { style: Record<string, unknown> }).style;
+      const textStyle = style.textStyle as Record<string, unknown>;
+      expect(textStyle.fontSize).toBe(12);
+      expect(textStyle.color).toBe("#000000");
+      expect(style.borderColor).toBe("#cccccc");
+    });
+
+    it("replaces arrays rather than deep-merging them", async () => {
+      const fixture = structuredClone(presentationFixture);
+      const el = fixture.slides[0]!.elements[0]!;
+      (el as unknown as { style: Record<string, unknown> }).style = {
+        palette: ["#111", "#222", "#333"],
+      };
+
+      const ops: PresentationOperation[] = [
+        {
+          type: "update_element_style",
+          slideId: "slide-title",
+          elementId: "el-title",
+          style: { palette: ["#AAA", "#BBB"] },
+        },
+      ];
+
+      const next = await applyOperations(fixture, ops);
+      const resultEl = next.slides[0]!.elements.find((e) => e.id === "el-title")!;
+      const style = (resultEl as unknown as { style: Record<string, unknown> }).style;
+      expect(style.palette).toEqual(["#AAA", "#BBB"]);
+    });
+
+    it("works when element has no existing style", async () => {
+      const fixture = structuredClone(presentationFixture);
+      const slide = fixture.slides.find((s) => s.id === "slide-image")!;
+      const el = slide.elements[0]!;
+      // Image elements may not have style
+      delete (el as Record<string, unknown>).style;
+
+      const ops: PresentationOperation[] = [
+        {
+          type: "update_element_style",
+          slideId: "slide-image",
+          elementId: "el-image",
+          style: { opacity: 0.8 },
+        },
+      ];
+
+      const next = await applyOperations(fixture, ops);
+      const resultEl = next.slides.find((s) => s.id === "slide-image")!.elements[0]!;
+      const style = (resultEl as unknown as { style: Record<string, unknown> }).style;
+      expect(style.opacity).toBe(0.8);
+    });
+  });
 });

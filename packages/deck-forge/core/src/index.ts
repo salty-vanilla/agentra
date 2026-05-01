@@ -664,7 +664,7 @@ export type OperationRecord = {
   operation: unknown;
   beforeHash?: string;
   afterHash?: string;
-  result: "success" | "failed";
+  result: "success" | "failed" | "skipped";
   error?: string;
 };
 
