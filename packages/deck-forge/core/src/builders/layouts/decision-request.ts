@@ -6,6 +6,7 @@ import {
   splitTopBottom,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -32,41 +33,47 @@ export const decisionRequestStrategy: LayoutStrategy = {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
-    // Use template slots when available
-    const mainSlot = ctx.templateSlots.main ?? ctx.templateSlots.body;
-    const calloutSlot = ctx.templateSlots.callout;
+    // Resolve template slots via helper
+    const mainRes = resolveSlotFrame(ctx, ["main", "body"], region);
+    const ctaRes = resolveSlotFrame(ctx, ["cta", "callout"], region);
+    const tableRes = resolveSlotFrame(ctx, "table", region);
 
     // Categorise blocks
     const decisionBlocks = ctx.blocks.filter(
       (b) => b.type === "callout",
     );
     const metricBlocks = ctx.blocks.filter((b) => b.type === "metric");
+    const tableBlocks = ctx.blocks.filter((b) => b.type === "table");
     const bodyBlocks = ctx.blocks.filter(
       (b) =>
         b.type !== "callout" &&
-        b.type !== "metric",
+        b.type !== "metric" &&
+        b.type !== "table",
     );
 
     const assignments: SubFrameAssignment[] = [];
 
     // If we have a decision callout, give it the top ~30%
     if (decisionBlocks.length > 0) {
-      const hasBottom = bodyBlocks.length > 0 || metricBlocks.length > 0;
+      const hasBottom = bodyBlocks.length > 0 || metricBlocks.length > 0 || tableBlocks.length > 0;
       const topRatio = hasBottom ? 0.3 : 1.0;
 
       if (!hasBottom) {
         const frames = splitVertical(region, decisionBlocks.length, density);
         decisionBlocks.forEach((block, i) => {
-          assignments.push({
-            blockId: block.id,
-            frame: frames[i] ?? region,
-            hints: {
-              fontScale: 1.4,
-              alignment: "center",
-              role: "callout",
-              decoration: "accent-bar",
-            },
-          });
+          assignments.push(
+            assignmentFromSlot({
+              blockId: block.id,
+              resolution: ctaRes,
+              frame: frames[i] ?? region,
+              hints: {
+                fontScale: 1.4,
+                alignment: "center",
+                role: "callout",
+                decoration: "accent-bar",
+              },
+            }),
+          );
         });
         return assignments;
       }
@@ -83,34 +90,52 @@ export const decisionRequestStrategy: LayoutStrategy = {
         density,
       );
       decisionBlocks.forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: decFrames[i] ?? decisionRegion,
-          hints: {
-            fontScale: 1.4,
-            alignment: "center",
-            role: "callout",
-            decoration: "accent-bar",
-          },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: ctaRes,
+            frame: decFrames[i] ?? decisionRegion,
+            hints: {
+              fontScale: 1.4,
+              alignment: "center",
+              role: "callout",
+              decoration: "accent-bar",
+            },
+          }),
+        );
+      });
+
+      // Table blocks get table slot
+      tableBlocks.forEach((block) => {
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: tableRes,
+            frame: tableRes.slot ? tableRes.frame : lowerRegion,
+          }),
+        );
       });
 
       // Remaining blocks in lower region
       const remaining = [...bodyBlocks, ...metricBlocks];
 
       if (remaining.length <= 4 && remaining.length > 0) {
+        const computedMain = mainRes.slot ? mainRes : { ...mainRes, frame: lowerRegion };
         // Use horizontal cards for small counts
         const cards = createHorizontalCards(
-          lowerRegion,
+          computedMain.frame,
           remaining.length,
           density,
         );
         remaining.forEach((block, i) => {
-          assignments.push({
-            blockId: block.id,
-            frame: cards[i] ?? lowerRegion,
-            hints: { decoration: "card" },
-          });
+          assignments.push(
+            assignmentFromSlot({
+              blockId: block.id,
+              resolution: computedMain,
+              frame: cards[i] ?? lowerRegion,
+              hints: { decoration: "card" },
+            }),
+          );
         });
       } else {
         const lowerFrames = splitVertical(
@@ -119,14 +144,17 @@ export const decisionRequestStrategy: LayoutStrategy = {
           density,
         );
         remaining.forEach((block, i) => {
-          assignments.push({
-            blockId: block.id,
-            frame: lowerFrames[i] ?? lowerRegion,
-            hints:
-              block.type === "metric"
-                ? { decoration: "card", fontScale: 1.2 }
-                : undefined,
-          });
+          assignments.push(
+            assignmentFromSlot({
+              blockId: block.id,
+              resolution: mainRes,
+              frame: lowerFrames[i] ?? lowerRegion,
+              hints:
+                block.type === "metric"
+                  ? { decoration: "card", fontScale: 1.2 }
+                  : undefined,
+            }),
+          );
         });
       }
     } else {
@@ -139,16 +167,19 @@ export const decisionRequestStrategy: LayoutStrategy = {
         0.3,
       );
 
-      assignments.push({
-        blockId: first.id,
-        frame: decisionRegion,
-        hints: {
-          fontScale: 1.4,
-          alignment: "center",
-          role: "callout",
-          decoration: "accent-bar",
-        },
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: first.id,
+          resolution: ctaRes,
+          frame: decisionRegion,
+          hints: {
+            fontScale: 1.4,
+            alignment: "center",
+            role: "callout",
+            decoration: "accent-bar",
+          },
+        }),
+      );
 
       if (rest.length > 0) {
         const cards = createHorizontalCards(

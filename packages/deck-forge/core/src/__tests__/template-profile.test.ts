@@ -197,7 +197,7 @@ describe("resolveTemplateLayout", () => {
     expect(resolve("dashboard").layout.id).toBe("dashboard-cards");
   });
 
-  it("table layout type -> table (not supported as type, falls to content-standard)", () => {
+  it("table layout type -> table", () => {
     const result = resolve("table");
     expect(result.layout.id).toBe("table");
   });
@@ -435,5 +435,136 @@ describe("no business layout explosion", () => {
     for (const strategyId of businessStrategyIds) {
       expect(layoutIds).not.toContain(strategyId);
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 6. Slot fallback trace tests
+// ---------------------------------------------------------------------------
+
+describe("buildPresentationIr slot fallback tracing", () => {
+  const brief = {
+    id: "brief-1",
+    title: "Test",
+    audience: { role: "executive" },
+    purpose: "inform",
+    language: "en",
+  } as unknown as PresentationBrief;
+
+  const deckPlan = {
+    id: "deck-1",
+    title: "Test Deck",
+    slideCount: 1,
+    slides: [{ slideNumber: 1, title: "Slide", intent: { type: "data_insight" } }],
+  } as unknown as DeckPlan;
+
+  it("fallbackSlots are collected from strategy assignments", () => {
+    // kpi-dashboard-with-insight expects metrics/cards but visual-insight has neither
+    const slideSpecs: SlideSpec[] = [
+      {
+        id: "s1",
+        slideNumber: 1,
+        title: "KPI Dashboard",
+        intent: { type: "data_insight" },
+        content: [
+          { id: "t1", type: "title", text: "KPI Dashboard" },
+          { id: "m1", type: "metric", label: "Revenue", value: "$1M" },
+          { id: "m2", type: "metric", label: "Growth", value: "15%" },
+          { id: "m3", type: "metric", label: "Users", value: "10k" },
+          { id: "c1", type: "chart", chartType: "bar", data: { labels: ["A"], datasets: [{ label: "D", values: [1] }] } },
+          { id: "co1", type: "callout", text: "Key insight here" },
+        ],
+        layout: { type: "dashboard", density: "medium" },
+        speakerNotes: { text: "" },
+      } as unknown as SlideSpec,
+    ];
+
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const trace = result.slides[0]!._trace!;
+
+    // The strategy should resolve to kpi-dashboard-with-insight or similar
+    // visual-insight layout has visual, insight, callout but NOT metrics/cards
+    expect(trace.templateLayoutId).toBeDefined();
+    expect(Array.isArray(trace.fallbackSlots)).toBe(true);
+    // metrics and cards are expected as fallback since visual-insight doesn't have them
+    if (trace.templateLayoutId === "visual-insight") {
+      expect(trace.fallbackSlots).toContain("metrics");
+    }
+  });
+
+  it("usedSlots records insight when insight slot is used", () => {
+    // data-insight-story with visual-insight layout has insight slot
+    const slideSpecs: SlideSpec[] = [
+      {
+        id: "s2",
+        slideNumber: 1,
+        title: "Data Insight",
+        intent: { type: "data_insight" },
+        content: [
+          { id: "t1", type: "title", text: "Data Insight" },
+          { id: "c1", type: "chart", chartType: "line", data: { labels: ["Q1"], datasets: [{ label: "Rev", values: [100] }] } },
+          { id: "co1", type: "callout", text: "Key finding" },
+          { id: "p1", type: "paragraph", text: "Supporting analysis" },
+          { id: "p2", type: "paragraph", text: "Additional context for the finding" },
+        ],
+        layout: { type: "single_column", density: "medium" },
+        speakerNotes: { text: "" },
+      } as unknown as SlideSpec,
+    ];
+
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const trace = result.slides[0]!._trace!;
+
+    // Verify strategy resolved correctly
+    expect(trace.layoutStrategyId).toBe("data-insight-story");
+    expect(trace.templateLayoutId).toBe("visual-insight");
+    // visual-insight layout has an insight slot — strategy should use it
+    expect(trace.usedSlots).toContain("insight");
+  });
+
+  it("action-plan-table traces cta slot correctly", () => {
+    const slideSpecs: SlideSpec[] = [
+      {
+        id: "s3",
+        slideNumber: 1,
+        title: "Action Plan",
+        intent: { type: "summary" },
+        content: [
+          { id: "t1", type: "title", text: "Action Plan" },
+          { id: "tb1", type: "table", headers: ["Action", "Owner", "Due"], rows: [["Fix bug", "Alice", "2026-01"]] },
+          { id: "co1", type: "callout", text: "Next steps: execute plan" },
+        ],
+        layout: { type: "single_column", density: "medium" },
+        speakerNotes: { text: "" },
+      } as unknown as SlideSpec,
+    ];
+
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const trace = result.slides[0]!._trace!;
+
+    // action-plan-table resolves to table layout which has cta slot
+    if (trace.templateLayoutId === "table") {
+      expect(trace.usedSlots).toContain("table");
+      expect(trace.usedSlots).toContain("cta");
+    }
+  });
+
+  it("title slot is tracked in usedSlots for cover layout", () => {
+    const slideSpecs: SlideSpec[] = [
+      {
+        id: "s4",
+        slideNumber: 1,
+        title: "Cover",
+        content: [{ id: "t1", type: "title", text: "Cover" }],
+        layout: { type: "title", density: "medium" },
+        speakerNotes: { text: "" },
+      } as unknown as SlideSpec,
+    ];
+
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const trace = result.slides[0]!._trace!;
+
+    expect(trace.templateLayoutId).toBe("cover");
+    expect(trace.usedSlots).toContain("title");
   });
 });

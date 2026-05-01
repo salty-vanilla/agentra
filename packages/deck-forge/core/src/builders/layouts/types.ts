@@ -41,7 +41,16 @@ export type LayoutHints = {
 export type SubFrameAssignment = {
   blockId: string;
   frame: ResolvedFrame;
+  /**
+   * Template slot actually used to produce this frame.
+   * Undefined when regionFrames or computed fallback was used.
+   */
   slot?: TemplateSlotName;
+  /**
+   * Template slots that this assignment attempted to use but were missing.
+   * Used only for diagnostics.
+   */
+  fallbackSlots?: TemplateSlotName[];
   hints?: LayoutHints;
 };
 

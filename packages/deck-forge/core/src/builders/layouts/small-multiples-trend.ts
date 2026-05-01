@@ -8,6 +8,7 @@ import {
   mergeAllRegions,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -61,9 +62,9 @@ export const smallMultiplesTrendStrategy: LayoutStrategy = {
     const primaryBlocks = [...chartBlocks, ...metricBlocks];
     const hasInsight = insightBlocks.length > 0;
 
-    // Use template slots when available
-    const cardsSlot = ctx.templateSlots.cards ?? ctx.templateSlots.metrics;
-    const calloutSlot = ctx.templateSlots.callout;
+    // Resolve template slots via helper
+    const cards = resolveSlotFrame(ctx, ["visual", "cards", "metrics"], region);
+    const calloutRes = resolveSlotFrame(ctx, ["insight", "callout"], region);
 
     // Reserve insight band at bottom if there are callouts/paragraphs
     const { main: gridRegion, band: insightBand } = hasInsight
@@ -73,29 +74,35 @@ export const smallMultiplesTrendStrategy: LayoutStrategy = {
     const assignments: SubFrameAssignment[] = [];
 
     // Charts/metrics in responsive grid
-    const gridFrames = createCardGrid(cardsSlot ?? gridRegion, primaryBlocks.length, density);
+    const computedCards = cards.slot ? cards : { ...cards, frame: gridRegion };
+    const gridFrames = createCardGrid(computedCards.frame, primaryBlocks.length, density);
     primaryBlocks.forEach((block, i) => {
       const isMetric = block.type === "metric";
-      assignments.push({
-        blockId: block.id,
-        frame: gridFrames[i] ?? gridRegion,
-        slot: cardsSlot ? "cards" : undefined,
-        hints: isMetric
-          ? { decoration: "card", alignment: "center", fontScale: 1.1 }
-          : undefined,
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedCards,
+          frame: gridFrames[i] ?? gridRegion,
+          hints: isMetric
+            ? { decoration: "card", alignment: "center", fontScale: 1.1 }
+            : undefined,
+        }),
+      );
     });
 
     // Insight band
     if (hasInsight) {
-      const inFrames = splitVertical(calloutSlot ?? insightBand, insightBlocks.length, density);
+      const computedCallout = calloutRes.slot ? calloutRes : { ...calloutRes, frame: insightBand };
+      const inFrames = splitVertical(computedCallout.frame, insightBlocks.length, density);
       insightBlocks.forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: inFrames[i] ?? insightBand,
-          slot: calloutSlot ? "callout" : undefined,
-          hints: { role: "callout", decoration: "accent-bar" },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: computedCallout,
+            frame: inFrames[i] ?? insightBand,
+            hints: { role: "callout", decoration: "accent-bar" },
+          }),
+        );
       });
     }
 

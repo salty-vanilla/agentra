@@ -5,6 +5,7 @@ import {
   mergeAllRegions,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -44,18 +45,21 @@ export const actionPlanTableStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
-    // Use template slots when available
-    const tableSlot = ctx.templateSlots.table;
-    const ctaSlot = ctx.templateSlots.cta ?? ctx.templateSlots.callout;
+    // Resolve template slots via helper
+    const tableRes = resolveSlotFrame(ctx, "table", region);
+    const ctaRes = resolveSlotFrame(ctx, ["cta", "callout"], region);
 
     if (!hasCta) {
-      const tableFrames = splitVertical(tableSlot ?? region, tableBlocks.length, density);
+      const computedTable = tableRes.slot ? tableRes : { ...tableRes, frame: region };
+      const tableFrames = splitVertical(computedTable.frame, tableBlocks.length, density);
       tableBlocks.forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: tableFrames[i] ?? region,
-          slot: tableSlot ? "table" : undefined,
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: computedTable,
+            frame: tableFrames[i] ?? region,
+          }),
+        );
       });
       return assignments;
     }
@@ -66,28 +70,34 @@ export const actionPlanTableStrategy: LayoutStrategy = {
       Math.round(region.height * 0.25),
     );
 
-    const tableFrames = splitVertical(tableSlot ?? tableRegion, tableBlocks.length, density);
+    const computedTable = tableRes.slot ? tableRes : { ...tableRes, frame: tableRegion };
+    const tableFrames = splitVertical(computedTable.frame, tableBlocks.length, density);
     tableBlocks.forEach((block, i) => {
-      assignments.push({
-        blockId: block.id,
-        frame: tableFrames[i] ?? tableRegion,
-        slot: tableSlot ? "table" : undefined,
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedTable,
+          frame: tableFrames[i] ?? tableRegion,
+        }),
+      );
     });
 
     // CTA / callout blocks in bottom band
     const ctaBlocks = [...calloutBlocks, ...otherBlocks];
-    const ctaFrames = splitVertical(ctaSlot ?? ctaBand, ctaBlocks.length, density);
+    const computedCta = ctaRes.slot ? ctaRes : { ...ctaRes, frame: ctaBand };
+    const ctaFrames = splitVertical(computedCta.frame, ctaBlocks.length, density);
     ctaBlocks.forEach((block, i) => {
       const isCallout = block.type === "callout";
-      assignments.push({
-        blockId: block.id,
-        frame: ctaFrames[i] ?? ctaBand,
-        slot: ctaSlot ? "cta" : undefined,
-        hints: isCallout
-          ? { decoration: "accent-bar", role: "callout", fontScale: 1.1 }
-          : undefined,
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedCta,
+          frame: ctaFrames[i] ?? ctaBand,
+          hints: isCallout
+            ? { decoration: "accent-bar", role: "callout", fontScale: 1.1 }
+            : undefined,
+        }),
+      );
     });
 
     return assignments;

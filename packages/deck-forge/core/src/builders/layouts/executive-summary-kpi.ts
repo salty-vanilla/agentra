@@ -7,6 +7,7 @@ import {
   splitTopBottom,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -55,20 +56,21 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
-    // Use template slot for metrics region if available
-    const metricsSlotFrame = ctx.templateSlots.metrics ?? ctx.templateSlots.cards;
-    const calloutSlotFrame = ctx.templateSlots.callout;
+    // Resolve template slots via helper
+    const metrics = resolveSlotFrame(ctx, ["metrics", "cards"], region);
+    const callout = resolveSlotFrame(ctx, "callout", region);
 
     if (metricRatio >= 1.0) {
-      const metricRegion = metricsSlotFrame ?? region;
-      const cells = createCardGrid(metricRegion, metricBlocks.length, density);
+      const cells = createCardGrid(metrics.frame, metricBlocks.length, density);
       metricBlocks.forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: cells[i] ?? metricRegion,
-          slot: metricsSlotFrame ? "metrics" : undefined,
-          hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: metrics,
+            frame: cells[i] ?? metrics.frame,
+            hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
+          }),
+        );
       });
       return assignments;
     }
@@ -78,28 +80,34 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
       metricRatio,
     );
 
-    const cells = createCardGrid(metricsSlotFrame ?? metricRegion, metricBlocks.length, density);
+    const computedMetrics = metrics.slot ? metrics : { ...metrics, frame: metricRegion };
+    const cells = createCardGrid(computedMetrics.frame, metricBlocks.length, density);
     metricBlocks.forEach((block, i) => {
-      assignments.push({
-        blockId: block.id,
-        frame: cells[i] ?? metricRegion,
-        slot: metricsSlotFrame ? "metrics" : undefined,
-        hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedMetrics,
+          frame: cells[i] ?? computedMetrics.frame,
+          hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
+        }),
+      );
     });
 
     const lowerBlocks = [...calloutBlocks, ...otherBlocks];
-    const lowerFrames = splitVertical(calloutSlotFrame ?? lowerRegion, lowerBlocks.length, density);
+    const computedCallout = callout.slot ? callout : { ...callout, frame: lowerRegion };
+    const lowerFrames = splitVertical(computedCallout.frame, lowerBlocks.length, density);
     lowerBlocks.forEach((block, i) => {
       const isCallout = block.type === "callout";
-      assignments.push({
-        blockId: block.id,
-        frame: lowerFrames[i] ?? lowerRegion,
-        slot: calloutSlotFrame && isCallout ? "callout" : undefined,
-        hints: isCallout
-          ? { role: "callout", decoration: "accent-bar", fontScale: 1.05 }
-          : undefined,
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: isCallout ? computedCallout : { frame: lowerRegion, fallbackSlots: [] },
+          frame: lowerFrames[i] ?? lowerRegion,
+          hints: isCallout
+            ? { role: "callout", decoration: "accent-bar", fontScale: 1.05 }
+            : undefined,
+        }),
+      );
     });
 
     return assignments;

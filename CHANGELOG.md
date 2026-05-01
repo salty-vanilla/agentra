@@ -9,6 +9,27 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 7B: Slot Helper / Diagnostics / Strategy Slot Expansion
+
+- **`slot-utils.ts`** — new module with `resolveSlotFrame()`, `assignmentFromSlot()`,
+  `mergeFallbackSlots()` helpers and `SlotResolution` type; replaces ad-hoc
+  `ctx.templateSlots.x ?? ctx.templateSlots.y` patterns with tracked resolution
+- **`SubFrameAssignment.fallbackSlots`** — new optional field recording which
+  template slots a strategy attempted but were missing from the template layout;
+  enables Phase 7C+ diagnostics
+- **`buildPresentationIr()` trace collection** — `fallbackSlots` from assignments
+  are now aggregated into `SlideIR._trace.fallbackSlots`
+- **8 business strategies migrated to slot helpers** — executive-summary-kpi,
+  kpi-dashboard-with-insight, data-insight-story, small-multiples-trend,
+  process-flow-with-impact, implementation-roadmap, action-plan-table,
+  decision-request now use `resolveSlotFrame()` / `assignmentFromSlot()`;
+  actual slot names (`insight` vs `callout`, `cta` vs `callout`) are recorded
+  accurately instead of hard-coded fallback names
+- **12 slot-utils unit tests** — `resolveSlotFrame` (5), `assignmentFromSlot` (4),
+  `mergeFallbackSlots` (3)
+- **4 new trace tests** — fallback collection from assignments, insight slot
+  tracing, cta slot tracing, title slot tracking
+
 ### Fixed — deck-forge/core Phase 7A-fix: resolveTemplateLayout priority correction
 
 - **`resolveTemplateLayout()` priority reorder** — split `LAYOUT_TYPE_TO_KIND`

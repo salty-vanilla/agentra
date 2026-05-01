@@ -8,6 +8,7 @@ import {
   splitMainSidebar,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -62,10 +63,10 @@ export const kpiDashboardWithInsightStrategy: LayoutStrategy = {
         b.type !== "paragraph",
     );
 
-    // Use template slots when available
-    const metricsSlot = ctx.templateSlots.metrics;
-    const visualSlot = ctx.templateSlots.visual;
-    const insightSlot = ctx.templateSlots.insight ?? ctx.templateSlots.callout;
+    // Resolve template slots via helper
+    const metrics = resolveSlotFrame(ctx, ["metrics", "cards"], fullRegion);
+    const visualRes = resolveSlotFrame(ctx, "visual", fullRegion);
+    const insight = resolveSlotFrame(ctx, ["insight", "callout"], fullRegion);
 
     // Reserve insight band at bottom
     const hasInsight = insightBlocks.length > 0;
@@ -82,36 +83,45 @@ export const kpiDashboardWithInsightStrategy: LayoutStrategy = {
     const assignments: SubFrameAssignment[] = [];
 
     // KPI cards — use metrics slot or computed kpiRegion
-    const kpiFrames = createCardGrid(metricsSlot ?? kpiRegion, metricBlocks.length, density);
+    const computedMetrics = metrics.slot ? metrics : { ...metrics, frame: kpiRegion };
+    const kpiFrames = createCardGrid(computedMetrics.frame, metricBlocks.length, density);
     metricBlocks.forEach((block, i) => {
-      assignments.push({
-        blockId: block.id,
-        frame: kpiFrames[i] ?? kpiRegion,
-        slot: metricsSlot ? "metrics" : undefined,
-        hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedMetrics,
+          frame: kpiFrames[i] ?? kpiRegion,
+          hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
+        }),
+      );
     });
 
     // Chart/diagram — use visual slot or computed chartRegion
-    const chartFrames = splitVertical(visualSlot ?? chartRegion, chartBlocks.length, density);
+    const computedVisual = visualRes.slot ? visualRes : { ...visualRes, frame: chartRegion };
+    const chartFrames = splitVertical(computedVisual.frame, chartBlocks.length, density);
     chartBlocks.forEach((block, i) => {
-      assignments.push({
-        blockId: block.id,
-        frame: chartFrames[i] ?? chartRegion,
-        slot: visualSlot ? "visual" : undefined,
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedVisual,
+          frame: chartFrames[i] ?? chartRegion,
+        }),
+      );
     });
 
     // Insight band — use insight/callout slot or computed band
     if (hasInsight) {
-      const inFrames = splitVertical(insightSlot ?? insightBand, insightBlocks.length, density);
+      const computedInsight = insight.slot ? insight : { ...insight, frame: insightBand };
+      const inFrames = splitVertical(computedInsight.frame, insightBlocks.length, density);
       insightBlocks.forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: inFrames[i] ?? insightBand,
-          slot: insightSlot ? "callout" : undefined,
-          hints: { role: "callout", decoration: "accent-bar" },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: computedInsight,
+            frame: inFrames[i] ?? insightBand,
+            hints: { role: "callout", decoration: "accent-bar" },
+          }),
+        );
       });
     }
 

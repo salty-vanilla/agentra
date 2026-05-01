@@ -7,6 +7,7 @@ import {
   mergeAllRegions,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -47,21 +48,24 @@ export const implementationRoadmapStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
-    // Use template slots when available
-    const processSlot = ctx.templateSlots.process;
-    const calloutSlot = ctx.templateSlots.callout;
+    // Resolve template slots via helper
+    const processRes = resolveSlotFrame(ctx, "process", region);
+    const calloutRes = resolveSlotFrame(ctx, "callout", region);
 
     if (calloutBlocks.length === 0) {
       // All blocks as horizontal phase cards
       const count = Math.min(phaseBlocks.length, 5);
-      const cards = createHorizontalCards(processSlot ?? region, count, density);
+      const computedProcess = processRes.slot ? processRes : { ...processRes, frame: region };
+      const cards = createHorizontalCards(computedProcess.frame, count, density);
       phaseBlocks.slice(0, count).forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: cards[i] ?? region,
-          slot: processSlot ? "process" : undefined,
-          hints: { decoration: "card" },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: computedProcess,
+            frame: cards[i] ?? region,
+            hints: { decoration: "card" },
+          }),
+        );
       });
       // Remaining blocks stacked below last card
       if (phaseBlocks.length > count) {
@@ -94,14 +98,17 @@ export const implementationRoadmapStrategy: LayoutStrategy = {
     );
 
     const phaseCount = Math.min(phaseBlocks.length, 5);
-    const cards = createHorizontalCards(processSlot ?? phaseRegion, phaseCount, density);
+    const computedProcess = processRes.slot ? processRes : { ...processRes, frame: phaseRegion };
+    const cards = createHorizontalCards(computedProcess.frame, phaseCount, density);
     phaseBlocks.slice(0, phaseCount).forEach((block, i) => {
-      assignments.push({
-        blockId: block.id,
-        frame: cards[i] ?? phaseRegion,
-        slot: processSlot ? "process" : undefined,
-        hints: { decoration: "card" },
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedProcess,
+          frame: cards[i] ?? phaseRegion,
+          hints: { decoration: "card" },
+        }),
+      );
     });
 
     // Extra phase blocks beyond 5
@@ -115,21 +122,28 @@ export const implementationRoadmapStrategy: LayoutStrategy = {
         });
       });
       calloutBlocks.forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: extraFrames[remaining.length + i] ?? riskBand,
-          hints: { decoration: "accent-bar", role: "callout" },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: calloutRes,
+            frame: extraFrames[remaining.length + i] ?? riskBand,
+            hints: { decoration: "accent-bar", role: "callout" },
+          }),
+        );
       });
     } else {
       // Callout blocks in risk band
-      const bandFrames = splitVertical(riskBand, calloutBlocks.length, density);
+      const computedCallout = calloutRes.slot ? calloutRes : { ...calloutRes, frame: riskBand };
+      const bandFrames = splitVertical(computedCallout.frame, calloutBlocks.length, density);
       calloutBlocks.forEach((block, i) => {
-        assignments.push({
-          blockId: block.id,
-          frame: bandFrames[i] ?? riskBand,
-          hints: { decoration: "accent-bar", role: "callout" },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: computedCallout,
+            frame: bandFrames[i] ?? riskBand,
+            hints: { decoration: "accent-bar", role: "callout" },
+          }),
+        );
       });
     }
 

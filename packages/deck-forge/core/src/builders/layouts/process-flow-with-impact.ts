@@ -8,6 +8,7 @@ import {
   splitTopBottom,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -52,9 +53,9 @@ export const processFlowWithImpactStrategy: LayoutStrategy = {
     const hasImpact = impactBlocks.length > 0;
     const assignments: SubFrameAssignment[] = [];
 
-    // Use template slots when available
-    const processSlot = ctx.templateSlots.process;
-    const calloutSlot = ctx.templateSlots.callout;
+    // Resolve template slots via helper
+    const processRes = resolveSlotFrame(ctx, "process", region);
+    const calloutRes = resolveSlotFrame(ctx, "callout", region);
 
     if (flowBlocks.length === 0) {
       // No flow blocks — just stack everything vertically
@@ -75,28 +76,35 @@ export const processFlowWithImpactStrategy: LayoutStrategy = {
 
     // Flow nodes laid out horizontally in the upper area
     const flowCount = Math.min(flowBlocks.length, 7);
-    const flowFrames = createHorizontalCards(processSlot ?? upperRegion, flowCount, density);
+    const computedProcess = processRes.slot ? processRes : { ...processRes, frame: upperRegion };
+    const flowFrames = createHorizontalCards(computedProcess.frame, flowCount, density);
     flowBlocks.forEach((block, i) => {
-      assignments.push({
-        blockId: block.id,
-        frame: flowFrames[Math.min(i, flowFrames.length - 1)] ?? upperRegion,
-        slot: processSlot ? "process" : undefined,
-        hints: { decoration: "card" },
-      });
+      assignments.push(
+        assignmentFromSlot({
+          blockId: block.id,
+          resolution: computedProcess,
+          frame: flowFrames[Math.min(i, flowFrames.length - 1)] ?? upperRegion,
+          hints: { decoration: "card" },
+        }),
+      );
     });
 
     // Impact/callout blocks in bottom band
     if (hasImpact) {
-      const impactFrames = splitVertical(calloutSlot ?? impactBand, impactBlocks.length, density);
+      const computedCallout = calloutRes.slot ? calloutRes : { ...calloutRes, frame: impactBand };
+      const impactFrames = splitVertical(computedCallout.frame, impactBlocks.length, density);
       impactBlocks.forEach((block, i) => {
         const isMetric = block.type === "metric";
-        assignments.push({
-          blockId: block.id,
-          frame: impactFrames[i] ?? impactBand,
-          hints: isMetric
-            ? { decoration: "card", fontScale: 1.2, alignment: "center" }
-            : { role: "callout", decoration: "accent-bar" },
-        });
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: block.type === "callout" ? computedCallout : { frame: impactBand, fallbackSlots: [] },
+            frame: impactFrames[i] ?? impactBand,
+            hints: isMetric
+              ? { decoration: "card", fontScale: 1.2, alignment: "center" }
+              : { role: "callout", decoration: "accent-bar" },
+          }),
+        );
       });
     }
 

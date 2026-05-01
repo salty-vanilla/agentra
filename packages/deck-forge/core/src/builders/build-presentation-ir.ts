@@ -278,6 +278,9 @@ function buildElements(
   const fallbackSlotSet = new Set<TemplateSlotName>();
   for (const a of assignments) {
     if (a.slot) usedSlotSet.add(a.slot);
+    for (const slot of a.fallbackSlots ?? []) {
+      fallbackSlotSet.add(slot);
+    }
   }
 
   const assignmentByBlock = new Map<string, SubFrameAssignment>(
