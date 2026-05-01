@@ -38,6 +38,17 @@ export type SlideLayoutDiagnostics = {
   outOfBoundsCount: number;
 
   emptySlotCount: number;
+
+  /**
+   * Ratio of successfully resolved slot attempts.
+   *
+   * Computed as:
+   *   usedSlots.length / (usedSlots.length + fallbackSlots.length)
+   *
+   * This is not the same as "used slots / all available template slots".
+   * When TemplateLayoutProfile expansion lands, we may add a separate
+   * templateSlotCoverageRatio based on available slots.
+   */
   slotCoverageRatio: number;
 
   warnings: LayoutDiagnosticWarning[];
@@ -62,7 +73,19 @@ export type DeckLayoutDiagnosticsSummary = {
   slideCount: number;
 
   templateProfileIds: string[];
-  templateLayoutUsage: Record<string, number>;
+
+  /**
+   * Usage count by concrete TemplateLayoutProfile id.
+   * Example: { "cover": 1, "visual-left-insight-right": 2, "table-with-cta": 1 }
+   */
+  templateLayoutIdUsage: Record<string, number>;
+
+  /**
+   * Usage count by normalized TemplateLayoutKind.
+   * Example: { "cover": 1, "visual-insight": 2, "table": 1 }
+   */
+  templateLayoutKindUsage: Record<string, number>;
+
   layoutStrategyUsage: Record<string, number>;
 
   totalUsedSlots: number;
@@ -77,6 +100,11 @@ export type DeckLayoutDiagnosticsSummary = {
   maxOverlapRatio: number;
   totalOutOfBoundsCount: number;
 
+  /**
+   * Average of slide-level slotCoverageRatio.
+   * This currently means average slot resolution success ratio, not coverage
+   * of all available template slots.
+   */
   averageSlotCoverageRatio: number;
 
   warningCount: number;
@@ -260,7 +288,8 @@ export function analyzeDeckLayout(presentation: PresentationIR): {
   const slides = presentation.slides.map((s) => analyzeSlideLayout(s));
 
   const templateProfileIds = new Set<string>();
-  const templateLayoutUsage: Record<string, number> = {};
+  const templateLayoutIdUsage: Record<string, number> = {};
+  const templateLayoutKindUsage: Record<string, number> = {};
   const layoutStrategyUsage: Record<string, number> = {};
   const fallbackSlotUsage: Record<string, number> = {};
 
@@ -282,9 +311,13 @@ export function analyzeDeckLayout(presentation: PresentationIR): {
     if (diag.templateProfileId) {
       templateProfileIds.add(diag.templateProfileId);
     }
+    if (diag.templateLayoutId) {
+      templateLayoutIdUsage[diag.templateLayoutId] =
+        (templateLayoutIdUsage[diag.templateLayoutId] ?? 0) + 1;
+    }
     if (diag.templateLayoutKind) {
-      templateLayoutUsage[diag.templateLayoutKind] =
-        (templateLayoutUsage[diag.templateLayoutKind] ?? 0) + 1;
+      templateLayoutKindUsage[diag.templateLayoutKind] =
+        (templateLayoutKindUsage[diag.templateLayoutKind] ?? 0) + 1;
     }
     if (diag.layoutStrategyId) {
       layoutStrategyUsage[diag.layoutStrategyId] =
@@ -322,7 +355,8 @@ export function analyzeDeckLayout(presentation: PresentationIR): {
   const summary: DeckLayoutDiagnosticsSummary = {
     slideCount,
     templateProfileIds: [...templateProfileIds].sort(),
-    templateLayoutUsage,
+    templateLayoutIdUsage,
+    templateLayoutKindUsage,
     layoutStrategyUsage,
     totalUsedSlots,
     totalFallbackSlots,

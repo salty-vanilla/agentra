@@ -310,7 +310,7 @@ describe("analyzeDeckLayout", () => {
       }),
       makeTracedSlide("s2", 1, {
         strategyId: "executive-summary-kpi",
-        layoutKind: "dashboard-cards",
+        layoutKind: "dashboard",
         layoutId: "dashboard-cards",
         usedSlots: ["title", "metrics", "callout"],
       }),
@@ -347,10 +347,19 @@ describe("analyzeDeckLayout", () => {
     expect(result.slides).toHaveLength(6);
     expect(result.summary.slideCount).toBe(6);
 
-    // Template layout usage
-    expect(result.summary.templateLayoutUsage).toEqual({
+    // Template layout id usage
+    expect(result.summary.templateLayoutIdUsage).toEqual({
       cover: 1,
       "dashboard-cards": 1,
+      "visual-insight": 2,
+      process: 1,
+      table: 1,
+    });
+
+    // Template layout kind usage
+    expect(result.summary.templateLayoutKindUsage).toEqual({
+      cover: 1,
+      dashboard: 1,
       "visual-insight": 2,
       process: 1,
       table: 1,

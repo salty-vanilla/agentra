@@ -14,8 +14,8 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 - **`diagnostics/layout-diagnostics.ts`** — new module with `analyzeSlideLayout()` and
   `analyzeDeckLayout()` functions; produces per-slide diagnostics (overlap detection,
   out-of-bounds, slot coverage, fallback slots, element count) and deck-level summary
-  with `templateLayoutUsage`, `layoutStrategyUsage`, `fallbackSlotUsage`, and
-  `deployReadiness` (`pass` / `warning` / `fail`)
+  with `templateLayoutIdUsage`, `templateLayoutKindUsage`, `layoutStrategyUsage`,
+  `fallbackSlotUsage`, and `deployReadiness` (`pass` / `warning` / `fail`)
 - **`diagnostics/operation-diagnostics.ts`** — new module with `analyzeOperationLog()`
   function; classifies operations into layout repair vs visual polish categories,
   groups by type and slide, and provides fine-grained counters (frame, position,
