@@ -1,0 +1,248 @@
+# Changelog
+
+All notable changes to the **Agentra** workspace will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/),
+and this project adheres to [Conventional Commits](https://www.conventionalcommits.org/).
+
+---
+
+## [Unreleased]
+
+### Added — deck-forge/core Phase 5: Text/Table Overflow Detection & Repair
+
+- **Phase 5B** — text/table overflow repair engine (`ff85914`)
+  - Font-size reduction repair for overflowing text and table elements
+  - Dry-run mode support
+  - Runner integration via `enableTextOverflowRepair` option
+- **Phase 5A** — text/table overflow detection (`e7740db`)
+  - Text measurement utilities (line estimation, text-box height)
+  - Table height estimation
+  - Rich-text extraction helpers
+  - Content-density validation rules: `text-overflow-risk`, `title-too-long`, `bullet-list-too-dense`, `table-clipped`, `callout-too-dense`
+
+### Added — deck-forge/core Phase 4: Deterministic Layout Repair
+
+- **Phase 4b** — integrate deterministic repair into runner (`92ec6ca`)
+- **Phase 4a follow-up** — harden repair engine (`f1eba63`)
+- **Phase 4a** — deterministic layout repair engine (`2f45397`)
+  - Overlap detection and resolution
+  - Out-of-bounds element repair
+  - Region-based reflow
+
+### Added — deck-forge/core Phase 3: Element Operations
+
+- Phase 3 follow-up — harden element operations (`7f642e7`)
+  - `OperationHandlerResult` type for skipped-op observability
+  - Deep-merge style updates, region reflow
+- Phase 3 — expand `PresentationOperation` vocabulary (`c75d462`)
+  - `move_element`, `resize_element`, `set_element_frame`, `set_element_region`, `update_element_style`
+
+### Added — deck-forge/core Phase 2: Chart & Diagram Materialization
+
+- `ChartBlock` → `ChartElementIR` conversion (`7983b34`)
+- `DiagramBlock` → `DiagramElementIR` conversion
+- Placeholder rendering for empty/invalid chart and diagram data
+
+### Added — deck-forge/core Phase 1: Layout & Frame Synchronization
+
+- Layout/frame synchronization in IR builder (`140e7b5`)
+
+### Changed
+
+- Integrate deck-forge workspace packages into monorepo (`cc29d49`, `2f06765`)
+
+---
+
+## 2026-04-30
+
+### Added
+
+- **deck-forge-runtime**: adopt deck-forge 0.3.1 + theme presets (`5135590`)
+  - 6 curated themes (executive-navy, modern-mono, warm-pastel, tech-dark, eco-fresh, editorial-serif)
+  - Align slide-designer schema with 0.3.1 `LayoutType` enum
+  - Intent-parser `deckPlan` prompt with `SlideIntent.type` guidance
+- Update operation planner and slide designer with enhanced rules and constraints (`4504d60`)
+- Enhance slide generation and review processes (`40c3aa1`)
+- **deck-forge**: vision reviewer + 1-pass revision loop (`53c6c3b`)
+- **deck-forge**: persist full reproducibility bundle (IR + assets + request) to S3 (`54b1276`)
+- **deck-forge**: integrate CloudWatch logging and migrate to v0.2.1 staged `tool_use` (`03ce2da`)
+- **deck-forge-runtime**: upgrade to `@deck-forge/*` v0.2.0 (`491dbb7`)
+- **deck-forge**: add Deck Forge AgentCore runtime and integrate as agent tool (`119ced8`)
+
+### Fixed
+
+- **deck-forge**: upgrade to `@deck-forge/core@0.2.2`, remove workarounds (`c7d6f7e`)
+- **deck-forge**: remove `mustInclude`/`mustAvoid` forwarding to `validateSlideSpec` (`2f4a01e`)
+- **deck-forge**: work around `core@0.2.1` IR-builder gaps for quality (`0645eb1`)
+- **deck-forge**: materialize `generated://` asset URIs before publishing so PNG bytes reach S3 (`f7abddc`)
+- **deck-forge**: route all app logs through pino shared logger to CloudWatch (`a3c2f3f`)
+
+---
+
+## 2026-04-25 – 2026-04-26
+
+### Added
+
+- Chat stream に observability イベントを追加し、要約を永続化 (`571e225`)
+- **agentcore**: add date/weather/tavily tools and wire Tavily API key secret (`042a528`)
+- Refine thread UX and observability UI (`8b3d4d7`)
+
+### Fixed
+
+- Remove `undefined` values in DynamoDB marshalling options (`cb38fed`)
+
+---
+
+## 2026-04-19 – 2026-04-20
+
+### Added
+
+- SSE streaming for `/chat` endpoint, replacing JSON response (`b8687a7`)
+- AgentCore Runtime with Strands SDK, wired into backend (`be0b3e3`)
+- Refactor CDK stacks for modular architecture and add web hosting support (`184c3aa`)
+- Integrate AWS Bedrock agent runtime and support multiple models in chat (`38efed3`)
+
+### Changed
+
+- **infra**: stage-aware AWS deploy and AgentCore-only backend (`ce012c3`)
+- **infra**: increase backend Lambda timeout for agent streaming (`c5758a0`)
+- **infra**: allow invoke on AgentCore runtime endpoints (`7b06570`)
+- **amplify**: switch frontend hosting to static output (`d0d727b`)
+- **amplify**: pin Next.js 15 and fix CSS type resolution (`ecf204b`)
+- **amplify**: build shared package before frontend build (`b82c4c5`)
+- **auth**: enable Amplify OAuth listener for redirect flow (`e62631f`)
+
+### Housekeeping
+
+- Apply biome cleanup and refine local runtime flow (`7a08443`)
+
+---
+
+## 2026-04-19
+
+### Added
+
+- Initial commit — project scaffolding (`0f4193b`)
+  - Next.js frontend with assistant-ui chat components
+  - Backend BFF (Express / Lambda)
+  - CDK infrastructure
+  - Shared packages
+  - Biome linting & formatting
+
+---
+
+# @deck-forge/core — Upstream Version History
+
+> The following entries were carried over from `packages/deck-forge/core/CHANGELOG.md`
+> and cover the upstream package releases prior to monorepo integration.
+
+---
+
+## @deck-forge/core 0.3.1
+
+### Minor Changes
+
+Expand component template catalog and layout strategy registry for
+structurally appropriate slide layouts.
+
+#### Component templates (`templates/components/*.json`)
+
+19 new templates with `ContentBlock`-aware `propsSchema`:
+
+- **Canonical slide kinds**: `title-slide`, `section-divider`, `agenda`,
+  `closing-cta`, `thank-you`, `qa`, `quote-spotlight`.
+- **Catalog gaps filled**: `chart-focus`, `hero-visual`, `comparison`.
+- **`LayoutType` parity**: `three-column`, `matrix-2x2`, `dashboard`,
+  `diagram-focus`, `image-left-text-right`, `text-left-image-right`,
+  `timeline-horizontal`, `process-flow`.
+- **`ContentBlock` coverage**: `metric-row`, `callout-spotlight`.
+
+#### Layout strategies (`packages/core/src/builders/layouts/`)
+
+8 new strategies registered in `BUILTIN_LAYOUT_STRATEGIES` with priority
+tiers (80 / 70 / 60–30 / 0):
+
+- `titleSlideStrategy`, `sectionDividerStrategy` (80)
+- `comparisonStrategy`, `threeColumnStrategy`, `matrixStrategy`,
+  `dashboardStrategy`, `timelineStrategy`, `diagramFocusStrategy` (70)
+
+#### Capability detection (`component-catalog.ts`)
+
+`detectCapability` rewritten with 4-tier resolution (SlideIntent.type →
+LayoutSpec.type → ContentBlock heuristics → fallback).
+
+---
+
+## @deck-forge/core 0.3.0
+
+### Minor Changes
+
+Five layered additions to the IR→render/review pipeline. All additive.
+
+#### Phase 1 — `LayoutStrategy` foundation
+
+- `LayoutStrategy` interface with priority-sorted dispatch.
+- `buildElements` delegates to the strategy registry.
+
+#### Phase 2 — `SlideDesigner` plug-in
+
+- `SlideDesigner` interface and `HeuristicSlideDesigner`.
+- `LocalPresentationRuntime` gains `designSlide()` / `runDesignPass()`.
+- MCP tool `presentation_design_pass`.
+
+#### Phase 3 — `VisualReviewer` + design-review loop
+
+- `VisualReviewer` interface and `runDesignReviewLoop()`.
+- MCP tool `presentation_visual_review`.
+
+#### Phase 4 — Decoration & typography tokens
+
+- `TextElementIR.decoration` field (`card` / `accent-bar` / `divider`).
+- `HtmlExporter` CSS variables, semantic bullet lists, accent stripes,
+  decoration classes.
+- `PptxExporter` honours decoration and renders `ShapeElementIR`.
+
+#### Phase 5 — Chart, diagram, and shape exporters
+
+- `HtmlExporter` renders `ChartElementIR` as inline SVG.
+- `HtmlExporter` renders `DiagramElementIR` (cycle / matrix / horizontal).
+- `PptxExporter` calls `addChart` / `addShape` with matching layouts.
+
+---
+
+## @deck-forge/core 0.2.3
+
+### Bug Fixes
+
+- **`renderTextElement`** — `shrinkText: true`, role-appropriate `valign`,
+  `paraSpaceAfter` for bullets. Callout elements get `fill` + `line`.
+- **`bulletListToRichText`** — Items become `RichParagraph` with
+  `bullet: { indentLevel }` instead of `"  • …"` prefixes.
+- **`splitVertical`** — Inter-block gap 12→18, minimum 60-unit height,
+  overflow blocks clamped.
+- **Title layout** — 60/40 split with 8-unit gap (no more overlay).
+- **`renderImageElement`** — `sizing: { type: "contain" }` preserves
+  aspect ratio.
+- **Validation** — Min-frame-height warning for `frame.height < 60`.
+
+---
+
+## @deck-forge/core 0.2.2
+
+### Bug Fixes
+
+- **`defaultFrameForRole`** — Per-role layout frames no longer collapse to
+  the same rectangle; `title`, `body`, `visual`, `callout`, `sidebar`,
+  `footer` occupy distinct zones.
+- **`MetricBlock`** — Now rendered as callout-role text elements.
+- **`createTheme`** — Derives palette from `brief.visualDirection.mood`
+  when `brief.brand.colors` is absent.
+- **`buildAssetRegistry`** — No longer fabricates phantom element IDs.
+
+---
+
+## @deck-forge/core 0.2.1
+
+- Initial public release on npm.
+  - Biome linting & formatting
