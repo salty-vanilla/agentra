@@ -67,6 +67,15 @@ export {
 } from "#src/json.js";
 export { validatePresentation } from "#src/validation/validate-presentation.js";
 export { autoFixPresentation } from "#src/validation/autofix/auto-fix-presentation.js";
+export {
+  estimateTextLines,
+  estimateTextBoxHeight,
+  inferTextLanguage,
+  richTextToPlainText,
+  richTextParagraphsToPlainText,
+  estimateTableHeight,
+  estimateTableRowHeight,
+} from "#src/measurement/index.js";
 export { repairPresentationLayout } from "#src/repair/index.js";
 export type {
   RepairOperationRecord,
