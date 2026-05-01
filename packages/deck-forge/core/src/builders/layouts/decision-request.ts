@@ -32,6 +32,10 @@ export const decisionRequestStrategy: LayoutStrategy = {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
+    // Use template slots when available
+    const mainSlot = ctx.templateSlots.main ?? ctx.templateSlots.body;
+    const calloutSlot = ctx.templateSlots.callout;
+
     // Categorise blocks
     const decisionBlocks = ctx.blocks.filter(
       (b) => b.type === "callout",

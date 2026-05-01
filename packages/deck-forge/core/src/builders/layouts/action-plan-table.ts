@@ -44,13 +44,17 @@ export const actionPlanTableStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
+    // Use template slots when available
+    const tableSlot = ctx.templateSlots.table;
+    const ctaSlot = ctx.templateSlots.cta ?? ctx.templateSlots.callout;
+
     if (!hasCta) {
-      // Table only — full region
-      const tableFrames = splitVertical(region, tableBlocks.length, density);
+      const tableFrames = splitVertical(tableSlot ?? region, tableBlocks.length, density);
       tableBlocks.forEach((block, i) => {
         assignments.push({
           blockId: block.id,
           frame: tableFrames[i] ?? region,
+          slot: tableSlot ? "table" : undefined,
         });
       });
       return assignments;
@@ -62,23 +66,24 @@ export const actionPlanTableStrategy: LayoutStrategy = {
       Math.round(region.height * 0.25),
     );
 
-    // Table blocks in upper region
-    const tableFrames = splitVertical(tableRegion, tableBlocks.length, density);
+    const tableFrames = splitVertical(tableSlot ?? tableRegion, tableBlocks.length, density);
     tableBlocks.forEach((block, i) => {
       assignments.push({
         blockId: block.id,
         frame: tableFrames[i] ?? tableRegion,
+        slot: tableSlot ? "table" : undefined,
       });
     });
 
     // CTA / callout blocks in bottom band
     const ctaBlocks = [...calloutBlocks, ...otherBlocks];
-    const ctaFrames = splitVertical(ctaBand, ctaBlocks.length, density);
+    const ctaFrames = splitVertical(ctaSlot ?? ctaBand, ctaBlocks.length, density);
     ctaBlocks.forEach((block, i) => {
       const isCallout = block.type === "callout";
       assignments.push({
         blockId: block.id,
         frame: ctaFrames[i] ?? ctaBand,
+        slot: ctaSlot ? "cta" : undefined,
         hints: isCallout
           ? { decoration: "accent-bar", role: "callout", fontScale: 1.1 }
           : undefined,

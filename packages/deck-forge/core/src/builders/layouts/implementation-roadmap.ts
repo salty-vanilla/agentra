@@ -47,14 +47,19 @@ export const implementationRoadmapStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
+    // Use template slots when available
+    const processSlot = ctx.templateSlots.process;
+    const calloutSlot = ctx.templateSlots.callout;
+
     if (calloutBlocks.length === 0) {
       // All blocks as horizontal phase cards
       const count = Math.min(phaseBlocks.length, 5);
-      const cards = createHorizontalCards(region, count, density);
+      const cards = createHorizontalCards(processSlot ?? region, count, density);
       phaseBlocks.slice(0, count).forEach((block, i) => {
         assignments.push({
           blockId: block.id,
           frame: cards[i] ?? region,
+          slot: processSlot ? "process" : undefined,
           hints: { decoration: "card" },
         });
       });
@@ -89,11 +94,12 @@ export const implementationRoadmapStrategy: LayoutStrategy = {
     );
 
     const phaseCount = Math.min(phaseBlocks.length, 5);
-    const cards = createHorizontalCards(phaseRegion, phaseCount, density);
+    const cards = createHorizontalCards(processSlot ?? phaseRegion, phaseCount, density);
     phaseBlocks.slice(0, phaseCount).forEach((block, i) => {
       assignments.push({
         blockId: block.id,
         frame: cards[i] ?? phaseRegion,
+        slot: processSlot ? "process" : undefined,
         hints: { decoration: "card" },
       });
     });

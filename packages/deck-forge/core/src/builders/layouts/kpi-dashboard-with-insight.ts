@@ -62,6 +62,11 @@ export const kpiDashboardWithInsightStrategy: LayoutStrategy = {
         b.type !== "paragraph",
     );
 
+    // Use template slots when available
+    const metricsSlot = ctx.templateSlots.metrics;
+    const visualSlot = ctx.templateSlots.visual;
+    const insightSlot = ctx.templateSlots.insight ?? ctx.templateSlots.callout;
+
     // Reserve insight band at bottom
     const hasInsight = insightBlocks.length > 0;
     const { main: upperRegion, band: insightBand } = hasInsight
@@ -76,38 +81,40 @@ export const kpiDashboardWithInsightStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
-    // KPI cards in grid on the left side
-    const kpiFrames = createCardGrid(kpiRegion, metricBlocks.length, density);
+    // KPI cards — use metrics slot or computed kpiRegion
+    const kpiFrames = createCardGrid(metricsSlot ?? kpiRegion, metricBlocks.length, density);
     metricBlocks.forEach((block, i) => {
       assignments.push({
         blockId: block.id,
         frame: kpiFrames[i] ?? kpiRegion,
+        slot: metricsSlot ? "metrics" : undefined,
         hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
       });
     });
 
-    // Chart/diagram blocks on the right side
-    const chartFrames = splitVertical(chartRegion, chartBlocks.length, density);
+    // Chart/diagram — use visual slot or computed chartRegion
+    const chartFrames = splitVertical(visualSlot ?? chartRegion, chartBlocks.length, density);
     chartBlocks.forEach((block, i) => {
       assignments.push({
         blockId: block.id,
         frame: chartFrames[i] ?? chartRegion,
+        slot: visualSlot ? "visual" : undefined,
       });
     });
 
-    // Insight band at bottom
+    // Insight band — use insight/callout slot or computed band
     if (hasInsight) {
-      const inFrames = splitVertical(insightBand, insightBlocks.length, density);
+      const inFrames = splitVertical(insightSlot ?? insightBand, insightBlocks.length, density);
       insightBlocks.forEach((block, i) => {
         assignments.push({
           blockId: block.id,
           frame: inFrames[i] ?? insightBand,
+          slot: insightSlot ? "callout" : undefined,
           hints: { role: "callout", decoration: "accent-bar" },
         });
       });
     }
 
-    // Any remaining blocks stacked below
     if (otherBlocks.length > 0) {
       const lastAssignment = assignments[assignments.length - 1];
       const otherTop = lastAssignment

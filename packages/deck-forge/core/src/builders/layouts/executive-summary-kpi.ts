@@ -55,13 +55,18 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
+    // Use template slot for metrics region if available
+    const metricsSlotFrame = ctx.templateSlots.metrics ?? ctx.templateSlots.cards;
+    const calloutSlotFrame = ctx.templateSlots.callout;
+
     if (metricRatio >= 1.0) {
-      // Metrics only — fill entire region
-      const cells = createCardGrid(region, metricBlocks.length, density);
+      const metricRegion = metricsSlotFrame ?? region;
+      const cells = createCardGrid(metricRegion, metricBlocks.length, density);
       metricBlocks.forEach((block, i) => {
         assignments.push({
           blockId: block.id,
-          frame: cells[i] ?? region,
+          frame: cells[i] ?? metricRegion,
+          slot: metricsSlotFrame ? "metrics" : undefined,
           hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
         });
       });
@@ -73,24 +78,24 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
       metricRatio,
     );
 
-    // Metric cards in responsive grid
-    const cells = createCardGrid(metricRegion, metricBlocks.length, density);
+    const cells = createCardGrid(metricsSlotFrame ?? metricRegion, metricBlocks.length, density);
     metricBlocks.forEach((block, i) => {
       assignments.push({
         blockId: block.id,
         frame: cells[i] ?? metricRegion,
+        slot: metricsSlotFrame ? "metrics" : undefined,
         hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
       });
     });
 
-    // Callout takeaway band + other blocks in lower region
     const lowerBlocks = [...calloutBlocks, ...otherBlocks];
-    const lowerFrames = splitVertical(lowerRegion, lowerBlocks.length, density);
+    const lowerFrames = splitVertical(calloutSlotFrame ?? lowerRegion, lowerBlocks.length, density);
     lowerBlocks.forEach((block, i) => {
       const isCallout = block.type === "callout";
       assignments.push({
         blockId: block.id,
         frame: lowerFrames[i] ?? lowerRegion,
+        slot: calloutSlotFrame && isCallout ? "callout" : undefined,
         hints: isCallout
           ? { role: "callout", decoration: "accent-bar", fontScale: 1.05 }
           : undefined,

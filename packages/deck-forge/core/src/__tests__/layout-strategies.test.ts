@@ -19,6 +19,7 @@ import {
   twoColumnStrategy,
 } from "#src/builders/layouts/index.js";
 import type { LayoutContext } from "#src/builders/layouts/index.js";
+import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
 import type {
   ContentBlock,
   DeckPlan,
@@ -89,6 +90,9 @@ function makeContext(
       callout: { x: 80, y: 528, width: 1120, height: 112 },
       table: { x: 80, y: 192, width: 1120, height: 336 },
     },
+    templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE,
+    templateLayout: { id: "blank", name: "Blank", kind: "blank", slots: {} },
+    templateSlots: {},
     ...overrides,
   };
   return ctx;

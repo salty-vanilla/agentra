@@ -9,6 +9,40 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 7A: TemplateProfile / Slot-based Layout Core
+
+- **TemplateProfile type system** — `TemplateProfile`, `TemplateLayoutProfile`,
+  `TemplateLayoutKind` (9 kinds), `TemplateSlotName` (15 slot names) in
+  `packages/deck-forge/core/src/templates/`
+- **Built-in template profile** `executive-navy-v1` with 9 layout profiles:
+  cover, section, content-standard, content-two-column, dashboard-cards,
+  visual-insight, table, process, blank — each with deterministic slot frames
+- **`resolveTemplateLayout()`** — heuristic mapper from `LayoutSpec.type` and
+  `strategyId` to the appropriate `TemplateLayoutProfile`; strategy-to-layout
+  mapping (e.g. `executive-summary-kpi` → dashboard-cards, `data-insight-story`
+  → visual-insight)
+- **`LayoutContext` extended** with `templateProfile`, `templateLayout`, and
+  `templateSlots` — strategies can read slot frames and fall back to regionFrames
+- **`SubFrameAssignment.slot`** field — strategies annotate which template slot
+  was used for each block placement
+- **`SlideIR._trace` extended** with `templateProfileId`, `templateLayoutId`,
+  `templateLayoutKind`, `usedSlots[]`, `fallbackSlots[]`
+- **vitest exclude** — `infra/cdk/cdk.out/**` excluded from test discovery
+- **34 new tests** covering template profile structure, resolveTemplateLayout
+  mapping, buildPresentationIr trace integration, slot placement verification,
+  and no-business-layout-explosion guard
+
+### Changed — deck-forge/core Phase 7A
+
+- **`buildPresentationIr()`** accepts optional `templateProfile` (defaults to
+  `executive-navy-v1`); resolves template layout per slide after strategy
+  selection; title/subtitle placement uses template slots when available
+- **10 strategies slot-aware** — title-slide, section-divider,
+  executive-summary-kpi, kpi-dashboard-with-insight, data-insight-story,
+  small-multiples-trend, process-flow-with-impact, implementation-roadmap,
+  action-plan-table, decision-request — each prefers template slot frames
+  with fallback to regionFrames
+
 ### Added — deck-forge/core Phase 6C: Layout Stability Improvement
 
 - **Standard layout band constants** (`LAYOUT_TITLE_Y`, `LAYOUT_BODY_Y`,

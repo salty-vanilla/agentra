@@ -30,6 +30,9 @@ import type {
   TitleBlock,
 } from "#src/index.js";
 import { createResolvedRegions, defaultFrameForRole } from "#src/operations/utils.js";
+import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
+import { resolveTemplateLayout } from "#src/templates/resolve-template-layout.js";
+import type { TemplateProfile, TemplateSlotName } from "#src/templates/template-profile.js";
 
 const DEFAULT_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 const DEFAULT_SLIDE_SIZE: SlideSize = {
@@ -47,6 +50,7 @@ export type BuildPresentationIrInput = {
   version?: string;
   title?: string;
   theme?: ThemeSpec;
+  templateProfile?: TemplateProfile;
   meta?: Partial<PresentationIR["meta"]>;
 };
 
@@ -54,6 +58,7 @@ export type BuildPresentationIrOutput = PresentationIR;
 
 export function buildPresentationIr(input: BuildPresentationIrInput): BuildPresentationIrOutput {
   const theme = input.theme ?? createTheme(input.brief);
+  const templateProfile = input.templateProfile ?? EXECUTIVE_NAVY_TEMPLATE_PROFILE;
   const usedElementIds = new Set<string>();
   const slideSpecs = [...input.slideSpecs].sort((left, right) => {
     const leftOrder = left.slideNumber ?? Number.MAX_SAFE_INTEGER;
@@ -65,7 +70,7 @@ export function buildPresentationIr(input: BuildPresentationIrInput): BuildPrese
   });
 
   const slides = slideSpecs.map((slideSpec, index) =>
-    buildSlideIr(slideSpec, index, theme, usedElementIds),
+    buildSlideIr(slideSpec, index, theme, templateProfile, usedElementIds),
   );
   const assets = buildAssetRegistry(input.assetSpecs ?? [], slides, slideSpecs);
 
@@ -106,6 +111,7 @@ function buildSlideIr(
   slideSpec: SlideSpec,
   index: number,
   theme: ThemeSpec,
+  templateProfile: TemplateProfile,
   usedElementIds: Set<string>,
 ): SlideIR {
   const layout = {
@@ -113,12 +119,9 @@ function buildSlideIr(
     slideSize: DEFAULT_SLIDE_SIZE,
     regions: createResolvedRegions(slideSpec.layout, DEFAULT_SLIDE_SIZE),
   };
-  const { elements, layoutStrategyId } = buildElements(slideSpec, layout.spec, layout.regions, theme, usedElementIds);
+  const { elements, layoutStrategyId, templateLayoutId, templateLayoutKind, usedSlots, fallbackSlots } = buildElements(slideSpec, layout.spec, layout.regions, theme, templateProfile, usedElementIds);
 
   // ── Post-build overlap detection & auto-fix ───────────────────────
-  // Detect overlapping element frames before any AI review step. When an
-  // overlap exceeds 8% of the smaller frame, stack the conflicting group
-  // vertically inside the body region to eliminate it.
   const fixedElements = fixOverlappingElements(elements, layout.slideSize, layout.regions);
 
   return {
@@ -133,6 +136,11 @@ function buildSlideIr(
     _trace: {
       layoutStrategyId,
       layoutSpecType: slideSpec.layout.type,
+      templateProfileId: templateProfile.id,
+      templateLayoutId,
+      templateLayoutKind,
+      usedSlots,
+      fallbackSlots,
     },
   };
 }
@@ -142,8 +150,9 @@ function buildElements(
   layoutSpec: LayoutSpec,
   regions: SlideIR["layout"]["regions"],
   theme: ThemeSpec,
+  templateProfile: TemplateProfile,
   usedElementIds: Set<string>,
-): { elements: SlideIR["elements"]; layoutStrategyId: string } {
+): { elements: SlideIR["elements"]; layoutStrategyId: string; templateLayoutId: string; templateLayoutKind: string; usedSlots: string[]; fallbackSlots: string[] } {
   const content = [...slideSpec.content];
   const titleBlock = firstBlockByType(content, "title");
   const ensuredTitleText = titleBlock?.text || slideSpec.title;
@@ -218,6 +227,14 @@ function buildElements(
     (block) => block.type !== "title" && block.type !== "subtitle",
   );
 
+  const regionFrames = {
+    body: bodyRegionFrame,
+    visual: visualRegionFrame,
+    callout: calloutRegionFrame,
+    table: tableRegionFrame,
+  };
+
+  // 1. Select layout strategy using regionFrames only
   const strategy = selectLayoutStrategy({
     slideSpec,
     layoutSpec,
@@ -225,30 +242,51 @@ function buildElements(
     theme,
     slideSize: DEFAULT_SLIDE_SIZE,
     blocks: placedBlocks,
-    regionFrames: {
-      body: bodyRegionFrame,
-      visual: visualRegionFrame,
-      callout: calloutRegionFrame,
-      table: tableRegionFrame,
-    },
+    regionFrames,
+    templateProfile,
+    templateLayout: { id: "blank", name: "Blank", kind: "blank", slots: {} },
+    templateSlots: {},
   });
-  const assignments = strategy.layout({
+
+  // 2. Resolve template layout based on strategy id
+  const { layout: templateLayout } = resolveTemplateLayout({
+    slideSpec,
+    layoutSpec,
+    blocks: placedBlocks,
+    selectedStrategyId: strategy.id,
+    templateProfile,
+  });
+  const templateSlots = templateLayout.slots;
+
+  // 3. Run strategy with template slots available
+  const layoutCtx = {
     slideSpec,
     layoutSpec,
     regions,
     theme,
     slideSize: DEFAULT_SLIDE_SIZE,
     blocks: placedBlocks,
-    regionFrames: {
-      body: bodyRegionFrame,
-      visual: visualRegionFrame,
-      callout: calloutRegionFrame,
-      table: tableRegionFrame,
-    },
-  });
+    regionFrames,
+    templateProfile,
+    templateLayout,
+    templateSlots,
+  };
+  const assignments = strategy.layout(layoutCtx);
+
+  // Track which slots were actually used vs. expected but missing
+  const usedSlotSet = new Set<TemplateSlotName>();
+  const fallbackSlotSet = new Set<TemplateSlotName>();
+  for (const a of assignments) {
+    if (a.slot) usedSlotSet.add(a.slot);
+  }
+
   const assignmentByBlock = new Map<string, SubFrameAssignment>(
     assignments.map((assignment) => [assignment.blockId, assignment]),
   );
+
+  // Use template slots for title/subtitle placement when available
+  const resolvedTitleFrame = templateSlots.title ?? titleElementFrame;
+  const resolvedSubtitleFrame = templateSlots.subtitle ?? subtitleBaseFrame;
 
   // Suppress unused-variable warnings: the per-region split is now handled
   // by the layout strategy, but we keep the typed groupings around for
@@ -262,12 +300,13 @@ function buildElements(
 
   for (const block of content) {
     if (block.type === "title") {
+      if (templateSlots.title) usedSlotSet.add("title");
       elements.push(
         createTextElement({
           blockId: block.id,
           text: block.text,
           role: "title",
-          frame: titleElementFrame,
+          frame: resolvedTitleFrame,
           style: {
             fontFamily: theme.typography.fontFamily.heading,
             fontSize: theme.typography.fontSize.title,
@@ -281,12 +320,13 @@ function buildElements(
     }
 
     if (block.type === "subtitle") {
+      if (templateSlots.subtitle) usedSlotSet.add("subtitle");
       elements.push(
         createTextElement({
           blockId: block.id,
           text: block.text,
           role: "subtitle",
-          frame: subtitleBaseFrame,
+          frame: resolvedSubtitleFrame,
           style: {
             fontFamily: theme.typography.fontFamily.heading,
             fontSize: theme.typography.fontSize.heading,
@@ -462,7 +502,14 @@ function buildElements(
     }
   }
 
-  return { elements, layoutStrategyId: strategy.id };
+  return {
+    elements,
+    layoutStrategyId: strategy.id,
+    templateLayoutId: templateLayout.id,
+    templateLayoutKind: templateLayout.kind,
+    usedSlots: [...usedSlotSet],
+    fallbackSlots: [...fallbackSlotSet],
+  };
 }
 
 // ── Overlap detection & auto-fix ──────────────────────────────────────

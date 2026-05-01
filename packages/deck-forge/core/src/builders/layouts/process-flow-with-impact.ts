@@ -52,6 +52,10 @@ export const processFlowWithImpactStrategy: LayoutStrategy = {
     const hasImpact = impactBlocks.length > 0;
     const assignments: SubFrameAssignment[] = [];
 
+    // Use template slots when available
+    const processSlot = ctx.templateSlots.process;
+    const calloutSlot = ctx.templateSlots.callout;
+
     if (flowBlocks.length === 0) {
       // No flow blocks — just stack everything vertically
       const frames = splitVertical(region, ctx.blocks.length, density);
@@ -71,18 +75,19 @@ export const processFlowWithImpactStrategy: LayoutStrategy = {
 
     // Flow nodes laid out horizontally in the upper area
     const flowCount = Math.min(flowBlocks.length, 7);
-    const flowFrames = createHorizontalCards(upperRegion, flowCount, density);
+    const flowFrames = createHorizontalCards(processSlot ?? upperRegion, flowCount, density);
     flowBlocks.forEach((block, i) => {
       assignments.push({
         blockId: block.id,
         frame: flowFrames[Math.min(i, flowFrames.length - 1)] ?? upperRegion,
+        slot: processSlot ? "process" : undefined,
         hints: { decoration: "card" },
       });
     });
 
     // Impact/callout blocks in bottom band
     if (hasImpact) {
-      const impactFrames = splitVertical(impactBand, impactBlocks.length, density);
+      const impactFrames = splitVertical(calloutSlot ?? impactBand, impactBlocks.length, density);
       impactBlocks.forEach((block, i) => {
         const isMetric = block.type === "metric";
         assignments.push({

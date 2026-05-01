@@ -53,6 +53,10 @@ export const dataInsightStoryStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
+    // Use template slots when available
+    const visualSlot = ctx.templateSlots.visual;
+    const insightSlot = ctx.templateSlots.insight ?? ctx.templateSlots.callout;
+
     // Visual area (top ~60%) + insight stack (bottom ~35%)
     const { top: visualRegion, bottom: insightRegion } = splitTopBottom(
       region,
@@ -61,7 +65,7 @@ export const dataInsightStoryStrategy: LayoutStrategy = {
 
     // Visual blocks in upper region
     const visualFrames = splitVertical(
-      visualRegion,
+      visualSlot ?? visualRegion,
       visualBlocks.length,
       density,
     );
@@ -69,13 +73,14 @@ export const dataInsightStoryStrategy: LayoutStrategy = {
       assignments.push({
         blockId: block.id,
         frame: visualFrames[i] ?? visualRegion,
+        slot: visualSlot ? "visual" : undefined,
       });
     });
 
     // Insight + other blocks in lower region
     const lowerBlocks = [...insightBlocks, ...otherBlocks];
     const lowerFrames = splitVertical(
-      insightRegion,
+      insightSlot ?? insightRegion,
       lowerBlocks.length,
       density,
     );

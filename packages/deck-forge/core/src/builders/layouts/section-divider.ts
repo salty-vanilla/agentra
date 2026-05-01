@@ -30,12 +30,13 @@ export const sectionDividerStrategy: LayoutStrategy = {
     const top = Math.min(body.y, visual.y);
     const bottom = Math.max(body.y + body.height, callout.y + callout.height);
 
-    const fullArea = { x: left, y: top, width: right - left, height: bottom - top };
+    const fullArea = ctx.templateSlots.body ?? { x: left, y: top, width: right - left, height: bottom - top };
     const frames = splitVertical(fullArea, ctx.blocks.length || 1, density);
 
     return ctx.blocks.map((block, index) => ({
       blockId: block.id,
       frame: frames[index] ?? fullArea,
+      slot: ctx.templateSlots.body ? "body" as const : undefined,
       hints: { alignment: "left" as const, decoration: "accent-bar" as const },
     }));
   },

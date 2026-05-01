@@ -145,6 +145,18 @@ export {
 } from "#src/spec-generation/generate-spec-artifacts.js";
 export { buildPresentationIr } from "#src/builders/build-presentation-ir.js";
 export {
+  EXECUTIVE_NAVY_TEMPLATE_PROFILE,
+  resolveTemplateLayout,
+} from "#src/templates/index.js";
+export type {
+  TemplateProfile,
+  TemplateLayoutProfile,
+  TemplateLayoutKind,
+  TemplateSlotName,
+  ResolveTemplateLayoutInput,
+  ResolveTemplateLayoutOutput,
+} from "#src/templates/index.js";
+export {
   listComponents,
   preflightComponents,
   synthesizeComponents,
@@ -552,6 +564,11 @@ export type SlideIR = {
   _trace?: {
     layoutStrategyId: string;
     layoutSpecType: string;
+    templateProfileId: string;
+    templateLayoutId: string;
+    templateLayoutKind: string;
+    usedSlots: string[];
+    fallbackSlots: string[];
   };
 };
 

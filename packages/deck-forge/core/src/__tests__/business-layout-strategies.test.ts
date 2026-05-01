@@ -46,6 +46,7 @@ import { threePointSummaryStrategy } from "#src/builders/layouts/three-point-sum
 import type { LayoutContext } from "#src/builders/layouts/index.js";
 import { MIN_SUBFRAME_HEIGHT } from "#src/builders/layouts/grid-utils.js";
 import type { ContentBlock, SlideSpec, ThemeSpec } from "#src/index.js";
+import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -91,6 +92,9 @@ function makeContext(
       callout: { x: 80, y: 528, width: 1120, height: 112 },
       table: { x: 80, y: 192, width: 1120, height: 336 },
     },
+    templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE,
+    templateLayout: { id: "blank", name: "Blank", kind: "blank", slots: {} },
+    templateSlots: {},
     ...rest,
   };
   return ctx;

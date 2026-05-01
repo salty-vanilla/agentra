@@ -7,6 +7,11 @@ import type {
   SlideSpec,
   ThemeSpec,
 } from "#src/index.js";
+import type {
+  TemplateLayoutProfile,
+  TemplateProfile,
+  TemplateSlotName,
+} from "#src/templates/template-profile.js";
 
 /**
  * Hints a layout strategy can attach to a sub-frame assignment so the
@@ -36,6 +41,7 @@ export type LayoutHints = {
 export type SubFrameAssignment = {
   blockId: string;
   frame: ResolvedFrame;
+  slot?: TemplateSlotName;
   hints?: LayoutHints;
 };
 
@@ -63,6 +69,9 @@ export type LayoutContext = {
     callout: ResolvedFrame;
     table: ResolvedFrame;
   };
+  templateProfile: TemplateProfile;
+  templateLayout: TemplateLayoutProfile;
+  templateSlots: Partial<Record<TemplateSlotName, ResolvedFrame>>;
 };
 
 /**

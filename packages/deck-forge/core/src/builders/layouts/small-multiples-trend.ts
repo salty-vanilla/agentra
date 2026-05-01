@@ -61,6 +61,10 @@ export const smallMultiplesTrendStrategy: LayoutStrategy = {
     const primaryBlocks = [...chartBlocks, ...metricBlocks];
     const hasInsight = insightBlocks.length > 0;
 
+    // Use template slots when available
+    const cardsSlot = ctx.templateSlots.cards ?? ctx.templateSlots.metrics;
+    const calloutSlot = ctx.templateSlots.callout;
+
     // Reserve insight band at bottom if there are callouts/paragraphs
     const { main: gridRegion, band: insightBand } = hasInsight
       ? createInsightBand(region, 80)
@@ -69,12 +73,13 @@ export const smallMultiplesTrendStrategy: LayoutStrategy = {
     const assignments: SubFrameAssignment[] = [];
 
     // Charts/metrics in responsive grid
-    const gridFrames = createCardGrid(gridRegion, primaryBlocks.length, density);
+    const gridFrames = createCardGrid(cardsSlot ?? gridRegion, primaryBlocks.length, density);
     primaryBlocks.forEach((block, i) => {
       const isMetric = block.type === "metric";
       assignments.push({
         blockId: block.id,
         frame: gridFrames[i] ?? gridRegion,
+        slot: cardsSlot ? "cards" : undefined,
         hints: isMetric
           ? { decoration: "card", alignment: "center", fontScale: 1.1 }
           : undefined,
@@ -83,11 +88,12 @@ export const smallMultiplesTrendStrategy: LayoutStrategy = {
 
     // Insight band
     if (hasInsight) {
-      const inFrames = splitVertical(insightBand, insightBlocks.length, density);
+      const inFrames = splitVertical(calloutSlot ?? insightBand, insightBlocks.length, density);
       insightBlocks.forEach((block, i) => {
         assignments.push({
           blockId: block.id,
           frame: inFrames[i] ?? insightBand,
+          slot: calloutSlot ? "callout" : undefined,
           hints: { role: "callout", decoration: "accent-bar" },
         });
       });

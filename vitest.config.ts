@@ -12,6 +12,9 @@ const deckForgePackageSrcRoots = [
 ];
 
 export default defineConfig({
+  test: {
+    exclude: ['**/node_modules/**', '**/dist/**', 'infra/cdk/cdk.out/**'],
+  },
   plugins: [
     {
       name: 'deck-forge-hash-alias',
