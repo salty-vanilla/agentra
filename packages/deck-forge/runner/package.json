@@ -1,0 +1,30 @@
+{
+  "name": "@deck-forge/runner",
+  "version": "0.3.1",
+  "type": "module",
+  "repository": "https://github.com/salty-vanilla/deck-forge.git",
+  "files": ["dist", "!dist/**/__tests__/**", "!dist/**/*.test.*", "!dist/tsconfig.tsbuildinfo"],
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "imports": {
+    "#src/*": "./dist/*"
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc -b"
+  },
+  "dependencies": {
+    "@deck-forge/core": "workspace:*",
+    "@deck-forge/tools": "workspace:*"
+  }
+}

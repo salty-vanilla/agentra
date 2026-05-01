@@ -1,0 +1,184 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://deck-forge.dev/schemas/presentation-ir.schema.json",
+  "title": "PresentationIR",
+  "description": "The Presentation Intermediate Representation — the canonical in-memory form of a deck.",
+  "type": "object",
+  "required": ["id", "version", "meta", "theme", "slides", "assets", "operationLog"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string", "description": "Unique deck identifier." },
+    "version": { "type": "string", "description": "Semantic version of this IR snapshot." },
+    "meta": {
+      "type": "object",
+      "required": ["title", "createdAt", "updatedAt"],
+      "properties": {
+        "title": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "author": { "type": "string" },
+        "source": { "type": "string" }
+      }
+    },
+    "brief": { "$ref": "presentation-brief.schema.json" },
+    "deckPlan": { "type": "object", "description": "See deck-plan.schema.json." },
+    "theme": {
+      "type": "object",
+      "required": ["id", "name", "colors", "typography", "spacing", "radius", "slideDefaults", "elementDefaults"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "colors": {
+          "type": "object",
+          "required": ["background", "surface", "textPrimary", "textSecondary", "primary", "secondary", "accent", "chartPalette"],
+          "properties": {
+            "background": { "type": "string" },
+            "surface": { "type": "string" },
+            "textPrimary": { "type": "string" },
+            "textSecondary": { "type": "string" },
+            "primary": { "type": "string" },
+            "secondary": { "type": "string" },
+            "accent": { "type": "string" },
+            "success": { "type": "string" },
+            "warning": { "type": "string" },
+            "danger": { "type": "string" },
+            "chartPalette": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "typography": { "type": "object" },
+        "spacing": { "type": "object" },
+        "radius": { "type": "object" },
+        "shadows": { "type": "object" },
+        "slideDefaults": {
+          "type": "object",
+          "properties": {
+            "backgroundColor": { "type": "string" },
+            "padding": { "type": "number" }
+          }
+        },
+        "elementDefaults": { "type": "object" }
+      }
+    },
+    "slides": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/SlideIR" }
+    },
+    "assets": {
+      "type": "object",
+      "required": ["assets"],
+      "properties": {
+        "assets": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/Asset" }
+        }
+      }
+    },
+    "operationLog": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/OperationRecord" }
+    },
+    "validation": { "type": "object", "description": "Last validation report." }
+  },
+  "definitions": {
+    "SlideIR": {
+      "type": "object",
+      "required": ["id", "index", "layout", "elements"],
+      "properties": {
+        "id": { "type": "string" },
+        "index": { "type": "integer", "minimum": 0 },
+        "specId": { "type": "string" },
+        "title": { "type": "string" },
+        "intent": { "type": "object" },
+        "layout": {
+          "type": "object",
+          "required": ["spec", "slideSize", "regions"],
+          "properties": {
+            "spec": { "type": "object" },
+            "slideSize": {
+              "type": "object",
+              "required": ["width", "height", "unit"],
+              "properties": {
+                "width": { "type": "number" },
+                "height": { "type": "number" },
+                "unit": { "type": "string", "enum": ["px", "pt", "in", "cm"] }
+              }
+            },
+            "regions": { "type": "array", "items": { "type": "object" } }
+          }
+        },
+        "elements": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/ElementIR" }
+        },
+        "speakerNotes": { "type": "string" },
+        "metadata": { "type": "object" }
+      }
+    },
+    "ElementIR": {
+      "type": "object",
+      "required": ["id", "type", "frame"],
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "enum": ["text", "image", "table", "chart", "diagram", "shape"] },
+        "frame": { "$ref": "#/definitions/ResolvedFrame" }
+      }
+    },
+    "ResolvedFrame": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" }
+      }
+    },
+    "Asset": {
+      "type": "object",
+      "required": ["id", "type", "uri", "mimeType", "metadata", "usage"],
+      "properties": {
+        "id": { "type": "string" },
+        "specId": { "type": "string" },
+        "type": { "type": "string", "enum": ["image", "diagram", "icon", "chart", "other"] },
+        "uri": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "metadata": {
+          "type": "object",
+          "required": ["source", "createdAt"],
+          "properties": {
+            "width": { "type": "number" },
+            "height": { "type": "number" },
+            "source": { "type": "string", "enum": ["generated", "uploaded", "external", "derived"] },
+            "generator": { "type": "string" },
+            "prompt": { "type": "string" },
+            "createdAt": { "type": "string", "format": "date-time" }
+          }
+        },
+        "usage": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["slideId", "elementId", "role"],
+            "properties": {
+              "slideId": { "type": "string" },
+              "elementId": { "type": "string" },
+              "role": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "OperationRecord": {
+      "type": "object",
+      "required": ["id", "timestamp", "actor", "operation", "result"],
+      "properties": {
+        "id": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "actor": { "type": "string", "enum": ["user", "agent", "system"] },
+        "operation": { "type": "object" },
+        "result": { "type": "string", "enum": ["success", "failed"] },
+        "error": { "type": "string" }
+      }
+    }
+  }
+}

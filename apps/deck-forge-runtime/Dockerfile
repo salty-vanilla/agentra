@@ -1,10 +1,18 @@
 FROM mcr.microsoft.com/playwright:v1.59.1-noble AS build
 
 WORKDIR /app
-COPY package.json tsconfig.json ./
-COPY src ./src
-RUN npm install
-RUN npm run build
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+
+RUN corepack enable && corepack prepare pnpm@10.9.0 --activate
+
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY apps/deck-forge-runtime/package.json apps/deck-forge-runtime/tsconfig.json ./apps/deck-forge-runtime/
+COPY apps/deck-forge-runtime/src ./apps/deck-forge-runtime/src
+COPY packages/deck-forge ./packages/deck-forge
+
+RUN pnpm install --frozen-lockfile --filter @agentra/deck-forge-runtime...
+RUN pnpm --filter @agentra/deck-forge-runtime... build
 
 FROM mcr.microsoft.com/playwright:v1.59.1-noble
 
@@ -23,9 +31,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/dist ./dist
+COPY --from=build /app /app
 
 EXPOSE 8080 8000 9000
-CMD ["node", "dist/index.js"]
+CMD ["node", "apps/deck-forge-runtime/dist/index.js"]

@@ -288,6 +288,12 @@ const DeckForgeRequestSchema = z.object({
   revisionPolicy: z
     .enum(['none', 'validation_only', 'ai_review'])
     .default('validation_only'),
+  reviewTrigger: z.enum(['errors', 'warnings', 'always']).default('warnings'),
+  renderSlideImages: z.boolean().default(false),
+  visionReview: z.boolean().default(false),
+  visionRevision: z.boolean().default(false),
+  designPass: z.boolean().default(true),
+  designReviewIterations: z.number().int().min(0).max(3).default(2),
   includeTrace: z.boolean().default(false),
   presentation: z.unknown().optional(),
   operations: z.array(z.unknown()).optional(),

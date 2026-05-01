@@ -1,0 +1,34 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": [
+      "node"
+    ],
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "rootDir": "src",
+    "outDir": "dist",
+    "paths": {
+      "#src/*": [
+        "src/*"
+      ]
+    },
+    "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
+    "exactOptionalPropertyTypes": false,
+    "noUncheckedIndexedAccess": false
+  },
+  "references": [
+    {
+      "path": "../tools"
+    }
+  ],
+  "include": [
+    "src/**/*.ts"
+  ]
+}

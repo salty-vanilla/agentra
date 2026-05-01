@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://deck-forge.dev/schemas/asset-spec.schema.json",
+  "title": "AssetSpec",
+  "description": "Specification for an asset (image, diagram, icon, external image, or screenshot) required by a presentation. Input to image generation and asset registration.",
+  "oneOf": [
+    {
+      "title": "GeneratedImageAssetSpec",
+      "type": "object",
+      "required": ["id", "type", "purpose", "visualDirection", "prompt", "aspectRatio"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "const": "generated_image" },
+        "purpose": {
+          "type": "string",
+          "enum": ["hero", "background", "concept", "illustration", "thumbnail", "supporting_visual"]
+        },
+        "visualDirection": {
+          "type": "object",
+          "required": ["style", "mood"],
+          "properties": {
+            "style": {
+              "type": "string",
+              "enum": ["minimal", "corporate", "technical", "industrial", "isometric", "flat_vector", "photorealistic", "abstract", "diagrammatic"]
+            },
+            "mood": {
+              "type": "string",
+              "enum": ["calm", "trustworthy", "futuristic", "energetic", "premium", "practical"]
+            },
+            "colorMood": { "type": "string" },
+            "composition": { "type": "string" },
+            "avoid": { "type": "array", "items": { "type": "string" } }
+          }
+        },
+        "prompt": { "type": "string" },
+        "negativePrompt": { "type": "string" },
+        "aspectRatio": { "type": "string", "enum": ["16:9", "4:3", "1:1", "3:2"] },
+        "resolution": {
+          "type": "object",
+          "required": ["width", "height"],
+          "properties": {
+            "width": { "type": "integer", "minimum": 1 },
+            "height": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "targetSlideIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    {
+      "title": "DiagramAssetSpec",
+      "type": "object",
+      "required": ["id", "type", "diagramType", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "const": "diagram" },
+        "diagramType": {
+          "type": "string",
+          "enum": ["flowchart", "architecture", "timeline", "layered", "cycle", "matrix", "funnel", "system_map"]
+        },
+        "description": { "type": "string" },
+        "targetSlideIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    {
+      "title": "IconAssetSpec",
+      "type": "object",
+      "required": ["id", "type", "name"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "const": "icon" },
+        "name": { "type": "string" },
+        "style": {
+          "type": "string",
+          "enum": ["minimal", "corporate", "technical", "industrial", "isometric", "flat_vector", "photorealistic", "abstract", "diagrammatic"]
+        },
+        "targetSlideIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    {
+      "title": "ExternalImageAssetSpec",
+      "type": "object",
+      "required": ["id", "type", "uri"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "const": "external_image" },
+        "uri": { "type": "string" },
+        "altText": { "type": "string" },
+        "targetSlideIds": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    {
+      "title": "ScreenshotAssetSpec",
+      "type": "object",
+      "required": ["id", "type", "description"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string", "const": "screenshot" },
+        "sourceUrl": { "type": "string" },
+        "description": { "type": "string" },
+        "targetSlideIds": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  ]
+}

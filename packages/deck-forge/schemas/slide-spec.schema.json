@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://deck-forge.dev/schemas/slide-spec.schema.json",
+  "title": "SlideSpec",
+  "description": "Detailed specification for a single slide. Input to buildPresentationIr.",
+  "type": "object",
+  "required": ["id", "title", "intent", "layout", "content"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "string" },
+    "slideNumber": { "type": "integer", "minimum": 1 },
+    "title": { "type": "string" },
+    "intent": {
+      "type": "object",
+      "required": ["type", "keyMessage", "audienceTakeaway"],
+      "properties": {
+        "type": { "type": "string", "enum": ["title", "agenda", "summary", "problem", "comparison", "timeline", "process", "architecture", "data_insight", "case_study", "proposal", "decision", "closing"] },
+        "keyMessage": { "type": "string" },
+        "audienceTakeaway": { "type": "string" }
+      }
+    },
+    "layout": {
+      "type": "object",
+      "required": ["type", "density"],
+      "properties": {
+        "type": { "type": "string", "enum": ["title", "section", "single_column", "two_column", "three_column", "hero", "image_left_text_right", "text_left_image_right", "comparison", "dashboard", "timeline", "matrix", "diagram_focus", "custom"] },
+        "density": { "type": "string", "enum": ["low", "medium", "high"] },
+        "emphasis": { "type": "string", "enum": ["top", "left", "right", "center", "visual", "data"] },
+        "regions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "role", "contentRefs", "priority"],
+            "properties": {
+              "id": { "type": "string" },
+              "role": { "type": "string", "enum": ["title", "body", "visual", "sidebar", "footer", "chart", "table", "callout"] },
+              "contentRefs": { "type": "array", "items": { "type": "string" } },
+              "priority": { "type": "integer", "minimum": 0 }
+            }
+          }
+        }
+      }
+    },
+    "content": {
+      "type": "array",
+      "description": "ContentBlock array. Each block must have id and type.",
+      "items": {
+        "type": "object",
+        "required": ["id", "type"],
+        "properties": {
+          "id": { "type": "string" },
+          "type": { "type": "string", "enum": ["title", "subtitle", "paragraph", "bullet_list", "table", "chart", "image", "diagram", "metric", "callout", "code", "quote"] }
+        }
+      }
+    },
+    "speakerNotes": {
+      "type": "object",
+      "properties": {
+        "text": { "type": "string" },
+        "cues": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["assetId"],
+        "properties": {
+          "assetId": { "type": "string" },
+          "role": { "type": "string" }
+        }
+      }
+    },
+    "constraints": {
+      "type": "object",
+      "properties": {
+        "maxTextLength": { "type": "integer" },
+        "maxBulletItems": { "type": "integer" }
+      }
+    }
+  }
+}

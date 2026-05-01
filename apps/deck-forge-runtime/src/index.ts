@@ -179,6 +179,14 @@ async function main() {
                 visualReviewer: getSharedVisualReviewer(),
                 renderer: getSharedSlideImageRenderer(),
                 maxIterations: request.designReviewIterations,
+                ...(request.exportFormat === 'pptx' &&
+                request.validationLevel === 'export'
+                  ? {
+                      validateFinal: (presentation, options) =>
+                        getOrCreateRuntime().validate(presentation, options),
+                      finalValidationLevel: 'export' as const,
+                    }
+                  : {}),
                 // Stop early once the reviewer reports no error-severity findings.
                 stopWhen: (iter) =>
                   iter.findings.every((f) => f.severity !== 'error') &&
@@ -200,6 +208,7 @@ async function main() {
                   designerRationales: iter.designerRationales,
                   slideImageCount: iter.slideImages.length,
                 })),
+                finalValidationReport: loop.finalValidationReport,
               };
 
               // Archive the pre-loop IR so the before/after diff is reproducible.
@@ -219,6 +228,56 @@ async function main() {
                 runId,
                 error: error instanceof Error ? error.message : String(error),
               });
+            }
+          }
+
+          if (
+            request.exportFormat === 'pptx' &&
+            request.validationLevel === 'export' &&
+            finalPresentation
+          ) {
+            const exportValidation = await getOrCreateRuntime().validate(
+              finalPresentation,
+              { level: 'export' },
+            );
+            if (exportValidation.status === 'failed') {
+              const failureArtifact = await publishArtifactIfNeeded({
+                presentation: finalPresentation,
+                outputPath: undefined,
+                runId,
+                format: request.exportFormat,
+                request,
+                result: {
+                  ...finalResult,
+                  finalStatus: 'failed',
+                  validationReport: exportValidation,
+                },
+                ...(designReviewTrace !== undefined ? { designReviewTrace } : {}),
+                ...(v1Archive !== undefined ? { v1Archive } : {}),
+              });
+
+              logDeckForgeEvent('export-validation-failed', {
+                runId,
+                traceId: request.traceId,
+                errorCount: exportValidation.summary.errorCount,
+                warningCount: exportValidation.summary.warningCount,
+                durationMs: Date.now() - startedAt,
+              });
+
+              yield {
+                event: 'message',
+                data: {
+                  type: 'deck_forge_error',
+                  runId,
+                  error:
+                    exportValidation.issues
+                      .filter((issue) => issue.severity === 'error')
+                      .map((issue) => issue.message)
+                      .join('\n') || 'Deck Forge export validation failed.',
+                  artifact: failureArtifact,
+                },
+              };
+              return;
             }
           }
 
