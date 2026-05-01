@@ -104,7 +104,7 @@ export class PptxExporter implements Exporter {
         }
 
         if (element.type === "table") {
-          warnings.push(...renderTableElement(slide, element, baseSlideSize));
+          warnings.push(...renderTableElement(slide, element, baseSlideSize, presentation.theme));
           continue;
         }
 
@@ -164,7 +164,7 @@ function renderTextElement(
   theme: ThemeSpec,
 ): void {
   const frame = toInchFrame(element.frame, slideSize);
-  const textProps = richTextToPptxProps(element);
+  let textProps = richTextToPptxProps(element);
   const hasBullet = element.text.paragraphs.some((paragraph) => paragraph.bullet);
 
   const valign: "top" | "middle" | "bottom" =
@@ -173,6 +173,20 @@ function renderTextElement(
       : element.role === "footer"
         ? "bottom"
         : "top";
+
+  // ── Callout label + icon prefix ────────────────────────────────────
+  // Detect known label prefixes in callout text and render them with
+  // a unicode icon and accent color for strong visual hierarchy.
+  if (element.role === "callout" && textProps.length > 0) {
+    const firstText = textProps[0].text;
+    const labelMatch = detectCalloutLabel(firstText);
+    if (labelMatch) {
+      const accentColor = normalizeHexColor(theme.colors.accent);
+      const prefix = { text: `${labelMatch.icon} ${labelMatch.label}  `, options: { bold: true, color: accentColor } };
+      const rest = { ...textProps[0], text: firstText.slice(labelMatch.matchLength) };
+      textProps = [prefix, rest, ...textProps.slice(1)];
+    }
+  }
 
   const options: Record<string, unknown> = {
     x: frame.x,
@@ -196,6 +210,11 @@ function renderTextElement(
     options.paraSpaceAfter = 6;
   }
 
+  // Enforce minimum callout height so callouts don't become tiny footers
+  if (element.role === "callout" && frame.h < 0.5) {
+    options.h = 0.5;
+  }
+
   // Decoration hint propagated from layout strategy or design pass.
   const decoration = element.decoration;
   const radiusMd = theme.radius?.md ?? 8;
@@ -212,11 +231,13 @@ function renderTextElement(
     };
     options.rectRadius = radiusFraction;
   } else if (decoration?.kind === "accent-bar") {
+    // Accent bar: surface fill with strong left-side accent line
+    options.fill = { color: normalizeHexColor(theme.colors.surface) };
     options.line = {
       color: normalizeHexColor(decoration.color ?? theme.colors.accent),
-      width: 0,
+      width: 2,
     };
-    options.fill = { color: normalizeHexColor(theme.colors.background), transparency: 100 };
+    options.rectRadius = radiusFraction;
   } else if (element.role === "callout") {
     options.fill = { color: normalizeHexColor(theme.colors.surface) };
     options.line = {
@@ -346,6 +367,7 @@ function renderTableElement(
   slide: MinimalPptxSlide,
   element: TableElementIR,
   slideSize: SlideSize,
+  theme: ThemeSpec,
 ): string[] {
   const frame = toInchFrame(element.frame, slideSize);
   const rows: string[][] = [element.headers, ...element.rows];
@@ -374,22 +396,42 @@ function renderTableElement(
     warnings.push(`Table ${element.id} contains long cell text that may wrap in PPTX export.`);
   }
 
-  slide.addTable(rows, {
+  const headerFill = element.style?.headerFill
+    ? normalizeHexColor(element.style.headerFill)
+    : normalizeHexColor(theme.colors.primary);
+  const headerTextColor = normalizeHexColor(theme.colors.background);
+  const bodyFill = normalizeHexColor(theme.colors.background);
+  const altRowFill = normalizeHexColor(theme.colors.surface);
+  const borderColor = normalizeHexColor(element.style?.borderColor ?? theme.colors.textSecondary);
+  const textColor = element.style?.textStyle?.color
+    ? normalizeHexColor(element.style.textStyle.color)
+    : normalizeHexColor(theme.colors.textPrimary);
+
+  // Build row-level cell objects for header styling + alternating row fills.
+  const formattedRows = rows.map((row, ri) => {
+    const isHeader = ri === 0;
+    return row.map((cell) => ({
+      text: cell,
+      options: {
+        fill: { color: isHeader ? headerFill : ri % 2 === 0 ? altRowFill : bodyFill },
+        color: isHeader ? headerTextColor : textColor,
+        bold: isHeader,
+        fontSize: isHeader ? Math.min(fontSize + 1, baseFontSize) : fontSize,
+        valign: "middle" as const,
+      },
+    }));
+  });
+
+  slide.addTable(formattedRows as unknown as string[][], {
     x: frame.x,
     y: frame.y,
     w: frame.w,
     h: frame.h,
-    border: { pt: 1, color: normalizeHexColor(element.style?.borderColor ?? "#CBD5E1") },
-    margin: 0.04,
-    valign: "middle",
-    fill: element.style?.headerFill
-      ? normalizeHexColor(element.style.headerFill)
-      : normalizeHexColor("#FFFFFF"),
+    border: { pt: 0.5, color: borderColor },
+    margin: 0.05,
     fontFace: element.style?.textStyle?.fontFamily,
     fontSize,
-    color: element.style?.textStyle?.color
-      ? normalizeHexColor(element.style.textStyle.color)
-      : normalizeHexColor("#0F172A"),
+    color: textColor,
   });
 
   return warnings;
@@ -507,11 +549,44 @@ function renderChartElement(
     return warnings;
   }
 
+  // ── Chart title ──────────────────────────────────────────────────────
+  let chartFrame = { ...frame };
+  if (element.title) {
+    const titleH = 0.3;
+    slide.addText([{ text: element.title }], {
+      x: frame.x,
+      y: frame.y,
+      w: frame.w,
+      h: titleH,
+      fontSize: 11,
+      bold: true,
+      color: normalizeHexColor(theme.colors.textPrimary),
+      align: "left",
+      valign: "bottom",
+    });
+    chartFrame = {
+      x: frame.x,
+      y: frame.y + titleH,
+      w: frame.w,
+      h: Math.max(0.5, frame.h - titleH),
+    };
+  }
+
   const palette = (element.style?.palette ?? theme.colors.chartPalette ?? []).map(
     normalizeHexColor,
   );
-  const showLegend = element.style?.showLegend !== false;
+
+  // Smart legend: hide for single-series charts unless explicitly requested
+  const legendPosition = element.style?.legendPosition;
+  const showLegend =
+    legendPosition === "none"
+      ? false
+      : element.style?.showLegend ??
+        (element.data.series.length > 1);
+  const legendPos = legendPosition === "none" ? "b" : (legendPosition ?? "b");
+
   const showGrid = element.style?.showGrid !== false;
+  const showDataLabels = element.style?.showDataLabels ?? false;
 
   const chartType = mapChartType(element.chartType);
   const labels = element.data.categories ?? [];
@@ -521,25 +596,91 @@ function renderChartElement(
     values: s.values,
   }));
 
+  // ── Horizontal bar heuristic ──────────────────────────────────────────
+  const isBarType = chartType === "bar";
+  const longLabels = labels.some((l) => l.length > 12);
+  const manyCategories = labels.length > 5;
+  const useHorizontalBar = isBarType && (longLabels || manyCategories);
+
   const opts: Record<string, unknown> = {
-    x: frame.x,
-    y: frame.y,
-    w: frame.w,
-    h: frame.h,
+    x: chartFrame.x,
+    y: chartFrame.y,
+    w: chartFrame.w,
+    h: chartFrame.h,
     showLegend,
-    legendPos: "b",
+    legendPos,
     showCatAxisTitle: false,
     showValAxisTitle: false,
     catAxisLabelColor: normalizeHexColor(theme.colors.textSecondary),
     valAxisLabelColor: normalizeHexColor(theme.colors.textSecondary),
+    catAxisLabelFontSize: 9,
+    valAxisLabelFontSize: 9,
     valGridLine: showGrid
       ? { style: "solid", size: 0.5, color: normalizeHexColor(theme.colors.textSecondary) }
       : { style: "none" },
   };
+
+  if (useHorizontalBar) {
+    opts.barDir = "bar";
+  }
+
+  // Data labels for direct labelling
+  if (showDataLabels) {
+    opts.showValue = true;
+    opts.dataLabelFontSize = 8;
+    opts.dataLabelColor = normalizeHexColor(theme.colors.textSecondary);
+    if (chartType === "pie") {
+      opts.showPercent = true;
+      opts.showValue = false;
+    }
+  }
+
+  // Pie/donut: always show percentages for readability
+  if (chartType === "pie") {
+    opts.showPercent = true;
+    opts.dataLabelFontSize = 9;
+    opts.dataLabelColor = normalizeHexColor(theme.colors.textPrimary);
+  }
+
   if (palette.length > 0) {
     opts.chartColors = palette;
   }
   slide.addChart(chartType, data, opts);
+
+  // ── Target / reference lines (rendered as overlay shapes) ────────────
+  const targetLines = element.style?.targetLines;
+  if (targetLines && targetLines.length > 0 && chartType !== "pie") {
+    const allValues = element.data.series.flatMap((s) => s.values);
+    const dataMin = Math.min(0, ...allValues);
+    const dataMax = Math.max(...allValues, ...targetLines.map((t) => t.value));
+    const range = dataMax - dataMin || 1;
+
+    for (const target of targetLines) {
+      const ratio = (target.value - dataMin) / range;
+      const yPos = chartFrame.y + chartFrame.h * (1 - ratio);
+      const lineColor = normalizeHexColor(target.color ?? theme.colors.accent);
+      slide.addShape?.("line", {
+        x: chartFrame.x,
+        y: yPos,
+        w: chartFrame.w,
+        h: 0,
+        line: { color: lineColor, width: 1.5, dashType: "dash" },
+      });
+      if (target.label) {
+        slide.addText([{ text: target.label }], {
+          x: chartFrame.x + chartFrame.w - 1.2,
+          y: yPos - 0.15,
+          w: 1.2,
+          h: 0.2,
+          fontSize: 7,
+          color: lineColor,
+          align: "right",
+          valign: "bottom",
+        });
+      }
+    }
+  }
+
   return warnings;
 }
 
@@ -660,6 +801,28 @@ function renderDiagramElement(
       color: textColor,
       shrinkText: true,
     });
+    // Step number badge — small accent circle at top-left of each node
+    const nodeIndex = layout.indexOf(node);
+    const badgeSize = 0.2;
+    slide.addShape("ellipse", {
+      x: x - badgeSize * 0.3,
+      y: y - badgeSize * 0.3,
+      w: badgeSize,
+      h: badgeSize,
+      fill: { color: strokeColor },
+      line: { color: strokeColor, width: 0 },
+    });
+    slide.addText([{ text: `${nodeIndex + 1}` }], {
+      x: x - badgeSize * 0.3,
+      y: y - badgeSize * 0.3,
+      w: badgeSize,
+      h: badgeSize,
+      align: "center",
+      valign: "middle",
+      fontSize: 7,
+      bold: true,
+      color: normalizeHexColor(theme.colors.background),
+    });
   }
   return warnings;
 }
@@ -752,4 +915,33 @@ function computeEdgePathPx(from: DiagramLaidOutNode, to: DiagramLaidOutNode) {
     x2: to.cx - ux * toOffset,
     y2: to.cy - uy * toOffset,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Callout label detection — matches known prefixes like "Insight:",
+// "Risk:", "Decision needed:", "Next action:" and returns the icon +
+// label + length consumed so the renderer can split prefix from body.
+// ---------------------------------------------------------------------------
+
+type CalloutLabel = { icon: string; label: string; matchLength: number };
+
+const CALLOUT_LABEL_PATTERNS: Array<{ pattern: RegExp; icon: string; label: string }> = [
+  { pattern: /^insight\s*[:：]\s*/i, icon: "💡", label: "Insight" },
+  { pattern: /^risk\s*[:：]\s*/i, icon: "⚠", label: "Risk" },
+  { pattern: /^decision\s*(?:needed)?\s*[:：]\s*/i, icon: "❓", label: "Decision" },
+  { pattern: /^next\s*action\s*[:：]\s*/i, icon: "▶", label: "Next Action" },
+  { pattern: /^action\s*[:：]\s*/i, icon: "▶", label: "Action" },
+  { pattern: /^note\s*[:：]\s*/i, icon: "📌", label: "Note" },
+  { pattern: /^warning\s*[:：]\s*/i, icon: "⚠", label: "Warning" },
+  { pattern: /^key\s*(?:finding|takeaway)\s*[:：]\s*/i, icon: "💡", label: "Key Finding" },
+];
+
+function detectCalloutLabel(text: string): CalloutLabel | undefined {
+  for (const { pattern, icon, label } of CALLOUT_LABEL_PATTERNS) {
+    const match = pattern.exec(text);
+    if (match) {
+      return { icon, label, matchLength: match[0].length };
+    }
+  }
+  return undefined;
 }

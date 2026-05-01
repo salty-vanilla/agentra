@@ -537,6 +537,11 @@ export type SlideIR = {
   speakerNotes?: string;
   comments?: CommentThread[];
   metadata?: Record<string, unknown>;
+  /** Non-invasive trace metadata for debugging layout strategy selection. */
+  _trace?: {
+    layoutStrategyId: string;
+    layoutSpecType: string;
+  };
 };
 
 export type CommentThread = {
@@ -619,6 +624,7 @@ export type ChartElementIR = {
   type: "chart";
   frame: ResolvedFrame;
   chartType: ChartBlock["chartType"];
+  title?: string;
   data: ChartData;
   encoding: ChartEncoding;
   style?: ChartStyle;
@@ -682,6 +688,9 @@ export type ChartStyle = {
   palette?: string[];
   showLegend?: boolean;
   showGrid?: boolean;
+  showDataLabels?: boolean;
+  legendPosition?: "b" | "t" | "r" | "none";
+  targetLines?: Array<{ value: number; label?: string; color?: string }>;
 };
 
 export type DiagramStyle = {

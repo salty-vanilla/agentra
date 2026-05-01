@@ -452,33 +452,75 @@ function buildChartElementHtml(
           theme.colors.secondary ?? theme.colors.accent,
           theme.colors.accent,
         ]);
-  const showLegend = element.style?.showLegend !== false;
+
+  // Smart legend: hide for single-series charts unless explicitly requested
+  const legendPosition = element.style?.legendPosition;
+  const showLegend =
+    legendPosition === "none"
+      ? false
+      : element.style?.showLegend ??
+        (element.data.series.length > 1);
   const showGrid = element.style?.showGrid !== false;
 
+  // Reserve vertical space for title if present
+  const titleH = element.title ? 24 : 0;
+  const chartH = h - titleH;
+
   let svgInner = "";
+
+  // ── Chart title ────────────────────────────────────────────────────
+  if (element.title) {
+    svgInner += `<text x="${CHART_PADDING.left}" y="${titleH - 6}" font-size="13" font-weight="bold" fill="${theme.colors.textPrimary}">${escapeHtml(element.title)}</text>`;
+  }
+
+  // Offset chart content below title
+  const titleOffset = titleH > 0 ? `<g transform="translate(0,${titleH})">` : "";
+  const titleOffsetClose = titleH > 0 ? "</g>" : "";
+
   switch (element.chartType) {
     case "line":
     case "area":
-      svgInner = renderLineChart(
+      svgInner += titleOffset + renderLineChart(
         element,
         w,
-        h,
+        chartH,
         palette,
         theme,
         showGrid,
         element.chartType === "area",
-      );
+      ) + titleOffsetClose;
       break;
     case "pie":
-      svgInner = renderPieChart(element, w, h, palette, theme);
+      svgInner += titleOffset + renderPieChart(element, w, chartH, palette, theme) + titleOffsetClose;
       break;
     case "scatter":
-      svgInner = renderScatterChart(element, w, h, palette, theme, showGrid);
+      svgInner += titleOffset + renderScatterChart(element, w, chartH, palette, theme, showGrid) + titleOffsetClose;
       break;
     default:
       // bar / combo / unknown → bar
-      svgInner = renderBarChart(element, w, h, palette, theme, showGrid);
+      svgInner += titleOffset + renderBarChart(element, w, chartH, palette, theme, showGrid) + titleOffsetClose;
       break;
+  }
+
+  // ── Target / reference lines ───────────────────────────────────────
+  const targetLines = element.style?.targetLines;
+  if (targetLines && targetLines.length > 0 && element.chartType !== "pie") {
+    const b = chartBounds(w, chartH);
+    const allValues = element.data.series.flatMap((s) => s.values);
+    const dataMin = Math.min(0, ...allValues);
+    const dataMax = Math.max(...allValues, ...targetLines.map((t) => t.value));
+    const range = dataMax - dataMin || 1;
+
+    const targetSvg = targetLines.map((target) => {
+      const ratio = (target.value - dataMin) / range;
+      const yPos = b.y + b.h - ratio * b.h + titleH;
+      const color = target.color ?? theme.colors.accent;
+      const label = target.label
+        ? `<text x="${(b.x + b.w - 4).toFixed(2)}" y="${(yPos - 4).toFixed(2)}" text-anchor="end" font-size="9" fill="${color}">${escapeHtml(target.label)}</text>`
+        : "";
+      return `<line x1="${b.x}" y1="${yPos.toFixed(2)}" x2="${b.x + b.w}" y2="${yPos.toFixed(2)}" stroke="${color}" stroke-width="1.5" stroke-dasharray="6,3" />${label}`;
+    }).join("");
+    svgInner += targetSvg;
   }
 
   const legend = showLegend
@@ -540,6 +582,7 @@ function renderBarChart(
   const grid = showGrid ? renderGridY(b, theme, 4, min, max) : "";
   const bars: string[] = [];
   const axisLabels: string[] = [];
+  const showDataLabels = element.style?.showDataLabels ?? false;
 
   element.data.series.forEach((series, si) => {
     const color = palette[si % palette.length];
@@ -551,6 +594,12 @@ function renderBarChart(
       bars.push(
         `<rect x="${xPos.toFixed(2)}" y="${yPos.toFixed(2)}" width="${barWidth.toFixed(2)}" height="${barH.toFixed(2)}" fill="${color}" rx="2" />`,
       );
+      if (showDataLabels) {
+        const labelX = xPos + barWidth / 2;
+        bars.push(
+          `<text x="${labelX.toFixed(2)}" y="${(yPos - 3).toFixed(2)}" text-anchor="middle" font-size="8" fill="${theme.colors.textSecondary}">${formatChartTick(value)}</text>`,
+        );
+      }
     });
   });
 
@@ -580,6 +629,7 @@ function renderLineChart(
   const grid = showGrid ? renderGridY(b, theme, 4, min, max) : "";
 
   const lines: string[] = [];
+  const showDataLabels = element.style?.showDataLabels ?? false;
   element.data.series.forEach((series, si) => {
     const color = palette[si % palette.length];
     const points = series.values.map((value, i) => {
@@ -597,9 +647,14 @@ function renderLineChart(
     lines.push(
       `<polyline points="${points.join(" ")}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />`,
     );
-    series.values.forEach((_, i) => {
+    series.values.forEach((value, i) => {
       const [x, y] = points[i].split(",");
       lines.push(`<circle cx="${x}" cy="${y}" r="3" fill="${color}" />`);
+      if (showDataLabels) {
+        lines.push(
+          `<text x="${x}" y="${(Number.parseFloat(y) - 6).toFixed(2)}" text-anchor="middle" font-size="8" fill="${theme.colors.textSecondary}">${formatChartTick(value)}</text>`,
+        );
+      }
     });
   });
 
@@ -628,6 +683,7 @@ function renderPieChart(
   const cy = h / 2 - 8;
   const radius = Math.min(w, h - 16) / 2 - 8;
 
+  const categories = element.data.categories ?? [];
   let angleStart = -Math.PI / 2;
   const slices = series.values.map((value, i) => {
     const sweep = (Math.max(0, value) / total) * 2 * Math.PI;
@@ -641,9 +697,21 @@ function renderPieChart(
       sweep >= Math.PI * 2 - 0.0001
         ? `M ${cx - radius} ${cy} a ${radius} ${radius} 0 1 0 ${radius * 2} 0 a ${radius} ${radius} 0 1 0 ${-radius * 2} 0`
         : `M ${cx} ${cy} L ${x1.toFixed(2)} ${y1.toFixed(2)} A ${radius} ${radius} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)} Z`;
-    angleStart = angleEnd;
     const color = palette[i % palette.length];
-    return `<path d="${path}" fill="${color}" stroke="${theme.colors.background}" stroke-width="1" />`;
+
+    // Direct label at midpoint of arc
+    const midAngle = angleStart + sweep / 2;
+    const labelRadius = radius * 0.65;
+    const lx = cx + labelRadius * Math.cos(midAngle);
+    const ly = cy + labelRadius * Math.sin(midAngle);
+    const pct = Math.round((Math.max(0, value) / total) * 100);
+    const catLabel = categories[i] ? `${escapeHtml(categories[i])} ` : "";
+    const label = sweep > 0.3 // Only show label if slice is large enough
+      ? `<text x="${lx.toFixed(2)}" y="${ly.toFixed(2)}" text-anchor="middle" dominant-baseline="middle" font-size="10" font-weight="bold" fill="${theme.colors.background}">${catLabel}${pct}%</text>`
+      : "";
+
+    angleStart = angleEnd;
+    return `<path d="${path}" fill="${color}" stroke="${theme.colors.background}" stroke-width="1" />${label}`;
   });
 
   return slices.join("");
@@ -767,8 +835,15 @@ function buildDiagramElementHtml(
     }
   }
 
-  const nodes = layout.map((node) => {
-    return `<g transform="translate(${(node.cx - node.w / 2).toFixed(2)},${(node.cy - node.h / 2).toFixed(2)})"><rect width="${node.w.toFixed(2)}" height="${node.h.toFixed(2)}" rx="${theme.radius.md}" fill="${nodeFill}" stroke="${nodeStroke}" stroke-width="1.5" /><text x="${(node.w / 2).toFixed(2)}" y="${(node.h / 2 + 4).toFixed(2)}" text-anchor="middle" font-size="12" fill="${textColor}" font-weight="600">${escapeHtml(node.label)}</text></g>`;
+  const nodes = layout.map((node, ni) => {
+    const nx = (node.cx - node.w / 2).toFixed(2);
+    const ny = (node.cy - node.h / 2).toFixed(2);
+    // Step number badge — small accent circle at top-left of each node
+    const badgeR = 9;
+    const bx = (node.cx - node.w / 2 - badgeR * 0.3).toFixed(2);
+    const by = (node.cy - node.h / 2 - badgeR * 0.3).toFixed(2);
+    const badge = `<circle cx="${bx}" cy="${by}" r="${badgeR}" fill="${nodeStroke}" /><text x="${bx}" y="${(Number.parseFloat(by) + 3.5).toFixed(2)}" text-anchor="middle" font-size="9" font-weight="bold" fill="${theme.colors.background}">${ni + 1}</text>`;
+    return `<g transform="translate(${nx},${ny})"><rect width="${node.w.toFixed(2)}" height="${node.h.toFixed(2)}" rx="${theme.radius.md}" fill="${nodeFill}" stroke="${nodeStroke}" stroke-width="1.5" /><text x="${(node.w / 2).toFixed(2)}" y="${(node.h / 2 + 4).toFixed(2)}" text-anchor="middle" font-size="12" fill="${textColor}" font-weight="600">${escapeHtml(node.label)}</text></g>${badge}`;
   });
 
   return `      <div class="element diagram-element" style="${pos}">

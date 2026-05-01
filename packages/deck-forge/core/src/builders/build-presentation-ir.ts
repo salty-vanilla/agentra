@@ -112,7 +112,7 @@ function buildSlideIr(
     slideSize: DEFAULT_SLIDE_SIZE,
     regions: createResolvedRegions(slideSpec.layout, DEFAULT_SLIDE_SIZE),
   };
-  const elements = buildElements(slideSpec, layout.spec, layout.regions, theme, usedElementIds);
+  const { elements, layoutStrategyId } = buildElements(slideSpec, layout.spec, layout.regions, theme, usedElementIds);
 
   return {
     id: slideSpec.id,
@@ -123,6 +123,10 @@ function buildSlideIr(
     layout,
     elements,
     speakerNotes: slideSpec.speakerNotes?.text,
+    _trace: {
+      layoutStrategyId,
+      layoutSpecType: slideSpec.layout.type,
+    },
   };
 }
 
@@ -132,7 +136,7 @@ function buildElements(
   regions: SlideIR["layout"]["regions"],
   theme: ThemeSpec,
   usedElementIds: Set<string>,
-): SlideIR["elements"] {
+): { elements: SlideIR["elements"]; layoutStrategyId: string } {
   const content = [...slideSpec.content];
   const titleBlock = firstBlockByType(content, "title");
   const ensuredTitleText = titleBlock?.text || slideSpec.title;
@@ -428,6 +432,7 @@ function buildElements(
         type: "chart",
         frame: assignment?.frame ?? visualRegionFrame,
         chartType: chartBlock.chartType,
+        title: chartBlock.title,
         data: chartBlock.data,
         encoding: chartBlock.encoding,
       };
@@ -450,7 +455,7 @@ function buildElements(
     }
   }
 
-  return elements;
+  return { elements, layoutStrategyId: strategy.id };
 }
 
 function applyHintsToStyle(

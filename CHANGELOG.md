@@ -9,6 +9,37 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 6B: Component Renderer Polish
+
+- **Chart renderer polish**
+  - Chart title rendering above chart area (PPTX `addText` + HTML SVG `<text>`)
+  - Smart legend: hidden for single-series charts by default; `legendPosition` style option
+  - Data labels via `showDataLabels` style option (bar tops, line points, pie percentages)
+  - Target/reference lines as dashed overlays with labels (`targetLines` style option)
+  - Horizontal bar heuristic: auto-rotates when labels > 12 chars or > 5 categories
+  - Pie chart direct labels with percentage + category name (HTML)
+- **Process flow renderer polish**
+  - Step number badges: accent-colored circle with number at top-left of each diagram node (PPTX + HTML)
+- **Action plan table renderer polish**
+  - Header row styled with theme primary color + contrasting text
+  - Alternating row fills for readability
+  - Per-cell formatting via cell objects; thinner borders; theme-aware colors
+- **Insight/callout band polish**
+  - Callout label detection: parses known prefixes ("Insight:", "Risk:", "Decision needed:", "Next action:", etc.)
+  - Unicode prefix icons (💡⚠❓▶📌) rendered in accent color with bold label
+  - Accent-bar decoration upgraded to visible surface fill + 2pt accent line
+  - Minimum callout height enforced (0.5in)
+- **Layout strategy tracing**
+  - `SlideIR._trace` field: `{ layoutStrategyId, layoutSpecType }` per slide
+  - Populated after `selectLayoutStrategy()` in build pipeline
+
+### Changed — deck-forge/core Phase 6B
+
+- `ChartElementIR` — add optional `title` field, wired from `ChartBlock.title`
+- `ChartStyle` — add `showDataLabels`, `legendPosition`, `targetLines` (backward-compatible)
+- `renderTableElement` — now receives `ThemeSpec` for theme-aware styling
+- `buildElements` — returns `{ elements, layoutStrategyId }` tuple for trace propagation
+
 ### Added — deck-forge/core Phase 5: Text/Table Overflow Detection & Repair
 
 - **Phase 5B** — text/table overflow repair engine (`ff85914`)
