@@ -17,6 +17,14 @@ export function gapForDensity(density: LayoutSpec["density"] | undefined, base =
  */
 export const MIN_SUBFRAME_HEIGHT = 60;
 
+// ── Standard component sizes ──────────────────────────────────────────
+// Preferred heights for common slide components. Layout strategies should
+// use these as targets and clamp to available space when the region is
+// smaller than the standard size.
+export const STANDARD_KPI_CARD_HEIGHT = 200;
+export const STANDARD_CHART_HEIGHT = 280;
+export const STANDARD_CALLOUT_HEIGHT = 80;
+
 /**
  * Splits `frame` vertically into `count` slots with adaptive gap and a
  * minimum slot height.  When the frame cannot fit `count` slots at the

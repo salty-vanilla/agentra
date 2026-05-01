@@ -35,6 +35,17 @@ export type {
 export { applyOperations } from "#src/operations/apply-operations.js";
 export {
   isDecorativeElement,
+  LAYOUT_BODY_BOTTOM,
+  LAYOUT_BODY_Y,
+  LAYOUT_CALLOUT_HEIGHT,
+  LAYOUT_CALLOUT_Y,
+  LAYOUT_COLUMN_GUTTER,
+  LAYOUT_COLUMN_LEFT_X,
+  LAYOUT_COLUMN_RIGHT_X,
+  LAYOUT_FOOTER_HEIGHT,
+  LAYOUT_FOOTER_Y,
+  LAYOUT_TITLE_HEIGHT,
+  LAYOUT_TITLE_Y,
   reflowElementsIntoLayoutRegions,
 } from "#src/operations/utils.js";
 export type { ReflowOptions } from "#src/operations/utils.js";

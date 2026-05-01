@@ -39,7 +39,7 @@ export const twoColumnStrategy: LayoutStrategy = {
     const bottom = Math.max(body.y + body.height, visual.y + visual.height);
 
     const totalWidth = right - left;
-    const gap = 24;
+    const gap = 40;
     const imageRatio = ctx.layoutSpec.emphasis === "visual" ? 0.55 : 0.45;
     const imageWidth = Math.round((totalWidth - gap) * imageRatio);
     const bodyWidth = totalWidth - gap - imageWidth;

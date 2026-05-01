@@ -32,10 +32,11 @@ const baseSchema = z.object({
   /**
    * Number of `runDesignReviewLoop` iterations (designer → render →
    * visualReviewer → applyOps). 0 disables the loop. Capped at 3 to keep
-   * latency bounded. Defaults to 2 — enough to catch most overlap /
-   * truncation issues without ballooning latency.
+   * latency bounded. Defaults to 1 — the initial layout is now stable
+   * enough that a single review pass catches residual issues without
+   * ballooning operation count.
    */
-  designReviewIterations: z.number().int().min(0).max(3).default(2),
+  designReviewIterations: z.number().int().min(0).max(3).default(1),
   includeTrace: z.boolean().default(false),
   presentation: z.unknown().optional(),
   operations: z.array(z.unknown()).optional(),

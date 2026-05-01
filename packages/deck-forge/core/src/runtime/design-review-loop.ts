@@ -21,7 +21,7 @@ export type DesignReviewLoopInput = {
   visualReviewer: VisualReviewer;
   /** Required: renderer used to materialize slide images per iteration. */
   renderer: SlideImageRenderer;
-  /** Maximum number of iterations. Default: 3. */
+  /** Maximum number of iterations. Default: 1. */
   maxIterations?: number;
   /** Visual review focus. */
   focus?: VisualReviewFocus[];
@@ -75,7 +75,7 @@ export type DesignReviewLoopOutput = {
 export async function runDesignReviewLoop(
   input: DesignReviewLoopInput,
 ): Promise<DesignReviewLoopOutput> {
-  const maxIterations = input.maxIterations ?? 3;
+  const maxIterations = input.maxIterations ?? 1;
   const iterations: DesignReviewIterationTrace[] = [];
   let presentation = input.presentation;
   let stoppedReason: DesignReviewLoopOutput["stoppedReason"] = "max-iterations";

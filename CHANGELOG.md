@@ -9,6 +9,42 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 6C: Layout Stability Improvement
+
+- **Standard layout band constants** (`LAYOUT_TITLE_Y`, `LAYOUT_BODY_Y`,
+  `LAYOUT_BODY_BOTTOM`, `LAYOUT_CALLOUT_Y`, `LAYOUT_FOOTER_Y`, etc.)
+  replace dynamic calculations in `defaultFrameForRole()` — single source
+  of truth for all 27 layout strategies
+- **Standard component size constants** (`STANDARD_KPI_CARD_HEIGHT = 200`,
+  `STANDARD_CHART_HEIGHT = 280`, `STANDARD_CALLOUT_HEIGHT = 80`) in
+  `grid-utils.ts` for consistent element sizing across strategies
+- **Post-build overlap detection** in `buildPresentationIr` — union-find
+  groups overlapping elements (> 8% ratio) and auto-stacks them vertically
+  before any AI design/review pass, skipping exact duplicate frames from
+  `splitVertical` overflow
+- **Style-position conflict validation** — `validateLayout` now warns when
+  an element's `style` object contains spatial keys (`x`, `y`, `left`,
+  `top`, `position`), catching LLM-generated JSON that leaks position into
+  style instead of using `frame`
+- Layout band constants exported from `@deck-forge/core` index
+
+### Changed — deck-forge/core Phase 6C
+
+- **Vertical layout bands** — title h: 112→100, body y: 192→200,
+  body bottom: 510→500, callout y: 510→520, callout h: 90→80,
+  footer y: 600→620
+- **Column grid** — gutter: 16→40 px, right column x: 752→680,
+  body width: 656→560, visual width: 448→520 (more balanced split)
+- **Two-column strategy** — gap increased from 24 to 40 px
+- **KPI grid / dashboard strategies** — metric region height now targets
+  `STANDARD_KPI_CARD_HEIGHT` per grid row instead of arbitrary 65%/45%
+  ratios
+- **Design-review loop** — default `maxIterations` reduced from 3→1
+  (core) and `designReviewIterations` default from 2→1 (runtime), max
+  still 3 and overridable per-request
+- **Title/subtitle split** — title ratio adjusted from 60%→55% to fit
+  within the narrower y=80..200 band
+
 ### Added — deck-forge/core Phase 6B: Component Renderer Polish
 
 - **Chart renderer polish**

@@ -1,4 +1,4 @@
-import { pickGridDimensions, splitGrid, splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { STANDARD_KPI_CARD_HEIGHT, pickGridDimensions, splitGrid, splitVertical } from "#src/builders/layouts/grid-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -38,12 +38,19 @@ export const dashboardStrategy: LayoutStrategy = {
     const hasMetrics = metricBlocks.length > 0;
     const hasOthers = otherBlocks.length > 0;
 
+    const { rows: metricRows } = hasMetrics
+      ? pickGridDimensions(metricBlocks.length)
+      : { rows: 1 };
+    const idealMetricHeight = Math.min(
+      STANDARD_KPI_CARD_HEIGHT * metricRows + 16 * (metricRows - 1),
+      region.height,
+    );
     const metricRegion = hasOthers
       ? {
           x: region.x,
           y: region.y,
           width: region.width,
-          height: Math.round(region.height * 0.45),
+          height: Math.min(idealMetricHeight, Math.round(region.height * 0.6)),
         }
       : region;
     const lowerRegion = hasOthers

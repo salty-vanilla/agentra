@@ -1,5 +1,6 @@
 import { selectLayoutStrategy } from "#src/builders/layouts/index.js";
 import type { LayoutHints, SubFrameAssignment } from "#src/builders/layouts/index.js";
+import { frameOverlapRatio, framesEqual, stackFramesVertically } from "#src/geometry/frame-geometry.js";
 import type {
   Asset,
   AssetMetadata,
@@ -114,6 +115,12 @@ function buildSlideIr(
   };
   const { elements, layoutStrategyId } = buildElements(slideSpec, layout.spec, layout.regions, theme, usedElementIds);
 
+  // ── Post-build overlap detection & auto-fix ───────────────────────
+  // Detect overlapping element frames before any AI review step. When an
+  // overlap exceeds 8% of the smaller frame, stack the conflicting group
+  // vertically inside the body region to eliminate it.
+  const fixedElements = fixOverlappingElements(elements, layout.slideSize, layout.regions);
+
   return {
     id: slideSpec.id,
     index,
@@ -121,7 +128,7 @@ function buildSlideIr(
     title: slideSpec.title,
     intent: slideSpec.intent,
     layout,
-    elements,
+    elements: fixedElements,
     speakerNotes: slideSpec.speakerNotes?.text,
     _trace: {
       layoutStrategyId,
@@ -179,7 +186,7 @@ function buildElements(
           width: titleRegionFrame.width,
           height: Math.max(
             44,
-            Math.round(titleRegionFrame.height * 0.6) - Math.round(titleSubtitleGap / 2),
+            Math.round(titleRegionFrame.height * 0.55) - Math.round(titleSubtitleGap / 2),
           ),
         }
       : titleRegionFrame;
@@ -456,6 +463,111 @@ function buildElements(
   }
 
   return { elements, layoutStrategyId: strategy.id };
+}
+
+// ── Overlap detection & auto-fix ──────────────────────────────────────
+
+const OVERLAP_THRESHOLD = 0.08;
+
+/**
+ * Scan all element pairs for overlapping frames. When an overlap exceeds
+ * `OVERLAP_THRESHOLD`, the conflicting elements are stacked vertically
+ * inside a bounding region derived from the slide's body region. This
+ * eliminates the most common layout defect (horizontal overlap from two
+ * elements placed at the same x) before the AI reviewer even sees the
+ * slide, dramatically reducing corrective operations.
+ */
+function fixOverlappingElements(
+  elements: SlideIR["elements"],
+  slideSize: SlideSize,
+  regions: SlideIR["layout"]["regions"],
+): SlideIR["elements"] {
+  if (elements.length < 2) return elements;
+
+  // Build adjacency list of overlapping element pairs.
+  // Skip exact duplicate frames (from splitVertical overflow) — those are
+  // deliberate fallback placements that the validation layer will flag
+  // separately and that the repair pipeline handles better.
+  const overlaps = new Map<number, Set<number>>();
+  let hasOverlap = false;
+  for (let i = 0; i < elements.length; i += 1) {
+    for (let j = i + 1; j < elements.length; j += 1) {
+      if (framesEqual(elements[i].frame, elements[j].frame)) continue;
+      const ratio = frameOverlapRatio(elements[i].frame, elements[j].frame);
+      if (ratio > OVERLAP_THRESHOLD) {
+        hasOverlap = true;
+        if (!overlaps.has(i)) overlaps.set(i, new Set());
+        if (!overlaps.has(j)) overlaps.set(j, new Set());
+        overlaps.get(i)!.add(j);
+        overlaps.get(j)!.add(i);
+      }
+    }
+  }
+  if (!hasOverlap) return elements;
+
+  // Union-find to group connected overlapping elements.
+  const parent = Array.from({ length: elements.length }, (_, i) => i);
+  function find(x: number): number {
+    while (parent[x] !== x) {
+      parent[x] = parent[parent[x]];
+      x = parent[x];
+    }
+    return x;
+  }
+  function union(a: number, b: number): void {
+    parent[find(a)] = find(b);
+  }
+  for (const [i, neighbors] of overlaps) {
+    for (const j of neighbors) {
+      union(i, j);
+    }
+  }
+
+  // Collect connected components.
+  const groups = new Map<number, number[]>();
+  for (let i = 0; i < elements.length; i += 1) {
+    if (!overlaps.has(i)) continue;
+    const root = find(i);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root)!.push(i);
+  }
+
+  // For each overlapping group, compute bounding box and re-stack.
+  const result = [...elements];
+  const bodyRegion = regions.find((r) => r.role === "body");
+  const fallbackFrame = bodyRegion?.frame ?? { x: 80, y: 200, width: 560, height: 280 };
+
+  for (const indices of groups.values()) {
+    if (indices.length < 2) continue;
+    // Compute bounding box of all frames in the group.
+    let minX = Number.MAX_SAFE_INTEGER;
+    let minY = Number.MAX_SAFE_INTEGER;
+    let maxX = 0;
+    let maxY = 0;
+    for (const idx of indices) {
+      const f = elements[idx].frame;
+      minX = Math.min(minX, f.x);
+      minY = Math.min(minY, f.y);
+      maxX = Math.max(maxX, f.x + f.width);
+      maxY = Math.max(maxY, f.y + f.height);
+    }
+    const regionFrame = {
+      x: minX,
+      y: minY,
+      width: Math.max(maxX - minX, fallbackFrame.width),
+      height: Math.max(maxY - minY, fallbackFrame.height),
+    };
+
+    const stacked = stackFramesVertically(regionFrame, indices.length, 12);
+    indices.forEach((elementIndex, stackIndex) => {
+      const frame = stacked[stackIndex];
+      if (frame) {
+        result[elementIndex] = { ...result[elementIndex], frame };
+      }
+    });
+  }
+
+  return result;
 }
 
 function applyHintsToStyle(

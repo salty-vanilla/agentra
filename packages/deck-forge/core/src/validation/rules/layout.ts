@@ -179,6 +179,27 @@ export function validateLayout(
         }
       }
     }
+    // style-position-conflict: style objects should never contain spatial
+    // properties — `frame` is the single source of truth for positioning.
+    // This catches LLM-generated JSON that leaks x/y into style objects.
+    const SPATIAL_KEYS = ["x", "y", "left", "top", "position"];
+    for (const element of slide.elements) {
+      if ("style" in element && element.style && typeof element.style === "object") {
+        const styleObj = element.style as Record<string, unknown>;
+        for (const key of SPATIAL_KEYS) {
+          if (key in styleObj) {
+            const issue = factory.issue(
+              "warning",
+              "layout",
+              `Element ${element.id} style contains spatial property '${key}' — use frame instead`,
+              `element/${element.id}`,
+            );
+            issue.id = `layout/style-position-conflict/${slide.id}/${element.id}/${key}`;
+            issues.push(issue);
+          }
+        }
+      }
+    }
   }
 
   return issues;

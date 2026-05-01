@@ -1,4 +1,4 @@
-import { pickGridDimensions, splitGrid, splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { STANDARD_KPI_CARD_HEIGHT, pickGridDimensions, splitGrid, splitVertical } from "#src/builders/layouts/grid-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -37,19 +37,27 @@ export const kpiGridStrategy: LayoutStrategy = {
     const top = Math.min(body.y, visual.y);
     const bottom = Math.max(body.y + body.height, callout.y + callout.height);
 
-    // If there are non-metric blocks, reserve the lower third for them.
+    // If there are non-metric blocks, size the metric region using the
+    // standard KPI card height (clamped to available space) so card
+    // heights stay consistent across decks.
     const hasOtherBlocks = otherBlocks.length > 0;
+    const totalHeight = bottom - top;
+    const { rows: metricRows } = pickGridDimensions(metricBlocks.length);
+    const idealMetricHeight = Math.min(
+      STANDARD_KPI_CARD_HEIGHT * metricRows + 16 * (metricRows - 1),
+      totalHeight,
+    );
     const metricRegion = {
       x: left,
       y: top,
       width: right - left,
-      height: hasOtherBlocks ? Math.round((bottom - top) * 0.65) : bottom - top,
+      height: hasOtherBlocks ? Math.min(idealMetricHeight, Math.round(totalHeight * 0.75)) : totalHeight,
     };
     const otherRegion = {
       x: left,
       y: metricRegion.y + metricRegion.height + 16,
       width: right - left,
-      height: bottom - top - metricRegion.height - 16,
+      height: totalHeight - metricRegion.height - 16,
     };
 
     const { cols, rows } = pickGridDimensions(metricBlocks.length);
