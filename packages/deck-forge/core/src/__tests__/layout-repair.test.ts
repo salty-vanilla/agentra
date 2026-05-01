@@ -454,9 +454,119 @@ describe("repairPresentationLayout", () => {
     });
 
     expect(result.summary.proposedCount).toBeGreaterThan(0);
+    // In dryRun, appliedCount should be 0
+    expect(result.summary.appliedCount).toBe(0);
+    // All records should have status "proposed"
+    for (const record of result.proposed) {
+      expect(record.status).toBe("proposed");
+    }
+    // applied array should be empty
+    expect(result.applied).toHaveLength(0);
     // Presentation should NOT be modified — element still out of bounds
     const repairedEl = result.presentation.slides[0]!.elements.find((e) => e.id === "el-oob")!;
     expect(repairedEl.frame.x).toBe(-50);
     expect(repairedEl.frame.y).toBe(-20);
+  });
+
+  // -----------------------------------------------------------------------
+  // Fix 3: independent overlap groups repaired separately
+  // -----------------------------------------------------------------------
+  it("repairs independent overlap groups separately on same slide", async () => {
+    // Group 1: el-a overlaps el-b
+    // Group 2: el-c overlaps el-d (independent)
+    const el1 = makeTextElement("el-a", "body", { x: 100, y: 100, width: 500, height: 200 });
+    const el2 = makeTextElement("el-b", "body", { x: 100, y: 100, width: 500, height: 200 });
+    const el3 = makeTextElement("el-c", "body", { x: 700, y: 100, width: 500, height: 200 });
+    const el4 = makeTextElement("el-d", "body", { x: 700, y: 100, width: 500, height: 200 });
+    const slide = makeSlide("s1", [
+      makeTextElement("el-title", "title", { x: 80, y: 20, width: 1120, height: 60 }),
+      el1,
+      el2,
+      el3,
+      el4,
+    ]);
+    const pres = makePresentation([slide]);
+
+    const issues: ValidationIssue[] = [
+      {
+        id: "layout/overlap/s1/el-a+el-b",
+        severity: "warning",
+        category: "layout",
+        message: "Overlap",
+        target: "slide/s1",
+      },
+      {
+        id: "layout/overlap/s1/el-c+el-d",
+        severity: "warning",
+        category: "layout",
+        message: "Overlap",
+        target: "slide/s1",
+      },
+    ];
+
+    const result = await repairPresentationLayout({ presentation: pres, issues });
+
+    const elA = result.presentation.slides[0]!.elements.find((e) => e.id === "el-a")!;
+    const elB = result.presentation.slides[0]!.elements.find((e) => e.id === "el-b")!;
+    const elC = result.presentation.slides[0]!.elements.find((e) => e.id === "el-c")!;
+    const elD = result.presentation.slides[0]!.elements.find((e) => e.id === "el-d")!;
+
+    // A and B should be separated
+    expect(elA.frame.y).not.toBe(elB.frame.y);
+    // C and D should be separated
+    expect(elC.frame.y).not.toBe(elD.frame.y);
+
+    // Groups should NOT be merged — A/B shouldn't be stacked with C/D
+    // Verify each group has exactly 2 operations
+    expect(result.summary.appliedCount).toBe(4);
+  });
+
+  // -----------------------------------------------------------------------
+  // Fix 4: table/sidebar uses region frame when available
+  // -----------------------------------------------------------------------
+  it("uses region frame for table/sidebar split when both share a region", async () => {
+    const region = {
+      id: "content-region",
+      role: "body" as const,
+      contentRefs: ["el-table", "el-callout"],
+      priority: 1,
+      frame: { x: 50, y: 100, width: 1180, height: 500 },
+    };
+    const tableEl: ElementIR = {
+      id: "el-table",
+      type: "table",
+      frame: { x: 200, y: 200, width: 800, height: 300 },
+      headers: ["A", "B"],
+      rows: [["1", "2"]],
+    };
+    const calloutEl = makeTextElement("el-callout", "callout", {
+      x: 200,
+      y: 200,
+      width: 800,
+      height: 300,
+    });
+    const slide = makeSlide(
+      "s1",
+      [
+        makeTextElement("el-title", "title", { x: 80, y: 20, width: 1120, height: 60 }),
+        tableEl,
+        calloutEl,
+      ],
+      { regions: [region] },
+    );
+    const pres = makePresentation([slide]);
+
+    const result = await repairPresentationLayout({ presentation: pres });
+
+    const table = result.presentation.slides[0]!.elements.find((e) => e.id === "el-table")!;
+    const callout = result.presentation.slides[0]!.elements.find((e) => e.id === "el-callout")!;
+
+    // Should use region frame origin (x=50, y=100), not element bounding box (x=200, y=200)
+    expect(table.frame.x).toBe(region.frame.x);
+    expect(table.frame.y).toBe(region.frame.y);
+    // Table + gap + callout should fit within region width
+    expect(table.frame.width + 12 + callout.frame.width).toBeLessThanOrEqual(region.frame.width);
+    // Table should be wider (65/35 split)
+    expect(table.frame.width).toBeGreaterThan(callout.frame.width);
   });
 });

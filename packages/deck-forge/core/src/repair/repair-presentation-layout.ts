@@ -50,7 +50,7 @@ function applyOperation(
     case "set_element_region":
       return setElementRegion(presentation, operation);
     default:
-      return { status: "skipped", reason: "element_not_found" };
+      return { status: "skipped", reason: "unsupported_operation" };
   }
 }
 
@@ -92,7 +92,7 @@ export async function repairPresentationLayout(input: {
 
     for (const operation of result.operations) {
       if (dryRun) {
-        allRecords.push({ operation, status: "applied", ruleId: rule.name });
+        allRecords.push({ operation, status: "proposed", ruleId: rule.name });
         continue;
       }
 

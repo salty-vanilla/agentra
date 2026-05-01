@@ -17,7 +17,7 @@ export type RepairOptions = {
 
 export type RepairOperationRecord = {
   operation: PresentationOperation;
-  status: "applied" | "skipped";
+  status: "applied" | "skipped" | "proposed";
   reason?: string;
   ruleId: RepairRuleName;
 };

@@ -235,36 +235,62 @@ export function repairTableSidebarOverlap(
 
     if (!tableEl || !sidebarEl) continue;
 
-    // Compute bounding box of both elements
-    const minX = Math.min(tableEl.frame.x, sidebarEl.frame.x);
-    const minY = Math.min(tableEl.frame.y, sidebarEl.frame.y);
-    const maxX = Math.max(
-      tableEl.frame.x + tableEl.frame.width,
-      sidebarEl.frame.x + sidebarEl.frame.width,
+    // Determine the container frame with fallback order:
+    // 1. Shared region frame (if both elements belong to the same region)
+    // 2. Pair bounding box
+    // 3. Slide safe area
+    const sharedRegion = slide.layout.regions.find(
+      (r) => r.contentRefs.includes(tableEl!.id) && r.contentRefs.includes(sidebarEl!.id),
     );
-    const maxBottom = Math.max(
-      tableEl.frame.y + tableEl.frame.height,
-      sidebarEl.frame.y + sidebarEl.frame.height,
-    );
-    const totalWidth = maxX - minX;
+    const anyRegion =
+      sharedRegion ??
+      slide.layout.regions.find(
+        (r) => r.contentRefs.includes(tableEl!.id) || r.contentRefs.includes(sidebarEl!.id),
+      );
+
+    let containerX: number;
+    let containerY: number;
+    let totalWidth: number;
+    let height: number;
+
+    if (anyRegion) {
+      containerX = anyRegion.frame.x;
+      containerY = anyRegion.frame.y;
+      totalWidth = anyRegion.frame.width;
+      height = anyRegion.frame.height;
+    } else {
+      // Fallback to pair bounding box
+      containerX = Math.min(tableEl.frame.x, sidebarEl.frame.x);
+      containerY = Math.min(tableEl.frame.y, sidebarEl.frame.y);
+      const maxX = Math.max(
+        tableEl.frame.x + tableEl.frame.width,
+        sidebarEl.frame.x + sidebarEl.frame.width,
+      );
+      const maxBottom = Math.max(
+        tableEl.frame.y + tableEl.frame.height,
+        sidebarEl.frame.y + sidebarEl.frame.height,
+      );
+      totalWidth = maxX - containerX;
+      height = maxBottom - containerY;
+    }
+
     const gap = 12;
 
     // 65% table, 35% sidebar
     const tableWidth = Math.floor((totalWidth - gap) * 0.65);
     const sidebarWidth = totalWidth - gap - tableWidth;
-    const height = maxBottom - minY;
 
     operations.push({
       type: "set_element_frame",
       slideId,
       elementId: tableEl.id,
-      frame: { x: minX, y: minY, width: tableWidth, height },
+      frame: { x: containerX, y: containerY, width: tableWidth, height },
     });
     operations.push({
       type: "set_element_frame",
       slideId,
       elementId: sidebarEl.id,
-      frame: { x: minX + tableWidth + gap, y: minY, width: sidebarWidth, height },
+      frame: { x: containerX + tableWidth + gap, y: containerY, width: sidebarWidth, height },
     });
     handledIssueIds.add(issue.id);
   }
@@ -329,6 +355,49 @@ export function repairTitleFooterMisplacement(
 // Rule 6: significant-overlap fallback
 // ---------------------------------------------------------------------------
 
+/**
+ * Build connected components from overlap pairs using union-find.
+ */
+function buildOverlapComponents(pairs: [string, string][]): string[][] {
+  const parent = new Map<string, string>();
+
+  function find(x: string): string {
+    let root = x;
+    while (parent.get(root) !== root) {
+      root = parent.get(root) ?? root;
+    }
+    // Path compression
+    let curr = x;
+    while (curr !== root) {
+      const next = parent.get(curr) ?? curr;
+      parent.set(curr, root);
+      curr = next;
+    }
+    return root;
+  }
+
+  function union(a: string, b: string): void {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent.set(ra, rb);
+  }
+
+  for (const [a, b] of pairs) {
+    if (!parent.has(a)) parent.set(a, a);
+    if (!parent.has(b)) parent.set(b, b);
+    union(a, b);
+  }
+
+  const groups = new Map<string, string[]>();
+  for (const node of parent.keys()) {
+    const root = find(node);
+    if (!groups.has(root)) groups.set(root, []);
+    groups.get(root)!.push(node);
+  }
+
+  return [...groups.values()];
+}
+
 export function repairSignificantOverlap(
   presentation: PresentationIR,
   issues: ValidationIssue[],
@@ -336,8 +405,8 @@ export function repairSignificantOverlap(
   const operations: PresentationOperation[] = [];
   const handledIssueIds = new Set<string>();
 
-  // Group overlap issues by slide so we can stack all overlapping elements together.
-  const bySlide = new Map<string, Set<string>>();
+  // Collect overlap pairs grouped by slide.
+  const pairsBySlide = new Map<string, [string, string][]>();
 
   for (const issue of issues) {
     if (!issue.id.startsWith(OVERLAP_PREFIX)) continue;
@@ -348,52 +417,53 @@ export function repairSignificantOverlap(
     if (!slideId || !idsJoined) continue;
 
     const elementIds = idsJoined.split("+");
-    if (!bySlide.has(slideId)) {
-      bySlide.set(slideId, new Set());
-    }
-    const set = bySlide.get(slideId)!;
-    for (const eid of elementIds) {
-      set.add(eid);
-    }
+    if (elementIds.length !== 2) continue;
+
+    if (!pairsBySlide.has(slideId)) pairsBySlide.set(slideId, []);
+    pairsBySlide.get(slideId)!.push([elementIds[0]!, elementIds[1]!]);
     handledIssueIds.add(issue.id);
   }
 
-  for (const [slideId, elementIdSet] of bySlide) {
+  for (const [slideId, pairs] of pairsBySlide) {
     const slide = findSlide(presentation, slideId);
     if (!slide) continue;
 
-    const elementIds = [...elementIdSet];
-    const elements = elementIds
-      .map((eid) => findElement(slide, eid))
-      .filter((el): el is ElementIR => el != null);
+    // Build connected components so independent overlap groups are repaired separately.
+    const components = buildOverlapComponents(pairs);
 
-    if (elements.length < 2) continue;
+    for (const component of components) {
+      const elements = component
+        .map((eid) => findElement(slide, eid))
+        .filter((el): el is ElementIR => el != null);
 
-    // Find a shared region, or fall back to slide bounds.
-    const sharedRegion = slide.layout.regions.find((r) =>
-      elements.some((el) => r.contentRefs.includes(el.id)),
-    );
+      if (elements.length < 2) continue;
 
-    const containerFrame = sharedRegion
-      ? sharedRegion.frame
-      : {
-          x: 40,
-          y: 40,
-          width: slide.layout.slideSize.width - 80,
-          height: slide.layout.slideSize.height - 80,
-        };
+      // Find a shared region, or fall back to slide bounds.
+      const sharedRegion = slide.layout.regions.find((r) =>
+        elements.some((el) => r.contentRefs.includes(el.id)),
+      );
 
-    const frames = stackFramesVertically(containerFrame, elements.length);
+      const containerFrame = sharedRegion
+        ? sharedRegion.frame
+        : {
+            x: 40,
+            y: 40,
+            width: slide.layout.slideSize.width - 80,
+            height: slide.layout.slideSize.height - 80,
+          };
 
-    for (let i = 0; i < elements.length; i++) {
-      const el = elements[i]!;
-      const frame = frames[i]!;
-      operations.push({
-        type: "set_element_frame",
-        slideId,
-        elementId: el.id,
-        frame: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
-      });
+      const frames = stackFramesVertically(containerFrame, elements.length);
+
+      for (let i = 0; i < elements.length; i++) {
+        const el = elements[i]!;
+        const frame = frames[i]!;
+        operations.push({
+          type: "set_element_frame",
+          slideId,
+          elementId: el.id,
+          frame: { x: frame.x, y: frame.y, width: frame.width, height: frame.height },
+        });
+      }
     }
   }
 
