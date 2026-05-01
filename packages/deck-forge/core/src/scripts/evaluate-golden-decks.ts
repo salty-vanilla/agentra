@@ -16,6 +16,8 @@ import { buildPresentationIr } from "../builders/build-presentation-ir.js";
 import { validatePresentation } from "../validation/validate-presentation.js";
 import { repairPresentationLayout, repairTextOverflow } from "../repair/index.js";
 import { scoreLayoutQuality } from "../quality/score-layout-quality.js";
+import { analyzeDeckLayout } from "../diagnostics/layout-diagnostics.js";
+import { analyzeOperationLog } from "../diagnostics/operation-diagnostics.js";
 import { goldenDecks } from "../__tests__/fixtures/golden-decks/index.js";
 
 // ---------------------------------------------------------------------------
@@ -75,6 +77,10 @@ async function main() {
     // 4. Quality scoring
     const qualityReport = scoreLayoutQuality(repairedPresentation);
 
+    // 4b. Layout diagnostics
+    const layoutDiagnostics = analyzeDeckLayout(repairedPresentation);
+    const operationDiagnostics = analyzeOperationLog(repairedPresentation.operationLog);
+
     // 5. Write outputs
     const prefix = join(outputDir, name);
 
@@ -101,6 +107,16 @@ async function main() {
         "utf8",
       );
     }
+    await writeFile(
+      `${prefix}.layout-diagnostics.json`,
+      JSON.stringify(layoutDiagnostics, null, 2),
+      "utf8",
+    );
+    await writeFile(
+      `${prefix}.operation-diagnostics.json`,
+      JSON.stringify(operationDiagnostics, null, 2),
+      "utf8",
+    );
 
     // 6. Optional PPTX export
     if (enablePptx) {
@@ -121,6 +137,8 @@ async function main() {
       validation: validation.summary,
       quality: qualityReport.summary,
       repair: repairSummary,
+      layoutDiagnostics: layoutDiagnostics.summary,
+      operationDiagnostics,
     };
   }
 

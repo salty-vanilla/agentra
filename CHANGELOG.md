@@ -9,6 +9,27 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 7C: Layout Diagnostics / Deploy Readiness / Operation Analysis
+
+- **`diagnostics/layout-diagnostics.ts`** — new module with `analyzeSlideLayout()` and
+  `analyzeDeckLayout()` functions; produces per-slide diagnostics (overlap detection,
+  out-of-bounds, slot coverage, fallback slots, element count) and deck-level summary
+  with `templateLayoutUsage`, `layoutStrategyUsage`, `fallbackSlotUsage`, and
+  `deployReadiness` (`pass` / `warning` / `fail`)
+- **`diagnostics/operation-diagnostics.ts`** — new module with `analyzeOperationLog()`
+  function; classifies operations into layout repair vs visual polish categories,
+  groups by type and slide, and provides fine-grained counters (frame, position,
+  size, font, style, text updates)
+- **`SlideLayoutDiagnostics`** / **`DeckLayoutDiagnosticsSummary`** /
+  **`LayoutDeployReadiness`** / **`OperationDiagnosticsSummary`** types exported
+  from core public API
+- **8 warning codes** — `missing_template_trace`, `missing_expected_slot`,
+  `slot_fallback`, `low_slot_coverage`, `element_overlap`, `element_out_of_bounds`,
+  `too_many_elements`, `too_many_fallback_slots`
+- **22 unit tests** — layout diagnostics (13 tests: trace, fallback, overlap,
+  out-of-bounds, coverage, deploy readiness, golden 6-slide scenario) and
+  operation diagnostics (9 tests: classification, grouping, edge cases)
+
 ### Added — deck-forge/core Phase 7B: Slot Helper / Diagnostics / Strategy Slot Expansion
 
 - **`slot-utils.ts`** — new module with `resolveSlotFrame()`, `assignmentFromSlot()`,

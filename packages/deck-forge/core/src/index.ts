@@ -198,6 +198,15 @@ export type {
   DesignReviewLoopInput,
   DesignReviewLoopOutput,
 } from "#src/runtime/design-review-loop.js";
+export { analyzeSlideLayout, analyzeDeckLayout } from "#src/diagnostics/layout-diagnostics.js";
+export type {
+  SlideLayoutDiagnostics,
+  LayoutDiagnosticWarning,
+  DeckLayoutDiagnosticsSummary,
+  LayoutDeployReadiness,
+} from "#src/diagnostics/layout-diagnostics.js";
+export { analyzeOperationLog } from "#src/diagnostics/operation-diagnostics.js";
+export type { OperationDiagnosticsSummary } from "#src/diagnostics/operation-diagnostics.js";
 
 // Artifact types and Zod schemas — single source of truth in `schemas/`.
 import type {
