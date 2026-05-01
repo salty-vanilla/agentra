@@ -47,6 +47,16 @@ type RevisionLoopCapableRunner = {
         operationHash?: string;
         stopReason?: string;
       }>;
+      deterministicRepair?: {
+        enabled: boolean;
+        skippedReason?: string;
+        issueCountBefore: number;
+        issueCountAfter: number;
+        proposedCount: number;
+        appliedCount: number;
+        skippedCount: number;
+        remainingIssueIds: string[];
+      };
     };
   }>;
 };
@@ -646,6 +656,142 @@ describe("DeckForgeRunner", () => {
     expect(result.summary.trace.at(-1)?.stopReason).toBe("repeated_operations");
     expect(result.summary.trace.at(-1)?.operationHash).toBeDefined();
   });
+
+  // -----------------------------------------------------------------------
+  // Phase 4b: Deterministic repair integration
+  // -----------------------------------------------------------------------
+
+  it("does not run deterministic repair when disabled (default)", async () => {
+    const agent = new DeckForgeRunner({
+      runtime: {} as never,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+    });
+
+    const trace: unknown[] = [];
+    const result = await (agent as unknown as RevisionLoopCapableRunner).runRevisionLoop({
+      presentation: createPresentationWithOobElement(),
+      payload: { goal: "Test disabled repair" },
+      validationLevel: "basic",
+      shouldAutoFix: false,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      trace,
+    });
+
+    // No deterministicRepair summary when disabled
+    expect(result.summary.deterministicRepair).toBeUndefined();
+    // No deterministic_repair trace entry
+    const repairTraces = (trace as Array<{ step: string }>).filter(
+      (t) => t.step === "deterministic_repair",
+    );
+    expect(repairTraces).toHaveLength(0);
+  });
+
+  it("runs deterministic repair when enabled with layout issues", async () => {
+    const agent = new DeckForgeRunner({
+      runtime: {} as never,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      enableDeterministicRepair: true,
+    });
+
+    const pres = createPresentationWithOobElement();
+    const trace: unknown[] = [];
+    const result = await (agent as unknown as RevisionLoopCapableRunner).runRevisionLoop({
+      presentation: pres,
+      payload: { goal: "Test enabled repair" },
+      validationLevel: "basic",
+      shouldAutoFix: false,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      trace,
+    });
+
+    const repairSummary = result.summary.deterministicRepair;
+    expect(repairSummary).toBeDefined();
+    expect(repairSummary!.enabled).toBe(true);
+    expect(repairSummary!.appliedCount).toBeGreaterThan(0);
+    expect(repairSummary!.issueCountAfter).toBeLessThanOrEqual(repairSummary!.issueCountBefore);
+    expect(repairSummary!.skippedReason).toBeUndefined();
+
+    // Trace should include deterministic_repair step
+    const repairTraces = (trace as Array<{ step: string; status: string }>).filter(
+      (t) => t.step === "deterministic_repair",
+    );
+    expect(repairTraces).toHaveLength(1);
+    expect(repairTraces[0]!.status).toBe("success");
+
+    // Repaired element should be clamped to slide bounds
+    const repairedEl = result.presentation.slides[0]!.elements.find(
+      (e: { id: string }) => e.id === "el-oob",
+    ) as { frame: { x: number; y: number } };
+    expect(repairedEl.frame.x).toBeGreaterThanOrEqual(0);
+    expect(repairedEl.frame.y).toBeGreaterThanOrEqual(0);
+  });
+
+  it("skips repair when enabled but no repairable layout issues exist", async () => {
+    const agent = new DeckForgeRunner({
+      runtime: {} as never,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      enableDeterministicRepair: true,
+    });
+
+    const trace: unknown[] = [];
+    const result = await (agent as unknown as RevisionLoopCapableRunner).runRevisionLoop({
+      presentation: createWarningOnlyPresentation(),
+      payload: { goal: "Test no layout issues" },
+      validationLevel: "basic",
+      shouldAutoFix: false,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      trace,
+    });
+
+    const repairSummary = result.summary.deterministicRepair;
+    expect(repairSummary).toBeDefined();
+    expect(repairSummary!.enabled).toBe(true);
+    expect(repairSummary!.skippedReason).toBe("no_layout_issues");
+    expect(repairSummary!.appliedCount).toBe(0);
+    expect(repairSummary!.proposedCount).toBe(0);
+
+    // No deterministic_repair trace entry for no-op
+    const repairTraces = (trace as Array<{ step: string }>).filter(
+      (t) => t.step === "deterministic_repair",
+    );
+    expect(repairTraces).toHaveLength(0);
+  });
+
+  it("does not enable deterministic repair by default for ai_review", async () => {
+    const agent = createAiReviewRunner({
+      reviewer: {
+        review: async () => [],
+      },
+      operationPlanner: {
+        plan: async () => [],
+      },
+      // Note: enableDeterministicRepair is NOT set
+    });
+
+    const trace: unknown[] = [];
+    const result = await (agent as unknown as RevisionLoopCapableRunner).runRevisionLoop({
+      presentation: createPresentationWithOobElement(),
+      payload: { goal: "Test ai_review default" },
+      validationLevel: "basic",
+      shouldAutoFix: false,
+      revisionPolicy: "ai_review",
+      maxRevisionLoops: 1,
+      trace,
+    });
+
+    // Deterministic repair should not run by default
+    expect(result.summary.deterministicRepair).toBeUndefined();
+    const repairTraces = (trace as Array<{ step: string }>).filter(
+      (t) => t.step === "deterministic_repair",
+    );
+    expect(repairTraces).toHaveLength(0);
+  });
 });
 
 function createAiReviewRunner(options: Partial<DeckForgeRunnerOptions>): DeckForgeRunner {
@@ -930,5 +1076,50 @@ function createBasePresentation(): PresentationIR {
     slides: [],
     assets: { assets: [] },
     operationLog: [],
+  };
+}
+
+function createPresentationWithOobElement(): PresentationIR {
+  return {
+    ...createBasePresentation(),
+    slides: [
+      {
+        id: "slide-1",
+        index: 0,
+        title: "Slide with OOB element",
+        intent: {
+          type: "summary",
+          keyMessage: "Test deterministic repair",
+          audienceTakeaway: "Layout should be repaired",
+        },
+        layout: {
+          spec: { type: "single_column", density: "medium" },
+          slideSize: { width: 1280, height: 720, unit: "px" },
+          regions: [],
+        },
+        elements: [
+          {
+            id: "el-title",
+            type: "text",
+            role: "title",
+            text: {
+              paragraphs: [{ runs: [{ text: "Test Title" }] }],
+            },
+            frame: { x: 80, y: 80, width: 1120, height: 100 },
+            style: { fontFamily: "Arial", fontSize: 36, color: "#0F172A" },
+          },
+          {
+            id: "el-oob",
+            type: "text",
+            role: "body",
+            text: {
+              paragraphs: [{ runs: [{ text: "Out of bounds body text" }] }],
+            },
+            frame: { x: -100, y: -50, width: 400, height: 200 },
+            style: { fontFamily: "Arial", fontSize: 18, color: "#0F172A" },
+          },
+        ],
+      },
+    ],
   };
 }

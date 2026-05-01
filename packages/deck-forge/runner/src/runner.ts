@@ -3,9 +3,10 @@ import type {
   PresentationOperation,
   PresentationReviewPacket,
   PresentationRuntime,
+  RepairResult,
   ValidationReport,
 } from "@deck-forge/core";
-import { autoFixPresentation, buildReviewPacket } from "@deck-forge/core";
+import { autoFixPresentation, buildReviewPacket, repairPresentationLayout } from "@deck-forge/core";
 import {
   applyPresentationOperationsHandler,
   buildPresentationIrHandler,
@@ -34,6 +35,7 @@ export type DeckForgeRunnerOptions = {
   maxRevisionLoops?: number;
   reviewer?: PresentationReviewer;
   operationPlanner?: PresentationOperationPlanner;
+  enableDeterministicRepair?: boolean;
 };
 
 export type DeckForgeRunInput = {
@@ -61,6 +63,7 @@ type RunnerStep =
   | "inspect"
   | "apply_operations"
   | "validate"
+  | "deterministic_repair"
   | "auto_fix"
   | "build_review_packet"
   | "review"
@@ -91,11 +94,23 @@ type RunnerTrace = {
   details?: string;
 };
 
+type DeterministicRepairSummary = {
+  enabled: boolean;
+  skippedReason?: "disabled" | "no_layout_issues";
+  issueCountBefore: number;
+  issueCountAfter: number;
+  proposedCount: number;
+  appliedCount: number;
+  skippedCount: number;
+  remainingIssueIds: string[];
+};
+
 type RevisionSummary = {
   policy: "none" | "validation_only" | "ai_review";
   loopsExecuted: number;
   operationsApplied: number;
   trace: RevisionTraceEntry[];
+  deterministicRepair?: DeterministicRepairSummary;
 };
 
 type RevisionTraceEntry = {
@@ -130,6 +145,21 @@ type PresentationPolicy = {
   designStyle: "refined_minimal";
   visualPreset: "balanced" | "visual_heavy" | "data_heavy";
 };
+
+const REPAIRABLE_ISSUE_PREFIXES = [
+  "layout/out-of-bounds/",
+  "layout/duplicate-frame/",
+  "layout/overlap/",
+  "layout/unhonored-region-ref/",
+];
+
+function hasRepairableLayoutIssues(report: ValidationReport): boolean {
+  return report.issues.some(
+    (issue) =>
+      issue.category === "layout" &&
+      REPAIRABLE_ISSUE_PREFIXES.some((prefix) => issue.id.startsWith(prefix)),
+  );
+}
 
 export class DeckForgeRunner {
   constructor(private readonly options: DeckForgeRunnerOptions) {
@@ -373,6 +403,7 @@ export class DeckForgeRunner {
     let loopsExecuted = 0;
     const revisionTrace: RevisionTraceEntry[] = [];
     const seenOperationHashes = new Set<string>();
+    let deterministicRepairSummary: DeterministicRepairSummary | undefined;
 
     let { report } = await this.runStep("validate", input.trace, async () =>
       validatePresentationHandler({
@@ -380,6 +411,75 @@ export class DeckForgeRunner {
         level: input.validationLevel,
       }),
     );
+
+    // --- Deterministic repair pass (runs at most once) ---
+    const enableRepair = this.options.enableDeterministicRepair ?? false;
+    if (enableRepair && hasRepairableLayoutIssues(report)) {
+      try {
+        const layoutIssues = report.issues.filter((i) => i.category === "layout");
+        const repairResult: RepairResult = await this.runStep(
+          "deterministic_repair",
+          input.trace,
+          async () =>
+            repairPresentationLayout({
+              presentation,
+              issues: layoutIssues,
+            }),
+        );
+
+        if (repairResult.summary.appliedCount > 0) {
+          presentation = repairResult.presentation;
+          // Re-validate with the repaired presentation.
+          ({ report } = await this.runStep("revalidate", input.trace, async () =>
+            validatePresentationHandler({
+              presentation,
+              level: input.validationLevel,
+            }),
+          ));
+        }
+
+        deterministicRepairSummary = {
+          enabled: true,
+          issueCountBefore: repairResult.summary.issueCountBefore,
+          issueCountAfter: repairResult.summary.issueCountAfter,
+          proposedCount: repairResult.summary.proposedCount,
+          appliedCount: repairResult.summary.appliedCount,
+          skippedCount: repairResult.summary.skippedCount,
+          remainingIssueIds: repairResult.issuesAfter.map((i) => i.id),
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        input.trace.push({
+          step: "deterministic_repair",
+          status: "failed",
+          startedAt: new Date().toISOString(),
+          finishedAt: new Date().toISOString(),
+          details: `WARNING: deterministic repair failed, continuing with original presentation: ${message}`,
+        });
+        deterministicRepairSummary = {
+          enabled: true,
+          issueCountBefore: 0,
+          issueCountAfter: 0,
+          proposedCount: 0,
+          appliedCount: 0,
+          skippedCount: 0,
+          remainingIssueIds: [],
+        };
+      }
+    } else if (enableRepair) {
+      // Enabled but no repairable layout issues — record summary only, no trace entry.
+      deterministicRepairSummary = {
+        enabled: true,
+        skippedReason: "no_layout_issues",
+        issueCountBefore: 0,
+        issueCountAfter: 0,
+        proposedCount: 0,
+        appliedCount: 0,
+        skippedCount: 0,
+        remainingIssueIds: [],
+      };
+    }
+    // When disabled (enableRepair === false), no trace entry and no summary.
 
     if (input.revisionPolicy === "validation_only") {
       while (
@@ -540,6 +640,7 @@ export class DeckForgeRunner {
         loopsExecuted,
         operationsApplied,
         trace: revisionTrace,
+        deterministicRepair: deterministicRepairSummary,
       },
     };
   }
