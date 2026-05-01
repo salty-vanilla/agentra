@@ -1,13 +1,17 @@
 import { actionPlanTableStrategy } from "#src/builders/layouts/action-plan-table.js";
 import { comparisonStrategy } from "#src/builders/layouts/comparison.js";
 import { dashboardStrategy } from "#src/builders/layouts/dashboard.js";
+import { dataInsightStoryStrategy } from "#src/builders/layouts/data-insight-story.js";
+import { decisionRequestStrategy } from "#src/builders/layouts/decision-request.js";
 import { diagramFocusStrategy } from "#src/builders/layouts/diagram-focus.js";
 import { executiveSummaryKpiStrategy } from "#src/builders/layouts/executive-summary-kpi.js";
 import { heroStrategy } from "#src/builders/layouts/hero.js";
 import { kpiDashboardWithInsightStrategy } from "#src/builders/layouts/kpi-dashboard-with-insight.js";
 import { kpiGridStrategy } from "#src/builders/layouts/kpi-grid.js";
 import { matrixStrategy } from "#src/builders/layouts/matrix.js";
+import { optionComparisonTableStrategy } from "#src/builders/layouts/option-comparison-table.js";
 import { processFlowWithImpactStrategy } from "#src/builders/layouts/process-flow-with-impact.js";
+import { recommendationComparisonStrategy } from "#src/builders/layouts/recommendation-comparison.js";
 import { sectionDividerStrategy } from "#src/builders/layouts/section-divider.js";
 import { singleStackStrategy } from "#src/builders/layouts/single-stack.js";
 import { smallMultiplesTrendStrategy } from "#src/builders/layouts/small-multiples-trend.js";
@@ -56,10 +60,14 @@ export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freez
   titleSlideStrategy,
   sectionDividerStrategy,
   // --- 75: business slide pattern strategies (most specific first) ---
+  decisionRequestStrategy,
+  recommendationComparisonStrategy,
   actionPlanTableStrategy,
   executiveSummaryKpiStrategy,
   kpiDashboardWithInsightStrategy,
   smallMultiplesTrendStrategy,
+  dataInsightStoryStrategy,
+  optionComparisonTableStrategy,
   processFlowWithImpactStrategy,
   // --- 70: generic explicit body-layout ---
   comparisonStrategy,
@@ -96,13 +104,17 @@ export {
   actionPlanTableStrategy,
   comparisonStrategy,
   dashboardStrategy,
+  dataInsightStoryStrategy,
+  decisionRequestStrategy,
   diagramFocusStrategy,
   executiveSummaryKpiStrategy,
   heroStrategy,
   kpiDashboardWithInsightStrategy,
   kpiGridStrategy,
   matrixStrategy,
+  optionComparisonTableStrategy,
   processFlowWithImpactStrategy,
+  recommendationComparisonStrategy,
   sectionDividerStrategy,
   singleStackStrategy,
   smallMultiplesTrendStrategy,

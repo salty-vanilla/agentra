@@ -7,7 +7,9 @@ import {
   hasCallout,
   hasChart,
   hasComplexVisuals,
+  hasDecisionSignals,
   hasDiagram,
+  hasRecommendationSignals,
   hasTable,
   hasTrendSignals,
   isDataInsightIntent,
@@ -27,9 +29,13 @@ import {
   timelineStrategy,
 } from "#src/builders/layouts/index.js";
 import { actionPlanTableStrategy } from "#src/builders/layouts/action-plan-table.js";
+import { dataInsightStoryStrategy } from "#src/builders/layouts/data-insight-story.js";
+import { decisionRequestStrategy } from "#src/builders/layouts/decision-request.js";
 import { executiveSummaryKpiStrategy } from "#src/builders/layouts/executive-summary-kpi.js";
 import { kpiDashboardWithInsightStrategy } from "#src/builders/layouts/kpi-dashboard-with-insight.js";
+import { optionComparisonTableStrategy } from "#src/builders/layouts/option-comparison-table.js";
 import { processFlowWithImpactStrategy } from "#src/builders/layouts/process-flow-with-impact.js";
+import { recommendationComparisonStrategy } from "#src/builders/layouts/recommendation-comparison.js";
 import { smallMultiplesTrendStrategy } from "#src/builders/layouts/small-multiples-trend.js";
 import type { LayoutContext } from "#src/builders/layouts/index.js";
 import { MIN_SUBFRAME_HEIGHT } from "#src/builders/layouts/grid-utils.js";
@@ -579,10 +585,14 @@ describe("strategy precedence", () => {
    */
   const strategies = [
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority === 80),
+    decisionRequestStrategy,
+    recommendationComparisonStrategy,
     actionPlanTableStrategy,
     executiveSummaryKpiStrategy,
     kpiDashboardWithInsightStrategy,
     smallMultiplesTrendStrategy,
+    dataInsightStoryStrategy,
+    optionComparisonTableStrategy,
     processFlowWithImpactStrategy,
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
   ];
@@ -621,7 +631,7 @@ describe("strategy precedence", () => {
 
   it("action-plan-table overrides custom when action table signals present", () => {
     const ctx = makeContext(
-      [makeTable("t1"), makeCallout("c1", "Approval requested")],
+      [makeTable("t1"), makeCallout("c1", "Owner: Tanaka, deadline: June")],
       {
         layoutSpec: { type: "custom", density: "medium" },
         slideSpec: { title: "Action Plan: Q2 Follow-up" },
@@ -675,10 +685,14 @@ describe("strategy registration", () => {
   it("business strategies have higher priority than generic layout strategies", () => {
     const businessStrategies = [
       actionPlanTableStrategy,
+      dataInsightStoryStrategy,
+      decisionRequestStrategy,
       executiveSummaryKpiStrategy,
       kpiDashboardWithInsightStrategy,
-      smallMultiplesTrendStrategy,
+      optionComparisonTableStrategy,
       processFlowWithImpactStrategy,
+      recommendationComparisonStrategy,
+      smallMultiplesTrendStrategy,
     ];
     const genericStrategies = [comparisonStrategy, dashboardStrategy, timelineStrategy];
 
@@ -692,10 +706,14 @@ describe("strategy registration", () => {
   it("title and section remain above business strategies", () => {
     const businessStrategies = [
       actionPlanTableStrategy,
+      dataInsightStoryStrategy,
+      decisionRequestStrategy,
       executiveSummaryKpiStrategy,
       kpiDashboardWithInsightStrategy,
-      smallMultiplesTrendStrategy,
+      optionComparisonTableStrategy,
       processFlowWithImpactStrategy,
+      recommendationComparisonStrategy,
+      smallMultiplesTrendStrategy,
     ];
     // title-slide and section-divider are priority 80
     for (const biz of businessStrategies) {
@@ -706,10 +724,14 @@ describe("strategy registration", () => {
   it("business strategies have priority 75", () => {
     const bizStrategies = [
       actionPlanTableStrategy,
+      dataInsightStoryStrategy,
+      decisionRequestStrategy,
       executiveSummaryKpiStrategy,
       kpiDashboardWithInsightStrategy,
-      smallMultiplesTrendStrategy,
+      optionComparisonTableStrategy,
       processFlowWithImpactStrategy,
+      recommendationComparisonStrategy,
+      smallMultiplesTrendStrategy,
     ];
     for (const s of bizStrategies) {
       expect(s.priority).toBe(75);
@@ -724,10 +746,14 @@ describe("strategy registration", () => {
 describe("manufacturing report expected strategy selection", () => {
   const strategies = [
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority === 80),
+    decisionRequestStrategy,
+    recommendationComparisonStrategy,
     actionPlanTableStrategy,
     executiveSummaryKpiStrategy,
     kpiDashboardWithInsightStrategy,
     smallMultiplesTrendStrategy,
+    dataInsightStoryStrategy,
+    optionComparisonTableStrategy,
     processFlowWithImpactStrategy,
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
   ];
@@ -817,17 +843,599 @@ describe("manufacturing report expected strategy selection", () => {
     const ctx = makeContext(
       [
         makeTable("t1"),
-        makeCallout("c1", "Approval required by end of Q2"),
+        makeCallout("c1", "All items due by end of Q2"),
       ],
       {
         layoutSpec: { type: "single_column", density: "medium" },
         slideSpec: {
           title: "Action Plan: Production Improvement Items",
-          intent: { type: "decision", keyMessage: "Action items", audienceTakeaway: "x" },
+          intent: { type: "proposal", keyMessage: "Action items", audienceTakeaway: "x" },
         },
       },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
     expect(strategy.id).toBe("action-plan-table");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-2: decision-request
+// ---------------------------------------------------------------------------
+
+describe("decision-request strategy", () => {
+  it("matches when decision signals and >= 2 blocks", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "Approval required: proceed with vendor A"),
+        makeParagraph("p1", "Cost analysis supports this decision"),
+      ],
+      {
+        slideSpec: {
+          title: "Decision: Vendor Selection",
+          intent: { type: "decision", keyMessage: "Approve vendor A", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(decisionRequestStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches via keyword signals even without decision intent", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "承認依頼: 新規ライン投資"),
+        makeParagraph("p1", "投資回収期間は18ヶ月"),
+      ],
+      {
+        slideSpec: {
+          title: "承認依頼",
+          intent: { type: "proposal", keyMessage: "投資承認", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(decisionRequestStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects when fewer than 2 blocks", () => {
+    const ctx = makeContext(
+      [makeCallout("c1", "Approval needed")],
+      {
+        slideSpec: {
+          title: "Decision",
+          intent: { type: "decision", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(decisionRequestStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects when more than 10 blocks", () => {
+    const blocks = Array.from({ length: 11 }, (_, i) =>
+      makeParagraph(`p${i}`, "Decision point"),
+    );
+    const ctx = makeContext(blocks, {
+      slideSpec: {
+        title: "Decision",
+        intent: { type: "decision", keyMessage: "x", audienceTakeaway: "x" },
+      },
+    });
+    expect(decisionRequestStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects when no decision signals and no decision intent", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "General overview"),
+        makeParagraph("p2", "More details"),
+      ],
+      {
+        slideSpec: {
+          title: "Status Update",
+          intent: { type: "data_insight", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(decisionRequestStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout assigns decision callout with prominent hints", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "Approve budget increase of $2M"),
+        makeParagraph("p1", "ROI projected at 35%"),
+        makeMetric("m1", "Payback Period", "14 months"),
+      ],
+      {
+        slideSpec: {
+          title: "Budget Approval Request",
+          intent: { type: "decision", keyMessage: "Approve budget", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = decisionRequestStrategy.layout(ctx);
+    expect(assignments.length).toBe(3);
+
+    // Decision callout should have prominent hints
+    const decisionAssignment = assignments.find((a) => a.blockId === "c1");
+    expect(decisionAssignment).toBeDefined();
+    expect(decisionAssignment!.hints?.fontScale).toBe(1.4);
+    expect(decisionAssignment!.hints?.role).toBe("callout");
+    expect(decisionAssignment!.hints?.decoration).toBe("accent-bar");
+
+    // All frames within bounds
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+
+  it("layout handles no-callout case (first block gets decision treatment)", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "We need to decide on the next steps"),
+        makeParagraph("p2", "Option analysis"),
+      ],
+      {
+        slideSpec: {
+          title: "Next Step Decision",
+          intent: { type: "decision", keyMessage: "Decide", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = decisionRequestStrategy.layout(ctx);
+    expect(assignments.length).toBe(2);
+
+    // First block gets decision treatment
+    expect(assignments[0]!.hints?.fontScale).toBe(1.4);
+    expect(assignments[0]!.hints?.role).toBe("callout");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-2: data-insight-story
+// ---------------------------------------------------------------------------
+
+describe("data-insight-story strategy", () => {
+  it("matches with chart + callout + data_insight intent", () => {
+    const ctx = makeContext(
+      [
+        makeChart("ch1"),
+        makeCallout("c1", "Revenue grew 15% YoY driven by APAC expansion"),
+      ],
+      {
+        slideSpec: {
+          title: "Revenue Analysis",
+          intent: { type: "data_insight", keyMessage: "Revenue growth", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(dataInsightStoryStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with table + 2 paragraphs + data_insight intent", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeParagraph("p1", "Key finding: defect rate down 30%"),
+        makeParagraph("p2", "Root cause: improved inspection process"),
+      ],
+      {
+        slideSpec: {
+          title: "Quality Insight",
+          intent: { type: "data_insight", keyMessage: "Defect reduction", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(dataInsightStoryStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects without data_insight intent", () => {
+    const ctx = makeContext(
+      [
+        makeChart("ch1"),
+        makeCallout("c1", "Important point"),
+      ],
+      {
+        slideSpec: {
+          title: "Overview",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(dataInsightStoryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects without chart or table", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "An insight"),
+        makeParagraph("p1", "More context"),
+      ],
+      {
+        slideSpec: {
+          title: "Insight",
+          intent: { type: "data_insight", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(dataInsightStoryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects with insufficient insight blocks", () => {
+    const ctx = makeContext(
+      [makeChart("ch1")],
+      {
+        slideSpec: {
+          title: "Chart Only",
+          intent: { type: "data_insight", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(dataInsightStoryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout splits visual top / insight bottom", () => {
+    const ctx = makeContext(
+      [
+        makeChart("ch1"),
+        makeCallout("c1", "Key finding"),
+        makeParagraph("p1", "Supporting detail"),
+      ],
+      {
+        slideSpec: {
+          title: "Analysis",
+          intent: { type: "data_insight", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = dataInsightStoryStrategy.layout(ctx);
+    expect(assignments.length).toBe(3);
+
+    // Chart should be above insight blocks
+    const chartFrame = assignments.find((a) => a.blockId === "ch1")!.frame;
+    const calloutFrame = assignments.find((a) => a.blockId === "c1")!.frame;
+    expect(chartFrame.y).toBeLessThan(calloutFrame.y);
+
+    // First insight block gets accent-bar and fontScale
+    const calloutAssignment = assignments.find((a) => a.blockId === "c1");
+    expect(calloutAssignment!.hints?.decoration).toBe("accent-bar");
+
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-2: recommendation-comparison
+// ---------------------------------------------------------------------------
+
+describe("recommendation-comparison strategy", () => {
+  it("matches with recommendation signals + table", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeCallout("c1", "Recommended: Option B for cost efficiency"),
+      ],
+      {
+        slideSpec: {
+          title: "Vendor Comparison — Recommendation",
+          intent: { type: "comparison", keyMessage: "Recommend B", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(recommendationComparisonStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with Japanese recommendation signals", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeCallout("c1", "推奨案: プランBを採用"),
+      ],
+      {
+        slideSpec: {
+          title: "比較検討結果",
+          intent: { type: "comparison", keyMessage: "推奨", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(recommendationComparisonStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with recommendation signals + comparison intent (no table)", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Option A: $100K"),
+        makeParagraph("p2", "Option B: $80K — recommended"),
+      ],
+      {
+        slideSpec: {
+          title: "Cost Comparison",
+          intent: { type: "comparison", keyMessage: "Compare options", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(recommendationComparisonStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects without recommendation signals", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeParagraph("p1", "General comparison"),
+      ],
+      {
+        slideSpec: {
+          title: "Options",
+          intent: { type: "comparison", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(recommendationComparisonStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects without table or comparison intent", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Our recommendation is clear"),
+      ],
+      {
+        slideSpec: {
+          title: "Recommendation",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(recommendationComparisonStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout splits main/sidebar with recommendation callout", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeCallout("c1", "Recommended: Option B"),
+        makeParagraph("p1", "Risk: integration timeline"),
+      ],
+      {
+        slideSpec: {
+          title: "Vendor Recommendation",
+          intent: { type: "comparison", keyMessage: "Recommend B", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = recommendationComparisonStrategy.layout(ctx);
+    expect(assignments.length).toBe(3);
+
+    // Callout in sidebar with recommendation hints
+    const calloutAssignment = assignments.find((a) => a.blockId === "c1");
+    expect(calloutAssignment!.hints?.decoration).toBe("accent-bar");
+    expect(calloutAssignment!.hints?.role).toBe("callout");
+    expect(calloutAssignment!.hints?.fontScale).toBe(1.1);
+
+    // Table should be in main region (left side)
+    const tableFrame = assignments.find((a) => a.blockId === "t1")!.frame;
+    const calloutFrame = calloutAssignment!.frame;
+    expect(tableFrame.x).toBeLessThan(calloutFrame.x);
+
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-2: option-comparison-table
+// ---------------------------------------------------------------------------
+
+describe("option-comparison-table strategy", () => {
+  it("matches with table + comparison intent", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeCallout("c1", "Option A is cost-effective"),
+      ],
+      {
+        slideSpec: {
+          title: "Option Comparison",
+          intent: { type: "comparison", keyMessage: "Compare", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(optionComparisonTableStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects without comparison intent", () => {
+    const ctx = makeContext(
+      [makeTable("t1")],
+      {
+        slideSpec: {
+          title: "Data Table",
+          intent: { type: "data_insight", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(optionComparisonTableStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects without table", () => {
+    const ctx = makeContext(
+      [makeParagraph("p1", "Option A vs B")],
+      {
+        slideSpec: {
+          title: "Comparison",
+          intent: { type: "comparison", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(optionComparisonTableStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects when more than 8 blocks", () => {
+    const blocks = [
+      makeTable("t1"),
+      ...Array.from({ length: 8 }, (_, i) => makeParagraph(`p${i}`, "x")),
+    ];
+    const ctx = makeContext(blocks, {
+      slideSpec: {
+        title: "Comparison",
+        intent: { type: "comparison", keyMessage: "x", audienceTakeaway: "x" },
+      },
+    });
+    expect(optionComparisonTableStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout places table top and summary bottom", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeCallout("c1", "Option A wins on cost, Option B on quality"),
+      ],
+      {
+        slideSpec: {
+          title: "Feature Comparison",
+          intent: { type: "comparison", keyMessage: "Compare", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = optionComparisonTableStrategy.layout(ctx);
+    expect(assignments.length).toBe(2);
+
+    // Table above summary
+    const tableFrame = assignments.find((a) => a.blockId === "t1")!.frame;
+    const summaryFrame = assignments.find((a) => a.blockId === "c1")!.frame;
+    expect(tableFrame.y).toBeLessThan(summaryFrame.y);
+
+    // Summary has card decoration
+    const summaryAssignment = assignments.find((a) => a.blockId === "c1");
+    expect(summaryAssignment!.hints?.decoration).toBe("card");
+    expect(summaryAssignment!.hints?.role).toBe("callout");
+
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+
+  it("layout handles table-only case", () => {
+    const ctx = makeContext(
+      [makeTable("t1")],
+      {
+        slideSpec: {
+          title: "Comparison",
+          intent: { type: "comparison", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = optionComparisonTableStrategy.layout(ctx);
+    expect(assignments.length).toBe(1);
+    expect(assignments[0]!.frame.width).toBeGreaterThan(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-2: precedence tests
+// ---------------------------------------------------------------------------
+
+describe("6A-2 strategy precedence", () => {
+  const strategies = [
+    ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority === 80),
+    decisionRequestStrategy,
+    recommendationComparisonStrategy,
+    actionPlanTableStrategy,
+    executiveSummaryKpiStrategy,
+    kpiDashboardWithInsightStrategy,
+    smallMultiplesTrendStrategy,
+    dataInsightStoryStrategy,
+    optionComparisonTableStrategy,
+    processFlowWithImpactStrategy,
+    ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
+  ];
+
+  it("decision-request overrides generic dashboard with decision signals", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "Approval needed for budget allocation"),
+        makeParagraph("p1", "Projected savings: $500K"),
+        makeMetric("m1", "ROI", "35%"),
+      ],
+      {
+        layoutSpec: { type: "dashboard", density: "medium" },
+        slideSpec: {
+          title: "Budget Decision",
+          intent: { type: "decision", keyMessage: "Approve budget", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("decision-request");
+  });
+
+  it("recommendation-comparison overrides generic comparison with recommendation signals", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeCallout("c1", "Recommended: Vendor B"),
+      ],
+      {
+        layoutSpec: { type: "comparison", density: "medium" },
+        slideSpec: {
+          title: "Vendor Recommendation",
+          intent: { type: "comparison", keyMessage: "Recommend B", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("recommendation-comparison");
+  });
+
+  it("data-insight-story selected for chart + insight + data_insight intent", () => {
+    const ctx = makeContext(
+      [
+        makeChart("ch1"),
+        makeCallout("c1", "Key insight: conversion improved 20%"),
+        makeParagraph("p1", "Driven by UX redesign"),
+      ],
+      {
+        layoutSpec: { type: "single_column", density: "medium" },
+        slideSpec: {
+          title: "Conversion Analysis",
+          intent: { type: "data_insight", keyMessage: "Conversion up", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("data-insight-story");
+  });
+
+  it("option-comparison-table selected for table + comparison intent", () => {
+    const ctx = makeContext(
+      [
+        makeTable("t1"),
+        makeParagraph("p1", "Summary of options"),
+      ],
+      {
+        layoutSpec: { type: "comparison", density: "medium" },
+        slideSpec: {
+          title: "Platform Comparison",
+          intent: { type: "comparison", keyMessage: "Compare platforms", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("option-comparison-table");
+  });
+
+  it("generic comparison still selected when no business signals match", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Option A"),
+        makeParagraph("p2", "Option B"),
+      ],
+      { layoutSpec: { type: "comparison", density: "medium" } },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("comparison");
   });
 });
