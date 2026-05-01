@@ -1,11 +1,16 @@
+import { actionPlanTableStrategy } from "#src/builders/layouts/action-plan-table.js";
 import { comparisonStrategy } from "#src/builders/layouts/comparison.js";
 import { dashboardStrategy } from "#src/builders/layouts/dashboard.js";
 import { diagramFocusStrategy } from "#src/builders/layouts/diagram-focus.js";
+import { executiveSummaryKpiStrategy } from "#src/builders/layouts/executive-summary-kpi.js";
 import { heroStrategy } from "#src/builders/layouts/hero.js";
+import { kpiDashboardWithInsightStrategy } from "#src/builders/layouts/kpi-dashboard-with-insight.js";
 import { kpiGridStrategy } from "#src/builders/layouts/kpi-grid.js";
 import { matrixStrategy } from "#src/builders/layouts/matrix.js";
+import { processFlowWithImpactStrategy } from "#src/builders/layouts/process-flow-with-impact.js";
 import { sectionDividerStrategy } from "#src/builders/layouts/section-divider.js";
 import { singleStackStrategy } from "#src/builders/layouts/single-stack.js";
+import { smallMultiplesTrendStrategy } from "#src/builders/layouts/small-multiples-trend.js";
 import { threeColumnStrategy } from "#src/builders/layouts/three-column.js";
 import { timelineStrategy } from "#src/builders/layouts/timeline.js";
 import { titleSlideStrategy } from "#src/builders/layouts/title-slide.js";
@@ -34,6 +39,10 @@ export {
  * Priority tiers:
  *   - 80: explicit slide-type layouts (title, section) — should always win
  *         when their LayoutSpec.type matches.
+ *   - 75: business slide pattern strategies — content-driven with
+ *         conservative matching.  Override generic layout types when strong
+ *         content signals exist (e.g. 3+ metrics + callout beats generic
+ *         dashboard).
  *   - 70: explicit body-layout LayoutTypes (comparison, three_column,
  *         matrix, dashboard, timeline, diagram_focus, image_left_text_right,
  *         text_left_image_right).
@@ -43,14 +52,23 @@ export {
  *   - 0:  single-stack fallback.
  */
 export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freeze([
+  // --- 80: explicit slide-type ---
   titleSlideStrategy,
   sectionDividerStrategy,
+  // --- 75: business slide pattern strategies (most specific first) ---
+  actionPlanTableStrategy,
+  executiveSummaryKpiStrategy,
+  kpiDashboardWithInsightStrategy,
+  smallMultiplesTrendStrategy,
+  processFlowWithImpactStrategy,
+  // --- 70: generic explicit body-layout ---
   comparisonStrategy,
   threeColumnStrategy,
   matrixStrategy,
   dashboardStrategy,
   timelineStrategy,
   diagramFocusStrategy,
+  // --- 60–0: content-driven + fallback ---
   heroStrategy,
   kpiGridStrategy,
   twoColumnStrategy,
@@ -75,14 +93,19 @@ export function selectLayoutStrategy(
 }
 
 export {
+  actionPlanTableStrategy,
   comparisonStrategy,
   dashboardStrategy,
   diagramFocusStrategy,
+  executiveSummaryKpiStrategy,
   heroStrategy,
+  kpiDashboardWithInsightStrategy,
   kpiGridStrategy,
   matrixStrategy,
+  processFlowWithImpactStrategy,
   sectionDividerStrategy,
   singleStackStrategy,
+  smallMultiplesTrendStrategy,
   threeColumnStrategy,
   timelineStrategy,
   titleSlideStrategy,
