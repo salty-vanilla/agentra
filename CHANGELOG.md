@@ -9,6 +9,17 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — deck-forge/core Phase 7A-fix: resolveTemplateLayout priority correction
+
+- **`resolveTemplateLayout()` priority reorder** — split `LAYOUT_TYPE_TO_KIND`
+  into `SPECIAL_LAYOUT_TYPE_TO_LAYOUT_ID` (title/cover/section) and
+  `GENERIC_LAYOUT_TYPE_TO_LAYOUT_ID` (dashboard/table/two_column/etc.); new
+  resolution order: special type → business strategy → generic type → fallback.
+  Previously, generic types like `dashboard` overrode business strategies like
+  `kpi-dashboard-with-insight`.
+- **9 new priority tests** covering special-beats-strategy, strategy-beats-generic,
+  unknown-strategy-fallback, and no-match-fallback scenarios
+
 ### Added — deck-forge/core Phase 7A: TemplateProfile / Slot-based Layout Core
 
 - **TemplateProfile type system** — `TemplateProfile`, `TemplateLayoutProfile`,

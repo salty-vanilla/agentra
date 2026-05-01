@@ -14,7 +14,7 @@ export type ResolveTemplateLayoutOutput = {
   reason: string;
 };
 
-const STRATEGY_TO_LAYOUT: Record<string, string> = {
+const STRATEGY_TO_LAYOUT_ID: Record<string, string> = {
   "executive-summary-kpi": "dashboard-cards",
   "kpi-dashboard-with-insight": "visual-insight",
   "small-multiples-trend": "dashboard-cards",
@@ -25,10 +25,13 @@ const STRATEGY_TO_LAYOUT: Record<string, string> = {
   "decision-request": "content-standard",
 };
 
-const LAYOUT_TYPE_TO_KIND: Record<string, string> = {
+const SPECIAL_LAYOUT_TYPE_TO_LAYOUT_ID: Record<string, string> = {
   title: "cover",
   cover: "cover",
   section: "section",
+};
+
+const GENERIC_LAYOUT_TYPE_TO_LAYOUT_ID: Record<string, string> = {
   dashboard: "dashboard-cards",
   table: "table",
   two_column: "content-two-column",
@@ -49,27 +52,36 @@ export function resolveTemplateLayout(
 ): ResolveTemplateLayoutOutput {
   const { layoutSpec, selectedStrategyId, templateProfile } = input;
 
-  // 1. Match by layout spec type
-  const typeMatch = LAYOUT_TYPE_TO_KIND[layoutSpec.type];
-  if (typeMatch) {
-    const layout = findLayout(templateProfile, typeMatch);
+  // 1. Special slide types always win (title, cover, section)
+  const specialLayoutId = SPECIAL_LAYOUT_TYPE_TO_LAYOUT_ID[layoutSpec.type];
+  if (specialLayoutId) {
+    const layout = findLayout(templateProfile, specialLayoutId);
     if (layout) {
-      return { layout, reason: `layoutSpec.type="${layoutSpec.type}" -> ${layout.id}` };
+      return { layout, reason: `special layoutSpec.type="${layoutSpec.type}" -> ${layout.id}` };
     }
   }
 
-  // 2. Match by strategy id
+  // 2. Business strategy wins over generic layoutSpec.type
   if (selectedStrategyId) {
-    const strategyMatch = STRATEGY_TO_LAYOUT[selectedStrategyId];
-    if (strategyMatch) {
-      const layout = findLayout(templateProfile, strategyMatch);
+    const strategyLayoutId = STRATEGY_TO_LAYOUT_ID[selectedStrategyId];
+    if (strategyLayoutId) {
+      const layout = findLayout(templateProfile, strategyLayoutId);
       if (layout) {
         return { layout, reason: `strategyId="${selectedStrategyId}" -> ${layout.id}` };
       }
     }
   }
 
-  // 3. Fallback to content-standard
+  // 3. Generic layout type fallback
+  const genericLayoutId = GENERIC_LAYOUT_TYPE_TO_LAYOUT_ID[layoutSpec.type];
+  if (genericLayoutId) {
+    const layout = findLayout(templateProfile, genericLayoutId);
+    if (layout) {
+      return { layout, reason: `generic layoutSpec.type="${layoutSpec.type}" -> ${layout.id}` };
+    }
+  }
+
+  // 4. Fallback to content-standard
   const fallback =
     findLayout(templateProfile, "content-standard") ??
     templateProfile.layouts.find((l) => l.kind === "content") ??

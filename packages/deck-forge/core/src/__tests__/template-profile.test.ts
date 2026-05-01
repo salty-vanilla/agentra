@@ -215,6 +215,50 @@ describe("resolveTemplateLayout", () => {
     expect(result.reason).toBeTruthy();
     expect(typeof result.reason).toBe("string");
   });
+
+  // -- Priority: special layout type wins over strategy --
+
+  it("special type 'title' wins over strategy 'executive-summary-kpi'", () => {
+    expect(resolve("title", "executive-summary-kpi").layout.id).toBe("cover");
+  });
+
+  it("special type 'section' wins over strategy 'kpi-dashboard-with-insight'", () => {
+    expect(resolve("section", "kpi-dashboard-with-insight").layout.id).toBe("section");
+  });
+
+  // -- Priority: business strategy wins over generic layoutSpec.type --
+
+  it("strategy 'kpi-dashboard-with-insight' wins over generic 'dashboard'", () => {
+    expect(resolve("dashboard", "kpi-dashboard-with-insight").layout.id).toBe("visual-insight");
+  });
+
+  it("strategy 'data-insight-story' wins over generic 'dashboard'", () => {
+    expect(resolve("dashboard", "data-insight-story").layout.id).toBe("visual-insight");
+  });
+
+  it("strategy 'implementation-roadmap' wins over generic 'timeline'", () => {
+    expect(resolve("timeline", "implementation-roadmap").layout.id).toBe("process");
+  });
+
+  it("strategy 'action-plan-table' with generic 'table' still picks table", () => {
+    expect(resolve("table", "action-plan-table").layout.id).toBe("table");
+  });
+
+  // -- Unknown strategy falls through to generic layoutSpec.type --
+
+  it("unknown strategy with 'dashboard' falls to dashboard-cards", () => {
+    expect(resolve("dashboard", "unknown-strategy").layout.id).toBe("dashboard-cards");
+  });
+
+  it("no strategy with 'two_column' falls to content-two-column", () => {
+    expect(resolve("two_column", undefined).layout.id).toBe("content-two-column");
+  });
+
+  // -- Nothing matches -> content-standard --
+
+  it("unknown type and no strategy falls to content-standard", () => {
+    expect(resolve("unknown", undefined).layout.id).toBe("content-standard");
+  });
 });
 
 // ---------------------------------------------------------------------------
