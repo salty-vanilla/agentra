@@ -63,6 +63,10 @@ export function isProcessIntent(ctx: LayoutContext): boolean {
   return ctx.slideSpec.intent?.type === "process";
 }
 
+export function isTimelineIntent(ctx: LayoutContext): boolean {
+  return ctx.slideSpec.intent?.type === "timeline";
+}
+
 export function isDataInsightIntent(ctx: LayoutContext): boolean {
   return ctx.slideSpec.intent?.type === "data_insight";
 }

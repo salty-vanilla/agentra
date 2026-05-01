@@ -6,9 +6,12 @@ import { decisionRequestStrategy } from "#src/builders/layouts/decision-request.
 import { diagramFocusStrategy } from "#src/builders/layouts/diagram-focus.js";
 import { executiveSummaryKpiStrategy } from "#src/builders/layouts/executive-summary-kpi.js";
 import { heroStrategy } from "#src/builders/layouts/hero.js";
+import { implementationRoadmapStrategy } from "#src/builders/layouts/implementation-roadmap.js";
 import { kpiDashboardWithInsightStrategy } from "#src/builders/layouts/kpi-dashboard-with-insight.js";
 import { kpiGridStrategy } from "#src/builders/layouts/kpi-grid.js";
+import { layeredArchitectureStrategy } from "#src/builders/layouts/layered-architecture.js";
 import { matrixStrategy } from "#src/builders/layouts/matrix.js";
+import { oneMessageSummaryStrategy } from "#src/builders/layouts/one-message-summary.js";
 import { optionComparisonTableStrategy } from "#src/builders/layouts/option-comparison-table.js";
 import { processFlowWithImpactStrategy } from "#src/builders/layouts/process-flow-with-impact.js";
 import { recommendationComparisonStrategy } from "#src/builders/layouts/recommendation-comparison.js";
@@ -16,6 +19,7 @@ import { sectionDividerStrategy } from "#src/builders/layouts/section-divider.js
 import { singleStackStrategy } from "#src/builders/layouts/single-stack.js";
 import { smallMultiplesTrendStrategy } from "#src/builders/layouts/small-multiples-trend.js";
 import { threeColumnStrategy } from "#src/builders/layouts/three-column.js";
+import { threePointSummaryStrategy } from "#src/builders/layouts/three-point-summary.js";
 import { timelineStrategy } from "#src/builders/layouts/timeline.js";
 import { titleSlideStrategy } from "#src/builders/layouts/title-slide.js";
 import { twoColumnStrategy } from "#src/builders/layouts/two-column.js";
@@ -69,6 +73,10 @@ export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freez
   dataInsightStoryStrategy,
   optionComparisonTableStrategy,
   processFlowWithImpactStrategy,
+  implementationRoadmapStrategy,
+  layeredArchitectureStrategy,
+  oneMessageSummaryStrategy,
+  threePointSummaryStrategy,
   // --- 70: generic explicit body-layout ---
   comparisonStrategy,
   threeColumnStrategy,
@@ -109,9 +117,12 @@ export {
   diagramFocusStrategy,
   executiveSummaryKpiStrategy,
   heroStrategy,
+  implementationRoadmapStrategy,
   kpiDashboardWithInsightStrategy,
   kpiGridStrategy,
+  layeredArchitectureStrategy,
   matrixStrategy,
+  oneMessageSummaryStrategy,
   optionComparisonTableStrategy,
   processFlowWithImpactStrategy,
   recommendationComparisonStrategy,
@@ -119,6 +130,7 @@ export {
   singleStackStrategy,
   smallMultiplesTrendStrategy,
   threeColumnStrategy,
+  threePointSummaryStrategy,
   timelineStrategy,
   titleSlideStrategy,
   twoColumnStrategy,

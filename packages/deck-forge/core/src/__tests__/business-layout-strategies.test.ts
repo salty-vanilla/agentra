@@ -4,12 +4,14 @@ import {
   countByType,
   countBulletItems,
   hasActionPlanSignals,
+  hasArchitectureSignals,
   hasCallout,
   hasChart,
   hasComplexVisuals,
   hasDecisionSignals,
   hasDiagram,
   hasRecommendationSignals,
+  hasRoadmapSignals,
   hasTable,
   hasTrendSignals,
   isDataInsightIntent,
@@ -32,11 +34,15 @@ import { actionPlanTableStrategy } from "#src/builders/layouts/action-plan-table
 import { dataInsightStoryStrategy } from "#src/builders/layouts/data-insight-story.js";
 import { decisionRequestStrategy } from "#src/builders/layouts/decision-request.js";
 import { executiveSummaryKpiStrategy } from "#src/builders/layouts/executive-summary-kpi.js";
+import { implementationRoadmapStrategy } from "#src/builders/layouts/implementation-roadmap.js";
 import { kpiDashboardWithInsightStrategy } from "#src/builders/layouts/kpi-dashboard-with-insight.js";
+import { layeredArchitectureStrategy } from "#src/builders/layouts/layered-architecture.js";
+import { oneMessageSummaryStrategy } from "#src/builders/layouts/one-message-summary.js";
 import { optionComparisonTableStrategy } from "#src/builders/layouts/option-comparison-table.js";
 import { processFlowWithImpactStrategy } from "#src/builders/layouts/process-flow-with-impact.js";
 import { recommendationComparisonStrategy } from "#src/builders/layouts/recommendation-comparison.js";
 import { smallMultiplesTrendStrategy } from "#src/builders/layouts/small-multiples-trend.js";
+import { threePointSummaryStrategy } from "#src/builders/layouts/three-point-summary.js";
 import type { LayoutContext } from "#src/builders/layouts/index.js";
 import { MIN_SUBFRAME_HEIGHT } from "#src/builders/layouts/grid-utils.js";
 import type { ContentBlock, SlideSpec, ThemeSpec } from "#src/index.js";
@@ -594,6 +600,10 @@ describe("strategy precedence", () => {
     dataInsightStoryStrategy,
     optionComparisonTableStrategy,
     processFlowWithImpactStrategy,
+    implementationRoadmapStrategy,
+    layeredArchitectureStrategy,
+    oneMessageSummaryStrategy,
+    threePointSummaryStrategy,
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
   ];
 
@@ -688,11 +698,15 @@ describe("strategy registration", () => {
       dataInsightStoryStrategy,
       decisionRequestStrategy,
       executiveSummaryKpiStrategy,
+      implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
+      layeredArchitectureStrategy,
+      oneMessageSummaryStrategy,
       optionComparisonTableStrategy,
       processFlowWithImpactStrategy,
       recommendationComparisonStrategy,
       smallMultiplesTrendStrategy,
+      threePointSummaryStrategy,
     ];
     const genericStrategies = [comparisonStrategy, dashboardStrategy, timelineStrategy];
 
@@ -709,11 +723,15 @@ describe("strategy registration", () => {
       dataInsightStoryStrategy,
       decisionRequestStrategy,
       executiveSummaryKpiStrategy,
+      implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
+      layeredArchitectureStrategy,
+      oneMessageSummaryStrategy,
       optionComparisonTableStrategy,
       processFlowWithImpactStrategy,
       recommendationComparisonStrategy,
       smallMultiplesTrendStrategy,
+      threePointSummaryStrategy,
     ];
     // title-slide and section-divider are priority 80
     for (const biz of businessStrategies) {
@@ -727,11 +745,15 @@ describe("strategy registration", () => {
       dataInsightStoryStrategy,
       decisionRequestStrategy,
       executiveSummaryKpiStrategy,
+      implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
+      layeredArchitectureStrategy,
+      oneMessageSummaryStrategy,
       optionComparisonTableStrategy,
       processFlowWithImpactStrategy,
       recommendationComparisonStrategy,
       smallMultiplesTrendStrategy,
+      threePointSummaryStrategy,
     ];
     for (const s of bizStrategies) {
       expect(s.priority).toBe(75);
@@ -755,6 +777,10 @@ describe("manufacturing report expected strategy selection", () => {
     dataInsightStoryStrategy,
     optionComparisonTableStrategy,
     processFlowWithImpactStrategy,
+    implementationRoadmapStrategy,
+    layeredArchitectureStrategy,
+    oneMessageSummaryStrategy,
+    threePointSummaryStrategy,
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
   ];
 
@@ -1350,6 +1376,10 @@ describe("6A-2 strategy precedence", () => {
     dataInsightStoryStrategy,
     optionComparisonTableStrategy,
     processFlowWithImpactStrategy,
+    implementationRoadmapStrategy,
+    layeredArchitectureStrategy,
+    oneMessageSummaryStrategy,
+    threePointSummaryStrategy,
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
   ];
 
@@ -1437,5 +1467,607 @@ describe("6A-2 strategy precedence", () => {
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
     expect(strategy.id).toBe("comparison");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-3: one-message-summary
+// ---------------------------------------------------------------------------
+
+describe("one-message-summary strategy", () => {
+  it("matches with summary intent + callout + no complex visuals", () => {
+    const ctx = makeContext(
+      [makeCallout("c1", "Our key takeaway: efficiency improved 20%")],
+      {
+        slideSpec: {
+          title: "Summary",
+          intent: { type: "summary", keyMessage: "Efficiency improved", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(oneMessageSummaryStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with closing intent + paragraph", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Thank you for your attention"),
+        makeMetric("m1", "Next Review", "Q3 2026"),
+      ],
+      {
+        slideSpec: {
+          title: "Closing",
+          intent: { type: "closing", keyMessage: "Thank you", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(oneMessageSummaryStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects when complex visuals present", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "Key point"),
+        makeChart("ch1"),
+      ],
+      {
+        slideSpec: {
+          title: "Summary",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(oneMessageSummaryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects when more than 4 blocks", () => {
+    const blocks = Array.from({ length: 5 }, (_, i) =>
+      makeParagraph(`p${i}`, "Point"),
+    );
+    const ctx = makeContext(blocks, {
+      slideSpec: {
+        title: "Summary",
+        intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+      },
+    });
+    expect(oneMessageSummaryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects without summary intent", () => {
+    const ctx = makeContext(
+      [makeCallout("c1", "Important")],
+      {
+        slideSpec: {
+          title: "Overview",
+          intent: { type: "data_insight", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(oneMessageSummaryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout gives dominant callout full region when single block", () => {
+    const ctx = makeContext(
+      [makeCallout("c1", "Key takeaway")],
+      {
+        slideSpec: {
+          title: "Summary",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = oneMessageSummaryStrategy.layout(ctx);
+    expect(assignments.length).toBe(1);
+    expect(assignments[0]!.hints?.fontScale).toBe(1.3);
+    expect(assignments[0]!.hints?.alignment).toBe("center");
+    expect(assignments[0]!.hints?.role).toBe("callout");
+  });
+
+  it("layout splits key message top / supporting cards bottom", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "Main message"),
+        makeMetric("m1", "Growth", "+15%"),
+        makeParagraph("p1", "Next steps planned"),
+      ],
+      {
+        slideSpec: {
+          title: "Summary",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = oneMessageSummaryStrategy.layout(ctx);
+    expect(assignments.length).toBe(3);
+
+    // Key message above supporting cards
+    const msgFrame = assignments.find((a) => a.blockId === "c1")!.frame;
+    const cardFrame = assignments.find((a) => a.blockId === "m1")!.frame;
+    expect(msgFrame.y).toBeLessThan(cardFrame.y);
+
+    // Support blocks have card decoration
+    expect(assignments.find((a) => a.blockId === "m1")!.hints?.decoration).toBe("card");
+
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-3: three-point-summary
+// ---------------------------------------------------------------------------
+
+describe("three-point-summary strategy", () => {
+  it("matches with exactly 3 body blocks and no complex visuals", () => {
+    const ctx = makeContext([
+      makeParagraph("p1", "Point one"),
+      makeParagraph("p2", "Point two"),
+      makeParagraph("p3", "Point three"),
+    ]);
+    expect(threePointSummaryStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with 3 callout + metric mix", () => {
+    const ctx = makeContext([
+      makeCallout("c1", "Pillar 1"),
+      makeCallout("c2", "Pillar 2"),
+      makeMetric("m1", "Growth", "+10%"),
+    ]);
+    expect(threePointSummaryStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with bullet_list of exactly 3 items", () => {
+    const ctx = makeContext([
+      makeBulletList("b1", ["First", "Second", "Third"]),
+    ]);
+    expect(threePointSummaryStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects with complex visuals", () => {
+    const ctx = makeContext([
+      makeParagraph("p1", "Point one"),
+      makeParagraph("p2", "Point two"),
+      makeChart("ch1"),
+    ]);
+    expect(threePointSummaryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects with 2 body blocks", () => {
+    const ctx = makeContext([
+      makeParagraph("p1", "Point one"),
+      makeParagraph("p2", "Point two"),
+    ]);
+    expect(threePointSummaryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects with more than 5 blocks", () => {
+    const blocks = Array.from({ length: 6 }, (_, i) =>
+      makeParagraph(`p${i}`, "Point"),
+    );
+    const ctx = makeContext(blocks);
+    expect(threePointSummaryStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout creates 3 horizontal cards", () => {
+    const ctx = makeContext([
+      makeParagraph("p1", "Pillar A"),
+      makeCallout("c1", "Pillar B"),
+      makeMetric("m1", "Pillar C", "100"),
+    ]);
+    const assignments = threePointSummaryStrategy.layout(ctx);
+    expect(assignments.length).toBe(3);
+
+    // All should have card decoration
+    for (const a of assignments) {
+      expect(a.hints?.decoration).toBe("card");
+      expect(a.hints?.alignment).toBe("center");
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+
+  it("layout handles bullet_list block", () => {
+    const ctx = makeContext([
+      makeBulletList("b1", ["First", "Second", "Third"]),
+    ]);
+    const assignments = threePointSummaryStrategy.layout(ctx);
+    expect(assignments.length).toBe(1);
+    expect(assignments[0]!.hints?.decoration).toBe("card");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-3: implementation-roadmap
+// ---------------------------------------------------------------------------
+
+describe("implementation-roadmap strategy", () => {
+  it("matches with roadmap signals", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Phase 1: Planning"),
+        makeParagraph("p2", "Phase 2: Development"),
+        makeParagraph("p3", "Phase 3: Launch"),
+      ],
+      {
+        slideSpec: {
+          title: "Implementation Roadmap",
+          intent: { type: "timeline", keyMessage: "3-phase rollout", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(implementationRoadmapStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with Japanese roadmap signals", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "フェーズ1"),
+        makeParagraph("p2", "フェーズ2"),
+        makeParagraph("p3", "フェーズ3"),
+      ],
+      {
+        slideSpec: {
+          title: "ロードマップ",
+          intent: { type: "timeline", keyMessage: "展開計画", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(implementationRoadmapStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with timeline intent + enough content", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Step 1"),
+        makeParagraph("p2", "Step 2"),
+        makeBulletList("b1", ["task a", "task b"]),
+      ],
+      {
+        slideSpec: {
+          title: "Project Timeline",
+          intent: { type: "timeline", keyMessage: "Timeline", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(implementationRoadmapStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects timeline intent without enough content", () => {
+    const ctx = makeContext(
+      [makeParagraph("p1", "Just one step")],
+      {
+        slideSpec: {
+          title: "Timeline",
+          intent: { type: "timeline", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(implementationRoadmapStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects when more than 10 blocks", () => {
+    const blocks = Array.from({ length: 11 }, (_, i) =>
+      makeParagraph(`p${i}`, "Phase"),
+    );
+    const ctx = makeContext(blocks, {
+      slideSpec: {
+        title: "Roadmap",
+        intent: { type: "timeline", keyMessage: "x", audienceTakeaway: "x" },
+      },
+    });
+    expect(implementationRoadmapStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects without roadmap signals or timeline intent", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Step 1"),
+        makeParagraph("p2", "Step 2"),
+        makeParagraph("p3", "Step 3"),
+      ],
+      {
+        slideSpec: {
+          title: "Process Steps",
+          intent: { type: "process", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(implementationRoadmapStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout creates horizontal phase cards + risk band", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Phase 1: Design"),
+        makeParagraph("p2", "Phase 2: Build"),
+        makeParagraph("p3", "Phase 3: Deploy"),
+        makeCallout("c1", "Risk: resource constraints in Q3"),
+      ],
+      {
+        slideSpec: {
+          title: "Implementation Roadmap",
+          intent: { type: "timeline", keyMessage: "Roadmap", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = implementationRoadmapStrategy.layout(ctx);
+    expect(assignments.length).toBe(4);
+
+    // Phase blocks should have card decoration
+    const phaseAssignments = assignments.filter((a) => a.blockId.startsWith("p"));
+    for (const a of phaseAssignments) {
+      expect(a.hints?.decoration).toBe("card");
+    }
+
+    // Callout should have accent-bar
+    const riskAssignment = assignments.find((a) => a.blockId === "c1");
+    expect(riskAssignment!.hints?.decoration).toBe("accent-bar");
+    expect(riskAssignment!.hints?.role).toBe("callout");
+
+    // Phase cards above risk band
+    const phaseMaxY = Math.max(...phaseAssignments.map((a) => a.frame.y));
+    expect(riskAssignment!.frame.y).toBeGreaterThan(phaseMaxY);
+
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-3: layered-architecture
+// ---------------------------------------------------------------------------
+
+describe("layered-architecture strategy", () => {
+  it("matches with architecture signals + diagram", () => {
+    const ctx = makeContext(
+      [
+        makeDiagram("d1"),
+        makeCallout("c1", "Design principle: loose coupling"),
+      ],
+      {
+        slideSpec: {
+          title: "System Architecture",
+          intent: { type: "architecture", keyMessage: "Architecture overview", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(layeredArchitectureStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with architecture keywords + bullet items", () => {
+    const ctx = makeContext(
+      [
+        makeBulletList("b1", ["Frontend Layer", "API Layer", "Data Layer"]),
+        makeCallout("c1", "Microservice architecture"),
+      ],
+      {
+        slideSpec: {
+          title: "Technology Stack",
+          intent: { type: "architecture", keyMessage: "Stack overview", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(layeredArchitectureStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with Japanese architecture signals", () => {
+    const ctx = makeContext(
+      [
+        makeBulletList("b1", ["フロントエンド", "バックエンド", "データベース"]),
+      ],
+      {
+        slideSpec: {
+          title: "アーキテクチャ概要",
+          intent: { type: "architecture", keyMessage: "アーキテクチャ", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(layeredArchitectureStrategy.match(ctx)).toBe(true);
+  });
+
+  it("rejects without architecture signals", () => {
+    const ctx = makeContext(
+      [makeDiagram("d1")],
+      {
+        slideSpec: {
+          title: "Flow Diagram",
+          intent: { type: "process", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(layeredArchitectureStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects without diagram or sufficient bullet items", () => {
+    const ctx = makeContext(
+      [makeParagraph("p1", "Architecture overview")],
+      {
+        slideSpec: {
+          title: "Architecture",
+          intent: { type: "architecture", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    expect(layeredArchitectureStrategy.match(ctx)).toBe(false);
+  });
+
+  it("rejects when more than 10 blocks", () => {
+    const blocks = Array.from({ length: 11 }, (_, i) =>
+      makeParagraph(`p${i}`, "Layer"),
+    );
+    const ctx = makeContext(blocks, {
+      slideSpec: {
+        title: "Architecture",
+        intent: { type: "architecture", keyMessage: "x", audienceTakeaway: "x" },
+      },
+    });
+    expect(layeredArchitectureStrategy.match(ctx)).toBe(false);
+  });
+
+  it("layout with diagram + callout creates main/sidebar split", () => {
+    const ctx = makeContext(
+      [
+        makeDiagram("d1"),
+        makeCallout("c1", "Design principle: separation of concerns"),
+      ],
+      {
+        slideSpec: {
+          title: "System Architecture",
+          intent: { type: "architecture", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = layeredArchitectureStrategy.layout(ctx);
+    expect(assignments.length).toBe(2);
+
+    // Diagram should be in main (wider) region
+    const diagramFrame = assignments.find((a) => a.blockId === "d1")!.frame;
+    const calloutFrame = assignments.find((a) => a.blockId === "c1")!.frame;
+    expect(diagramFrame.width).toBeGreaterThan(calloutFrame.width);
+
+    // Callout has role hint
+    expect(assignments.find((a) => a.blockId === "c1")!.hints?.role).toBe("callout");
+
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+  });
+
+  it("layout without diagram creates layer bands", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Presentation Layer"),
+        makeParagraph("p2", "Business Logic Layer"),
+        makeParagraph("p3", "Data Access Layer"),
+      ],
+      {
+        slideSpec: {
+          title: "Architecture Layers",
+          intent: { type: "architecture", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const assignments = layeredArchitectureStrategy.layout(ctx);
+    expect(assignments.length).toBe(3);
+
+    // All should have card decoration
+    for (const a of assignments) {
+      expect(a.hints?.decoration).toBe("card");
+      expect(a.hints?.alignment).toBe("center");
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThanOrEqual(MIN_SUBFRAME_HEIGHT);
+    }
+
+    // Stacked vertically (each y > previous)
+    for (let i = 1; i < assignments.length; i++) {
+      expect(assignments[i]!.frame.y).toBeGreaterThan(assignments[i - 1]!.frame.y);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 6A-3: precedence tests
+// ---------------------------------------------------------------------------
+
+describe("6A-3 strategy precedence", () => {
+  const strategies = [
+    ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority === 80),
+    decisionRequestStrategy,
+    recommendationComparisonStrategy,
+    actionPlanTableStrategy,
+    executiveSummaryKpiStrategy,
+    kpiDashboardWithInsightStrategy,
+    smallMultiplesTrendStrategy,
+    dataInsightStoryStrategy,
+    optionComparisonTableStrategy,
+    processFlowWithImpactStrategy,
+    implementationRoadmapStrategy,
+    layeredArchitectureStrategy,
+    oneMessageSummaryStrategy,
+    threePointSummaryStrategy,
+    ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
+  ];
+
+  it("implementation-roadmap overrides generic timeline with roadmap signals", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Phase 1: Discovery"),
+        makeParagraph("p2", "Phase 2: Development"),
+        makeParagraph("p3", "Phase 3: Launch"),
+        makeCallout("c1", "Milestone: Q3 Go-Live"),
+      ],
+      {
+        layoutSpec: { type: "timeline", density: "medium" },
+        slideSpec: {
+          title: "Implementation Roadmap",
+          intent: { type: "timeline", keyMessage: "Roadmap", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("implementation-roadmap");
+  });
+
+  it("generic timeline selected without roadmap signals", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "Event A"),
+        makeParagraph("p2", "Event B"),
+      ],
+      { layoutSpec: { type: "timeline", density: "medium" } },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("timeline");
+  });
+
+  it("one-message-summary does NOT match slides with charts", () => {
+    const ctx = makeContext(
+      [
+        makeCallout("c1", "Summary point"),
+        makeChart("ch1"),
+      ],
+      {
+        slideSpec: {
+          title: "Summary",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).not.toBe("one-message-summary");
+  });
+
+  it("three-point-summary does NOT match slides with tables", () => {
+    const ctx = makeContext(
+      [
+        makeParagraph("p1", "A"),
+        makeParagraph("p2", "B"),
+        makeTable("t1"),
+      ],
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).not.toBe("three-point-summary");
+  });
+
+  it("layered-architecture selected for architecture intent + diagram", () => {
+    const ctx = makeContext(
+      [
+        makeDiagram("d1"),
+        makeCallout("c1", "Loose coupling principle"),
+      ],
+      {
+        slideSpec: {
+          title: "System Architecture",
+          intent: { type: "architecture", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const strategy = selectLayoutStrategy(ctx, strategies);
+    expect(strategy.id).toBe("layered-architecture");
   });
 });
