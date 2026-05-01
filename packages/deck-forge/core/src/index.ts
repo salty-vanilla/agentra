@@ -24,6 +24,20 @@ export type {
   VisualReviewSeverity,
 } from "#src/review/types.js";
 export { applyOperations } from "#src/operations/apply-operations.js";
+export {
+  isDecorativeElement,
+  reflowElementsIntoLayoutRegions,
+} from "#src/operations/utils.js";
+export type { ReflowOptions } from "#src/operations/utils.js";
+export {
+  clampFrameToSlide,
+  findDuplicateFrameGroups,
+  frameOverlapRatio,
+  framesEqual,
+  isFrameOutOfBounds,
+  stackFramesVertically,
+} from "#src/geometry/frame-geometry.js";
+export type { FrameLike } from "#src/geometry/frame-geometry.js";
 export type {
   AddChartOperation,
   AddImageOperation,

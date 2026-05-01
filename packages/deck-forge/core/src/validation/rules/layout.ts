@@ -1,8 +1,23 @@
+import {
+  findDuplicateFrameGroups,
+  frameOverlapRatio,
+} from "#src/geometry/frame-geometry.js";
 import type { PresentationIR, ValidationIssue } from "#src/index.js";
 import { suggestMoveInBounds } from "#src/validation/autofix/auto-fix-presentation.js";
 import type { IssueFactory, ValidateLevel } from "#src/validation/types.js";
 
 const EXPORT_OVERLAP_ERROR_RATIO = 0.18;
+/**
+ * Content-on-content overlap above this ratio is treated as a hard layout
+ * error at every validation level. Background / very-low-opacity decorative
+ * elements are excluded via {@link isIgnorableExportOverlap}.
+ */
+const SIGNIFICANT_OVERLAP_ERROR_RATIO = 0.4;
+/**
+ * A region's `contentRefs` is honored when the referenced element's frame
+ * overlaps the region by at least this ratio.
+ */
+const REGION_REF_HONORED_OVERLAP = 0.8;
 
 export function validateLayout(
   presentation: PresentationIR,
@@ -95,17 +110,66 @@ export function validateLayout(
 
         const overlapRatio = frameOverlapRatio(left.frame, right.frame);
         if (overlapRatio > 0.08) {
-          const severity =
+          const ignorable = isIgnorableExportOverlap(left, right);
+          let severity: ValidationIssue["severity"] = "warning";
+          if (!ignorable && overlapRatio >= SIGNIFICANT_OVERLAP_ERROR_RATIO) {
+            severity = "error";
+          } else if (
             isExport &&
             overlapRatio >= EXPORT_OVERLAP_ERROR_RATIO &&
-            !isIgnorableExportOverlap(left, right)
-              ? "error"
-              : "warning";
+            !ignorable
+          ) {
+            severity = "error";
+          }
           issues.push(
             factory.issue(
               severity,
               "layout",
               `Elements overlap on slide ${slide.id}: ${left.id} and ${right.id}`,
+              `slide/${slide.id}`,
+            ),
+          );
+        }
+      }
+    }
+
+    // duplicate-frame: two or more content-bearing elements share an identical
+    // frame. This typically indicates that LLM-generated operations stamped the
+    // same coordinates on multiple callouts/text blocks.
+    const contentElements = slide.elements.filter((element) => !isBackgroundLike(element));
+    const duplicateGroups = findDuplicateFrameGroups(
+      contentElements.map((element) => element.frame),
+    );
+    for (const group of duplicateGroups) {
+      const ids = group
+        .map((index) => contentElements[index]?.id)
+        .filter((id): id is string => Boolean(id));
+      if (ids.length < 2) continue;
+      issues.push(
+        factory.issue(
+          "error",
+          "layout",
+          `Duplicate element frames on slide ${slide.id}: ${ids.join(", ")}`,
+          `slide/${slide.id}`,
+        ),
+      );
+    }
+
+    // unhonored-region-ref: a region's contentRefs names an element whose frame
+    // does not lie within (or sufficiently overlap) the region frame. After
+    // reflow this should not happen; a recurring warning means the LLM keeps
+    // moving an element away from its declared region.
+    for (const region of slide.layout.regions) {
+      for (const ref of region.contentRefs) {
+        const element = slide.elements.find((candidate) => candidate.id === ref);
+        if (!element) continue;
+        const overlap = frameOverlapRatio(element.frame, region.frame);
+        if (overlap < REGION_REF_HONORED_OVERLAP) {
+          issues.push(
+            factory.issue(
+              "warning",
+              "layout",
+              `Region '${region.id}' on slide ${slide.id} declares contentRef '${ref}' but the element frame does not occupy the region`,
               `slide/${slide.id}`,
             ),
           );
@@ -135,25 +199,4 @@ function isBackgroundLike(element: PresentationIR["slides"][number]["elements"][
 
   const fillOpacity = element.style.opacity ?? 1;
   return fillOpacity <= 0.15;
-}
-
-function frameOverlapRatio(
-  left: { x: number; y: number; width: number; height: number },
-  right: { x: number; y: number; width: number; height: number },
-): number {
-  const overlapWidth = Math.max(
-    0,
-    Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x),
-  );
-  const overlapHeight = Math.max(
-    0,
-    Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y),
-  );
-  const overlapArea = overlapWidth * overlapHeight;
-  if (overlapArea === 0) {
-    return 0;
-  }
-
-  const smallerArea = Math.min(left.width * left.height, right.width * right.height);
-  return smallerArea > 0 ? overlapArea / smallerArea : 0;
 }

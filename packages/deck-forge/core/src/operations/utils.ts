@@ -1,4 +1,10 @@
+import {
+  clampFrameToSlide,
+  frameOverlapRatio,
+  stackFramesVertically,
+} from "#src/geometry/frame-geometry.js";
 import type {
+  ElementIR,
   LayoutSpec,
   OperationRecord,
   PresentationIR,
@@ -230,3 +236,211 @@ export function appendOperationRecord(
 
   presentation.operationLog.push(record);
 }
+
+// ---------------------------------------------------------------------------
+// Layout / frame synchronization (Phase 1)
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when an element should be left untouched by region reflow.
+ *
+ * Decorative / background / very-low-opacity shapes are typically used as
+ * full-bleed accents, dividers or watermarks. Forcing them into a content
+ * region would visibly break intentional layering, so reflow skips them.
+ * They are still clamped to slide bounds.
+ */
+export function isDecorativeElement(element: ElementIR): boolean {
+  if (element.type === "image" && element.role === "background") {
+    return true;
+  }
+  if (element.type === "shape") {
+    const opacity = element.style.opacity ?? 1;
+    if (opacity <= 0.15) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Map an element to the set of region roles it can naturally occupy.
+ * Used by inference when a region's `contentRefs` does not name the element.
+ */
+function inferableRolesForElement(element: ElementIR): ResolvedRegion["role"][] {
+  if (element.type === "text") {
+    switch (element.role) {
+      case "title":
+      case "subtitle":
+        return ["title"];
+      case "footer":
+        return ["footer"];
+      case "caption":
+        return ["footer", "callout", "body"];
+      case "callout":
+        return ["callout", "body"];
+      default:
+        return ["body", "sidebar"];
+    }
+  }
+  if (element.type === "image") {
+    return ["visual", "body"];
+  }
+  if (element.type === "table") {
+    return ["table", "body", "visual"];
+  }
+  if (element.type === "chart") {
+    return ["chart", "visual", "body"];
+  }
+  if (element.type === "diagram") {
+    return ["visual", "body"];
+  }
+  // shape (non-decorative)
+  return ["callout", "visual", "body"];
+}
+
+/**
+ * Maximum reasonable height (in px) for small text-role frames. Prevents a
+ * single subtitle from filling an entire body region after reflow.
+ */
+const SMALL_TEXT_ROLE_MAX_HEIGHT: Partial<Record<string, number>> = {
+  title: 140,
+  subtitle: 100,
+  footer: 48,
+  caption: 60,
+  callout: 160,
+};
+
+/**
+ * Returns a region-sized frame, possibly capped for small text roles.
+ * Large content elements (table/chart/diagram/image) always use the full
+ * region frame.
+ */
+function fitFrameForElement(element: ElementIR, regionFrame: ResolvedFrame): ResolvedFrame {
+  if (element.type !== "text") {
+    return { ...regionFrame };
+  }
+  const cap = SMALL_TEXT_ROLE_MAX_HEIGHT[element.role];
+  if (cap == null || regionFrame.height <= cap) {
+    return { ...regionFrame };
+  }
+  return {
+    x: regionFrame.x,
+    y: regionFrame.y,
+    width: regionFrame.width,
+    height: cap,
+  };
+}
+
+export type ReflowOptions = {
+  /** Skip decorative/background elements during reflow (default true). */
+  skipDecorative?: boolean;
+};
+
+/**
+ * Reflow a slide's elements into its current `layout.regions`.
+ *
+ * Mapping order for each element:
+ *   1. Region whose `contentRefs` includes the element id (authoritative).
+ *   2. Region whose role matches an inferable role for the element.
+ *   3. Tie-break (within step 2) by previous-frame overlap with the region.
+ *
+ * Single-element regions assign the (possibly capped) region frame to the
+ * element. Multi-element regions distribute elements vertically using
+ * `stackFramesVertically`. Unmapped or decorative elements are left in place
+ * but clamped to the slide bounds.
+ *
+ * Each region's `contentRefs` is rewritten to reflect the resolved mapping.
+ */
+export function reflowElementsIntoLayoutRegions(
+  slide: SlideIR,
+  options: ReflowOptions = {},
+): void {
+  const skipDecorative = options.skipDecorative ?? true;
+  const slideSize = slide.layout.slideSize;
+  const regions = slide.layout.regions;
+
+  // Index elements by id for fast lookup.
+  const elementsById = new Map<string, ElementIR>();
+  for (const element of slide.elements) {
+    elementsById.set(element.id, element);
+  }
+
+  // Track which elements have been claimed and by which region.
+  const assignmentByElementId = new Map<string, string>();
+  const orderedAssignments = new Map<string, ElementIR[]>();
+  for (const region of regions) {
+    orderedAssignments.set(region.id, []);
+  }
+
+  // Pass 1: explicit contentRefs (authoritative).
+  for (const region of regions) {
+    const claimed = orderedAssignments.get(region.id);
+    if (!claimed) continue;
+    for (const ref of region.contentRefs) {
+      if (assignmentByElementId.has(ref)) continue;
+      const element = elementsById.get(ref);
+      if (!element) continue; // silently drop unknown ids
+      if (skipDecorative && isDecorativeElement(element)) continue;
+      claimed.push(element);
+      assignmentByElementId.set(element.id, region.id);
+    }
+  }
+
+  // Pass 2: role/type inference for remaining content-bearing elements.
+  for (const element of slide.elements) {
+    if (assignmentByElementId.has(element.id)) continue;
+    if (skipDecorative && isDecorativeElement(element)) continue;
+    const candidateRoles = inferableRolesForElement(element);
+    let best: { region: ResolvedRegion; score: number } | undefined;
+    for (const region of regions) {
+      const roleIndex = candidateRoles.indexOf(region.role);
+      if (roleIndex === -1) continue;
+      // Lower roleIndex (more preferred role) wins; tie-break by previous-frame overlap.
+      const overlap = frameOverlapRatio(element.frame, region.frame);
+      // Compose score so role preference dominates, overlap breaks ties.
+      const score = (candidateRoles.length - roleIndex) * 10 + overlap;
+      if (!best || score > best.score) {
+        best = { region, score };
+      }
+    }
+    if (best) {
+      const claimed = orderedAssignments.get(best.region.id);
+      if (claimed) {
+        claimed.push(element);
+        assignmentByElementId.set(element.id, best.region.id);
+      }
+    }
+  }
+
+  // Apply frames per region.
+  for (const region of regions) {
+    const claimed = orderedAssignments.get(region.id) ?? [];
+    if (claimed.length === 0) {
+      region.contentRefs = [];
+      continue;
+    }
+    if (claimed.length === 1) {
+      const element = claimed[0];
+      if (element) {
+        const fitted = fitFrameForElement(element, region.frame);
+        element.frame = clampFrameToSlide(fitted, slideSize);
+      }
+    } else {
+      const stacked = stackFramesVertically(region.frame, claimed.length);
+      claimed.forEach((element, index) => {
+        const slot = stacked[index];
+        if (!slot) return;
+        const fitted = fitFrameForElement(element, slot);
+        element.frame = clampFrameToSlide(fitted, slideSize);
+      });
+    }
+    region.contentRefs = claimed.map((element) => element.id);
+  }
+
+  // Clamp any unassigned elements (decorative or unmatched) to slide bounds.
+  for (const element of slide.elements) {
+    if (assignmentByElementId.has(element.id)) continue;
+    element.frame = clampFrameToSlide(element.frame, slideSize);
+  }
+}
+
