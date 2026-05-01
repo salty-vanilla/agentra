@@ -47,11 +47,16 @@ export type {
   ApplyThemeOperation,
   AttachAssetOperation,
   DeleteElementOperation,
+  MoveElementOperation,
   MoveSlideOperation,
   PresentationOperation,
   RemoveSlideOperation,
+  ResizeElementOperation,
+  SetElementFrameOperation,
+  SetElementRegionOperation,
   SetSlideLayoutOperation,
   UpdateChartDataOperation,
+  UpdateElementStyleOperation,
   UpdateTextOperation,
 } from "#src/operations/types.js";
 export {

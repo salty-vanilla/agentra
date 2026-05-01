@@ -7,10 +7,15 @@ import { addText } from "#src/operations/handlers/add-text.js";
 import { applyTheme } from "#src/operations/handlers/apply-theme.js";
 import { attachAsset } from "#src/operations/handlers/attach-asset.js";
 import { deleteElement } from "#src/operations/handlers/delete-element.js";
+import { moveElement } from "#src/operations/handlers/move-element.js";
 import { moveSlide } from "#src/operations/handlers/move-slide.js";
 import { removeSlide } from "#src/operations/handlers/remove-slide.js";
+import { resizeElement } from "#src/operations/handlers/resize-element.js";
+import { setElementFrame } from "#src/operations/handlers/set-element-frame.js";
+import { setElementRegion } from "#src/operations/handlers/set-element-region.js";
 import { setSlideLayout } from "#src/operations/handlers/set-slide-layout.js";
 import { updateChartData } from "#src/operations/handlers/update-chart-data.js";
+import { updateElementStyle } from "#src/operations/handlers/update-element-style.js";
 import { updateText } from "#src/operations/handlers/update-text.js";
 import type { PresentationOperation } from "#src/operations/types.js";
 import { appendOperationRecord, clonePresentation } from "#src/operations/utils.js";
@@ -62,6 +67,21 @@ export async function applyOperations(
           break;
         case "apply_theme":
           applyTheme(next, operation);
+          break;
+        case "set_element_frame":
+          setElementFrame(next, operation);
+          break;
+        case "move_element":
+          moveElement(next, operation);
+          break;
+        case "resize_element":
+          resizeElement(next, operation);
+          break;
+        case "set_element_region":
+          setElementRegion(next, operation);
+          break;
+        case "update_element_style":
+          updateElementStyle(next, operation);
           break;
         default:
           throw new Error(`Unsupported operation type: ${(operation as { type: string }).type}`);

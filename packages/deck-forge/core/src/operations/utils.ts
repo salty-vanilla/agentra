@@ -186,6 +186,20 @@ export function findSlide(presentation: PresentationIR, slideId: string): SlideI
   return slide;
 }
 
+export function findSlideOrNull(
+  presentation: PresentationIR,
+  slideId: string,
+): SlideIR | undefined {
+  return presentation.slides.find((current) => current.id === slideId);
+}
+
+export function findElementOrNull(
+  slide: SlideIR,
+  elementId: string,
+): ElementIR | undefined {
+  return slide.elements.find((el) => el.id === elementId);
+}
+
 export function generateId(prefix: string, existing: Set<string>): string {
   let counter = existing.size + 1;
 

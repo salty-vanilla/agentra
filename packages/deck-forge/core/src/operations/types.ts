@@ -24,7 +24,12 @@ export type PresentationOperation =
   | AddImageOperation
   | AddTableOperation
   | AttachAssetOperation
-  | ApplyThemeOperation;
+  | ApplyThemeOperation
+  | SetElementFrameOperation
+  | MoveElementOperation
+  | ResizeElementOperation
+  | SetElementRegionOperation
+  | UpdateElementStyleOperation;
 
 export type AddSlideOperation = {
   type: "add_slide";
@@ -153,4 +158,46 @@ export type AttachAssetOperation = {
   slideId?: string;
   elementId?: string;
   role?: AssetUsage["role"];
+};
+
+export type SetElementFrameOperation = {
+  type: "set_element_frame";
+  slideId: string;
+  elementId: string;
+  frame: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
+export type MoveElementOperation = {
+  type: "move_element";
+  slideId: string;
+  elementId: string;
+  x: number;
+  y: number;
+};
+
+export type ResizeElementOperation = {
+  type: "resize_element";
+  slideId: string;
+  elementId: string;
+  width: number;
+  height: number;
+};
+
+export type SetElementRegionOperation = {
+  type: "set_element_region";
+  slideId: string;
+  elementId: string;
+  regionId: string;
+};
+
+export type UpdateElementStyleOperation = {
+  type: "update_element_style";
+  slideId: string;
+  elementId: string;
+  style: Record<string, unknown>;
 };

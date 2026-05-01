@@ -89,6 +89,47 @@ const REVIEW_TOOL = {
                 layout: { type: 'object' },
               },
             },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'frame'],
+              properties: {
+                type: { const: 'set_element_frame' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                frame: {
+                  type: 'object',
+                  required: ['x', 'y', 'width', 'height'],
+                  properties: {
+                    x: { type: 'number' },
+                    y: { type: 'number' },
+                    width: { type: 'number' },
+                    height: { type: 'number' },
+                  },
+                },
+              },
+            },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'x', 'y'],
+              properties: {
+                type: { const: 'move_element' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                x: { type: 'number', description: 'New x position in px.' },
+                y: { type: 'number', description: 'New y position in px.' },
+              },
+            },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'width', 'height'],
+              properties: {
+                type: { const: 'resize_element' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                width: { type: 'number', description: 'New width in px.' },
+                height: { type: 'number', description: 'New height in px.' },
+              },
+            },
           ],
         },
       },
@@ -105,9 +146,10 @@ You receive:
 
 Look for visible problems: overlap, truncation, low contrast, unclear hierarchy, cramped or wasted whitespace, misalignment.
 
-Then propose CORRECTIVE operations (update_text / delete_element / set_slide_layout) that fix what you observed. Hard rules:
+Then propose CORRECTIVE operations (update_text / delete_element / set_slide_layout / set_element_frame / move_element / resize_element) that fix what you observed. Hard rules:
 - Operations must reference REAL slideId / elementId values from the SlideIR. Never invent IDs.
 - Prefer SHORTER text. Most overlap/truncation comes from too much text.
+- Use set_element_frame / move_element / resize_element to fix overlap, misalignment, or wasted whitespace by repositioning elements precisely.
 - Keep the slide's language. Do not change narrative meaning.
 - Aim for 0-3 operations per slide. Return [] if the slide is already clean.
 - Do not propose color/style changes unless contrast is visibly broken.
@@ -275,7 +317,13 @@ function isSafeOp(
   elementIds: Set<string>,
 ): boolean {
   if (!op || typeof op !== 'object' || !('type' in op)) return false;
-  if (op.type === 'update_text' || op.type === 'delete_element') {
+  if (
+    op.type === 'update_text' ||
+    op.type === 'delete_element' ||
+    op.type === 'set_element_frame' ||
+    op.type === 'move_element' ||
+    op.type === 'resize_element'
+  ) {
     return op.slideId === slideId && elementIds.has(op.elementId);
   }
   if (op.type === 'set_slide_layout') {

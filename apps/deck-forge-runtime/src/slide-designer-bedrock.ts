@@ -92,6 +92,74 @@ const PROPOSE_OPS_TOOL = {
                 },
               },
             },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'frame'],
+              properties: {
+                type: { const: 'set_element_frame' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                frame: {
+                  type: 'object',
+                  required: ['x', 'y', 'width', 'height'],
+                  properties: {
+                    x: { type: 'number' },
+                    y: { type: 'number' },
+                    width: { type: 'number' },
+                    height: { type: 'number' },
+                  },
+                },
+              },
+            },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'x', 'y'],
+              properties: {
+                type: { const: 'move_element' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                x: { type: 'number', description: 'New x position in px.' },
+                y: { type: 'number', description: 'New y position in px.' },
+              },
+            },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'width', 'height'],
+              properties: {
+                type: { const: 'resize_element' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                width: { type: 'number', description: 'New width in px.' },
+                height: { type: 'number', description: 'New height in px.' },
+              },
+            },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'regionId'],
+              properties: {
+                type: { const: 'set_element_region' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                regionId: {
+                  type: 'string',
+                  description: 'Target region ID from the slide layout.',
+                },
+              },
+            },
+            {
+              type: 'object',
+              required: ['type', 'slideId', 'elementId', 'style'],
+              properties: {
+                type: { const: 'update_element_style' },
+                slideId: { type: 'string' },
+                elementId: { type: 'string' },
+                style: {
+                  type: 'object',
+                  description:
+                    'Partial style properties to merge into the element style.',
+                },
+              },
+            },
           ],
         },
       },
@@ -116,7 +184,7 @@ Hard rules:
 - Refer ONLY to real slideId / elementId values that appear in the input. Never invent IDs.
 - Prefer SHORTER, more focused text. Most overlap/truncation problems come from too much text.
 - Keep the original language of the slide.
-- Every operation must be one of: update_text, delete_element, add_text, set_slide_layout.
+- Every operation must be one of: update_text, delete_element, add_text, set_slide_layout, set_element_frame, move_element, resize_element, set_element_region, update_element_style.
 - If the slide is already clean, return operations=[] and a short rationale.
 - Aim for 0-4 operations per slide. Do not exceed maxOperations if it is provided.
 - Do NOT touch element style colors unless the focus explicitly includes "color".
@@ -261,7 +329,15 @@ function sanitizeOperations(
 ): PresentationOperation[] {
   return operations.filter((op) => {
     if (!op || typeof op !== 'object' || !('type' in op)) return false;
-    if (op.type === 'update_text' || op.type === 'delete_element') {
+    if (
+      op.type === 'update_text' ||
+      op.type === 'delete_element' ||
+      op.type === 'set_element_frame' ||
+      op.type === 'move_element' ||
+      op.type === 'resize_element' ||
+      op.type === 'set_element_region' ||
+      op.type === 'update_element_style'
+    ) {
       return op.slideId === slideId && elementIds.has(op.elementId);
     }
     if (op.type === 'add_text' || op.type === 'set_slide_layout') {

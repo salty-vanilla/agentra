@@ -203,6 +203,11 @@ function sanitizeOperations(
       case 'update_text':
       case 'delete_element':
       case 'update_chart_data':
+      case 'set_element_frame':
+      case 'move_element':
+      case 'resize_element':
+      case 'set_element_region':
+      case 'update_element_style':
         return validElementIds.has(`${op.slideId}::${op.elementId}`);
       case 'add_text':
       case 'set_slide_layout':
