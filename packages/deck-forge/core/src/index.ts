@@ -77,6 +77,12 @@ export {
   estimateTableRowHeight,
 } from "#src/measurement/index.js";
 export { repairPresentationLayout } from "#src/repair/index.js";
+export { repairTextOverflow } from "#src/repair/index.js";
+export type {
+  TextOverflowRepairAction,
+  TextOverflowRepairOptions,
+  TextOverflowRepairResult,
+} from "#src/repair/index.js";
 export type {
   RepairOperationRecord,
   RepairOptions,

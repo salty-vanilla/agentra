@@ -57,6 +57,16 @@ type RevisionLoopCapableRunner = {
         skippedCount: number;
         remainingIssueIds: string[];
       };
+      textOverflowRepair?: {
+        enabled: boolean;
+        skippedReason?: string;
+        issueCountBefore: number;
+        issueCountAfter: number;
+        proposedCount: number;
+        appliedCount: number;
+        skippedCount: number;
+        remainingIssueIds: string[];
+      };
     };
   }>;
 };
@@ -792,6 +802,100 @@ describe("DeckForgeRunner", () => {
     );
     expect(repairTraces).toHaveLength(0);
   });
+
+  // -----------------------------------------------------------------------
+  // Phase 5B: Text overflow repair integration
+  // -----------------------------------------------------------------------
+
+  it("does not run text overflow repair when disabled (default)", async () => {
+    const agent = new DeckForgeRunner({
+      runtime: {} as never,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+    });
+
+    const trace: unknown[] = [];
+    const result = await (agent as unknown as RevisionLoopCapableRunner).runRevisionLoop({
+      presentation: createOverflowingTextPresentation(),
+      payload: { goal: "Test disabled text repair" },
+      validationLevel: "basic",
+      shouldAutoFix: false,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      trace,
+    });
+
+    expect(result.summary.textOverflowRepair).toBeUndefined();
+    const repairTraces = (trace as Array<{ step: string }>).filter(
+      (t) => t.step === "text_overflow_repair",
+    );
+    expect(repairTraces).toHaveLength(0);
+  });
+
+  it("runs text overflow repair when enabled and reduces issue count", async () => {
+    const agent = new DeckForgeRunner({
+      runtime: {} as never,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      enableTextOverflowRepair: true,
+    });
+
+    const trace: unknown[] = [];
+    const result = await (agent as unknown as RevisionLoopCapableRunner).runRevisionLoop({
+      presentation: createOverflowingTextPresentation(),
+      payload: { goal: "Test enabled text repair" },
+      validationLevel: "basic",
+      shouldAutoFix: false,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      trace,
+    });
+
+    const repairSummary = result.summary.textOverflowRepair;
+    expect(repairSummary).toBeDefined();
+    expect(repairSummary!.enabled).toBe(true);
+    expect(repairSummary!.appliedCount).toBeGreaterThan(0);
+    expect(repairSummary!.issueCountAfter).toBeLessThanOrEqual(repairSummary!.issueCountBefore);
+    expect(repairSummary!.skippedReason).toBeUndefined();
+
+    const repairTraces = (trace as Array<{ step: string; status: string }>).filter(
+      (t) => t.step === "text_overflow_repair",
+    );
+    expect(repairTraces).toHaveLength(1);
+    expect(repairTraces[0]!.status).toBe("success");
+  });
+
+  it("no-op text overflow repair on clean presentation", async () => {
+    const agent = new DeckForgeRunner({
+      runtime: {} as never,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      enableTextOverflowRepair: true,
+    });
+
+    const trace: unknown[] = [];
+    const result = await (agent as unknown as RevisionLoopCapableRunner).runRevisionLoop({
+      presentation: createBasePresentation(),
+      payload: { goal: "Test no-op text repair" },
+      validationLevel: "basic",
+      shouldAutoFix: false,
+      revisionPolicy: "validation_only",
+      maxRevisionLoops: 0,
+      trace,
+    });
+
+    const repairSummary = result.summary.textOverflowRepair;
+    expect(repairSummary).toBeDefined();
+    expect(repairSummary!.enabled).toBe(true);
+    expect(repairSummary!.skippedReason).toBe("no_overflow_issues");
+    expect(repairSummary!.appliedCount).toBe(0);
+
+    // No text_overflow_repair trace entry for no-op
+    const repairTraces = (trace as Array<{ step: string }>).filter(
+      (t) => t.step === "text_overflow_repair",
+    );
+    expect(repairTraces).toHaveLength(0);
+  });
 });
 
 function createAiReviewRunner(options: Partial<DeckForgeRunnerOptions>): DeckForgeRunner {
@@ -1116,6 +1220,53 @@ function createPresentationWithOobElement(): PresentationIR {
               paragraphs: [{ runs: [{ text: "Out of bounds body text" }] }],
             },
             frame: { x: -100, y: -50, width: 400, height: 200 },
+            style: { fontFamily: "Arial", fontSize: 18, color: "#0F172A" },
+          },
+        ],
+      },
+    ],
+  };
+}
+
+function createOverflowingTextPresentation(): PresentationIR {
+  return {
+    ...createBasePresentation(),
+    slides: [
+      {
+        id: "slide-1",
+        index: 0,
+        title: "Overflow slide",
+        intent: {
+          type: "summary",
+          keyMessage: "Test text overflow repair",
+          audienceTakeaway: "Font size should be reduced",
+        },
+        layout: {
+          spec: { type: "single_column", density: "medium" },
+          slideSize: { width: 1280, height: 720, unit: "px" },
+          regions: [],
+        },
+        elements: [
+          {
+            id: "el-title",
+            type: "text",
+            role: "title",
+            text: {
+              paragraphs: [{ runs: [{ text: "Test Title" }] }],
+            },
+            frame: { x: 80, y: 80, width: 1120, height: 100 },
+            style: { fontFamily: "Arial", fontSize: 36, color: "#0F172A" },
+          },
+          {
+            id: "el-overflow",
+            type: "text",
+            role: "body",
+            text: {
+              paragraphs: [
+                { runs: [{ text: "This is a very long paragraph. ".repeat(20) }] },
+              ],
+            },
+            frame: { x: 80, y: 200, width: 400, height: 50 },
             style: { fontFamily: "Arial", fontSize: 18, color: "#0F172A" },
           },
         ],

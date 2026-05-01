@@ -4,9 +4,15 @@ import type {
   PresentationReviewPacket,
   PresentationRuntime,
   RepairResult,
+  TextOverflowRepairResult,
   ValidationReport,
 } from "@deck-forge/core";
-import { autoFixPresentation, buildReviewPacket, repairPresentationLayout } from "@deck-forge/core";
+import {
+  autoFixPresentation,
+  buildReviewPacket,
+  repairPresentationLayout,
+  repairTextOverflow,
+} from "@deck-forge/core";
 import {
   applyPresentationOperationsHandler,
   buildPresentationIrHandler,
@@ -36,6 +42,7 @@ export type DeckForgeRunnerOptions = {
   reviewer?: PresentationReviewer;
   operationPlanner?: PresentationOperationPlanner;
   enableDeterministicRepair?: boolean;
+  enableTextOverflowRepair?: boolean;
 };
 
 export type DeckForgeRunInput = {
@@ -64,6 +71,7 @@ type RunnerStep =
   | "apply_operations"
   | "validate"
   | "deterministic_repair"
+  | "text_overflow_repair"
   | "auto_fix"
   | "build_review_packet"
   | "review"
@@ -105,12 +113,24 @@ type DeterministicRepairSummary = {
   remainingIssueIds: string[];
 };
 
+type TextOverflowRepairSummary = {
+  enabled: boolean;
+  skippedReason?: "disabled" | "no_overflow_issues";
+  issueCountBefore: number;
+  issueCountAfter: number;
+  proposedCount: number;
+  appliedCount: number;
+  skippedCount: number;
+  remainingIssueIds: string[];
+};
+
 type RevisionSummary = {
   policy: "none" | "validation_only" | "ai_review";
   loopsExecuted: number;
   operationsApplied: number;
   trace: RevisionTraceEntry[];
   deterministicRepair?: DeterministicRepairSummary;
+  textOverflowRepair?: TextOverflowRepairSummary;
 };
 
 type RevisionTraceEntry = {
@@ -158,6 +178,17 @@ function hasRepairableLayoutIssues(report: ValidationReport): boolean {
     (issue) =>
       issue.category === "layout" &&
       REPAIRABLE_ISSUE_PREFIXES.some((prefix) => issue.id.startsWith(prefix)),
+  );
+}
+
+const OVERFLOW_ISSUE_PREFIXES = [
+  "content/text-overflow-risk/",
+  "content/table-clipped/",
+];
+
+function hasOverflowIssues(report: ValidationReport): boolean {
+  return report.issues.some((issue) =>
+    OVERFLOW_ISSUE_PREFIXES.some((prefix) => issue.id.startsWith(prefix)),
   );
 }
 
@@ -481,6 +512,77 @@ export class DeckForgeRunner {
     }
     // When disabled (enableRepair === false), no trace entry and no summary.
 
+    // --- Text overflow repair pass (runs at most once) ---
+    let textOverflowRepairSummary: TextOverflowRepairSummary | undefined;
+    const enableTextOverflow = this.options.enableTextOverflowRepair ?? false;
+    if (enableTextOverflow && hasOverflowIssues(report)) {
+      try {
+        const overflowIssues = report.issues.filter((i) =>
+          OVERFLOW_ISSUE_PREFIXES.some((prefix) => i.id.startsWith(prefix)),
+        );
+        const overflowResult: TextOverflowRepairResult = await this.runStep(
+          "text_overflow_repair",
+          input.trace,
+          async () =>
+            repairTextOverflow({
+              presentation,
+              issues: overflowIssues,
+            }),
+        );
+
+        if (overflowResult.summary.appliedCount > 0) {
+          presentation = overflowResult.presentation;
+          // Re-validate with the repaired presentation.
+          ({ report } = await this.runStep("revalidate", input.trace, async () =>
+            validatePresentationHandler({
+              presentation,
+              level: input.validationLevel,
+            }),
+          ));
+        }
+
+        textOverflowRepairSummary = {
+          enabled: true,
+          issueCountBefore: overflowResult.summary.issueCountBefore,
+          issueCountAfter: overflowResult.summary.issueCountAfter,
+          proposedCount: overflowResult.summary.proposedCount,
+          appliedCount: overflowResult.summary.appliedCount,
+          skippedCount: overflowResult.summary.skippedCount,
+          remainingIssueIds: overflowResult.issuesAfter.map((i) => i.id),
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        input.trace.push({
+          step: "text_overflow_repair",
+          status: "failed",
+          startedAt: new Date().toISOString(),
+          finishedAt: new Date().toISOString(),
+          details: `WARNING: text overflow repair failed, continuing with original presentation: ${message}`,
+        });
+        textOverflowRepairSummary = {
+          enabled: true,
+          issueCountBefore: 0,
+          issueCountAfter: 0,
+          proposedCount: 0,
+          appliedCount: 0,
+          skippedCount: 0,
+          remainingIssueIds: [],
+        };
+      }
+    } else if (enableTextOverflow) {
+      textOverflowRepairSummary = {
+        enabled: true,
+        skippedReason: "no_overflow_issues",
+        issueCountBefore: 0,
+        issueCountAfter: 0,
+        proposedCount: 0,
+        appliedCount: 0,
+        skippedCount: 0,
+        remainingIssueIds: [],
+      };
+    }
+    // When disabled (enableTextOverflow === false), no trace entry and no summary.
+
     if (input.revisionPolicy === "validation_only") {
       while (
         loopsExecuted < input.maxRevisionLoops &&
@@ -641,6 +743,7 @@ export class DeckForgeRunner {
         operationsApplied,
         trace: revisionTrace,
         deterministicRepair: deterministicRepairSummary,
+        textOverflowRepair: textOverflowRepairSummary,
       },
     };
   }
