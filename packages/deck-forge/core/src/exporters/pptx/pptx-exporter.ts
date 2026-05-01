@@ -114,12 +114,16 @@ export class PptxExporter implements Exporter {
         }
 
         if (element.type === "chart") {
-          renderChartElement(slide, element, baseSlideSize, presentation.theme);
+          warnings.push(
+            ...renderChartElement(slide, element, baseSlideSize, presentation.theme),
+          );
           continue;
         }
 
         if (element.type === "diagram") {
-          renderDiagramElement(slide, element, baseSlideSize, presentation.theme);
+          warnings.push(
+            ...renderDiagramElement(slide, element, baseSlideSize, presentation.theme),
+          );
           continue;
         }
 
@@ -398,10 +402,12 @@ function toPptxLayout(slideSize: SlideSize): { width: number; height: number } {
   };
 }
 
+type InchFrame = { x: number; y: number; w: number; h: number };
+
 function toInchFrame(
   frame: ResolvedFrame,
   slideSize: SlideSize,
-): { x: number; y: number; w: number; h: number } {
+): InchFrame {
   return {
     x: toInches(frame.x, slideSize.unit),
     y: toInches(frame.y, slideSize.unit),
@@ -442,6 +448,35 @@ async function resolveImageSource(uri: string): Promise<{ data: string } | { pat
 }
 
 // ---------------------------------------------------------------------------
+// Placeholder rendering — used when chart/diagram data is empty or API
+// is unavailable.
+// ---------------------------------------------------------------------------
+
+function renderPlaceholder(
+  slide: MinimalPptxSlide,
+  frame: InchFrame,
+  message: string,
+  theme: ThemeSpec,
+): void {
+  slide.addText([{ text: message }], {
+    x: frame.x,
+    y: frame.y,
+    w: frame.w,
+    h: frame.h,
+    align: "center",
+    valign: "middle",
+    fontSize: 14,
+    color: normalizeHexColor(theme.colors.textSecondary),
+    fill: { color: normalizeHexColor(theme.colors.surface) },
+    line: {
+      color: normalizeHexColor(theme.colors.textSecondary),
+      width: 0.5,
+      dashType: "dash",
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Chart rendering
 // ---------------------------------------------------------------------------
 
@@ -450,9 +485,28 @@ function renderChartElement(
   element: ChartElementIR,
   slideSize: SlideSize,
   theme: ThemeSpec,
-): void {
-  if (!slide.addChart) return;
+): string[] {
+  const warnings: string[] = [];
   const frame = toInchFrame(element.frame, slideSize);
+
+  const hasData =
+    element.data.series.length > 0 &&
+    element.data.series.some((s: { values: number[] }) => s.values.length > 0);
+
+  if (!hasData) {
+    renderPlaceholder(slide, frame, "Chart data unavailable", theme);
+    warnings.push(`Chart element ${element.id}: rendered placeholder — data is empty or invalid.`);
+    return warnings;
+  }
+
+  if (!slide.addChart) {
+    renderPlaceholder(slide, frame, "Chart data unavailable", theme);
+    warnings.push(
+      `Chart element ${element.id}: rendered placeholder — addChart is not available.`,
+    );
+    return warnings;
+  }
+
   const palette = (element.style?.palette ?? theme.colors.chartPalette ?? []).map(
     normalizeHexColor,
   );
@@ -461,7 +515,7 @@ function renderChartElement(
 
   const chartType = mapChartType(element.chartType);
   const labels = element.data.categories ?? [];
-  const data = element.data.series.map((s) => ({
+  const data = element.data.series.map((s: { name: string; values: number[] }) => ({
     name: s.name,
     labels,
     values: s.values,
@@ -486,6 +540,7 @@ function renderChartElement(
     opts.chartColors = palette;
   }
   slide.addChart(chartType, data, opts);
+  return warnings;
 }
 
 function mapChartType(chartType: ChartElementIR["chartType"]): string {
@@ -514,14 +569,29 @@ function renderDiagramElement(
   element: DiagramElementIR,
   slideSize: SlideSize,
   theme: ThemeSpec,
-): void {
-  if (!slide.addShape) return;
+): string[] {
+  const warnings: string[] = [];
   const frame = toInchFrame(element.frame, slideSize);
+
+  if (element.nodes.length === 0) {
+    renderPlaceholder(slide, frame, "Diagram data unavailable", theme);
+    warnings.push(
+      `Diagram element ${element.id}: rendered placeholder — no nodes provided.`,
+    );
+    return warnings;
+  }
+
+  if (!slide.addShape) {
+    renderPlaceholder(slide, frame, "Diagram data unavailable", theme);
+    warnings.push(
+      `Diagram element ${element.id}: rendered placeholder — addShape is not available.`,
+    );
+    return warnings;
+  }
 
   // Compute layout in pixel space, then convert each node's box to inches
   // relative to the diagram's frame origin.
   const layout = layoutDiagramNodesPx(element);
-  if (layout.length === 0) return;
 
   const pxToInchX = (px: number) => (px / element.frame.width) * frame.w;
   const pxToInchY = (px: number) => (px / element.frame.height) * frame.h;
@@ -591,6 +661,7 @@ function renderDiagramElement(
       shrinkText: true,
     });
   }
+  return warnings;
 }
 
 type DiagramLaidOutNode = {

@@ -6,8 +6,12 @@ import type {
   AssetSpec,
   AssetUsage,
   CalloutBlock,
+  ChartBlock,
+  ChartElementIR,
   ContentBlock,
   DeckPlan,
+  DiagramBlock,
+  DiagramElementIR,
   Id,
   LayoutSpec,
   MetricBlock,
@@ -414,6 +418,35 @@ function buildElements(
           usedElementIds,
         }),
       );
+      continue;
+    }
+
+    if (block.type === "chart") {
+      const chartBlock = block as ChartBlock;
+      const el: ChartElementIR = {
+        id: ensureUniqueId(chartBlock.id, usedElementIds),
+        type: "chart",
+        frame: assignment?.frame ?? visualRegionFrame,
+        chartType: chartBlock.chartType,
+        data: chartBlock.data,
+        encoding: chartBlock.encoding,
+      };
+      elements.push(el);
+      continue;
+    }
+
+    if (block.type === "diagram") {
+      const diagramBlock = block as DiagramBlock;
+      const el: DiagramElementIR = {
+        id: ensureUniqueId(diagramBlock.id, usedElementIds),
+        type: "diagram",
+        frame: assignment?.frame ?? visualRegionFrame,
+        diagramType: diagramBlock.diagramType,
+        nodes: diagramBlock.nodes,
+        edges: diagramBlock.edges,
+      };
+      elements.push(el);
+      continue;
     }
   }
 
