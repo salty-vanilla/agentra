@@ -19,6 +19,7 @@ import {
   inspectPresentation,
   loadPresentationFromFile,
   retrieveImageFromAssetSpec,
+  scoreLayoutQuality,
   searchImageCandidates,
   validatePresentation,
 } from "@deck-forge/core";
@@ -70,6 +71,10 @@ export async function runCli(argv: string[], io: CliIO = defaultIO): Promise<num
 
   if (command === "export") {
     return runExport(rest, io);
+  }
+
+  if (command === "evaluate") {
+    return runEvaluate(rest, io);
   }
 
   io.stderr(`Unknown command: ${command}`);
@@ -640,6 +645,32 @@ function getFlag(args: string[], name: string): boolean {
   return args.includes(name);
 }
 
+async function runEvaluate(args: string[], io: CliIO): Promise<number> {
+  const inputPath = args[0];
+
+  if (!inputPath) {
+    io.stderr("evaluate requires an input presentation JSON path.");
+    return 1;
+  }
+
+  const out = getOptionValue(args.slice(1), ["--out", "--output"]);
+  const presentation = await loadPresentationFromFile(inputPath);
+  const validation = await validatePresentation(presentation, { level: "export" });
+  const qualityReport = scoreLayoutQuality(presentation);
+
+  const result = { validation, qualityReport };
+  const payload = JSON.stringify(result, null, 2);
+
+  if (out) {
+    await writeFile(out, payload, "utf8");
+    io.stdout(`wrote evaluation report: ${out}`);
+    return 0;
+  }
+
+  io.stdout(payload);
+  return 0;
+}
+
 function helpText(): string {
   return [
     "deck-forge <command>",
@@ -653,6 +684,7 @@ function helpText(): string {
     "  generate-image <asset-spec.json> [--output-dir <dir>] [--provider <openai|bedrock|local-file>] [--model <id>] [--timeout-ms <n>] [--retries <n>] [--openai-api-key <key>] [--openai-base-url <url>] [--bedrock-region <region>] [--bedrock-model-id <id>] [--workspace-root <path>] [--allow-outside-workspace] [--generator <name>] [--presentation <presentation.json>] [--presentation-out <path>] [--out <asset.json>]",
     "  inspect <presentation.json> [--slide <id>] [--element <id>] [--target <anchor>] [--include a,b,c] [--out <path>]",
     "  validate <presentation.json> [--level <basic|strict|export>] [--out <path>]",
+    "  evaluate <presentation.json> [--out <path>]",
     "  export <presentation.json> --format <json|pptx|html|pdf> [--out <path>] [--workspace-root <path>] [--allow-outside-workspace]",
   ].join("\n");
 }

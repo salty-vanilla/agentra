@@ -2,6 +2,15 @@ export { JsonExporter } from "#src/exporters/json/json-exporter.js";
 export { HtmlExporter } from "#src/exporters/html/html-exporter.js";
 export { PdfExporter } from "#src/exporters/pdf/pdf-exporter.js";
 export { PptxExporter } from "#src/exporters/pptx/pptx-exporter.js";
+export { scoreLayoutQuality } from "#src/quality/index.js";
+export type {
+  LayoutQualityReport,
+  LayoutQualityWarning,
+  LayoutQualityWarningCode,
+  LayoutQualityWarningSeverity,
+  LayoutQualityMetrics,
+  SlideLayoutQualityScore,
+} from "#src/quality/index.js";
 export { inspectPresentation } from "#src/inspect/inspect-presentation.js";
 export { resolveAnchor } from "#src/inspect/resolve-anchor.js";
 export type { InspectQuery, InspectResult, ResolvedAnchor } from "#src/inspect/types.js";
