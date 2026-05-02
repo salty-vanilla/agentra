@@ -9,6 +9,41 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 8G: Diagnostics, Quality Gates, and Preview Validation
+
+- **`analyzeSlideStrategyQuality()`** — deterministic slide-level diagnostics:
+  - StrategyInput trace checks (native/fallback/invalid/missing)
+  - Empty slide detection
+  - Missing title detection
+  - Missing key message detection
+  - Text overflow risk estimation
+  - Too many elements (>30 warn, >45 error)
+  - Too dense (text length/element count thresholds)
+  - Out-of-bounds element detection
+  - Overlap risk detection (>30% overlap)
+- **`analyzeDeckStrategyQuality()`** — deck-level summary with:
+  - Native/fallback/invalid/missing slide counts and ratios
+  - Quality gate status: pass / warn / fail
+  - Configurable thresholds (minNativeRatio, maxFallbackRatio, etc.)
+  - Aggregated issue counts by severity
+  - Deck score (average of slide scores)
+- **`formatDeckStrategyQualityReport()`** — human-readable report for logs/CLI
+- **Slide score**: 0–100 deterministic score with per-issue and per-mode penalties
+- **Quality gate rules**:
+  - fail: any error, invalidRatio > threshold, score < 60, any slide < 40
+  - warn: fallbackRatio high, nativeRatio low, score < 75
+  - pass: all clear
+- **23 new tests** (strategy-quality-diagnostics.test.ts):
+  - Trace diagnostics: native/fallback/invalid/missing
+  - Empty slide + missing title
+  - Text overflow risk
+  - Out-of-bounds + overlap
+  - Deck ratios + quality gate (pass/warn/fail)
+  - Report formatting
+  - Score computation
+- **Core exports**: all types and functions exported from index.ts
+- Total: 1206 pass, 1 pre-existing fail (unrelated pptx margin)
+
 ### Changed — deck-forge/core Phase 8F-cleanup: Remove obsolete legacy strategy plumbing
 
 - **Deprecation markers** — `LayoutContext.blocks`, `LayoutResult` array form,

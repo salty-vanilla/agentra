@@ -232,6 +232,20 @@ export type {
   SlideStabilizationHotspot,
   StabilizationRecommendation,
 } from "#src/diagnostics/stabilization-diagnostics.js";
+export {
+  analyzeSlideStrategyQuality,
+  analyzeDeckStrategyQuality,
+  formatDeckStrategyQualityReport,
+} from "#src/diagnostics/strategy-quality-diagnostics.js";
+export type {
+  StrategyQualitySeverity,
+  StrategyQualityIssueCode,
+  StrategyQualityIssue,
+  SlideStrategyQualityReport,
+  DeckStrategyQualitySummary,
+  DeckStrategyQualityReport,
+  StrategyQualityThresholds,
+} from "#src/diagnostics/strategy-quality-diagnostics.js";
 
 // Artifact types and Zod schemas — single source of truth in `schemas/`.
 import type {
