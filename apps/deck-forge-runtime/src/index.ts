@@ -1,7 +1,10 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { PresentationIR } from '@deck-forge/core';
-import { runDesignReviewLoop } from '@deck-forge/core';
+import {
+  analyzeDeckStabilization,
+  runDesignReviewLoop,
+} from '@deck-forge/core';
 import type { DeckForgeRunInput } from '@deck-forge/runner';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
@@ -231,6 +234,38 @@ async function main() {
             }
           }
 
+          // ----- Stabilization diagnostics --------------------------
+          let stabilizationDiagnostics: ReturnType<typeof analyzeDeckStabilization> | undefined;
+          if (finalPresentation) {
+            try {
+              stabilizationDiagnostics = analyzeDeckStabilization({
+                presentation: finalPresentation,
+              });
+              logDeckForgeEvent('diagnostics', {
+                runId,
+                slideCount: stabilizationDiagnostics.layout.slideCount,
+                layoutStatus: stabilizationDiagnostics.layout.deployReadiness.status,
+                stabilizationStatus: stabilizationDiagnostics.status,
+                stabilizationScore: stabilizationDiagnostics.score,
+                totalOperations: stabilizationDiagnostics.operations.totalOperations,
+                layoutRepairRatio: stabilizationDiagnostics.operations.layoutRepairRatio,
+                visualPolishRatio: stabilizationDiagnostics.operations.visualPolishRatio,
+                contentRewriteRatio: stabilizationDiagnostics.operations.contentRewriteRatio,
+                slidesWithFallbackSlots: stabilizationDiagnostics.layout.slidesWithFallbackSlots,
+                slidesWithOverlaps: stabilizationDiagnostics.layout.slidesWithOverlaps,
+                totalOutOfBoundsCount: stabilizationDiagnostics.layout.totalOutOfBoundsCount,
+                topSlidesByOperations: stabilizationDiagnostics.operations.topSlidesByOperations.slice(0, 5),
+                recommendationCodes: stabilizationDiagnostics.recommendations.map((r) => r.code),
+              });
+            } catch (error) {
+              logDeckForgeEvent('diagnostics-failed', {
+                runId,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+          // ---------------------------------------------------------
+
           if (
             request.exportFormat === 'pptx' &&
             request.validationLevel === 'export' &&
@@ -360,6 +395,7 @@ async function main() {
             ...(visionReview !== undefined ? { visionReview } : {}),
             ...(designReviewTrace !== undefined ? { designReviewTrace } : {}),
             ...(v1Archive !== undefined ? { v1Archive } : {}),
+            ...(stabilizationDiagnostics !== undefined ? { stabilizationDiagnostics } : {}),
           });
 
           logDeckForgeEvent('success', {

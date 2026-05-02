@@ -46,6 +46,7 @@ describe("executive-navy-v1 template profile", () => {
     "architecture-layered",
     "matrix-with-insight",
     "message-focus",
+    "approval-with-kpi-sidecar",
   ];
 
   it("contains all expected layout profiles", () => {
@@ -55,9 +56,9 @@ describe("executive-navy-v1 template profile", () => {
     }
   });
 
-  it("has 21 layouts (no business layout explosion)", () => {
+  it("has 22 layouts (no business layout explosion)", () => {
     expect(profile.layouts.length).toBeGreaterThanOrEqual(18);
-    expect(profile.layouts.length).toBeLessThanOrEqual(22);
+    expect(profile.layouts.length).toBeLessThanOrEqual(23);
   });
 
   it("cover has title, subtitle, and footer slots", () => {
@@ -196,6 +197,18 @@ describe("executive-navy-v1 template profile", () => {
     expect(layout.slots.footer).toBeDefined();
   });
 
+  it("approval-with-kpi-sidecar has title, cta, main, metrics, supporting, footer", () => {
+    const layout = profile.layouts.find((l) => l.id === "approval-with-kpi-sidecar")!;
+    expect(layout).toBeDefined();
+    expect(layout.kind).toBe("message");
+    expect(layout.slots.title).toBeDefined();
+    expect(layout.slots.cta).toBeDefined();
+    expect(layout.slots.main).toBeDefined();
+    expect(layout.slots.metrics).toBeDefined();
+    expect(layout.slots.supporting).toBeDefined();
+    expect(layout.slots.footer).toBeDefined();
+  });
+
   it("has no duplicate template layout ids", () => {
     const ids = profile.layouts.map((l) => l.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -316,9 +329,9 @@ describe("resolveTemplateLayout", () => {
     expect(result.layout.id).toBe("table-with-cta");
   });
 
-  it("decision-request strategy -> table-with-cta", () => {
+  it("decision-request strategy -> approval-with-kpi-sidecar", () => {
     const result = resolve("single_column", "decision-request");
-    expect(result.layout.id).toBe("table-with-cta");
+    expect(result.layout.id).toBe("approval-with-kpi-sidecar");
   });
 
   it("small-multiples-trend strategy -> visual-top-insight-bottom", () => {
@@ -580,8 +593,8 @@ describe("slot placement in buildPresentationIr", () => {
 // ---------------------------------------------------------------------------
 
 describe("no business layout explosion", () => {
-  it("built-in profile has fewer than 22 layouts", () => {
-    expect(EXECUTIVE_NAVY_TEMPLATE_PROFILE.layouts.length).toBeLessThanOrEqual(22);
+  it("built-in profile has fewer than 23 layouts", () => {
+    expect(EXECUTIVE_NAVY_TEMPLATE_PROFILE.layouts.length).toBeLessThanOrEqual(23);
   });
 
   it("no layout id matches a business strategy id", () => {

@@ -247,5 +247,18 @@ export const EXECUTIVE_NAVY_TEMPLATE_PROFILE: TemplateProfile = {
         footer: { x: 80, y: 650, width: 1120, height: 32 },
       },
     },
+    {
+      id: "approval-with-kpi-sidecar",
+      name: "Approval with KPI Sidecar",
+      kind: "message",
+      slots: {
+        title: { x: 80, y: 56, width: 1120, height: 72 },
+        cta: { x: 80, y: 150, width: 1120, height: 80 },
+        main: { x: 80, y: 260, width: 560, height: 300 },
+        metrics: { x: 680, y: 260, width: 520, height: 160 },
+        supporting: { x: 680, y: 445, width: 520, height: 115 },
+        footer: { x: 80, y: 650, width: 1120, height: 32 },
+      },
+    },
   ],
 };

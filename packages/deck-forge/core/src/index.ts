@@ -206,7 +206,16 @@ export type {
   LayoutDeployReadiness,
 } from "#src/diagnostics/layout-diagnostics.js";
 export { analyzeOperationLog } from "#src/diagnostics/operation-diagnostics.js";
-export type { OperationDiagnosticsSummary } from "#src/diagnostics/operation-diagnostics.js";
+export type {
+  OperationDiagnosticsSummary,
+  OperationRepairCategory,
+} from "#src/diagnostics/operation-diagnostics.js";
+export { analyzeDeckStabilization } from "#src/diagnostics/stabilization-diagnostics.js";
+export type {
+  DeckStabilizationDiagnostics,
+  SlideStabilizationHotspot,
+  StabilizationRecommendation,
+} from "#src/diagnostics/stabilization-diagnostics.js";
 
 // Artifact types and Zod schemas — single source of truth in `schemas/`.
 import type {

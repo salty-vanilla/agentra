@@ -22,7 +22,7 @@ const STRATEGY_TO_LAYOUT_ID: Record<string, string> = {
   "process-flow-with-impact": "process-with-impact",
   "implementation-roadmap": "roadmap-horizontal",
   "action-plan-table": "table-with-cta",
-  "decision-request": "table-with-cta",
+  "decision-request": "approval-with-kpi-sidecar",
   "layered-architecture": "architecture-layered",
   "one-message-summary": "message-focus",
   "recommendation-comparison": "comparison-two-column",

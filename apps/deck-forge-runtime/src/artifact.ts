@@ -24,6 +24,7 @@ export type DeckForgeArtifact =
       v1DeckS3Uri?: string;
       v1IrS3Uri?: string;
       designReviewS3Uri?: string;
+      stabilizationDiagnosticsS3Uri?: string;
     }
   | undefined;
 
@@ -47,6 +48,11 @@ type PublishInput = {
    * `slideImages` bytes are stripped before serialization.
    */
   designReviewTrace?: unknown;
+  /**
+   * Optional stabilization diagnostics. Persisted to
+   * `<runPrefix>stabilization-diagnostics.json`.
+   */
+  stabilizationDiagnostics?: unknown;
   /**
    * Optional pre-revision artifact archive. When the vision-revision loop
    * runs, the v1 (pre-revision) deck and IR are uploaded under `<runPrefix>v1/`
@@ -276,6 +282,21 @@ export async function publishArtifactIfNeeded(
     designReviewS3Uri = `s3://${bucket}/${traceKey}`;
   }
 
+  // 6c) Upload stabilization-diagnostics.json (optional)
+  let stabilizationDiagnosticsS3Uri: string | undefined;
+  if (input.stabilizationDiagnostics !== undefined) {
+    const stabKey = `${runPrefix}stabilization-diagnostics.json`;
+    await client.send(
+      new PutObjectCommand({
+        Bucket: bucket,
+        Key: stabKey,
+        Body: JSON.stringify(input.stabilizationDiagnostics, null, 2),
+        ContentType: 'application/json',
+      }),
+    );
+    stabilizationDiagnosticsS3Uri = `s3://${bucket}/${stabKey}`;
+  }
+
   // 7) Upload v1 archive (pre-revision deck + IR), optional
   let v1DeckS3Uri: string | undefined;
   let v1IrS3Uri: string | undefined;
@@ -319,6 +340,7 @@ export async function publishArtifactIfNeeded(
     assetCount,
     ...(visionReviewS3Uri !== undefined ? { visionReviewS3Uri } : {}),
     ...(designReviewS3Uri !== undefined ? { designReviewS3Uri } : {}),
+    ...(stabilizationDiagnosticsS3Uri !== undefined ? { stabilizationDiagnosticsS3Uri } : {}),
     ...(v1DeckS3Uri !== undefined ? { v1DeckS3Uri } : {}),
     ...(v1IrS3Uri !== undefined ? { v1IrS3Uri } : {}),
   };
