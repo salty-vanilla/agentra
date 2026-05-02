@@ -38,6 +38,34 @@ export { createSlideIntentFromArchetype } from "#src/strategy/archetype-bridge.j
 export type { StrategyCandidatePromptItem } from "#src/strategy/strategy-prompt.js";
 export { toStrategyCandidatePromptItems } from "#src/strategy/strategy-prompt.js";
 
+export type {
+  StrategySelectionInput,
+  StrategySelection,
+  StrategySelector,
+} from "#src/strategy/strategy-selector.js";
+
+export { DeterministicStrategySelector } from "#src/strategy/deterministic-strategy-selector.js";
+
+export type {
+  StrategySelectionPrompt,
+  LlmStrategySelectionResponse,
+  LlmStrategyValidationResult,
+} from "#src/strategy/llm-strategy-selector-types.js";
+export {
+  buildStrategySelectionPrompt,
+  validateLlmStrategySelectionResponse,
+} from "#src/strategy/llm-strategy-selector-types.js";
+
+export { selectStrategyForIntent } from "#src/strategy/select-strategy-for-intent.js";
+
+export type { DeckStrategySelectionResult } from "#src/strategy/select-strategies-for-deck.js";
+export { selectStrategiesForDeck } from "#src/strategy/select-strategies-for-deck.js";
+
+export { applyStrategySelectionToLegacySlideSpec } from "#src/strategy/legacy-bridge.js";
+
+export type { StrategySelectionTrace } from "#src/strategy/strategy-selection-trace.js";
+export { toStrategySelectionTrace } from "#src/strategy/strategy-selection-trace.js";
+
 export {
   kpiCardOverviewManifest,
   kpiDashboardWithInsightManifest,

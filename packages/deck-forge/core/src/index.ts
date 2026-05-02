@@ -881,6 +881,27 @@ export {
   createSlideIntentFromArchetype,
   toStrategyCandidatePromptItems,
 } from "#src/strategy/index.js";
+
+// Phase 8C: Strategy Selector, LLM prompt, convenience APIs, legacy bridge, trace
+export type {
+  StrategySelectionInput,
+  StrategySelection,
+  StrategySelector,
+  StrategySelectionPrompt,
+  LlmStrategySelectionResponse,
+  LlmStrategyValidationResult,
+  DeckStrategySelectionResult,
+  StrategySelectionTrace,
+} from "#src/strategy/index.js";
+export {
+  DeterministicStrategySelector,
+  buildStrategySelectionPrompt,
+  validateLlmStrategySelectionResponse,
+  selectStrategyForIntent,
+  selectStrategiesForDeck,
+  applyStrategySelectionToLegacySlideSpec,
+  toStrategySelectionTrace,
+} from "#src/strategy/index.js";
 export {
   kpiCardOverviewManifest,
   kpiDashboardWithInsightManifest,

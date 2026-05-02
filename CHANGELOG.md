@@ -9,6 +9,33 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 8C: Strategy Selector
+
+- **`StrategySelector` interface** — `select(input) → StrategySelection`
+  with `strategyId`, `confidence` (low/medium/high), `rationale`,
+  `selectedBy` (preferredStrategyId / deterministicSelector / llmSelector /
+  fallback), `candidateIds`, `warnings`
+- **`DeterministicStrategySelector`** — picks explicit `preferredStrategyId`
+  first, otherwise highest-scored candidate; falls back to
+  `one-message-summary` when no candidates match
+- **LLM prompt builder** — `buildStrategySelectionPrompt()` produces
+  JSON-serializable `{ systemMessage, userMessage, candidates }` for
+  external LLM calls (no actual API calls in this module)
+- **LLM response validation** — `validateLlmStrategySelectionResponse()`
+  ensures `strategyId` is in the candidate set and `rationale` is non-empty
+- **`selectStrategyForIntent()`** — convenience API combining
+  `findStrategyCandidatesForIntent()` + selector in one call
+- **`selectStrategiesForDeck()`** — DeckPlan-level selection; resolves each
+  `SlideIntent` with deck defaults, then selects a strategy per slide
+- **Legacy bridge** — `applyStrategySelectionToLegacySlideSpec()` writes
+  `StrategySelection.strategyId` back to `slideSpec.preferredStrategyId`
+  for existing build pipeline compatibility
+- **Trace/diagnostics** — `StrategySelectionTrace` record with
+  `toStrategySelectionTrace()` builder for observability
+- **22 new tests** — deterministic selector (6), LLM prompt builder (3),
+  response validation (4), selectStrategyForIntent (2),
+  selectStrategiesForDeck (2), legacy bridge (2), trace (3)
+
 ### Changed — deck-forge/core Phase 8B-cleanup: Canonical Type Unification
 
 - **Public API** — `LegacyDeckPlan` / `LegacySlideIntent` removed from
