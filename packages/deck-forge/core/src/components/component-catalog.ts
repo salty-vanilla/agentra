@@ -1,3 +1,14 @@
+/**
+ * Component catalog — auto-generates JSON files into templates/components/.
+ *
+ * NOTE: This module is exported via @deck-forge/core and wired into
+ * tools/mcp-server/adapters, but the current deck-forge-runtime does NOT
+ * register any component tools. The generated JSON files are therefore
+ * unused at runtime. templates/components/ is .gitignored.
+ *
+ * TODO(cleanup): Consider removing this module and associated tool handlers
+ * once the component-driven layout approach is superseded by TemplateProfile.
+ */
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
