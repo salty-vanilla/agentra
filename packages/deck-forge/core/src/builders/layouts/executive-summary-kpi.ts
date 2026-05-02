@@ -4,8 +4,13 @@ import {
   isSummaryIntent,
   mergeAllRegions,
 } from "#src/builders/layouts/business-utils.js";
-import { createMetricRail, splitVertical } from "#src/builders/layouts/grid-utils.js";
 import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
+import {
+  layoutMetricRail,
+  layoutBottomCallout,
+  layoutSidecarStack,
+} from "#src/builders/layouts/primitives/index.js";
+import { normalizeKpiSummaryContent } from "#src/normalizers/normalize-kpi-summary.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -17,6 +22,10 @@ import type { ResolvedFrame } from "#src/index.js";
  * Executive Summary KPI: 3–5 KPI/metric cards in a responsive grid with a
  * key-takeaway band and optional action cards.  Designed for performance
  * reports and management summaries.
+ *
+ * Phase 7.8: Uses normalizeKpiSummaryContent + layout primitives
+ * (layoutMetricRail / layoutBottomCallout / layoutSidecarStack) for
+ * deterministic, overlap-free placement.
  */
 export const executiveSummaryKpiStrategy: LayoutStrategy = {
   id: "executive-summary-kpi",
@@ -31,50 +40,39 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
   },
 
   layout(ctx: LayoutContext): SubFrameAssignment[] {
-    const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
-    const metricBlocks = ctx.blocks.filter((b) => b.type === "metric");
-    const calloutBlocks = ctx.blocks.filter((b) => b.type === "callout");
-    const otherBlocks = ctx.blocks.filter(
-      (b) => b.type !== "metric" && b.type !== "callout",
-    );
+    // Normalize blocks into semantic groups
+    const normalized = normalizeKpiSummaryContent(ctx.blocks);
+    const hasLowerContent = !!normalized.insight || normalized.supporting.length > 0;
 
-    const hasLowerContent = calloutBlocks.length > 0 || otherBlocks.length > 0;
-
-    const assignments: SubFrameAssignment[] = [];
-
-    // Resolve template slots via helper
+    // Resolve template slots
     const metrics = resolveSlotFrame(ctx, ["metrics", "cards"], region);
     const callout = resolveSlotFrame(ctx, "callout", region);
 
     if (!hasLowerContent) {
-      // Metrics only — use full region
-      const cells = createMetricRail(metrics.frame, metricBlocks.length, {
-        minCardHeight: 120,
-        maxCardHeight: 160,
-        gap: 20,
-      });
-      metricBlocks.forEach((block, i) => {
-        assignments.push(
-          assignmentFromSlot({
-            blockId: block.id,
-            resolution: metrics,
-            frame: cells[i] ?? metrics.frame,
-            hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
-          }),
-        );
-      });
-      return assignments;
+      // Metrics only — use full region via primitive
+      return layoutMetricRail({
+        region: metrics.frame,
+        blocks: normalized.metrics,
+        density: ctx.layoutSpec.density,
+      }).map((a) =>
+        assignmentFromSlot({
+          blockId: a.blockId,
+          resolution: metrics,
+          frame: a.frame,
+          hints: a.hints,
+        }),
+      );
     }
 
-    // --- Metrics + callout/other layout ---
-    // Use fixed callout band height (90px) instead of ratio-based split.
-    // This prevents the metric region from being squeezed and reduces
-    // VLM layout repair operations.
+    // --- Metrics + insight/supporting layout using primitives ---
     const CALLOUT_BAND_HEIGHT = 90;
     const GAP = 24;
-    const lowerBlocks = [...calloutBlocks, ...otherBlocks];
+    const lowerBlocks = [
+      ...(normalized.insight ? [normalized.insight] : []),
+      ...normalized.supporting,
+    ];
     const lowerBandHeight = Math.max(
       CALLOUT_BAND_HEIGHT,
       lowerBlocks.length * 60,
@@ -96,37 +94,71 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
     };
 
     const computedMetrics = metrics.slot ? metrics : { ...metrics, frame: metricRegion };
-    const cells = createMetricRail(computedMetrics.frame, metricBlocks.length, {
-      minCardHeight: 120,
-      maxCardHeight: 160,
-      gap: 20,
-    });
-    metricBlocks.forEach((block, i) => {
-      assignments.push(
-        assignmentFromSlot({
-          blockId: block.id,
-          resolution: computedMetrics,
-          frame: cells[i] ?? computedMetrics.frame,
-          hints: { decoration: "card", alignment: "center", fontScale: 1.1 },
-        }),
-      );
-    });
-
     const computedCallout = callout.slot ? callout : { ...callout, frame: lowerRegion };
-    const lowerFrames = splitVertical(computedCallout.frame, lowerBlocks.length, density);
-    lowerBlocks.forEach((block, i) => {
-      const isCallout = block.type === "callout";
+
+    const assignments: SubFrameAssignment[] = [];
+
+    // Metric rail primitive
+    const metricAssignments = layoutMetricRail({
+      region: computedMetrics.frame,
+      blocks: normalized.metrics,
+      density: ctx.layoutSpec.density,
+    });
+    for (const a of metricAssignments) {
       assignments.push(
         assignmentFromSlot({
-          blockId: block.id,
-          resolution: isCallout ? computedCallout : { frame: lowerRegion, fallbackSlots: [] },
-          frame: lowerFrames[i] ?? lowerRegion,
-          hints: isCallout
-            ? { role: "callout", decoration: "accent-bar", fontScale: 1.05 }
-            : undefined,
+          blockId: a.blockId,
+          resolution: computedMetrics,
+          frame: a.frame,
+          hints: a.hints,
         }),
       );
-    });
+    }
+
+    // Insight callout primitive
+    if (normalized.insight) {
+      const calloutAssignments = layoutBottomCallout({
+        region: computedCallout.frame,
+        block: normalized.insight,
+        height: CALLOUT_BAND_HEIGHT,
+      });
+      for (const a of calloutAssignments) {
+        assignments.push(
+          assignmentFromSlot({
+            blockId: a.blockId,
+            resolution: computedCallout,
+            frame: a.frame,
+            hints: a.hints,
+          }),
+        );
+      }
+    }
+
+    // Supporting blocks via sidecar stack
+    if (normalized.supporting.length > 0) {
+      const supportingRegion: ResolvedFrame = normalized.insight
+        ? {
+            x: lowerRegion.x,
+            y: lowerRegion.y + CALLOUT_BAND_HEIGHT + 8,
+            width: lowerRegion.width,
+            height: Math.max(60, lowerRegion.height - CALLOUT_BAND_HEIGHT - 8),
+          }
+        : lowerRegion;
+      const sidecarAssignments = layoutSidecarStack({
+        region: supportingRegion,
+        blocks: normalized.supporting,
+        density: ctx.layoutSpec.density,
+      });
+      for (const a of sidecarAssignments) {
+        assignments.push(
+          assignmentFromSlot({
+            blockId: a.blockId,
+            resolution: { frame: supportingRegion, fallbackSlots: [] },
+            frame: a.frame,
+          }),
+        );
+      }
+    }
 
     return assignments;
   },

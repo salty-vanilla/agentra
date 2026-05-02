@@ -4,6 +4,9 @@ import { buildPresentationIr } from "#src/builders/build-presentation-ir.js";
 import { analyzeSlideLayout } from "#src/diagnostics/layout-diagnostics.js";
 import { analyzeDeckStabilization } from "#src/diagnostics/stabilization-diagnostics.js";
 import { repairSameFrameOverlaps } from "#src/repair/same-frame-repair.js";
+import { selectLayoutStrategy } from "#src/builders/layouts/index.js";
+import { normalizeKpiSummaryContent } from "#src/normalizers/normalize-kpi-summary.js";
+import { normalizeDecisionContent } from "#src/normalizers/normalize-decision-request.js";
 import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
 import type {
   ContentBlock,
@@ -581,5 +584,346 @@ describe("asset usage diagnostics (Phase 7.7-fix2)", () => {
     expect(diag.assetUsage.totalAssets).toBe(0);
     expect(diag.assetUsage.unusedAssetCount).toBe(0);
     expect(diag.assetUsage.imageElementCount).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 7.8: Archetype + preferredStrategyId + content contract
+// ---------------------------------------------------------------------------
+
+describe("preferredStrategyId in selectLayoutStrategy (Phase 7.8)", () => {
+  it("uses preferredStrategyId when strategy match succeeds", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-preferred",
+      preferredStrategyId: "executive-summary-kpi",
+      archetype: "kpi_summary",
+      content: [
+        { id: "t1", type: "title", text: "Preferred" } as ContentBlock,
+        makeMetric("m1", "稼働率", "92%"),
+        makeMetric("m2", "不良率", "0.8%"),
+        makeMetric("m3", "OEE", "78pt"),
+        makeCallout("c1", "Q3で改善"),
+      ],
+      layout: { type: "dashboard", density: "medium" },
+    });
+    const { ir } = buildAndDiagnose([slideSpec]);
+    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("executive-summary-kpi");
+    expect(ir.slides[0]._trace?.selectedBy).toBe("preferredStrategyId");
+    expect(ir.slides[0]._trace?.archetype).toBe("kpi_summary");
+  });
+
+  it("falls back when preferredStrategyId is invalid", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-bad-pref",
+      preferredStrategyId: "nonexistent-strategy",
+      content: [
+        { id: "t1", type: "title", text: "Fallback" } as ContentBlock,
+        makeMetric("m1", "稼働率", "92%"),
+        makeMetric("m2", "不良率", "0.8%"),
+        makeMetric("m3", "OEE", "78pt"),
+        makeCallout("c1", "Q3で改善"),
+      ],
+      layout: { type: "dashboard", density: "medium" },
+    });
+    const { ir } = buildAndDiagnose([slideSpec]);
+    // Should still pick a valid strategy
+    expect(ir.slides[0]._trace?.layoutStrategyId).toBeDefined();
+    expect(ir.slides[0]._trace?.selectedBy).not.toBe("preferredStrategyId");
+  });
+
+  it("infers preferredStrategyId from archetype when not explicitly set", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-archetype-only",
+      archetype: "approval_request",
+      content: [
+        { id: "t1", type: "title", text: "Decision" } as ContentBlock,
+        makeCallout("c1", "本日、承認をお願いします"),
+        makeCallout("c2", "施策A"),
+        makeCallout("c3", "施策B"),
+      ],
+      layout: { type: "single_column", density: "medium" },
+      intent: { type: "decision", keyMessage: "approve", audienceTakeaway: "approve" },
+    });
+    const { ir } = buildAndDiagnose([slideSpec]);
+    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("decision-request");
+    expect(ir.slides[0]._trace?.selectedBy).toBe("preferredStrategyId");
+  });
+});
+
+describe("contentContract → blocks integration (Phase 7.8)", () => {
+  it("kpi_summary contract produces overlap-free KPI slide", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-kpi-contract",
+      archetype: "kpi_summary",
+      preferredStrategyId: "executive-summary-kpi",
+      contentContract: {
+        archetype: "kpi_summary",
+        message: "稼働率・不良率は達成、OEE・ダウンタイムは未達",
+        metrics: [
+          { label: "稼働率", value: "92", unit: "%", status: "good" },
+          { label: "不良率", value: "0.8", unit: "%", status: "good" },
+          { label: "OEE", value: "78", unit: "pt", status: "warning" },
+          { label: "ダウンタイム", value: "14", unit: "h", status: "warning" },
+        ],
+        insight: "Q3施策でOEE 80pt・ダウンタイム12h以内を狙う",
+      },
+      content: [
+        { id: "t1", type: "title", text: "Q2 KPI" } as ContentBlock,
+        makeMetric("m1", "稼働率", "92"),
+        makeMetric("m2", "不良率", "0.8"),
+        makeMetric("m3", "OEE", "78"),
+        makeMetric("m4", "DT", "14"),
+        makeCallout("c1", "Q3施策でOEE 80ptを狙う"),
+      ],
+      layout: { type: "dashboard", density: "medium" },
+      intent: { type: "data_insight", keyMessage: "KPI review", audienceTakeaway: "status" },
+    });
+
+    const { diagnostics, ir } = buildAndDiagnose([slideSpec]);
+    expect(diagnostics[0]!.overlapCount).toBe(0);
+    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("executive-summary-kpi");
+  });
+
+  it("approval_request contract produces overlap-free decision slide", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-approval-contract",
+      archetype: "approval_request",
+      preferredStrategyId: "decision-request",
+      contentContract: {
+        archetype: "approval_request",
+        cta: "本日、Q3施策4件の承認をお願いします",
+        approvalItems: [
+          { title: "ボトルネック自動化" },
+          { title: "予防保全" },
+          { title: "AIビジョン導入" },
+          { title: "部品在庫最適化" },
+        ],
+        metrics: [
+          { label: "OEE目標", value: "80", unit: "pt" },
+          { label: "DT目標", value: "12h以内" },
+        ],
+        supporting: "承認後、Q3で順次実行",
+      },
+      content: [
+        { id: "t1", type: "title", text: "Q3施策承認" } as ContentBlock,
+        makeCallout("c1", "本日、Q3施策4件の承認をお願いします"),
+        makeCallout("c2", "ボトルネック自動化"),
+        makeCallout("c3", "予防保全"),
+        makeCallout("c4", "AIビジョン導入"),
+        makeCallout("c5", "部品在庫最適化"),
+        makeMetric("m1", "OEE目標", "80pt"),
+        makeMetric("m2", "DT目標", "12h以内"),
+        makeParagraph("p1", "承認後、Q3で順次実行"),
+      ],
+      layout: { type: "single_column", density: "medium" },
+      intent: { type: "decision", keyMessage: "approve", audienceTakeaway: "approve" },
+    });
+
+    const { diagnostics, ir } = buildAndDiagnose([slideSpec]);
+    expect(diagnostics[0]!.overlapCount).toBe(0);
+    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("decision-request");
+  });
+});
+
+describe("normalizers (Phase 7.8)", () => {
+  it("normalizeKpiSummaryContent separates metrics + insight + supporting", () => {
+    const blocks = [
+      makeMetric("m1", "稼働率", "92"),
+      makeMetric("m2", "不良率", "0.8"),
+      makeCallout("c1", "達成済み"),
+      makeParagraph("p1", "補足情報"),
+    ];
+    const result = normalizeKpiSummaryContent(blocks);
+    expect(result.metrics).toHaveLength(2);
+    expect(result.insight?.type).toBe("callout");
+    expect(result.supporting).toHaveLength(1);
+  });
+
+  it("normalizeDecisionContent identifies CTA and approval items", () => {
+    const blocks = [
+      makeCallout("c1", "本日、承認をお願いします"),
+      makeCallout("c2", "施策A"),
+      makeCallout("c3", "施策B"),
+      makeMetric("m1", "予算", "¥50M"),
+      makeParagraph("p1", "補足情報"),
+    ];
+    const result = normalizeDecisionContent(blocks);
+    expect(result.cta?.type).toBe("callout");
+    expect(result.approvalItems).toHaveLength(2);
+    expect(result.metrics).toHaveLength(1);
+    expect(result.supporting).toHaveLength(1);
+  });
+});
+
+describe("manufacturing 6-slide regression (Phase 7.8)", () => {
+  const slideSpecs: SlideSpec[] = [
+    // 1: title
+    makeSlideSpec({
+      id: "slide-01",
+      slideNumber: 1,
+      title: "製造ライン月次レポート",
+      archetype: "title",
+      preferredStrategyId: "title-slide",
+      intent: { type: "title", keyMessage: "月次レポート", audienceTakeaway: "概要" },
+      layout: { type: "title", density: "low" },
+      content: [
+        { id: "t1", type: "title", text: "製造ライン月次レポート" } as ContentBlock,
+        { id: "st1", type: "subtitle", text: "2024年Q2実績" } as ContentBlock,
+      ],
+    }),
+    // 2: kpi_summary
+    makeSlideSpec({
+      id: "slide-02",
+      slideNumber: 2,
+      title: "Q2業績KPI",
+      archetype: "kpi_summary",
+      preferredStrategyId: "executive-summary-kpi",
+      contentContract: {
+        archetype: "kpi_summary",
+        message: "稼働率・不良率は達成",
+        metrics: [
+          { label: "稼働率", value: "92", unit: "%", status: "good" },
+          { label: "不良率", value: "0.8", unit: "%", status: "good" },
+          { label: "OEE", value: "78", unit: "pt", status: "warning" },
+          { label: "DT", value: "14", unit: "h", status: "warning" },
+        ],
+        insight: "Q3施策でOEE改善予定",
+      },
+      intent: { type: "data_insight", keyMessage: "KPI review", audienceTakeaway: "status" },
+      layout: { type: "dashboard", density: "medium" },
+      content: [
+        { id: "t2", type: "title", text: "Q2業績KPI" } as ContentBlock,
+        makeMetric("m1", "稼働率", "92"),
+        makeMetric("m2", "不良率", "0.8"),
+        makeMetric("m3", "OEE", "78"),
+        makeMetric("m4", "DT", "14"),
+        makeCallout("c1", "Q3施策でOEE改善予定"),
+      ],
+    }),
+    // 3: cause_analysis
+    makeSlideSpec({
+      id: "slide-03",
+      slideNumber: 3,
+      title: "ダウンタイム原因分析",
+      archetype: "cause_analysis",
+      preferredStrategyId: "data-insight-story",
+      intent: { type: "data_insight", keyMessage: "設備起因60%", audienceTakeaway: "root cause" },
+      layout: { type: "dashboard", density: "medium" },
+      content: [
+        { id: "t3", type: "title", text: "ダウンタイム原因分析" } as ContentBlock,
+        makeChart("chart1"),
+        makeMetric("m5", "ダウンタイム", "14h"),
+        makeCallout("c2", "設備起因が主因"),
+      ],
+    }),
+    // 4: trend_small_multiples
+    makeSlideSpec({
+      id: "slide-04",
+      slideNumber: 4,
+      title: "OEE・DTトレンド",
+      archetype: "trend_small_multiples",
+      preferredStrategyId: "small-multiples-trend",
+      intent: { type: "data_insight", keyMessage: "trend", audienceTakeaway: "improving" },
+      layout: { type: "dashboard", density: "medium" },
+      content: [
+        { id: "t4", type: "title", text: "OEE・DTトレンド" } as ContentBlock,
+        makeChart("chart2"),
+        makeChart("chart3"),
+        makeCallout("c3", "両指標とも改善傾向"),
+      ],
+    }),
+    // 5: process_with_impact
+    makeSlideSpec({
+      id: "slide-05",
+      slideNumber: 5,
+      title: "Q3改善プロセス",
+      archetype: "process_with_impact",
+      preferredStrategyId: "process-flow-with-impact",
+      intent: { type: "process", keyMessage: "improvement", audienceTakeaway: "plan" },
+      layout: { type: "timeline", density: "medium" },
+      content: [
+        { id: "t5", type: "title", text: "Q3改善プロセス" } as ContentBlock,
+        makeDiagram("d1"),
+        makeMetric("m6", "OEE改善目標", "+5pt"),
+        makeCallout("c4", "Q3完了予定"),
+      ],
+    }),
+    // 6: approval_request
+    makeSlideSpec({
+      id: "slide-06",
+      slideNumber: 6,
+      title: "Q3施策承認",
+      archetype: "approval_request",
+      preferredStrategyId: "decision-request",
+      contentContract: {
+        archetype: "approval_request",
+        cta: "本日、Q3施策4件の承認をお願いします",
+        approvalItems: [
+          { title: "ボトルネック自動化" },
+          { title: "予防保全" },
+          { title: "AIビジョン導入" },
+          { title: "部品在庫最適化" },
+        ],
+        metrics: [
+          { label: "OEE目標", value: "80", unit: "pt" },
+          { label: "DT目標", value: "12h以内" },
+        ],
+        supporting: "承認後、Q3で順次実行",
+      },
+      intent: { type: "decision", keyMessage: "approve", audienceTakeaway: "approve" },
+      layout: { type: "single_column", density: "medium" },
+      content: [
+        { id: "t6", type: "title", text: "Q3施策承認" } as ContentBlock,
+        makeCallout("c5", "本日、Q3施策4件の承認をお願いします"),
+        makeCallout("c6", "ボトルネック自動化"),
+        makeCallout("c7", "予防保全"),
+        makeCallout("c8", "AIビジョン導入"),
+        makeCallout("c9", "部品在庫最適化"),
+        makeMetric("m7", "OEE目標", "80pt"),
+        makeMetric("m8", "DT目標", "12h以内"),
+        makeParagraph("p2", "承認後、Q3で順次実行"),
+      ],
+    }),
+  ];
+
+  it("V1 layout has zero overlaps across all 6 slides", () => {
+    const { ir, diagnostics } = buildAndDiagnose(slideSpecs);
+    const totalOverlaps = diagnostics.reduce((sum, d) => sum + d.overlapCount, 0);
+    expect(totalOverlaps).toBe(0);
+  });
+
+  it("V1 layout has zero out-of-bounds elements", () => {
+    const { diagnostics } = buildAndDiagnose(slideSpecs);
+    const totalOob = diagnostics.reduce((sum, d) => sum + d.outOfBoundsCount, 0);
+    expect(totalOob).toBe(0);
+  });
+
+  it("slide-02 uses executive-summary-kpi strategy via preferredStrategyId", () => {
+    const { ir } = buildAndDiagnose(slideSpecs);
+    expect(ir.slides[1]._trace?.layoutStrategyId).toBe("executive-summary-kpi");
+    expect(ir.slides[1]._trace?.selectedBy).toBe("preferredStrategyId");
+  });
+
+  it("slide-06 uses decision-request strategy via preferredStrategyId", () => {
+    const { ir } = buildAndDiagnose(slideSpecs);
+    expect(ir.slides[5]._trace?.layoutStrategyId).toBe("decision-request");
+    expect(ir.slides[5]._trace?.selectedBy).toBe("preferredStrategyId");
+  });
+
+  it("slide-06 has zero overlaps with contract-generated blocks", () => {
+    const { diagnostics } = buildAndDiagnose(slideSpecs);
+    expect(diagnostics[5]!.overlapCount).toBe(0);
+  });
+
+  it("V1 stabilization score is 60+", () => {
+    const { ir } = buildAndDiagnose(slideSpecs);
+    const stab = analyzeDeckStabilization({ presentation: ir });
+    expect(stab.score).toBeGreaterThanOrEqual(60);
+  });
+
+  it("unused asset count is 0 (no assets in test deck)", () => {
+    const { ir } = buildAndDiagnose(slideSpecs);
+    const stab = analyzeDeckStabilization({ presentation: ir });
+    expect(stab.assetUsage.unusedAssetCount).toBe(0);
   });
 });

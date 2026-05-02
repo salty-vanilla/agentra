@@ -100,6 +100,18 @@ export { repairPresentationLayout } from "#src/repair/index.js";
 export { repairTextOverflow } from "#src/repair/index.js";
 export { repairSameFrameOverlaps } from "#src/repair/index.js";
 export type { SameFrameRepairResult } from "#src/repair/index.js";
+export { contentContractToBlocks, resetContractIdCounter, validateContentContract } from "#src/contracts/index.js";
+export type { ContractWarning, ContractValidationResult } from "#src/contracts/index.js";
+export { normalizeKpiSummaryContent, normalizeDecisionContent } from "#src/normalizers/index.js";
+export type { NormalizedKpiSummaryContent, NormalizedDecisionContent } from "#src/normalizers/index.js";
+export {
+  layoutMetricRail,
+  layoutCardGrid,
+  layoutBottomCallout,
+  layoutSmallMultiplesGrid,
+  layoutProcessRail,
+  layoutSidecarStack,
+} from "#src/builders/layouts/primitives/index.js";
 export type {
   TextOverflowRepairAction,
   TextOverflowRepairOptions,
@@ -262,6 +274,7 @@ import type {
   QuoteBlock,
   RetrievedImageAssetSpec,
   ScreenshotAssetSpec,
+  SlideArchetype,
   SlideConstraints,
   SlideIntent,
   SlidePlan,
@@ -273,6 +286,12 @@ import type {
   TitleBlock,
   ToneSpec,
   VisualDirectionSpec,
+  ContentContract,
+  KpiSummaryContract,
+  ApprovalRequestContract,
+  TrendSmallMultiplesContract,
+  ProcessWithImpactContract,
+  CauseAnalysisContract,
 } from "#src/schemas/intent-artifacts.js";
 export {
   AssetSpecSchema,
@@ -294,6 +313,13 @@ export {
   PresentationConstraintsSchema,
   SlideIntentSchema,
   SlideSpecSchema,
+  SlideArchetypeSchema,
+  ContentContractSchema,
+  KpiSummaryContractSchema,
+  ApprovalRequestContractSchema,
+  TrendSmallMultiplesContractSchema,
+  ProcessWithImpactContractSchema,
+  CauseAnalysisContractSchema,
   ToneSchema,
   VisualDirectionSchema,
 } from "#src/schemas/intent-artifacts.js";
@@ -338,6 +364,7 @@ export type {
   QuoteBlock,
   RetrievedImageAssetSpec,
   ScreenshotAssetSpec,
+  SlideArchetype,
   SlideConstraints,
   SlideIntent,
   SlidePlan,
@@ -349,6 +376,12 @@ export type {
   TitleBlock,
   ToneSpec,
   VisualDirectionSpec,
+  ContentContract,
+  KpiSummaryContract,
+  ApprovalRequestContract,
+  TrendSmallMultiplesContract,
+  ProcessWithImpactContract,
+  CauseAnalysisContract,
 } from "#src/schemas/intent-artifacts.js";
 
 export type Id = string;
@@ -590,6 +623,9 @@ export type SlideIR = {
     templateLayoutKind: string;
     usedSlots: string[];
     fallbackSlots: string[];
+    archetype?: string;
+    preferredStrategyId?: string;
+    selectedBy?: "preferredStrategyId" | "deterministicSelector" | "fallback";
   };
 };
 

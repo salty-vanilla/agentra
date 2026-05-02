@@ -9,6 +9,42 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge Phase 7.8: Archetype + Content Contract + Layout Primitives
+
+- **SlideArchetype** — 11 archetype values (title, kpi_summary, cause_analysis,
+  trend_small_multiples, process_with_impact, approval_request, action_plan_table,
+  comparison, roadmap, architecture, generic_content) with
+  `ARCHETYPE_TO_PREFERRED_STRATEGY_ID` mapping
+- **Content Contracts** — 5 archetype-specific contract schemas
+  (KpiSummaryContract, ApprovalRequestContract, TrendSmallMultiplesContract,
+  ProcessWithImpactContract, CauseAnalysisContract) as Zod discriminated union
+- **Contract-to-blocks** — `contentContractToBlocks()` converts structured
+  contracts into standard ContentBlock[] for layout strategies
+- **Contract validation** — `validateContentContract()` with semantic checks
+  (too_many_metrics, missing_cta, too_many_approval_items, etc.)
+- **Content normalizers** — `normalizeKpiSummaryContent()` and
+  `normalizeDecisionContent()` extract semantic groups (metrics/insight/
+  supporting, cta/approvalItems/metrics/supporting)
+- **Layout primitives** — 6 composable functions: `layoutMetricRail`,
+  `layoutCardGrid`, `layoutBottomCallout`, `layoutSmallMultiplesGrid`,
+  `layoutProcessRail`, `layoutSidecarStack`
+- **preferredStrategyId** — `selectLayoutStrategy()` respects
+  `spec.preferredStrategyId` (or inferred from archetype) with
+  selectedBy trace ("preferredStrategyId" | "deterministicSelector" | "fallback")
+- **Strategy migrations** — `executive-summary-kpi` and `decision-request`
+  rewritten to use normalizers + primitives for overlap-free placement
+- **LLM guidance** — intent-parser-bedrock updated with archetype selection
+  and contentContract schema documentation
+- **Build fix** — element creation loop now iterates over `placedBlocks`
+  (contract-generated or raw) instead of always using raw content
+- **Normalizer fix** — paragraphs matching approval keywords, and table blocks,
+  classified correctly in `normalizeDecisionContent`
+- **Diagnostics/trace** — `_trace` extended with archetype, preferredStrategyId,
+  selectedBy fields
+- **Tests** — 42 new tests (content-contracts, layout-primitives) +
+  14 new regression tests (preferredStrategyId, contract integration,
+  manufacturing 6-slide fixture)
+
 ### Added — deck-forge Phase 7.7-fix2: Asset pruning & decision-request V1 hardening
 
 - **Asset pruning** — image asset generation now requires at least one

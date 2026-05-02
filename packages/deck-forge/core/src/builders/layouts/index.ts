@@ -39,6 +39,14 @@ export {
   pickGridDimensions,
   MIN_SUBFRAME_HEIGHT,
 } from "#src/builders/layouts/grid-utils.js";
+export {
+  layoutMetricRail,
+  layoutCardGrid,
+  layoutBottomCallout,
+  layoutSmallMultiplesGrid,
+  layoutProcessRail,
+  layoutSidecarStack,
+} from "#src/builders/layouts/primitives/index.js";
 
 /**
  * Built-in strategies, registered in priority order (highest first).  The
@@ -92,20 +100,79 @@ export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freez
 ]);
 
 /**
+ * Archetype → preferred strategy ID mapping.
+ * Used when a SlideSpec has an archetype but no explicit preferredStrategyId.
+ */
+const ARCHETYPE_TO_PREFERRED_STRATEGY_ID: Record<string, string> = {
+  title: "title-slide",
+  kpi_summary: "executive-summary-kpi",
+  cause_analysis: "data-insight-story",
+  trend_small_multiples: "small-multiples-trend",
+  process_with_impact: "process-flow-with-impact",
+  approval_request: "decision-request",
+  action_plan_table: "action-plan-table",
+  comparison: "comparison",
+  roadmap: "implementation-roadmap",
+  architecture: "layered-architecture",
+  generic_content: "content-standard",
+};
+
+export type StrategySelectionTrace = {
+  selectedBy: "preferredStrategyId" | "deterministicSelector" | "fallback";
+  preferredStrategyId?: string;
+  archetype?: string;
+};
+
+/**
  * Picks the highest-priority strategy whose `match()` returns true for the
  * given layout context.  Falls back to `singleStackStrategy`.
+ *
+ * When `ctx.slideSpec.preferredStrategyId` (or archetype-inferred preferred)
+ * is set, the preferred strategy is tried first. If it exists in the
+ * registry and its `match()` returns true, it is used. Otherwise the
+ * deterministic priority sort is used.
  */
 export function selectLayoutStrategy(
   ctx: LayoutContext,
   strategies: readonly LayoutStrategy[] = BUILTIN_LAYOUT_STRATEGIES,
-): LayoutStrategy {
+): LayoutStrategy & { _selectionTrace?: StrategySelectionTrace } {
+  const spec = ctx.slideSpec;
+  const preferredId =
+    spec.preferredStrategyId ??
+    (spec.archetype ? ARCHETYPE_TO_PREFERRED_STRATEGY_ID[spec.archetype] : undefined);
+
+  if (preferredId) {
+    const preferred = strategies.find((s) => s.id === preferredId);
+    if (preferred && preferred.match(ctx)) {
+      return Object.assign(preferred, {
+        _selectionTrace: {
+          selectedBy: "preferredStrategyId" as const,
+          preferredStrategyId: preferredId,
+          archetype: spec.archetype,
+        },
+      });
+    }
+  }
+
   const sorted = [...strategies].sort((a, b) => b.priority - a.priority);
   for (const strategy of sorted) {
     if (strategy.match(ctx)) {
-      return strategy;
+      return Object.assign(strategy, {
+        _selectionTrace: {
+          selectedBy: "deterministicSelector" as const,
+          preferredStrategyId: preferredId,
+          archetype: spec.archetype,
+        },
+      });
     }
   }
-  return singleStackStrategy;
+  return Object.assign(singleStackStrategy, {
+    _selectionTrace: {
+      selectedBy: "fallback" as const,
+      preferredStrategyId: preferredId,
+      archetype: spec.archetype,
+    },
+  });
 }
 
 export {

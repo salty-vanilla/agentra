@@ -1,5 +1,6 @@
 import { selectLayoutStrategy } from "#src/builders/layouts/index.js";
 import type { LayoutHints, SubFrameAssignment } from "#src/builders/layouts/index.js";
+import { contentContractToBlocks } from "#src/contracts/contract-to-blocks.js";
 import { frameOverlapRatio, framesEqual, stackFramesVertically } from "#src/geometry/frame-geometry.js";
 import type {
   Asset,
@@ -119,7 +120,7 @@ function buildSlideIr(
     slideSize: DEFAULT_SLIDE_SIZE,
     regions: createResolvedRegions(slideSpec.layout, DEFAULT_SLIDE_SIZE),
   };
-  const { elements, layoutStrategyId, templateLayoutId, templateLayoutKind, usedSlots, fallbackSlots } = buildElements(slideSpec, layout.spec, layout.regions, theme, templateProfile, usedElementIds);
+  const { elements, layoutStrategyId, templateLayoutId, templateLayoutKind, usedSlots, fallbackSlots, selectedBy, preferredStrategyId: tracePrefId, archetype: traceArchetype } = buildElements(slideSpec, layout.spec, layout.regions, theme, templateProfile, usedElementIds);
 
   // ── Post-build overlap detection & auto-fix ───────────────────────
   const fixedElements = fixOverlappingElements(elements, layout.slideSize, layout.regions);
@@ -141,6 +142,9 @@ function buildSlideIr(
       templateLayoutKind,
       usedSlots,
       fallbackSlots,
+      archetype: traceArchetype,
+      preferredStrategyId: tracePrefId,
+      selectedBy: selectedBy as "preferredStrategyId" | "deterministicSelector" | "fallback" | undefined,
     },
   };
 }
@@ -152,7 +156,7 @@ function buildElements(
   theme: ThemeSpec,
   templateProfile: TemplateProfile,
   usedElementIds: Set<string>,
-): { elements: SlideIR["elements"]; layoutStrategyId: string; templateLayoutId: string; templateLayoutKind: string; usedSlots: string[]; fallbackSlots: string[] } {
+): { elements: SlideIR["elements"]; layoutStrategyId: string; templateLayoutId: string; templateLayoutKind: string; usedSlots: string[]; fallbackSlots: string[]; selectedBy?: string; preferredStrategyId?: string; archetype?: string } {
   const content = [...slideSpec.content];
   const titleBlock = firstBlockByType(content, "title");
   const ensuredTitleText = titleBlock?.text || slideSpec.title;
@@ -223,9 +227,15 @@ function buildElements(
 
   // Blocks the layout strategy is responsible for placing (everything except
   // title/subtitle, which the outer shell positions in the title region).
-  const placedBlocks = content.filter(
+  // If a contentContract is present, convert it to blocks and use those
+  // instead of the raw content blocks (contract blocks are more structured).
+  const contractBlocks = contentContractToBlocks(slideSpec);
+  const rawPlacedBlocks = content.filter(
     (block) => block.type !== "title" && block.type !== "subtitle",
   );
+  const placedBlocks = contractBlocks
+    ? contractBlocks.filter((b) => b.type !== "title" && b.type !== "subtitle")
+    : rawPlacedBlocks;
 
   const regionFrames = {
     body: bodyRegionFrame,
@@ -301,6 +311,7 @@ function buildElements(
 
   const elements: SlideIR["elements"] = [];
 
+  // Handle title/subtitle from raw content first
   for (const block of content) {
     if (block.type === "title") {
       if (templateSlots.title) usedSlotSet.add("title");
@@ -340,7 +351,10 @@ function buildElements(
       );
       continue;
     }
+  }
 
+  // Iterate over placedBlocks (contract blocks if available, otherwise raw content minus title/subtitle)
+  for (const block of placedBlocks) {
     const assignment = assignmentByBlock.get(block.id);
     const hints = assignment?.hints;
 
@@ -505,6 +519,7 @@ function buildElements(
     }
   }
 
+  const selTrace = (strategy as { _selectionTrace?: { selectedBy?: string; preferredStrategyId?: string; archetype?: string } })._selectionTrace;
   return {
     elements,
     layoutStrategyId: strategy.id,
@@ -512,6 +527,9 @@ function buildElements(
     templateLayoutKind: templateLayout.kind,
     usedSlots: [...usedSlotSet],
     fallbackSlots: [...fallbackSlotSet],
+    selectedBy: selTrace?.selectedBy,
+    preferredStrategyId: selTrace?.preferredStrategyId,
+    archetype: selTrace?.archetype,
   };
 }
 

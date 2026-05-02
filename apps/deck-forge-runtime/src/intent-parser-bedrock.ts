@@ -584,7 +584,55 @@ GOOD example (KPI slide body block):
 BAD example (same intent):
   { type: "paragraph", text: "稼働率は92%で、前期比+2.1ポイントの改善となりました。" }
 
-Apply these rules silently — do not mention them in the output content.`;
+Apply these rules silently — do not mention them in the output content.
+
+============================================================
+SLIDE ARCHETYPE & CONTENT CONTRACT (Phase 7.8)
+============================================================
+
+For each slide, select an archetype from the allowed enum and a matching preferredStrategyId.
+When the archetype has a contentContract schema, provide the structured data in contentContract.
+Do NOT rely only on generic content blocks for slides that have a contentContract.
+
+Allowed archetypes and their preferredStrategyId:
+  title                → "title-slide"
+  kpi_summary          → "executive-summary-kpi"
+  cause_analysis       → "data-insight-story"
+  trend_small_multiples → "small-multiples-trend"
+  process_with_impact  → "process-flow-with-impact"
+  approval_request     → "decision-request"
+  action_plan_table    → "action-plan-table"
+  comparison           → "comparison"
+  roadmap              → "implementation-roadmap"
+  architecture         → "layered-architecture"
+  generic_content      → (no preferredStrategyId needed)
+
+contentContract schemas (fill when archetype matches):
+
+kpi_summary:
+  { archetype: "kpi_summary", message: "...", metrics: [{ label, value, unit?, target?, status?, trend? }], insight?: "..." }
+  metrics: 1–6 items. value is a string (e.g. "92"). status: good/warning/bad/neutral. trend: up/down/flat.
+
+approval_request:
+  { archetype: "approval_request", cta: "...", approvalItems: [{ title, description? }], metrics?: [...], supporting?: "..." }
+  approvalItems: 1–6. cta: exactly 1 short sentence. metrics: max 4.
+
+trend_small_multiples:
+  { archetype: "trend_small_multiples", message: "...", series: [{ label, unit?, values: [{ period, value }] }], insight?: "..." }
+  series: 1–4.
+
+process_with_impact:
+  { archetype: "process_with_impact", message: "...", steps: ["..."], impactMetric?: { label, value, unit? }, insight?: "..." }
+  steps: 3–8 strings.
+
+cause_analysis:
+  { archetype: "cause_analysis", message: "...", breakdown?: [{ label, value, unit: "%", source?: "provided"|"derived_complement" }], keyMetric?: {...}, insight?: "..." }
+  Do NOT invent breakdown categories. If only one % is given, use that + "その他" as complement.
+
+各スライドについて、必ず archetype を選択すること。
+archetype に対応する preferredStrategyId を指定すること。
+archetype 専用の contentContract がある場合は、その schema に従って情報を出すこと。
+未提示の数値・内訳比率は推定しない。一部の構成比だけが与えられている場合は、提示カテゴリと「その他」の補数に留める。`;
 
   const rawSlideSpecs = await Promise.all(
     slideIds.map((slideId) =>

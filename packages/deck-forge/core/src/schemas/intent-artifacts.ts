@@ -463,6 +463,101 @@ export const ContentBlockSchema = z
   });
 
 // ---------------------------------------------------------------------------
+// SlideArchetype — semantic classification selected by LLM
+// ---------------------------------------------------------------------------
+
+export const SlideArchetypeSchema = z.enum([
+  "title",
+  "kpi_summary",
+  "cause_analysis",
+  "trend_small_multiples",
+  "process_with_impact",
+  "approval_request",
+  "action_plan_table",
+  "comparison",
+  "roadmap",
+  "architecture",
+  "generic_content",
+]);
+
+// ---------------------------------------------------------------------------
+// Archetype-specific content contracts
+// ---------------------------------------------------------------------------
+
+const ContractMetricSchema = z.object({
+  label: z.string(),
+  value: z.string(),
+  unit: z.string().optional(),
+  target: z.string().optional(),
+  status: z.enum(["good", "warning", "bad", "neutral"]).optional(),
+  trend: z.enum(["up", "down", "flat"]).optional(),
+});
+
+export const KpiSummaryContractSchema = z.object({
+  archetype: z.literal("kpi_summary"),
+  message: z.string(),
+  metrics: z.array(ContractMetricSchema).min(1).max(6),
+  insight: z.string().optional(),
+});
+
+export const ApprovalRequestContractSchema = z.object({
+  archetype: z.literal("approval_request"),
+  cta: z.string(),
+  approvalItems: z.array(
+    z.object({
+      title: z.string(),
+      description: z.string().optional(),
+    }),
+  ).min(1).max(6),
+  metrics: z.array(ContractMetricSchema).max(4).optional(),
+  supporting: z.string().optional(),
+});
+
+export const TrendSmallMultiplesContractSchema = z.object({
+  archetype: z.literal("trend_small_multiples"),
+  message: z.string(),
+  series: z.array(
+    z.object({
+      label: z.string(),
+      unit: z.string().optional(),
+      values: z.array(z.object({ period: z.string(), value: z.number() })),
+    }),
+  ).min(1).max(4),
+  insight: z.string().optional(),
+});
+
+export const ProcessWithImpactContractSchema = z.object({
+  archetype: z.literal("process_with_impact"),
+  message: z.string(),
+  steps: z.array(z.string()).min(3).max(8),
+  impactMetric: ContractMetricSchema.optional(),
+  insight: z.string().optional(),
+});
+
+export const CauseAnalysisContractSchema = z.object({
+  archetype: z.literal("cause_analysis"),
+  message: z.string(),
+  breakdown: z.array(
+    z.object({
+      label: z.string(),
+      value: z.number(),
+      unit: z.literal("%"),
+      source: z.enum(["provided", "derived_complement"]).optional(),
+    }),
+  ).optional(),
+  keyMetric: ContractMetricSchema.optional(),
+  insight: z.string().optional(),
+});
+
+export const ContentContractSchema = z.discriminatedUnion("archetype", [
+  KpiSummaryContractSchema,
+  ApprovalRequestContractSchema,
+  TrendSmallMultiplesContractSchema,
+  ProcessWithImpactContractSchema,
+  CauseAnalysisContractSchema,
+]);
+
+// ---------------------------------------------------------------------------
 // SlideSpec
 // ---------------------------------------------------------------------------
 
@@ -493,6 +588,9 @@ export const SlideSpecSchema = z
     speakerNotes: SpeakerNotesSchema.optional(),
     assets: z.array(AssetSpecRefSchema).optional(),
     constraints: SlideConstraintsSchema.optional(),
+    archetype: SlideArchetypeSchema.optional(),
+    preferredStrategyId: z.string().optional(),
+    contentContract: ContentContractSchema.optional(),
   })
   .meta({
     id: "SlideSpec",
@@ -737,6 +835,13 @@ export type AssetSpecRef = z.infer<typeof AssetSpecRefSchema>;
 export type SlideConstraints = z.infer<typeof SlideConstraintsSchema>;
 export type LayoutSpec = z.infer<typeof LayoutSchema>;
 export type LayoutRegion = z.infer<typeof LayoutRegionSchema>;
+export type SlideArchetype = z.infer<typeof SlideArchetypeSchema>;
+export type ContentContract = z.infer<typeof ContentContractSchema>;
+export type KpiSummaryContract = z.infer<typeof KpiSummaryContractSchema>;
+export type ApprovalRequestContract = z.infer<typeof ApprovalRequestContractSchema>;
+export type TrendSmallMultiplesContract = z.infer<typeof TrendSmallMultiplesContractSchema>;
+export type ProcessWithImpactContract = z.infer<typeof ProcessWithImpactContractSchema>;
+export type CauseAnalysisContract = z.infer<typeof CauseAnalysisContractSchema>;
 
 export type ContentBlock = z.infer<typeof ContentBlockSchema>;
 export type TitleBlock = z.infer<typeof TitleBlockSchema>;
