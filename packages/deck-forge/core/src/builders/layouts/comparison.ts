@@ -1,9 +1,13 @@
 import { splitHorizontal, splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { readStrategyInput } from "#src/builders/layouts/strategy-input-helpers.js";
+import type { TwoColumnComparisonInput } from "#src/strategy/strategy-input-schemas.js";
 import type {
   LayoutContext,
+  LayoutResult,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ContentBlock } from "#src/index.js";
 
 /**
  * Comparison: two-column body layout where left/right columns receive an
@@ -22,6 +26,10 @@ export const twoColumnComparisonStrategy: LayoutStrategy = {
   priority: 70,
 
   match(ctx: LayoutContext): boolean {
+    if (ctx.strategyInput != null) {
+      const r = readStrategyInput<TwoColumnComparisonInput>({ strategyId: "two-column-comparison", strategyInput: ctx.strategyInput });
+      if (r.ok) return true;
+    }
     return (
       ctx.layoutSpec.type === "comparison" ||
       ctx.layoutSpec.type === "image_left_text_right" ||
@@ -29,7 +37,52 @@ export const twoColumnComparisonStrategy: LayoutStrategy = {
     );
   },
 
-  layout(ctx: LayoutContext): SubFrameAssignment[] {
+  layout(ctx: LayoutContext): LayoutResult {
+    const sir = readStrategyInput<TwoColumnComparisonInput>({ strategyId: "two-column-comparison", strategyInput: ctx.strategyInput });
+    if (sir.ok && sir.input) {
+      const inp = sir.input;
+      const syntheticBlocks: ContentBlock[] = [];
+
+      syntheticBlocks.push({
+        id: "si-paragraph-0",
+        type: "paragraph",
+        text: inp.left.title,
+      });
+      syntheticBlocks.push({
+        id: "si-bullet_list-0",
+        type: "bullet_list",
+        items: inp.left.points.map((p) => ({ text: p })),
+      });
+      syntheticBlocks.push({
+        id: "si-paragraph-1",
+        type: "paragraph",
+        text: inp.right.title,
+      });
+      syntheticBlocks.push({
+        id: "si-bullet_list-1",
+        type: "bullet_list",
+        items: inp.right.points.map((p) => ({ text: p })),
+      });
+
+      if (inp.keyTakeaway) {
+        syntheticBlocks.push({
+          id: "si-callout-0",
+          type: "callout",
+          text: inp.keyTakeaway,
+          tone: "info",
+        });
+      }
+
+      const nativeCtx = { ...ctx, blocks: syntheticBlocks };
+      const assignments = layoutBlocks(nativeCtx);
+      return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
+    }
+    const assignments = layoutBlocks(ctx);
+    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+  },
+};
+
+function layoutBlocks(ctx: LayoutContext): SubFrameAssignment[] {
     const density = ctx.layoutSpec.density;
     const body = ctx.regionFrames.body;
     const visual = ctx.regionFrames.visual;
@@ -77,5 +130,4 @@ export const twoColumnComparisonStrategy: LayoutStrategy = {
       assignments.push({ blockId: block.id, frame: rightFrames[index] ?? rightCol });
     });
     return assignments;
-  },
-};
+}

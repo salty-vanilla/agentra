@@ -11,12 +11,15 @@ import {
   layoutSidecarStack,
 } from "#src/builders/layouts/primitives/index.js";
 import { normalizeKpiSummaryContent } from "#src/normalizers/normalize-kpi-summary.js";
+import { readStrategyInput } from "#src/builders/layouts/strategy-input-helpers.js";
+import type { KpiCardOverviewInput } from "#src/strategy/strategy-input-schemas.js";
 import type {
   LayoutContext,
+  LayoutResult,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
-import type { ResolvedFrame } from "#src/index.js";
+import type { ContentBlock, ResolvedFrame } from "#src/index.js";
 
 /**
  * KPI Card Overview: 3–5 KPI/metric cards in a responsive grid with a
@@ -33,13 +36,49 @@ export const kpiCardOverviewStrategy: LayoutStrategy = {
   priority: 75,
 
   match(ctx: LayoutContext): boolean {
+    // Native path: valid strategyInput for this strategy
+    if (ctx.strategyInput != null) {
+      const r = readStrategyInput<KpiCardOverviewInput>({ strategyId: "kpi-card-overview", strategyInput: ctx.strategyInput });
+      if (r.ok) return true;
+    }
     const metricCount = countByType(ctx.blocks, "metric");
     if (metricCount < 3) return false;
     if (ctx.blocks.length > 12) return false;
     return hasCallout(ctx.blocks) || isSummaryIntent(ctx);
   },
 
-  layout(ctx: LayoutContext): SubFrameAssignment[] {
+  layout(ctx: LayoutContext): LayoutResult {
+    // Try native StrategyInput path
+    const sir = readStrategyInput<KpiCardOverviewInput>({ strategyId: "kpi-card-overview", strategyInput: ctx.strategyInput });
+    if (sir.ok && sir.input) {
+      const inp = sir.input;
+      const syntheticBlocks: ContentBlock[] = [];
+      for (const [i, m] of inp.metrics.entries()) {
+        syntheticBlocks.push({
+          id: `si-metric-${i}`,
+          type: "metric",
+          label: m.label,
+          value: m.value,
+          unit: m.unit,
+          trend: m.trend === "unknown" || m.trend === "mixed" ? undefined : m.trend,
+        });
+      }
+      if (inp.keyTakeaway) {
+        syntheticBlocks.push({ id: "si-callout-0", type: "callout", text: inp.keyTakeaway, tone: "info" });
+      }
+      // Run existing layout on synthetic blocks
+      const nativeCtx = { ...ctx, blocks: syntheticBlocks };
+      const assignments = layoutBlocks(nativeCtx);
+      return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
+    }
+
+    // Legacy fallback
+    const assignments = layoutBlocks(ctx);
+    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+  },
+};
+
+function layoutBlocks(ctx: LayoutContext): SubFrameAssignment[] {
     const region = mergeAllRegions(ctx);
 
     // Normalize blocks into semantic groups
@@ -161,5 +200,4 @@ export const kpiCardOverviewStrategy: LayoutStrategy = {
     }
 
     return assignments;
-  },
-};
+}

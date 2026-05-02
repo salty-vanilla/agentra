@@ -590,6 +590,8 @@ export const SlideSpecSchema = z
     constraints: SlideConstraintsSchema.optional(),
     archetype: SlideArchetypeSchema.optional(),
     preferredStrategyId: z.string().optional(),
+    strategyInput: z.unknown().optional(),
+    strategyInputSource: z.enum(["llm", "deterministic", "fallback", "attached"]).optional(),
     contentContract: ContentContractSchema.optional(),
   })
   .meta({

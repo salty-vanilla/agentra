@@ -6,11 +6,15 @@ import {
   hasShortBulletGroup,
   mergeAllRegions,
 } from "#src/builders/layouts/business-utils.js";
+import { readStrategyInput } from "#src/builders/layouts/strategy-input-helpers.js";
+import type { ThreePointSummaryInput } from "#src/strategy/strategy-input-schemas.js";
 import type {
   LayoutContext,
+  LayoutResult,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ContentBlock } from "#src/index.js";
 
 /**
  * Three-Point Summary: exactly 3 key points laid out as horizontal cards.
@@ -23,6 +27,10 @@ export const threePointSummaryStrategy: LayoutStrategy = {
   priority: 75,
 
   match(ctx: LayoutContext): boolean {
+    if (ctx.strategyInput != null) {
+      const r = readStrategyInput<ThreePointSummaryInput>({ strategyId: "three-point-summary", strategyInput: ctx.strategyInput });
+      if (r.ok) return true;
+    }
     if (hasComplexVisuals(ctx.blocks)) return false;
     if (ctx.blocks.length > 5) return false;
 
@@ -48,7 +56,30 @@ export const threePointSummaryStrategy: LayoutStrategy = {
     return hasShortBulletGroup(ctx.blocks, 3);
   },
 
-  layout(ctx: LayoutContext): SubFrameAssignment[] {
+  layout(ctx: LayoutContext): LayoutResult {
+    const sir = readStrategyInput<ThreePointSummaryInput>({ strategyId: "three-point-summary", strategyInput: ctx.strategyInput });
+    if (sir.ok && sir.input) {
+      const inp = sir.input;
+      const syntheticBlocks: ContentBlock[] = [];
+
+      inp.points.forEach((pt, i) => {
+        syntheticBlocks.push({
+          id: `si-paragraph-${i}`,
+          type: "paragraph",
+          text: pt.title + (pt.description ? `\n${pt.description}` : ""),
+        });
+      });
+
+      const nativeCtx = { ...ctx, blocks: syntheticBlocks };
+      const assignments = layoutBlocks(nativeCtx);
+      return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
+    }
+    const assignments = layoutBlocks(ctx);
+    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+  },
+};
+
+function layoutBlocks(ctx: LayoutContext): SubFrameAssignment[] {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
@@ -158,5 +189,4 @@ export const threePointSummaryStrategy: LayoutStrategy = {
     });
 
     return assignments;
-  },
-};
+}

@@ -9,6 +9,34 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 8E: StrategyInput-native Layout Path
+
+- **LayoutContext extended** — `strategyInput?: unknown` and
+  `strategyInputSource?` fields propagated from `SlideSpec` through
+  `buildElements()` into each `LayoutStrategy.layout()` call
+- **LayoutResult union type** — strategies may return plain
+  `SubFrameAssignment[]` (backward-compatible) or a rich object with
+  `{ assignments, syntheticBlocks?, strategyInputMode, strategyInputWarnings? }`
+- **`readStrategyInput<T>()`** helper (strategy-input-helpers.ts) — type-safe
+  Zod validation returning `{ ok, input?, mode, warnings }` for use inside
+  layout strategies
+- **`normalizeLayoutResult()`** utility — extracts `SubFrameAssignment[]`
+  from either form, used by existing tests to stay backward-compatible
+- **7 strategies migrated to native StrategyInput path**:
+  - `kpi-card-overview` — metrics + optional callout from `KpiCardOverviewInput`
+  - `action-plan-table` — table block from actions array + callout
+  - `layered-architecture` — paragraph + bullet_list per layer + callout
+  - `data-insight-story` — paragraph for data summary, callouts for insight
+  - `two-column-comparison` — left/right paragraph + bullet_list pairs
+  - `three-point-summary` — 3 paragraphs from points array
+  - `one-message-summary` — callout for message + supporting text
+- **Trace/diagnostic fields** — `SlideIR._trace` now includes
+  `strategyInputMode`, `strategyInputSource`, `strategyInputWarnings`
+- **SlideSpecSchema extended** — `strategyInput` (unknown, optional) and
+  `strategyInputSource` enum added
+- **16 new tests** (strategy-input-native-layout.test.ts): native path for
+  all 7 strategies, legacy fallback, invalid input with warnings
+
 ### Fixed — deck-forge/core Phase 8D-fix: Harden StrategyInput
 
 - **JSON Schema conversion via Zod 4 `z.toJSONSchema()`** — centralized in

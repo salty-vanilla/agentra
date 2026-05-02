@@ -19,6 +19,7 @@ import {
   twoColumnStrategy,
 } from "#src/builders/layouts/index.js";
 import type { LayoutContext } from "#src/builders/layouts/index.js";
+import { normalizeLayoutResult } from "#src/builders/layouts/types.js";
 import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
 import type {
   ContentBlock,
@@ -217,7 +218,7 @@ describe("kpi-grid layout()", () => {
     ] as ContentBlock[];
     const ctx = makeContext(blocks);
 
-    const assignments = kpiGridStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(kpiGridStrategy.layout(ctx));
 
     expect(assignments).toHaveLength(4);
     // Top-left and top-right should share a y; bottom-left and bottom-right
@@ -240,7 +241,7 @@ describe("two-column layout()", () => {
     ] as ContentBlock[];
     const ctx = makeContext(blocks);
 
-    const assignments = twoColumnStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(twoColumnStrategy.layout(ctx));
     expect(assignments).toHaveLength(2);
 
     const bodyAssignment = assignments.find((a) => a.blockId === "p1");
@@ -264,7 +265,7 @@ describe("two-column layout()", () => {
       layoutSpec: { type: "single_column", density: "medium", emphasis: "left" },
     });
 
-    const assignments = twoColumnStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(twoColumnStrategy.layout(ctx));
     const bodyAssignment = assignments.find((a) => a.blockId === "p1");
     const imageAssignment = assignments.find((a) => a.blockId === "i1");
     if (!bodyAssignment || !imageAssignment) return;
@@ -283,7 +284,7 @@ describe("hero layout()", () => {
       layoutSpec: { type: "hero", density: "medium" },
     });
 
-    const assignments = heroStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(heroStrategy.layout(ctx));
     const imageAssignment = assignments.find((a) => a.blockId === "i1");
     const captionAssignment = assignments.find((a) => a.blockId === "p1");
     if (!imageAssignment || !captionAssignment) return;
@@ -380,7 +381,7 @@ describe("title-slide / section-divider strategies", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "title", density: "low" } },
     );
-    const assignments = titleSlideStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(titleSlideStrategy.layout(ctx));
     expect(assignments).toHaveLength(2);
     for (const a of assignments) {
       expect(a.hints?.alignment).toBe("center");
@@ -393,7 +394,7 @@ describe("title-slide / section-divider strategies", () => {
     });
     const strategy = selectLayoutStrategy(ctx);
     expect(strategy.id).toBe("section-divider");
-    const assignments = strategy.layout(ctx);
+    const assignments = normalizeLayoutResult(strategy.layout(ctx));
     expect(assignments[0]?.hints?.decoration).toBe("accent-bar");
   });
 });
@@ -422,7 +423,7 @@ describe("two-column-comparison strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "comparison", density: "medium" } },
     );
-    const assignments = twoColumnComparisonStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(twoColumnComparisonStrategy.layout(ctx));
     const a1 = assignments.find((a) => a.blockId === "a1");
     const b1 = assignments.find((a) => a.blockId === "b1");
     expect(a1 && b1).toBeTruthy();
@@ -438,7 +439,7 @@ describe("two-column-comparison strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "image_left_text_right", density: "medium" } },
     );
-    const assignments = twoColumnComparisonStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(twoColumnComparisonStrategy.layout(ctx));
     const image = assignments.find((a) => a.blockId === "i1");
     const body = assignments.find((a) => a.blockId === "p1");
     if (!image || !body) return;
@@ -457,7 +458,7 @@ describe("three-column strategy", () => {
       { layoutSpec: { type: "three_column", density: "medium" } },
     );
     expect(threeColumnStrategy.match(ctx)).toBe(true);
-    const xs = threeColumnStrategy.layout(ctx).map((a) => a.frame.x);
+    const xs = normalizeLayoutResult(threeColumnStrategy.layout(ctx)).map((a) => a.frame.x);
     expect(new Set(xs).size).toBe(3);
   });
 });
@@ -473,7 +474,7 @@ describe("two-axis-matrix strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "matrix", density: "medium" } },
     );
-    const assignments = twoAxisMatrixStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(twoAxisMatrixStrategy.layout(ctx));
     expect(assignments).toHaveLength(4);
     expect(new Set(assignments.map((a) => a.frame.x)).size).toBe(2);
     expect(new Set(assignments.map((a) => a.frame.y)).size).toBe(2);
@@ -493,7 +494,7 @@ describe("metric-tile-dashboard strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "dashboard", density: "medium" } },
     );
-    const assignments = metricTileDashboardStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(metricTileDashboardStrategy.layout(ctx));
     const m1 = assignments.find((a) => a.blockId === "m1");
     const t1 = assignments.find((a) => a.blockId === "t1");
     if (!m1 || !t1) return;
@@ -513,7 +514,7 @@ describe("event-timeline strategy", () => {
       { layoutSpec: { type: "timeline", density: "medium" } },
     );
     expect(eventTimelineStrategy.match(ctx)).toBe(true);
-    const assignments = eventTimelineStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(eventTimelineStrategy.layout(ctx));
     expect(new Set(assignments.map((a) => a.frame.x)).size).toBe(3);
     expect(new Set(assignments.map((a) => a.frame.y)).size).toBe(1);
   });
@@ -528,7 +529,7 @@ describe("diagram-focus strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "diagram_focus", density: "medium" } },
     );
-    const assignments = diagramFocusStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(diagramFocusStrategy.layout(ctx));
     const d1 = assignments.find((a) => a.blockId === "d1");
     const p1 = assignments.find((a) => a.blockId === "p1");
     if (!d1 || !p1) return;

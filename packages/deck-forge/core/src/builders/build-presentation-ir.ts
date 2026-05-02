@@ -1,4 +1,5 @@
 import { selectLayoutStrategy } from "#src/builders/layouts/index.js";
+import type { LayoutContext } from "#src/builders/layouts/types.js";
 import type { LayoutHints, SubFrameAssignment } from "#src/builders/layouts/index.js";
 import { contentContractToBlocks } from "#src/contracts/contract-to-blocks.js";
 import { frameOverlapRatio, framesEqual, stackFramesVertically } from "#src/geometry/frame-geometry.js";
@@ -155,7 +156,7 @@ function buildSlideIr(
     slideSize: DEFAULT_SLIDE_SIZE,
     regions: createResolvedRegions(slideSpec.layout, DEFAULT_SLIDE_SIZE),
   };
-  const { elements, layoutStrategyId, templateLayoutId, templateLayoutKind, usedSlots, fallbackSlots, selectedBy, preferredStrategyId: tracePrefId, archetype: traceArchetype } = buildElements(slideSpec, layout.spec, layout.regions, theme, templateProfile, usedElementIds);
+  const { elements, layoutStrategyId, templateLayoutId, templateLayoutKind, usedSlots, fallbackSlots, selectedBy, preferredStrategyId: tracePrefId, archetype: traceArchetype, strategyInputMode, strategyInputSource, strategyInputWarnings } = buildElements(slideSpec, layout.spec, layout.regions, theme, templateProfile, usedElementIds);
 
   // ── Post-build overlap detection & auto-fix ───────────────────────
   const fixedElements = fixOverlappingElements(elements, layout.slideSize, layout.regions);
@@ -180,6 +181,9 @@ function buildSlideIr(
       archetype: traceArchetype,
       preferredStrategyId: tracePrefId,
       selectedBy: selectedBy as "preferredStrategyId" | "deterministicSelector" | "fallback" | undefined,
+      strategyInputMode,
+      strategyInputSource,
+      ...(strategyInputWarnings && strategyInputWarnings.length > 0 && { strategyInputWarnings }),
     },
   };
 }
@@ -191,7 +195,7 @@ function buildElements(
   theme: ThemeSpec,
   templateProfile: TemplateProfile,
   usedElementIds: Set<string>,
-): { elements: SlideIR["elements"]; layoutStrategyId: string; templateLayoutId: string; templateLayoutKind: string; usedSlots: string[]; fallbackSlots: string[]; selectedBy?: string; preferredStrategyId?: string; archetype?: string } {
+): { elements: SlideIR["elements"]; layoutStrategyId: string; templateLayoutId: string; templateLayoutKind: string; usedSlots: string[]; fallbackSlots: string[]; selectedBy?: string; preferredStrategyId?: string; archetype?: string; strategyInputMode?: "native" | "legacy-fallback" | "invalid" | "missing"; strategyInputSource?: string; strategyInputWarnings?: string[] } {
   const content = [...slideSpec.content];
   const titleBlock = firstBlockByType(content, "title");
   const ensuredTitleText = titleBlock?.text || slideSpec.title;
@@ -268,7 +272,7 @@ function buildElements(
   const rawPlacedBlocks = content.filter(
     (block) => block.type !== "title" && block.type !== "subtitle",
   );
-  const placedBlocks = contractBlocks
+  let placedBlocks = contractBlocks
     ? contractBlocks.filter((b) => b.type !== "title" && b.type !== "subtitle")
     : rawPlacedBlocks;
 
@@ -291,6 +295,8 @@ function buildElements(
     templateProfile,
     templateLayout: { id: "blank", name: "Blank", kind: "blank", slots: {} },
     templateSlots: {},
+    strategyInput: slideSpec.strategyInput,
+    strategyInputSource: slideSpec.strategyInputSource ?? (slideSpec.strategyInput != null ? "attached" : "none"),
   });
 
   // 2. Resolve template layout based on strategy id
@@ -315,8 +321,33 @@ function buildElements(
     templateProfile,
     templateLayout,
     templateSlots,
+    strategyInput: slideSpec.strategyInput,
+    strategyInputSource: slideSpec.strategyInputSource ?? (slideSpec.strategyInput != null ? "attached" : "none") as LayoutContext["strategyInputSource"],
   };
-  const assignments = strategy.layout(layoutCtx);
+  const layoutResult = strategy.layout(layoutCtx);
+
+  // Normalize LayoutResult: plain array (legacy) or rich object (8E native)
+  let assignments: SubFrameAssignment[];
+  let strategyInputMode: "native" | "legacy-fallback" | "invalid" | "missing" | undefined;
+  let strategyInputWarnings: string[] | undefined;
+  if (Array.isArray(layoutResult)) {
+    assignments = layoutResult;
+    // Infer mode for non-migrated strategies
+    strategyInputMode = slideSpec.strategyInput != null ? "legacy-fallback" : undefined;
+  } else {
+    assignments = layoutResult.assignments;
+    strategyInputMode = layoutResult.strategyInputMode;
+    strategyInputWarnings = layoutResult.strategyInputWarnings;
+    // Replace placedBlocks with synthetic blocks if provided
+    if (layoutResult.syntheticBlocks && layoutResult.syntheticBlocks.length > 0) {
+      placedBlocks = layoutResult.syntheticBlocks.filter(
+        (b): b is Exclude<ContentBlock, { type: "title" } | { type: "subtitle" }> =>
+          b.type !== "title" && b.type !== "subtitle",
+      );
+    }
+  }
+
+  const strategyInputSourceTrace = slideSpec.strategyInputSource ?? (slideSpec.strategyInput != null ? "attached" : undefined);
 
   // Track which slots were actually used vs. expected but missing
   const usedSlotSet = new Set<TemplateSlotName>();
@@ -565,6 +596,9 @@ function buildElements(
     selectedBy: selTrace?.selectedBy,
     preferredStrategyId: selTrace?.preferredStrategyId,
     archetype: selTrace?.archetype,
+    strategyInputMode,
+    strategyInputSource: strategyInputSourceTrace,
+    strategyInputWarnings,
   };
 }
 

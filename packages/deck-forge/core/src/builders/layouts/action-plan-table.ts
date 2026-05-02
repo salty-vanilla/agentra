@@ -6,11 +6,15 @@ import {
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
 import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
+import { readStrategyInput } from "#src/builders/layouts/strategy-input-helpers.js";
+import type { ActionPlanTableInput } from "#src/strategy/strategy-input-schemas.js";
 import type {
   LayoutContext,
+  LayoutResult,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ContentBlock } from "#src/index.js";
 
 /**
  * Action Plan Table: generous-height action table with clear columns
@@ -24,12 +28,47 @@ export const actionPlanTableStrategy: LayoutStrategy = {
   priority: 75,
 
   match(ctx: LayoutContext): boolean {
+    if (ctx.strategyInput != null) {
+      const r = readStrategyInput<ActionPlanTableInput>({ strategyId: "action-plan-table", strategyInput: ctx.strategyInput });
+      if (r.ok) return true;
+    }
     if (!hasActionPlanSignals(ctx)) return false;
     if (!hasTable(ctx.blocks)) return false;
     return ctx.blocks.length <= 8;
   },
 
-  layout(ctx: LayoutContext): SubFrameAssignment[] {
+  layout(ctx: LayoutContext): LayoutResult {
+    const sir = readStrategyInput<ActionPlanTableInput>({ strategyId: "action-plan-table", strategyInput: ctx.strategyInput });
+    if (sir.ok && sir.input) {
+      const inp = sir.input;
+      const syntheticBlocks: ContentBlock[] = [];
+
+      syntheticBlocks.push({
+        id: "si-table-0",
+        type: "table",
+        headers: ["Action", "Owner", "Due Date", "Status"],
+        rows: inp.actions.map((a) => [a.action, a.owner ?? "", a.dueDate ?? "", a.status ?? ""]),
+      });
+
+      if (inp.keyTakeaway) {
+        syntheticBlocks.push({
+          id: "si-callout-0",
+          type: "callout",
+          text: inp.keyTakeaway,
+          tone: "info",
+        });
+      }
+
+      const nativeCtx = { ...ctx, blocks: syntheticBlocks };
+      const assignments = layoutBlocks(nativeCtx);
+      return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
+    }
+    const assignments = layoutBlocks(ctx);
+    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+  },
+};
+
+function layoutBlocks(ctx: LayoutContext): SubFrameAssignment[] {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
@@ -101,5 +140,4 @@ export const actionPlanTableStrategy: LayoutStrategy = {
     });
 
     return assignments;
-  },
-};
+}

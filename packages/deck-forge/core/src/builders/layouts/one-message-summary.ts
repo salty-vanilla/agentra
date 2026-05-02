@@ -6,11 +6,15 @@ import {
   mergeAllRegions,
   splitTopBottom,
 } from "#src/builders/layouts/business-utils.js";
+import { readStrategyInput } from "#src/builders/layouts/strategy-input-helpers.js";
+import type { OneMessageSummaryInput } from "#src/strategy/strategy-input-schemas.js";
 import type {
   LayoutContext,
+  LayoutResult,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ContentBlock } from "#src/index.js";
 
 /**
  * One-Message Summary: a single dominant key message with optional
@@ -23,6 +27,10 @@ export const oneMessageSummaryStrategy: LayoutStrategy = {
   priority: 75,
 
   match(ctx: LayoutContext): boolean {
+    if (ctx.strategyInput != null) {
+      const r = readStrategyInput<OneMessageSummaryInput>({ strategyId: "one-message-summary", strategyInput: ctx.strategyInput });
+      if (r.ok) return true;
+    }
     if (!isSummaryIntent(ctx)) return false;
     if (hasComplexVisuals(ctx.blocks)) return false;
     if (ctx.blocks.length > 4) return false;
@@ -34,7 +42,46 @@ export const oneMessageSummaryStrategy: LayoutStrategy = {
     return dominantCount >= 1;
   },
 
-  layout(ctx: LayoutContext): SubFrameAssignment[] {
+  layout(ctx: LayoutContext): LayoutResult {
+    const sir = readStrategyInput<OneMessageSummaryInput>({ strategyId: "one-message-summary", strategyInput: ctx.strategyInput });
+    if (sir.ok && sir.input) {
+      const inp = sir.input;
+      const syntheticBlocks: ContentBlock[] = [];
+
+      syntheticBlocks.push({
+        id: "si-callout-0",
+        type: "callout",
+        text: inp.message,
+        tone: "info",
+      });
+
+      if (inp.supportingText) {
+        syntheticBlocks.push({
+          id: "si-paragraph-0",
+          type: "paragraph",
+          text: inp.supportingText,
+        });
+      }
+
+      if (inp.callout) {
+        syntheticBlocks.push({
+          id: "si-callout-1",
+          type: "callout",
+          text: inp.callout,
+          tone: "info",
+        });
+      }
+
+      const nativeCtx = { ...ctx, blocks: syntheticBlocks };
+      const assignments = layoutBlocks(nativeCtx);
+      return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
+    }
+    const assignments = layoutBlocks(ctx);
+    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+  },
+};
+
+function layoutBlocks(ctx: LayoutContext): SubFrameAssignment[] {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
@@ -86,5 +133,4 @@ export const oneMessageSummaryStrategy: LayoutStrategy = {
     }
 
     return assignments;
-  },
-};
+}

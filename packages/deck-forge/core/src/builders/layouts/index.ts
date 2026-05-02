@@ -28,9 +28,12 @@ import type { LayoutContext, LayoutStrategy } from "#src/builders/layouts/types.
 export type {
   LayoutContext,
   LayoutHints,
+  LayoutResult,
   LayoutStrategy,
+  StrategyInputMode,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+export { normalizeLayoutResult } from "#src/builders/layouts/types.js";
 export {
   gapForDensity,
   splitVertical,

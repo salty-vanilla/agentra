@@ -7,11 +7,15 @@ import {
   splitMainSidebar,
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { readStrategyInput } from "#src/builders/layouts/strategy-input-helpers.js";
+import type { LayeredArchitectureInput } from "#src/strategy/strategy-input-schemas.js";
 import type {
   LayoutContext,
+  LayoutResult,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ContentBlock } from "#src/index.js";
 
 /**
  * Layered Architecture: horizontal layer bands stacked vertically with an
@@ -24,6 +28,10 @@ export const layeredArchitectureStrategy: LayoutStrategy = {
   priority: 75,
 
   match(ctx: LayoutContext): boolean {
+    if (ctx.strategyInput != null) {
+      const r = readStrategyInput<LayeredArchitectureInput>({ strategyId: "layered-architecture", strategyInput: ctx.strategyInput });
+      if (r.ok) return true;
+    }
     if (ctx.blocks.length > 10) return false;
     const hasSignals =
       hasArchitectureSignals(ctx) || isArchitectureIntent(ctx);
@@ -33,7 +41,44 @@ export const layeredArchitectureStrategy: LayoutStrategy = {
     return hasDiagram(ctx.blocks) || countBulletItems(ctx.blocks) >= 3;
   },
 
-  layout(ctx: LayoutContext): SubFrameAssignment[] {
+  layout(ctx: LayoutContext): LayoutResult {
+    const sir = readStrategyInput<LayeredArchitectureInput>({ strategyId: "layered-architecture", strategyInput: ctx.strategyInput });
+    if (sir.ok && sir.input) {
+      const inp = sir.input;
+      const syntheticBlocks: ContentBlock[] = [];
+
+      inp.layers.forEach((layer, li) => {
+        syntheticBlocks.push({
+          id: `si-paragraph-${li}`,
+          type: "paragraph",
+          text: layer.name + (layer.responsibility ? ` — ${layer.responsibility}` : ""),
+        });
+        syntheticBlocks.push({
+          id: `si-bullet_list-${li}`,
+          type: "bullet_list",
+          items: layer.components.map((c) => ({ text: c })),
+        });
+      });
+
+      if (inp.keyTakeaway) {
+        syntheticBlocks.push({
+          id: "si-callout-0",
+          type: "callout",
+          text: inp.keyTakeaway,
+          tone: "info",
+        });
+      }
+
+      const nativeCtx = { ...ctx, blocks: syntheticBlocks };
+      const assignments = layoutBlocks(nativeCtx);
+      return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
+    }
+    const assignments = layoutBlocks(ctx);
+    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+  },
+};
+
+function layoutBlocks(ctx: LayoutContext): SubFrameAssignment[] {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
@@ -141,5 +186,4 @@ export const layeredArchitectureStrategy: LayoutStrategy = {
     });
 
     return assignments;
-  },
-};
+}

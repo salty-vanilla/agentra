@@ -54,6 +54,15 @@ export type SubFrameAssignment = {
   hints?: LayoutHints;
 };
 
+/**
+ * Indicates how the layout strategy consumed its input data.
+ * - "native": valid StrategyInput was consumed directly
+ * - "legacy-fallback": fell back to contentBlocks (no valid strategyInput)
+ * - "invalid": strategyInput was present but failed validation
+ * - "missing": no strategyInput and no usable contentBlocks
+ */
+export type StrategyInputMode = "native" | "legacy-fallback" | "invalid" | "missing";
+
 /** Inputs every layout strategy receives. */
 export type LayoutContext = {
   slideSpec: SlideSpec;
@@ -81,6 +90,28 @@ export type LayoutContext = {
   templateProfile: TemplateProfile;
   templateLayout: TemplateLayoutProfile;
   templateSlots: Partial<Record<TemplateSlotName, ResolvedFrame>>;
+  /**
+   * Semantic strategy input attached by Phase 8D bridge or pipeline.
+   * If present, migrated strategies consume this directly instead of
+   * parsing contentBlocks.
+   */
+  strategyInput?: unknown;
+  /** How the strategyInput was produced. */
+  strategyInputSource?: "llm" | "deterministic" | "fallback" | "attached" | "none";
+};
+
+/**
+ * Result of a layout strategy's `layout()` call.
+ *
+ * Can be either a plain array of SubFrameAssignments (backward-compatible)
+ * or a richer result object when the strategy used StrategyInput natively.
+ */
+export type LayoutResult = SubFrameAssignment[] | {
+  assignments: SubFrameAssignment[];
+  /** Synthetic blocks generated from StrategyInput to be used by the element loop. */
+  syntheticBlocks?: ContentBlock[];
+  strategyInputMode: StrategyInputMode;
+  strategyInputWarnings?: string[];
 };
 
 /**
@@ -103,5 +134,10 @@ export interface LayoutStrategy {
   /** Returns true when this strategy can produce a layout for the slide. */
   match(ctx: LayoutContext): boolean;
   /** Produces frame assignments keyed by content block id. */
-  layout(ctx: LayoutContext): SubFrameAssignment[];
+  layout(ctx: LayoutContext): LayoutResult;
+}
+
+/** Extract the assignments array from a LayoutResult (array or object). */
+export function normalizeLayoutResult(result: LayoutResult): SubFrameAssignment[] {
+  return Array.isArray(result) ? result : result.assignments;
 }

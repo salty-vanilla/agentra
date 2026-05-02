@@ -8,11 +8,15 @@ import {
 } from "#src/builders/layouts/business-utils.js";
 import { splitVertical } from "#src/builders/layouts/grid-utils.js";
 import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
+import { readStrategyInput } from "#src/builders/layouts/strategy-input-helpers.js";
+import type { DataInsightStoryInput } from "#src/strategy/strategy-input-schemas.js";
 import type {
   LayoutContext,
+  LayoutResult,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ContentBlock } from "#src/index.js";
 
 /**
  * Data Insight Story: a chart or table as the primary visual with a
@@ -25,6 +29,10 @@ export const dataInsightStoryStrategy: LayoutStrategy = {
   priority: 75,
 
   match(ctx: LayoutContext): boolean {
+    if (ctx.strategyInput != null) {
+      const r = readStrategyInput<DataInsightStoryInput>({ strategyId: "data-insight-story", strategyInput: ctx.strategyInput });
+      if (r.ok) return true;
+    }
     if (!isDataInsightIntent(ctx)) return false;
     if (!(hasChart(ctx.blocks) || hasTable(ctx.blocks))) return false;
     const calloutCount = countByType(ctx.blocks, "callout");
@@ -33,7 +41,55 @@ export const dataInsightStoryStrategy: LayoutStrategy = {
     return ctx.blocks.length <= 10;
   },
 
-  layout(ctx: LayoutContext): SubFrameAssignment[] {
+  layout(ctx: LayoutContext): LayoutResult {
+    const sir = readStrategyInput<DataInsightStoryInput>({ strategyId: "data-insight-story", strategyInput: ctx.strategyInput });
+    if (sir.ok && sir.input) {
+      const inp = sir.input;
+      const syntheticBlocks: ContentBlock[] = [];
+
+      // Visual placeholder from dataSummary or visualTitle
+      syntheticBlocks.push({
+        id: "si-paragraph-0",
+        type: "paragraph",
+        text: inp.dataSummary ?? inp.visualTitle ?? "Data visual",
+      });
+
+      // Insight headline + detail as callout
+      const insightText = inp.insight.headline + (inp.insight.detail ? `\n${inp.insight.detail}` : "");
+      syntheticBlocks.push({
+        id: "si-callout-0",
+        type: "callout",
+        text: insightText,
+        tone: "info",
+      });
+
+      if (inp.insight.implication) {
+        syntheticBlocks.push({
+          id: "si-paragraph-1",
+          type: "paragraph",
+          text: inp.insight.implication,
+        });
+      }
+
+      if (inp.keyTakeaway) {
+        syntheticBlocks.push({
+          id: "si-callout-1",
+          type: "callout",
+          text: inp.keyTakeaway,
+          tone: "info",
+        });
+      }
+
+      const nativeCtx = { ...ctx, blocks: syntheticBlocks };
+      const assignments = layoutBlocks(nativeCtx);
+      return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
+    }
+    const assignments = layoutBlocks(ctx);
+    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+  },
+};
+
+function layoutBlocks(ctx: LayoutContext): SubFrameAssignment[] {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
@@ -111,5 +167,4 @@ export const dataInsightStoryStrategy: LayoutStrategy = {
     });
 
     return assignments;
-  },
-};
+}

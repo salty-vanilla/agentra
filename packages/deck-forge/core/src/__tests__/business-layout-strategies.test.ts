@@ -44,6 +44,7 @@ import { recommendationComparisonStrategy } from "#src/builders/layouts/recommen
 import { smallMultiplesTrendStrategy } from "#src/builders/layouts/small-multiples-trend.js";
 import { threePointSummaryStrategy } from "#src/builders/layouts/three-point-summary.js";
 import type { LayoutContext } from "#src/builders/layouts/index.js";
+import { normalizeLayoutResult } from "#src/builders/layouts/types.js";
 import { MIN_SUBFRAME_HEIGHT } from "#src/builders/layouts/grid-utils.js";
 import type { ContentBlock, SlideSpec, ThemeSpec } from "#src/index.js";
 import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
@@ -311,7 +312,7 @@ describe("kpi-card-overview strategy", () => {
       makeCallout("c1", "Key insight"),
     ];
     const ctx = makeContext(blocks);
-    const assignments = kpiCardOverviewStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(kpiCardOverviewStrategy.layout(ctx));
     expect(assignments).toHaveLength(4);
     for (const a of assignments) {
       expect(a.frame.width).toBeGreaterThan(0);
@@ -333,7 +334,7 @@ describe("kpi-card-overview strategy", () => {
       makeCallout("c1", "insight"),
     ];
     const ctx = makeContext(blocks);
-    const assignments = kpiCardOverviewStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(kpiCardOverviewStrategy.layout(ctx));
     const metricAssignments = assignments.filter((a) => a.blockId.startsWith("m"));
     for (const a of metricAssignments) {
       expect(a.hints?.decoration).toBe("card");
@@ -392,7 +393,7 @@ describe("kpi-dashboard-with-insight strategy", () => {
       makeCallout("c1", "Key insight"),
     ];
     const ctx = makeContext(blocks);
-    const assignments = kpiDashboardWithInsightStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(kpiDashboardWithInsightStrategy.layout(ctx));
     expect(assignments).toHaveLength(4);
     for (const a of assignments) {
       expect(a.frame.width).toBeGreaterThan(0);
@@ -446,7 +447,7 @@ describe("small-multiples-trend strategy", () => {
     const ctx = makeContext(blocks, {
       slideSpec: { intent: { type: "data_insight", keyMessage: "x", audienceTakeaway: "x" } },
     });
-    const assignments = smallMultiplesTrendStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(smallMultiplesTrendStrategy.layout(ctx));
     expect(assignments).toHaveLength(3);
     for (const a of assignments) {
       expect(a.frame.width).toBeGreaterThan(0);
@@ -514,7 +515,7 @@ describe("process-flow-with-impact strategy", () => {
     const ctx = makeContext(blocks, {
       slideSpec: { intent: { type: "process", keyMessage: "x", audienceTakeaway: "x" } },
     });
-    const assignments = processFlowWithImpactStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(processFlowWithImpactStrategy.layout(ctx));
     expect(assignments).toHaveLength(4);
     for (const a of assignments) {
       expect(a.frame.width).toBeGreaterThan(0);
@@ -574,7 +575,7 @@ describe("action-plan-table strategy", () => {
       makeCallout("c1", "Please approve"),
     ];
     const ctx = makeContext(blocks, { slideSpec: { title: "Action Plan" } });
-    const assignments = actionPlanTableStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(actionPlanTableStrategy.layout(ctx));
     expect(assignments).toHaveLength(2);
     for (const a of assignments) {
       expect(a.frame.width).toBeGreaterThan(0);
@@ -986,7 +987,7 @@ describe("decision-request strategy", () => {
         },
       },
     );
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
     expect(assignments.length).toBe(3);
 
     // Decision callout should have prominent hints
@@ -1016,7 +1017,7 @@ describe("decision-request strategy", () => {
         },
       },
     );
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
     expect(assignments.length).toBe(2);
 
     // First block gets decision treatment
@@ -1065,7 +1066,7 @@ describe("decision-request strategy", () => {
       makeMetric("m1", "投資額", "¥200M"),
       makeParagraph("p1", "承認後に実施"),
     ]);
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
 
     const ctaAssignment = assignments.find((a) => a.blockId === "c1");
     expect(ctaAssignment?.slot).toBe("cta");
@@ -1077,7 +1078,7 @@ describe("decision-request strategy", () => {
       makeMetric("m1", "ROI", "35%"),
       makeMetric("m2", "回収期間", "14ヶ月"),
     ]);
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
 
     const metricAssignments = assignments.filter(
       (a) => a.blockId === "m1" || a.blockId === "m2",
@@ -1092,7 +1093,7 @@ describe("decision-request strategy", () => {
       makeCallout("c1", "承認依頼"),
       makeParagraph("p1", "承認後の実施事項"),
     ]);
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
 
     const pAssignment = assignments.find((a) => a.blockId === "p1");
     expect(pAssignment?.slot).toBe("supporting");
@@ -1103,7 +1104,7 @@ describe("decision-request strategy", () => {
       makeCallout("c1", "承認依頼"),
       makeTable("t1"),
     ]);
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
 
     for (const a of assignments) {
       expect(a.fallbackSlots ?? []).not.toContain("table");
@@ -1115,7 +1116,7 @@ describe("decision-request strategy", () => {
       makeCallout("c1", "承認依頼"),
       makeTable("t1"),
     ]);
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
 
     const tableAssignment = assignments.find((a) => a.blockId === "t1");
     expect(tableAssignment).toBeDefined();
@@ -1133,7 +1134,7 @@ describe("decision-request strategy", () => {
       makeMetric("m1", "ROI", "35%"),
       makeParagraph("p1", "補足"),
     ]);
-    const assignments = decisionRequestStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(decisionRequestStrategy.layout(ctx));
     for (const a of assignments) {
       expect(a.frame.width).toBeGreaterThan(0);
       expect(a.frame.height).toBeGreaterThan(0);
@@ -1238,7 +1239,7 @@ describe("data-insight-story strategy", () => {
         },
       },
     );
-    const assignments = dataInsightStoryStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(dataInsightStoryStrategy.layout(ctx));
     expect(assignments.length).toBe(3);
 
     // Chart should be above insight blocks
@@ -1355,7 +1356,7 @@ describe("recommendation-comparison strategy", () => {
         },
       },
     );
-    const assignments = recommendationComparisonStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(recommendationComparisonStrategy.layout(ctx));
     expect(assignments.length).toBe(3);
 
     // Callout in sidebar with recommendation hints
@@ -1450,7 +1451,7 @@ describe("option-comparison-table strategy", () => {
         },
       },
     );
-    const assignments = optionComparisonTableStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(optionComparisonTableStrategy.layout(ctx));
     expect(assignments.length).toBe(2);
 
     // Table above summary
@@ -1479,7 +1480,7 @@ describe("option-comparison-table strategy", () => {
         },
       },
     );
-    const assignments = optionComparisonTableStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(optionComparisonTableStrategy.layout(ctx));
     expect(assignments.length).toBe(1);
     expect(assignments[0]!.frame.width).toBeGreaterThan(0);
   });
@@ -1681,7 +1682,7 @@ describe("one-message-summary strategy", () => {
         },
       },
     );
-    const assignments = oneMessageSummaryStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(oneMessageSummaryStrategy.layout(ctx));
     expect(assignments.length).toBe(1);
     expect(assignments[0]!.hints?.fontScale).toBe(1.3);
     expect(assignments[0]!.hints?.alignment).toBe("center");
@@ -1702,7 +1703,7 @@ describe("one-message-summary strategy", () => {
         },
       },
     );
-    const assignments = oneMessageSummaryStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(oneMessageSummaryStrategy.layout(ctx));
     expect(assignments.length).toBe(3);
 
     // Key message above supporting cards
@@ -1781,7 +1782,7 @@ describe("three-point-summary strategy", () => {
       makeCallout("c1", "Pillar B"),
       makeMetric("m1", "Pillar C", "100"),
     ]);
-    const assignments = threePointSummaryStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(threePointSummaryStrategy.layout(ctx));
     expect(assignments.length).toBe(3);
 
     // All should have card decoration
@@ -1797,7 +1798,7 @@ describe("three-point-summary strategy", () => {
     const ctx = makeContext([
       makeBulletList("b1", ["First", "Second", "Third"]),
     ]);
-    const assignments = threePointSummaryStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(threePointSummaryStrategy.layout(ctx));
     expect(assignments.length).toBe(1);
     expect(assignments[0]!.hints?.decoration).toBe("card");
   });
@@ -1917,7 +1918,7 @@ describe("implementation-roadmap strategy", () => {
         },
       },
     );
-    const assignments = implementationRoadmapStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(implementationRoadmapStrategy.layout(ctx));
     expect(assignments.length).toBe(4);
 
     // Phase blocks should have card decoration
@@ -2046,7 +2047,7 @@ describe("layered-architecture strategy", () => {
         },
       },
     );
-    const assignments = layeredArchitectureStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(layeredArchitectureStrategy.layout(ctx));
     expect(assignments.length).toBe(2);
 
     // Diagram should be in main (wider) region
@@ -2077,7 +2078,7 @@ describe("layered-architecture strategy", () => {
         },
       },
     );
-    const assignments = layeredArchitectureStrategy.layout(ctx);
+    const assignments = normalizeLayoutResult(layeredArchitectureStrategy.layout(ctx));
     expect(assignments.length).toBe(3);
 
     // All should have card decoration
