@@ -9,6 +9,27 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 8F: Complete StrategyInput-native migration
+
+- **All 17 built-in strategies now have StrategyInput-native path** —
+  remaining 10 strategies migrated:
+  - `kpi-dashboard-with-insight` — metrics + chart (trend) + callout (insight)
+  - `decision-request` — callout (decision) + paragraph (context) + options + recommendation
+  - `recommendation-comparison` — table (options × criteria) + callout (recommendation)
+  - `process-flow-with-impact` — paragraph per step + metric (bottleneck) + callout
+  - `implementation-roadmap` — paragraph per milestone (label + phase) + callout
+  - `small-multiples-trend` — chart blocks (line) per trend + callout
+  - `option-comparison-table` — table (options × criteria) + callout (recommendation)
+  - `metric-tile-dashboard` — metric blocks per tile + callout
+  - `event-timeline` — paragraph per event (label + date) + callout
+  - `two-axis-matrix` — paragraph per item (positioned by x/y) + callout
+- **Coverage test** — verifies all 17 built-in strategy IDs are native-capable
+- **Invalid input parameterized test** — all 10 newly migrated strategies
+  tested for invalid-input graceful handling (mode: "invalid")
+- **33 new tests** (strategy-input-phase8f.test.ts): native path for all 10
+  strategies, coverage assertion, invalid input across all 10
+- Total: 1129 pass, 1 pre-existing fail (unrelated pptx margin)
+
 ### Fixed — deck-forge/core Phase 8E-fix: Clarify native layout trace semantics
 
 - **`"invalid-fallback"` mode added** — `StrategyInputMode` now distinguishes
