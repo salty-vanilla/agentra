@@ -9,6 +9,27 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Changed — deck-forge/core Phase 8F-cleanup: Remove obsolete legacy strategy plumbing
+
+- **Deprecation markers** — `LayoutContext.blocks`, `LayoutResult` array form,
+  `LayoutStrategy.capability`, normalizers barrel, archetype maps all marked
+  transitional with `TODO(Phase 8H+)` removal targets
+- **ARCHETYPE_TO_PREFERRED_STRATEGY_ID** (index.ts) and
+  `ARCHETYPE_TO_STRATEGY_ID` (archetype-bridge.ts) marked transitional bridge
+- **Normalizers** (`normalize-kpi-summary`, `normalize-decision-request`)
+  barrel marked as transitional fallback-only helpers
+- **Ghost file deleted** — `executive-summary-kpi.ts` (dead code, not imported)
+  already removed prior to this commit
+- **54 new tests** (strategy-input-cleanup.test.ts):
+  - Native wins over conflicting contentBlocks (5 representative strategies)
+  - Fallback-only contentBlocks path
+  - Missing + no fallback (5 strategies)
+  - Invalid + fallback → invalid-fallback (5 strategies)
+  - Invalid + no fallback → invalid (5 strategies)
+  - No placeholder generation in layout strategy source files (28 files)
+  - No old strategy IDs in production code (3 assertions)
+- Total: 1183 pass, 1 pre-existing fail (unrelated pptx margin)
+
 ### Added — deck-forge/core Phase 8F: Complete StrategyInput-native migration
 
 - **All 17 built-in strategies now have StrategyInput-native path** —

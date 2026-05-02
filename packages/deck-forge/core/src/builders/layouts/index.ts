@@ -103,8 +103,13 @@ export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freez
 ]);
 
 /**
- * Archetype → preferred strategy ID mapping.
- * Used when a SlideSpec has an archetype but no explicit preferredStrategyId.
+ * Transitional bridge only.
+ *
+ * New pipeline should use SlideIntent → StrategySelection → StrategyInput.
+ * This map remains only for older pipelines that set `SlideSpec.archetype`
+ * without an explicit `preferredStrategyId`.
+ *
+ * TODO(Phase 8H): remove archetype-to-strategy mapping.
  */
 const ARCHETYPE_TO_PREFERRED_STRATEGY_ID: Record<string, string> = {
   title: "title-slide",

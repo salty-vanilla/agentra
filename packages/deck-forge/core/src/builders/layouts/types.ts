@@ -72,9 +72,13 @@ export type LayoutContext = {
   theme: ThemeSpec;
   slideSize: SlideSize;
   /**
-   * Content blocks the strategy is responsible for placing.  The
-   * outer builder removes title/subtitle blocks and feeds the strategy the
-   * remaining body / table / image / callout / metric / etc. blocks.
+   * Transitional fallback content blocks.
+   *
+   * Built-in strategies should prefer `strategyInput`. This field remains
+   * only to support older pipelines during migration. When a valid
+   * `strategyInput` exists, strategies MUST NOT inspect these blocks.
+   *
+   * TODO(Phase 8H+): remove after runtime emits StrategyInput for all slides.
    */
   blocks: ContentBlock[];
   /**
@@ -104,12 +108,13 @@ export type LayoutContext = {
 /**
  * Result of a layout strategy's `layout()` call.
  *
- * Can be either a plain array of SubFrameAssignments (backward-compatible)
- * or a richer result object when the strategy used StrategyInput natively.
+ * Can be either a plain array of SubFrameAssignments (transitional legacy)
+ * or a richer result object with StrategyInput trace metadata.
  *
  * @transitional The plain `SubFrameAssignment[]` form is kept only for
- * strategies not yet migrated to StrategyInput-native rendering.
- * TODO(Phase 8F+): migrate remaining strategies and require the rich object form.
+ * non-business utility strategies (title-slide, section-divider, etc.).
+ * All 17 business strategies now return the rich object form.
+ * TODO(Phase 8H+): collapse LayoutResult after contentBlocks fallback is removed.
  */
 export type LayoutResult = SubFrameAssignment[] | {
   assignments: SubFrameAssignment[];
@@ -129,9 +134,13 @@ export interface LayoutStrategy {
   /** Stable identifier; mirrors `ComponentSpec.id` where applicable. */
   id: string;
   /**
-   * Human-readable capability name; mirrors `detectCapability()` output.
-   * @legacy This is NOT the same as `StrategyManifest.capabilities`.
-   * TODO(Phase 8C+): unify or remove once manifest-driven selection is complete.
+   * Legacy visual capability key.
+   *
+   * Not the same as `StrategyManifest.capabilities`.
+   * Prefer StrategyManifest + strategyId for new selection code.
+   *
+   * @legacy Used only by component-catalog; not used for strategy selection.
+   * TODO(Phase 8H+): remove after selector no longer depends on capability dispatch.
    */
   capability: string;
   /** Higher number = considered first by `selectLayoutStrategy()`. */

@@ -38,6 +38,15 @@ const ARCHETYPE_INTENT_MAP: Record<
  * Maps old archetype names to preferred strategy IDs.
  * Used only as a preferredStrategyId hint in the bridge.
  */
+/**
+ * Transitional bridge only.
+ *
+ * New pipeline should use SlideIntent → StrategySelection → StrategyInput.
+ * Duplicated from index.ts ARCHETYPE_TO_PREFERRED_STRATEGY_ID for the
+ * createSlideIntentFromArchetype() entry point.
+ *
+ * TODO(Phase 8H): remove archetype-to-strategy mapping.
+ */
 const ARCHETYPE_TO_STRATEGY_ID: Record<string, string> = {
   title: "title-slide",
   kpi_summary: "kpi-card-overview",
