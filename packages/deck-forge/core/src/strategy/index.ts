@@ -66,6 +66,54 @@ export { applyStrategySelectionToSlideSpec } from "#src/strategy/strategy-select
 export type { StrategySelectionTrace } from "#src/strategy/strategy-selection-trace.js";
 export { toStrategySelectionTrace } from "#src/strategy/strategy-selection-trace.js";
 
+// Phase 8D: StrategyInput schemas, validation, generator, prompt, bridge
+export { STRATEGY_INPUT_SCHEMAS } from "#src/strategy/strategy-input-schemas.js";
+export type {
+  KpiCardOverviewInput,
+  KpiDashboardWithInsightInput,
+  DecisionRequestInput,
+  RecommendationComparisonInput,
+  ActionPlanTableInput,
+  ProcessFlowWithImpactInput,
+  ImplementationRoadmapInput,
+  LayeredArchitectureInput,
+  DataInsightStoryInput,
+  SmallMultiplesTrendInput,
+  OptionComparisonTableInput,
+  OneMessageSummaryInput,
+  ThreePointSummaryInput,
+  TwoColumnComparisonInput,
+  EventTimelineInput,
+  MetricTileDashboardInput,
+  TwoAxisMatrixInput,
+  KpiMetric,
+  ActionItem,
+  Option,
+  TimelineItem,
+  Insight,
+  Status,
+  Trend,
+  Priority,
+} from "#src/strategy/strategy-input-schemas.js";
+
+export type { StrategyInputValidationResult } from "#src/strategy/strategy-input-validation.js";
+export { validateStrategyInput } from "#src/strategy/strategy-input-validation.js";
+
+export type {
+  StrategyInputGenerationInput,
+  StrategyInputGenerationResult,
+  StrategyInputGenerator,
+} from "#src/strategy/strategy-input-generator.js";
+export { DeterministicStrategyInputGenerator } from "#src/strategy/strategy-input-generator.js";
+
+export type { StrategyInputPrompt } from "#src/strategy/strategy-input-prompt.js";
+export {
+  buildStrategyInputPrompt,
+  validateLlmStrategyInputResponse,
+} from "#src/strategy/strategy-input-prompt.js";
+
+export { applyStrategyInputToSlideSpec } from "#src/strategy/strategy-input-to-slide-spec.js";
+
 export {
   kpiCardOverviewManifest,
   kpiDashboardWithInsightManifest,

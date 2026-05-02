@@ -9,6 +9,26 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 8D: StrategyInput Schemas
+
+- **Input schemas for all 17 built-in strategies** — Zod-validated semantic
+  input shapes attached to each StrategyManifest via `inputSchema` field
+- **Shared primitives** — `KpiMetric`, `ActionItem`, `Option`,
+  `TimelineItem`, `Insight`, `Status`, `Trend`, `Priority` schemas
+- **`STRATEGY_INPUT_SCHEMAS`** — map of strategy ID → Zod schema
+- **`validateStrategyInput()`** — validates any value against the schema
+  for a given strategyId
+- **`DeterministicStrategyInputGenerator`** — produces minimal valid
+  semantic input for all 17 strategies from `slideIntent.keyMessage`
+- **`buildStrategyInputPrompt()`** — LLM prompt builder for StrategyInput
+  generation (instruction forbids coordinates/rendering)
+- **`validateLlmStrategyInputResponse()`** — delegates to schema validation
+- **`applyStrategyInputToSlideSpec()`** — bridge that attaches
+  `strategyInput` and `preferredStrategyId` to existing SlideSpec objects
+- **81 new tests** — schema coverage (2), per-strategy validation (34),
+  deterministic generator (34), LLM prompt (4), LLM response validation (3),
+  SlideSpec bridge (3), no rendering keys (17 per-strategy)
+
 ### Added — deck-forge/core Phase 8C: Strategy Selector
 
 - **`StrategySelector` interface** — `select(input) → StrategySelection`

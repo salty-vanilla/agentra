@@ -902,6 +902,23 @@ export {
   applyStrategySelectionToSlideSpec,
   toStrategySelectionTrace,
 } from "#src/strategy/index.js";
+
+// Phase 8D: StrategyInput schemas, validation, generator, prompt, bridge
+export { STRATEGY_INPUT_SCHEMAS } from "#src/strategy/index.js";
+export type {
+  StrategyInputValidationResult,
+  StrategyInputGenerationInput,
+  StrategyInputGenerationResult,
+  StrategyInputGenerator,
+  StrategyInputPrompt,
+} from "#src/strategy/index.js";
+export {
+  validateStrategyInput,
+  DeterministicStrategyInputGenerator,
+  buildStrategyInputPrompt,
+  validateLlmStrategyInputResponse,
+  applyStrategyInputToSlideSpec,
+} from "#src/strategy/index.js";
 export {
   kpiCardOverviewManifest,
   kpiDashboardWithInsightManifest,

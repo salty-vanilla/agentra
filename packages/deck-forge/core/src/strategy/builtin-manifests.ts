@@ -6,6 +6,25 @@
  */
 
 import type { StrategyManifest } from "#src/strategy/manifest.js";
+import {
+  KpiCardOverviewInputSchema,
+  KpiDashboardWithInsightInputSchema,
+  DecisionRequestInputSchema,
+  RecommendationComparisonInputSchema,
+  ActionPlanTableInputSchema,
+  ProcessFlowWithImpactInputSchema,
+  ImplementationRoadmapInputSchema,
+  LayeredArchitectureInputSchema,
+  DataInsightStoryInputSchema,
+  SmallMultiplesTrendInputSchema,
+  OptionComparisonTableInputSchema,
+  OneMessageSummaryInputSchema,
+  ThreePointSummaryInputSchema,
+  TwoColumnComparisonInputSchema,
+  EventTimelineInputSchema,
+  MetricTileDashboardInputSchema,
+  TwoAxisMatrixInputSchema,
+} from "#src/strategy/strategy-input-schemas.js";
 
 // ---------------------------------------------------------------------------
 // kpi-card-overview
@@ -19,6 +38,7 @@ export const kpiCardOverviewManifest: StrategyManifest = {
   intents: ["summarize", "report"],
   contentKinds: ["kpi", "summary"],
   density: "medium",
+  inputSchema: KpiCardOverviewInputSchema,
   chooseWhen: [
     "Use when 3–6 metrics need to be reviewed on one slide.",
     "Use when the audience needs to quickly judge whether the current state is good or bad.",
@@ -45,6 +65,7 @@ export const kpiDashboardWithInsightManifest: StrategyManifest = {
   intents: ["report", "summarize", "decide"],
   contentKinds: ["kpi", "chart", "summary"],
   density: "high",
+  inputSchema: KpiDashboardWithInsightInputSchema,
   chooseWhen: [
     "Use when metrics, trends, and interpretation must be shown together.",
     "Use when the slide should explain not only what changed, but why it matters.",
@@ -71,6 +92,7 @@ export const decisionRequestManifest: StrategyManifest = {
   intents: ["decide", "persuade"],
   contentKinds: ["decision", "action-plan"],
   density: "medium",
+  inputSchema: DecisionRequestInputSchema,
   chooseWhen: [
     "Use when an approval or decision is needed from the audience.",
     "Use when supporting evidence must be compact so focus stays on the ask.",
@@ -97,6 +119,7 @@ export const recommendationComparisonManifest: StrategyManifest = {
   intents: ["compare", "decide", "persuade"],
   contentKinds: ["comparison", "decision"],
   density: "medium",
+  inputSchema: RecommendationComparisonInputSchema,
   chooseWhen: [
     "Use when 2–3 options need to be compared with a clear winner.",
     "Use when the recommendation must stand out visually.",
@@ -123,6 +146,7 @@ export const actionPlanTableManifest: StrategyManifest = {
   intents: ["plan", "report", "review"],
   contentKinds: ["action-plan", "table"],
   density: "high",
+  inputSchema: ActionPlanTableInputSchema,
   chooseWhen: [
     "Use when concrete action items need to be enumerated.",
     "Use when ownership, deadlines, and progress must be tracked visually.",
@@ -149,6 +173,7 @@ export const processFlowWithImpactManifest: StrategyManifest = {
   intents: ["explain", "diagnose", "plan"],
   contentKinds: ["process", "flow"],
   density: "medium",
+  inputSchema: ProcessFlowWithImpactInputSchema,
   chooseWhen: [
     "Use when 3–6 process steps need to be shown in sequence.",
     "Use when bottlenecks or improvement points should be highlighted.",
@@ -175,6 +200,7 @@ export const implementationRoadmapManifest: StrategyManifest = {
   intents: ["plan", "report", "explain"],
   contentKinds: ["timeline", "action-plan"],
   density: "medium",
+  inputSchema: ImplementationRoadmapInputSchema,
   chooseWhen: [
     "Use when a phased plan with milestones needs to be communicated.",
     "Use when progress across multiple phases should be shown at a glance.",
@@ -201,6 +227,7 @@ export const layeredArchitectureManifest: StrategyManifest = {
   intents: ["explain", "review"],
   contentKinds: ["architecture"],
   density: "medium",
+  inputSchema: LayeredArchitectureInputSchema,
   chooseWhen: [
     "Use when the system is best explained as a stack of layers.",
     "Use when dependencies or responsibilities are organized vertically.",
@@ -227,6 +254,7 @@ export const dataInsightStoryManifest: StrategyManifest = {
   intents: ["explain", "summarize", "report"],
   contentKinds: ["chart", "research-result", "summary"],
   density: "medium",
+  inputSchema: DataInsightStoryInputSchema,
   chooseWhen: [
     "Use when a chart or analysis result needs to be paired with an explanation.",
     "Use when the key message is a data-driven conclusion.",
@@ -253,6 +281,7 @@ export const smallMultiplesTrendManifest: StrategyManifest = {
   intents: ["compare", "report"],
   contentKinds: ["chart", "kpi"],
   density: "high",
+  inputSchema: SmallMultiplesTrendInputSchema,
   chooseWhen: [
     "Use when 2–4 time-series need to be compared in parallel.",
     "Use when small-multiples layout is the most readable form.",
@@ -279,6 +308,7 @@ export const optionComparisonTableManifest: StrategyManifest = {
   intents: ["compare", "decide"],
   contentKinds: ["comparison", "table"],
   density: "high",
+  inputSchema: OptionComparisonTableInputSchema,
   chooseWhen: [
     "Use when 3 or more evaluation axes are needed to compare options.",
     "Use when a table is the clearest representation.",
@@ -305,6 +335,7 @@ export const oneMessageSummaryManifest: StrategyManifest = {
   intents: ["summarize", "persuade"],
   contentKinds: ["summary"],
   density: "low",
+  inputSchema: OneMessageSummaryInputSchema,
   chooseWhen: [
     "Use when one sentence must carry the entire slide.",
     "Use when impact and memorability outweigh information density.",
@@ -331,6 +362,7 @@ export const threePointSummaryManifest: StrategyManifest = {
   intents: ["summarize", "explain", "teach"],
   contentKinds: ["summary"],
   density: "low",
+  inputSchema: ThreePointSummaryInputSchema,
   chooseWhen: [
     "Use when exactly three takeaways or pillars need to be communicated.",
     "Use when brevity and memorability are more important than depth.",
@@ -357,6 +389,7 @@ export const twoColumnComparisonManifest: StrategyManifest = {
   intents: ["compare", "explain"],
   contentKinds: ["comparison"],
   density: "medium",
+  inputSchema: TwoColumnComparisonInputSchema,
   chooseWhen: [
     "Use when exactly two items need Before/After or A/B comparison.",
     "Use when a left-right split makes the difference immediately obvious.",
@@ -381,6 +414,7 @@ export const eventTimelineManifest: StrategyManifest = {
   intents: ["plan", "report", "explain"],
   contentKinds: ["timeline"],
   density: "medium",
+  inputSchema: EventTimelineInputSchema,
   chooseWhen: [
     "Use when a chronological sequence of events must be communicated.",
     "Use when the timeline is lighter than a full implementation roadmap.",
@@ -406,6 +440,7 @@ export const metricTileDashboardManifest: StrategyManifest = {
   intents: ["report", "summarize"],
   contentKinds: ["kpi", "summary"],
   density: "high",
+  inputSchema: MetricTileDashboardInputSchema,
   chooseWhen: [
     "Use when many metrics or status items must be scanned at once.",
     "Use when breadth and monitoring-style overview are more important than a narrative story.",
@@ -432,6 +467,7 @@ export const twoAxisMatrixManifest: StrategyManifest = {
   intents: ["compare", "explain", "decide"],
   contentKinds: ["comparison", "risk"],
   density: "medium",
+  inputSchema: TwoAxisMatrixInputSchema,
   chooseWhen: [
     "Use when items need to be classified along two independent axes.",
     "Use when a priority or risk matrix is the best visualization.",
