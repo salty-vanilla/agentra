@@ -9,6 +9,75 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge Phase 7.6: Diagnostics-driven Layout Stabilization
+
+- **Phase 7.6A: Operation diagnostics granularity**
+  - `OperationRepairCategory` type with 9 categories: `layout_frame`,
+    `layout_position`, `layout_size`, `visual_font`, `visual_style`,
+    `content_text`, `content_delete`, `content_add`, `unknown`
+  - `operationsByRepairCategory` added to `OperationDiagnosticsSummary`
+  - `layoutRepairRatio`, `visualPolishRatio`, `contentRewriteRatio` —
+    ratio fields for quick triage
+  - `topSlidesByOperations` / `topOperationTypes` — sorted descending
+  - Classification priority: delete → font → frame → position → size →
+    style → add → text → unknown (handles ambiguity: `remove_slide`,
+    `fontSize`, `add_border`)
+  - 11 new operation diagnostics tests
+
+- **Phase 7.6B: Deck stabilization diagnostics**
+  - New `analyzeDeckStabilization()` API in
+    `diagnostics/stabilization-diagnostics.ts` — integrates layout +
+    operation diagnostics into a single assessment
+  - `DeckStabilizationDiagnostics` — `status` (stable / needs_attention /
+    unstable), `score` (0–100, deduction-based), `reasons`, `hotspots`,
+    `recommendations`
+  - `SlideStabilizationHotspot` — per-slide breakdown with operation counts,
+    fallback slots, overlap/out-of-bounds, severity
+  - `StabilizationRecommendation` — 7 codes: `reduce_layout_repair`,
+    `fix_template_slots`, `split_dense_slide`, `add_template_layout`,
+    `improve_renderer_variant`, `review_strategy_mapping`, `ready_for_phase_8`
+  - 10 new stabilization diagnostics tests
+
+- **Phase 7.6C: Runtime logging integration**
+  - `diagnostics` log event after design-review-loop-complete with
+    `stabilizationScore`, `stabilizationStatus`, ratios,
+    `topSlidesByOperations`, `recommendationCodes`
+  - `stabilization-diagnostics.json` uploaded to S3 artifact bundle
+  - `stabilizationDiagnosticsS3Uri` added to `DeckForgeArtifact` type
+
+- **Phase 7.6D: approval-with-kpi-sidecar layout**
+  - New `approval-with-kpi-sidecar` layout in `executive-navy-v1`
+    (22 layouts total) with `title`, `cta`, `main`, `metrics`,
+    `supporting`, `footer` slots
+  - `decision-request` strategy now maps to `approval-with-kpi-sidecar`
+    (was `table-with-cta`)
+
+### Added — deck-forge/core Phase 7.5: Template Layout Profile Expansion
+
+- **12 new TemplateLayoutProfiles** in `executive-navy-v1` (9 → 21 total):
+  `content-with-sidebar`, `content-with-callout`, `visual-left-insight-right`,
+  `visual-top-insight-bottom`, `dashboard-cards-with-chart`, `table-with-cta`,
+  `comparison-two-column`, `roadmap-horizontal`, `process-with-impact`,
+  `architecture-layered`, `matrix-with-insight`, `message-focus`
+- **5 new `TemplateLayoutKind` values** — `comparison`, `roadmap`,
+  `architecture`, `matrix`, `message`
+- **7 new `TemplateSlotName` values** — `sidebar`, `milestones`,
+  `architecture`, `matrix`, `impact`, `message`, `supporting`
+- **`resolveTemplateLayout` mapping updates**
+  - Strategy mappings: `kpi-dashboard-with-insight` → `dashboard-cards-with-chart`,
+    `data-insight-story` → `visual-left-insight-right`,
+    `small-multiples-trend` → `visual-top-insight-bottom`,
+    `process-flow-with-impact` → `process-with-impact`,
+    `implementation-roadmap` → `roadmap-horizontal`,
+    `action-plan-table` / `decision-request` → `table-with-cta`,
+    `layered-architecture` → `architecture-layered`
+  - Generic layout type entries: `timeline`, `comparison`, `matrix`,
+    `diagram_focus`, `text_left_image_right`, `image_left_text_right`
+- **Strategy slot preferences** — `process-flow-with-impact` prefers
+  `impact` slot; `implementation-roadmap` prefers `milestones` slot
+- **4 coverage tests** — no duplicate ids, title+footer on non-blank,
+  slot bounds, slot overlap (frameOverlapRatio < 0.08)
+
 ### Added — deck-forge/core Phase 7C: Layout Diagnostics / Deploy Readiness / Operation Analysis
 
 - **`diagnostics/layout-diagnostics.ts`** — new module with `analyzeSlideLayout()` and

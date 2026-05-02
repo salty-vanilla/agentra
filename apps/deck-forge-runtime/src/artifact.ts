@@ -340,7 +340,9 @@ export async function publishArtifactIfNeeded(
     assetCount,
     ...(visionReviewS3Uri !== undefined ? { visionReviewS3Uri } : {}),
     ...(designReviewS3Uri !== undefined ? { designReviewS3Uri } : {}),
-    ...(stabilizationDiagnosticsS3Uri !== undefined ? { stabilizationDiagnosticsS3Uri } : {}),
+    ...(stabilizationDiagnosticsS3Uri !== undefined
+      ? { stabilizationDiagnosticsS3Uri }
+      : {}),
     ...(v1DeckS3Uri !== undefined ? { v1DeckS3Uri } : {}),
     ...(v1IrS3Uri !== undefined ? { v1IrS3Uri } : {}),
   };
