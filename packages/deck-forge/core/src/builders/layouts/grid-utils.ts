@@ -148,3 +148,130 @@ export function pickGridDimensions(count: number): { cols: number; rows: number 
   if (count <= 9) return { cols: 3, rows: 3 };
   return { cols: 4, rows: Math.ceil(count / 4) };
 }
+
+// ── Deterministic placement helpers ───────────────────────────────────
+// These helpers produce frames for specific placement patterns that
+// reviewers were repeatedly correcting via frame operations.
+
+/**
+ * Creates a horizontal KPI rail — one row of equal-width metric cards.
+ * For 5+ items, falls back to a 2-row grid.
+ *
+ * Designed for executive-summary-kpi and dashboard strategies where
+ * KPI cards should always be side-by-side.
+ */
+export function createMetricRail(
+  region: ResolvedFrame,
+  count: number,
+  options?: {
+    minCardHeight?: number;
+    maxCardHeight?: number;
+    gap?: number;
+  },
+): ResolvedFrame[] {
+  if (count <= 0) return [];
+  const gap = options?.gap ?? 20;
+  const minH = options?.minCardHeight ?? 120;
+  const maxH = options?.maxCardHeight ?? 160;
+  const cardHeight = Math.max(minH, Math.min(maxH, region.height));
+
+  if (count <= 4) {
+    // Single row — always horizontal
+    const totalGap = gap * (count - 1);
+    const cardWidth = Math.max(80, Math.floor((region.width - totalGap) / count));
+    return Array.from({ length: count }, (_, i) => ({
+      x: region.x + i * (cardWidth + gap),
+      y: region.y,
+      width: cardWidth,
+      height: cardHeight,
+    }));
+  }
+
+  // 5+ items: 2-row grid
+  const cols = Math.ceil(count / 2);
+  const rows = 2;
+  const gapX = gap;
+  const gapY = gap;
+  const cardWidth = Math.max(80, Math.floor((region.width - gapX * (cols - 1)) / cols));
+  const rowHeight = Math.max(
+    minH,
+    Math.min(maxH, Math.floor((region.height - gapY) / rows)),
+  );
+  return Array.from({ length: count }, (_, i) => {
+    const col = i % cols;
+    const row = Math.floor(i / cols);
+    return {
+      x: region.x + col * (cardWidth + gapX),
+      y: region.y + row * (rowHeight + gapY),
+      width: cardWidth,
+      height: rowHeight,
+    };
+  });
+}
+
+/**
+ * Creates a small-multiples grid optimised for 2–4 chart panels.
+ *
+ * - 2 items: 2 columns
+ * - 3 items: 3 columns
+ * - 4 items: 2×2 grid
+ * - 5+: falls back to `splitGrid`
+ *
+ * Ensures each chart is at least 280 px wide.
+ */
+export function createSmallMultiplesGrid(
+  region: ResolvedFrame,
+  count: number,
+  density?: LayoutSpec["density"],
+): ResolvedFrame[] {
+  if (count <= 1) return [region];
+  const gap = gapForDensity(density, 22);
+
+  if (count <= 3) {
+    // Single row of N columns
+    const totalGap = gap * (count - 1);
+    const cardWidth = Math.max(280, Math.floor((region.width - totalGap) / count));
+    return Array.from({ length: count }, (_, i) => ({
+      x: region.x + i * (cardWidth + gap),
+      y: region.y,
+      width: cardWidth,
+      height: region.height,
+    }));
+  }
+
+  if (count === 4) {
+    return splitGrid(region, 2, 2, density);
+  }
+
+  // 5+ — generic grid
+  const { cols, rows } = pickGridDimensions(count);
+  return splitGrid(region, cols, rows, density);
+}
+
+/**
+ * Creates a 2×2 card grid for 3–4 initiative/proposal blocks.
+ *
+ * - 1–2: horizontal row
+ * - 3–4: 2×2 grid
+ * - 5+: 2 columns × N rows
+ */
+export function createTwoByTwoCards(
+  region: ResolvedFrame,
+  count: number,
+  density?: LayoutSpec["density"],
+): ResolvedFrame[] {
+  if (count <= 0) return [];
+  const gap = gapForDensity(density, 16);
+
+  if (count <= 2) {
+    return splitHorizontal(region, count, density);
+  }
+
+  if (count <= 4) {
+    return splitGrid(region, 2, 2, density);
+  }
+
+  // 5+ items: 2 columns, N rows
+  const rows = Math.ceil(count / 2);
+  return splitGrid(region, 2, rows, density);
+}

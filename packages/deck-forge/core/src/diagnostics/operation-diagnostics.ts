@@ -37,6 +37,10 @@ export type OperationDiagnosticsSummary = {
   visualPolishRatio: number;
   contentRewriteRatio: number;
 
+  layoutRepairOperationCount: number;
+  visualPolishOperationCount: number;
+  contentRewriteOperationCount: number;
+
   topSlidesByOperations: Array<{
     slideId: string;
     operationCount: number;
@@ -195,6 +199,9 @@ export function analyzeOperationLog(
     layoutRepairRatio,
     visualPolishRatio,
     contentRewriteRatio,
+    layoutRepairOperationCount: layoutRepairCount,
+    visualPolishOperationCount: visualPolishCount,
+    contentRewriteOperationCount: contentRewriteCount,
     topSlidesByOperations,
     topOperationTypes,
     operationsWithoutSlideId,

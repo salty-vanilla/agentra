@@ -6,7 +6,7 @@ import {
   mergeAllRegions,
   splitTopBottom,
 } from "#src/builders/layouts/business-utils.js";
-import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { createMetricRail, splitVertical } from "#src/builders/layouts/grid-utils.js";
 import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
@@ -61,7 +61,11 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
     const callout = resolveSlotFrame(ctx, "callout", region);
 
     if (metricRatio >= 1.0) {
-      const cells = createCardGrid(metrics.frame, metricBlocks.length, density);
+      const cells = createMetricRail(metrics.frame, metricBlocks.length, {
+        minCardHeight: 120,
+        maxCardHeight: 160,
+        gap: 20,
+      });
       metricBlocks.forEach((block, i) => {
         assignments.push(
           assignmentFromSlot({
@@ -81,7 +85,11 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
     );
 
     const computedMetrics = metrics.slot ? metrics : { ...metrics, frame: metricRegion };
-    const cells = createCardGrid(computedMetrics.frame, metricBlocks.length, density);
+    const cells = createMetricRail(computedMetrics.frame, metricBlocks.length, {
+      minCardHeight: 120,
+      maxCardHeight: 160,
+      gap: 20,
+    });
     metricBlocks.forEach((block, i) => {
       assignments.push(
         assignmentFromSlot({

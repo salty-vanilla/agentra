@@ -1,13 +1,12 @@
 import {
   countByType,
-  createCardGrid,
   createInsightBand,
   hasChart,
   hasTrendSignals,
   isDataInsightIntent,
   mergeAllRegions,
 } from "#src/builders/layouts/business-utils.js";
-import { splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { createSmallMultiplesGrid, splitVertical } from "#src/builders/layouts/grid-utils.js";
 import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
@@ -73,9 +72,9 @@ export const smallMultiplesTrendStrategy: LayoutStrategy = {
 
     const assignments: SubFrameAssignment[] = [];
 
-    // Charts/metrics in responsive grid
+    // Charts/metrics in deterministic small-multiples grid
     const computedCards = cards.slot ? cards : { ...cards, frame: gridRegion };
-    const gridFrames = createCardGrid(computedCards.frame, primaryBlocks.length, density);
+    const gridFrames = createSmallMultiplesGrid(computedCards.frame, primaryBlocks.length, density);
     primaryBlocks.forEach((block, i) => {
       const isMetric = block.type === "metric";
       assignments.push(

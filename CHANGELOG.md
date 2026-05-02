@@ -9,6 +9,46 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge Phase 7.7: Initial layout repair reduction
+
+- **`createMetricRail()`** — deterministic horizontal KPI rail helper in
+  `grid-utils.ts`; 1–4 metrics in a single row, 5+ in a 2-row grid; used by
+  `executive-summary-kpi` and `decision-request` strategies to eliminate
+  reviewer frame corrections for metric card positioning
+- **`createSmallMultiplesGrid()`** — deterministic small-multiples grid
+  helper; 2–3 charts in a single row, 4 in 2×2, 5+ via generic grid;
+  each chart guaranteed ≥ 280 px wide
+- **`createTwoByTwoCards()`** — 2×2 card grid helper for 3–4 initiative
+  blocks; 1–2 horizontal, 3–4 in 2×2, 5+ in 2-col × N-row grid
+- **`layoutRepairOperationCount` / `visualPolishOperationCount` /
+  `contentRewriteOperationCount`** — absolute count fields added to
+  `OperationDiagnosticsSummary` alongside existing ratios for easier
+  before/after comparison
+- **Layout stabilization regression tests** — 5 representative deck
+  patterns (Q2 KPI summary, downtime visual insight, monthly small
+  multiples, process with impact, approval request) verified for
+  zero overlaps and zero out-of-bounds at V1
+- **Grid helper unit tests** — 19 tests covering `createMetricRail`,
+  `createSmallMultiplesGrid`, and `createTwoByTwoCards`
+
+### Changed
+
+- **`executive-summary-kpi` strategy** — replaced `createCardGrid()` with
+  `createMetricRail()` so 3–4 KPI cards are always placed in a horizontal
+  rail instead of a 2×2 grid that the reviewer had to flatten
+- **`small-multiples-trend` strategy** — replaced `createCardGrid()` with
+  `createSmallMultiplesGrid()` so 2–3 charts are deterministically
+  placed side-by-side
+- **`process-flow-with-impact` strategy** — now uses explicit
+  `process` / `impact` / `callout` template slots from
+  `process-with-impact` layout; metrics go to `impact` slot, callouts
+  to `callout` slot, eliminating overlap between the three regions
+- **`decision-request` strategy** — first callout → `cta`, extras →
+  `supporting`; 3+ paragraphs split as initiatives into `main` slot
+  (2×2 grid) with last paragraph as supporting text; 2 metrics
+  placed side-by-side via `createMetricRail()`; prevents cramming all
+  paragraphs into the small `supporting` slot
+
 ### Fixed — deck-forge Phase 7.6-fix: Decision-request strategy + diagnostics hardening
 
 - **decision-request strategy rewrite** — optimised for `approval-with-kpi-sidecar`
