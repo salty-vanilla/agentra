@@ -2,7 +2,7 @@
  * DeckPlan-level strategy selection.
  *
  * Resolves each SlideIntent with deck defaults, then selects a strategy
- * for every slide in the plan.
+ * for every slide in the plan. Warnings are prefixed with slide identity.
  */
 
 import type { DeckPlan } from "#src/strategy/deck-plan.js";
@@ -20,6 +20,8 @@ export interface DeckStrategySelectionResult {
  * Selects strategies for every slide in a DeckPlan.
  *
  * Uses deck-level audience/genre/density as defaults for each slide intent.
+ * Output order matches input slide order. Warnings are prefixed with
+ * `[slide N]` or `[slide N: <id>]` for traceability.
  */
 export async function selectStrategiesForDeck(
   deckPlan: DeckPlan,
@@ -35,11 +37,20 @@ export async function selectStrategiesForDeck(
   const warnings: string[] = [];
   const selections: StrategySelection[] = [];
 
-  for (const slideIntent of deckPlan.slides) {
+  for (let i = 0; i < deckPlan.slides.length; i++) {
+    const slideIntent = deckPlan.slides[i];
     const resolved = resolveSlideIntent(slideIntent, deckDefaults);
     const selection = await selectStrategyForIntent(resolved, registry, selector);
     selections.push(selection);
-    warnings.push(...selection.warnings);
+
+    // Prefix warnings with slide identity
+    const slideLabel = slideIntent.id
+      ? `[slide ${i + 1}: ${slideIntent.id}]`
+      : `[slide ${i + 1}]`;
+
+    for (const w of selection.warnings) {
+      warnings.push(`${slideLabel} ${w}`);
+    }
   }
 
   return { selections, warnings };

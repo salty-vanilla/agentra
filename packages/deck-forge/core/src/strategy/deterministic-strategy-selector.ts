@@ -11,6 +11,8 @@
  * - candidate with 3+ reasons → high
  * - candidate with 1-2 reasons → medium
  * - fallback → low
+ *
+ * Invariant: selection.candidateIds always includes selection.strategyId.
  */
 
 import type {
@@ -19,21 +21,32 @@ import type {
   StrategySelector,
 } from "#src/strategy/strategy-selector.js";
 
-const FALLBACK_STRATEGY_ID = "one-message-summary";
+const DEFAULT_FALLBACK_STRATEGY_ID = "one-message-summary";
 
 export class DeterministicStrategySelector implements StrategySelector {
+  private readonly fallbackStrategyId: string;
+
+  constructor(options?: { fallbackStrategyId?: string }) {
+    this.fallbackStrategyId = options?.fallbackStrategyId ?? DEFAULT_FALLBACK_STRATEGY_ID;
+  }
+
   select(input: StrategySelectionInput): StrategySelection {
     const { candidateResult } = input;
     const { candidates, warnings } = candidateResult;
     const candidateIds = candidates.map((c) => c.manifest.id);
 
     if (candidates.length === 0) {
+      // Ensure fallback ID is in candidateIds (invariant)
+      const fallbackIds = candidateIds.includes(this.fallbackStrategyId)
+        ? candidateIds
+        : [...candidateIds, this.fallbackStrategyId];
+
       return {
-        strategyId: FALLBACK_STRATEGY_ID,
+        strategyId: this.fallbackStrategyId,
         confidence: "low",
-        rationale: "No candidates matched; using fallback strategy.",
+        rationale: `No strategy candidates matched the slide intent; using fallback strategy "${this.fallbackStrategyId}".`,
         selectedBy: "fallback",
-        candidateIds,
+        candidateIds: fallbackIds,
         warnings: [...warnings],
       };
     }

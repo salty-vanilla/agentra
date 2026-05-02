@@ -882,7 +882,7 @@ export {
   toStrategyCandidatePromptItems,
 } from "#src/strategy/index.js";
 
-// Phase 8C: Strategy Selector, LLM prompt, convenience APIs, legacy bridge, trace
+// Phase 8C: Strategy Selector, LLM prompt, convenience APIs, slide-spec bridge, trace
 export type {
   StrategySelectionInput,
   StrategySelection,
@@ -899,7 +899,7 @@ export {
   validateLlmStrategySelectionResponse,
   selectStrategyForIntent,
   selectStrategiesForDeck,
-  applyStrategySelectionToLegacySlideSpec,
+  applyStrategySelectionToSlideSpec,
   toStrategySelectionTrace,
 } from "#src/strategy/index.js";
 export {

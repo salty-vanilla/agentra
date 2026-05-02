@@ -17,7 +17,12 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
   fallback), `candidateIds`, `warnings`
 - **`DeterministicStrategySelector`** — picks explicit `preferredStrategyId`
   first, otherwise highest-scored candidate; falls back to
-  `one-message-summary` when no candidates match
+  `one-message-summary` when no candidates match; accepts optional
+  `{ fallbackStrategyId }` constructor option
+- **Selection invariant** — `selection.candidateIds` always includes
+  `selection.strategyId`, including for fallback selections
+- **Fallback validation** — `selectStrategyForIntent()` warns if fallback
+  `strategyId` is not registered in the registry (does not throw)
 - **LLM prompt builder** — `buildStrategySelectionPrompt()` produces
   JSON-serializable `{ systemMessage, userMessage, candidates }` for
   external LLM calls (no actual API calls in this module)
@@ -26,15 +31,15 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 - **`selectStrategyForIntent()`** — convenience API combining
   `findStrategyCandidatesForIntent()` + selector in one call
 - **`selectStrategiesForDeck()`** — DeckPlan-level selection; resolves each
-  `SlideIntent` with deck defaults, then selects a strategy per slide
-- **Legacy bridge** — `applyStrategySelectionToLegacySlideSpec()` writes
+  `SlideIntent` with deck defaults, then selects a strategy per slide;
+  warnings prefixed with `[slide N]` or `[slide N: <id>]`
+- **Slide-spec bridge** — `applyStrategySelectionToSlideSpec()` writes
   `StrategySelection.strategyId` back to `slideSpec.preferredStrategyId`
-  for existing build pipeline compatibility
 - **Trace/diagnostics** — `StrategySelectionTrace` record with
   `toStrategySelectionTrace()` builder for observability
-- **22 new tests** — deterministic selector (6), LLM prompt builder (3),
-  response validation (4), selectStrategyForIntent (2),
-  selectStrategiesForDeck (2), legacy bridge (2), trace (3)
+- **32 tests** — deterministic selector (10), LLM prompt builder (3),
+  response validation (5), selectStrategyForIntent (4),
+  selectStrategiesForDeck (6), slide-spec bridge (2), trace (2)
 
 ### Changed — deck-forge/core Phase 8B-cleanup: Canonical Type Unification
 

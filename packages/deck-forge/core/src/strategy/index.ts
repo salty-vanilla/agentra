@@ -61,7 +61,7 @@ export { selectStrategyForIntent } from "#src/strategy/select-strategy-for-inten
 export type { DeckStrategySelectionResult } from "#src/strategy/select-strategies-for-deck.js";
 export { selectStrategiesForDeck } from "#src/strategy/select-strategies-for-deck.js";
 
-export { applyStrategySelectionToLegacySlideSpec } from "#src/strategy/legacy-bridge.js";
+export { applyStrategySelectionToSlideSpec } from "#src/strategy/strategy-selection-to-slide-spec.js";
 
 export type { StrategySelectionTrace } from "#src/strategy/strategy-selection-trace.js";
 export { toStrategySelectionTrace } from "#src/strategy/strategy-selection-trace.js";
