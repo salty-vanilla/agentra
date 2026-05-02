@@ -1,7 +1,11 @@
 import { mkdir } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import type { PresentationIR } from '@deck-forge/core';
-import { analyzeDeckStabilization, runDesignReviewLoop } from '@deck-forge/core';
+import {
+  analyzeDeckStabilization,
+  type DeckStabilizationDiagnostics,
+  runDesignReviewLoop,
+} from '@deck-forge/core';
 import type { DeckForgeRunInput } from '@deck-forge/runner';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
@@ -150,6 +154,43 @@ async function main() {
             | undefined;
           let visionReview: unknown;
 
+          // ----- V1 diagnostics (before design-review loop) -----------
+          if (initialPresentation) {
+            try {
+              const v1Diag = analyzeDeckStabilization({
+                presentation: initialPresentation,
+              });
+              logDeckForgeEvent('diagnostics', {
+                runId,
+                diagnosticsPhase: 'v1',
+                slideCount: v1Diag.layout.slideCount,
+                layoutStatus: v1Diag.layout.deployReadiness.status,
+                stabilizationStatus: v1Diag.status,
+                stabilizationScore: v1Diag.score,
+                totalOperations: v1Diag.operations.totalOperations,
+                layoutRepairRatio: v1Diag.operations.layoutRepairRatio,
+                visualPolishRatio: v1Diag.operations.visualPolishRatio,
+                contentRewriteRatio: v1Diag.operations.contentRewriteRatio,
+                slidesWithFallbackSlots: v1Diag.layout.slidesWithFallbackSlots,
+                slidesWithOverlaps: v1Diag.layout.slidesWithOverlaps,
+                totalOutOfBoundsCount: v1Diag.layout.totalOutOfBoundsCount,
+                operationsWithoutSlideId: v1Diag.operations.operationsWithoutSlideId,
+                topSlidesByOperations: v1Diag.operations.topSlidesByOperations.slice(
+                  0,
+                  5,
+                ),
+                recommendationCodes: v1Diag.recommendations.map((r) => r.code),
+              });
+            } catch (error) {
+              logDeckForgeEvent('diagnostics-failed', {
+                runId,
+                diagnosticsPhase: 'v1',
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+          // -----------------------------------------------------------
+
           // Single Bedrock SlideDesigner pass over the freshly built IR.
           if (request.designPass && finalPresentation) {
             try {
@@ -231,10 +272,8 @@ async function main() {
             }
           }
 
-          // ----- Stabilization diagnostics --------------------------
-          let stabilizationDiagnostics:
-            | ReturnType<typeof analyzeDeckStabilization>
-            | undefined;
+          // ----- Final stabilization diagnostics --------------------
+          let stabilizationDiagnostics: DeckStabilizationDiagnostics | undefined;
           if (finalPresentation) {
             try {
               stabilizationDiagnostics = analyzeDeckStabilization({
@@ -242,6 +281,7 @@ async function main() {
               });
               logDeckForgeEvent('diagnostics', {
                 runId,
+                diagnosticsPhase: 'final',
                 slideCount: stabilizationDiagnostics.layout.slideCount,
                 layoutStatus: stabilizationDiagnostics.layout.deployReadiness.status,
                 stabilizationStatus: stabilizationDiagnostics.status,
@@ -256,6 +296,8 @@ async function main() {
                 slidesWithOverlaps: stabilizationDiagnostics.layout.slidesWithOverlaps,
                 totalOutOfBoundsCount:
                   stabilizationDiagnostics.layout.totalOutOfBoundsCount,
+                operationsWithoutSlideId:
+                  stabilizationDiagnostics.operations.operationsWithoutSlideId,
                 topSlidesByOperations:
                   stabilizationDiagnostics.operations.topSlidesByOperations.slice(0, 5),
                 recommendationCodes: stabilizationDiagnostics.recommendations.map(
@@ -265,6 +307,7 @@ async function main() {
             } catch (error) {
               logDeckForgeEvent('diagnostics-failed', {
                 runId,
+                diagnosticsPhase: 'final',
                 error: error instanceof Error ? error.message : String(error),
               });
             }
@@ -405,10 +448,15 @@ async function main() {
               : {}),
           });
 
+          const qualityStatus = resolveQualityStatus(stabilizationDiagnostics);
+
           logDeckForgeEvent('success', {
             runId,
             traceId: request.traceId,
             finalStatus: finalResult.finalStatus,
+            qualityStatus,
+            stabilizationStatus: stabilizationDiagnostics?.status,
+            stabilizationScore: stabilizationDiagnostics?.score,
             artifactExists: artifact?.exists,
             s3Uri: artifact?.s3Uri,
             bundleS3Uri: artifact?.bundleS3Uri,
@@ -416,6 +464,7 @@ async function main() {
             visionReviewS3Uri: artifact?.visionReviewS3Uri,
             designReviewS3Uri: artifact?.designReviewS3Uri,
             v1DeckS3Uri: artifact?.v1DeckS3Uri,
+            stabilizationDiagnosticsS3Uri: artifact?.stabilizationDiagnosticsS3Uri,
             assetCount: artifact?.assetCount,
             durationMs: Date.now() - startedAt,
           });
@@ -458,6 +507,22 @@ async function main() {
   });
 
   await app.run();
+}
+
+function resolveQualityStatus(
+  diag: DeckStabilizationDiagnostics | undefined,
+): 'pass' | 'warning' | 'fail' {
+  if (!diag) return 'pass';
+  if (diag.layout.deployReadiness.status === 'fail' || diag.status === 'unstable') {
+    return 'fail';
+  }
+  if (
+    diag.layout.deployReadiness.status === 'warning' ||
+    diag.status === 'needs_attention'
+  ) {
+    return 'warning';
+  }
+  return 'pass';
 }
 
 void main().catch((error: unknown) => {

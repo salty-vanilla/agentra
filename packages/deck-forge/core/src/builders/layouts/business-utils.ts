@@ -90,7 +90,7 @@ function collectSearchText(ctx: LayoutContext): string {
 }
 
 const DECISION_KEYWORDS =
-  /(?:\b(?:approval|decision|decide|approve|judgment|next\s*step)\b|承認|判断|依頼|決定|決裁)/i;
+  /(?:\b(?:approval|decision|decide|approve|judgment|ask|request|go[\s/]no[\s-]go)\b|承認|判断|依頼|決定|決裁|審議|意思決定|本会議|お願いします|承認事項|施策承認)/i;
 
 export function hasDecisionSignals(ctx: LayoutContext): boolean {
   return DECISION_KEYWORDS.test(collectSearchText(ctx));

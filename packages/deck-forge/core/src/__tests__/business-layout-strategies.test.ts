@@ -721,11 +721,13 @@ describe("strategy registration", () => {
     }
   });
 
-  it("title and section remain above business strategies", () => {
-    const businessStrategies = [
+  it("most business strategies remain below title/section priority (80)", () => {
+    // decision-request is intentionally elevated to 90 to win against action-plan-table
+    // on approval slides that also have table blocks. title-slide / section-divider have
+    // narrow match conditions so the priority inversion is safe in practice.
+    const standardBusinessStrategies = [
       actionPlanTableStrategy,
       dataInsightStoryStrategy,
-      decisionRequestStrategy,
       executiveSummaryKpiStrategy,
       implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
@@ -737,17 +739,17 @@ describe("strategy registration", () => {
       smallMultiplesTrendStrategy,
       threePointSummaryStrategy,
     ];
-    // title-slide and section-divider are priority 80
-    for (const biz of businessStrategies) {
+    for (const biz of standardBusinessStrategies) {
       expect(biz.priority).toBeLessThan(80);
     }
+    // decision-request is elevated above standard business strategies
+    expect(decisionRequestStrategy.priority).toBeGreaterThan(actionPlanTableStrategy.priority);
   });
 
-  it("business strategies have priority 75", () => {
+  it("standard business strategies have priority 75", () => {
     const bizStrategies = [
       actionPlanTableStrategy,
       dataInsightStoryStrategy,
-      decisionRequestStrategy,
       executiveSummaryKpiStrategy,
       implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
@@ -762,6 +764,8 @@ describe("strategy registration", () => {
     for (const s of bizStrategies) {
       expect(s.priority).toBe(75);
     }
+    // decision-request is elevated to 90 for Phase 7.6-fix
+    expect(decisionRequestStrategy.priority).toBe(90);
   });
 });
 
@@ -1017,6 +1021,122 @@ describe("decision-request strategy", () => {
     // First block gets decision treatment
     expect(assignments[0]!.hints?.fontScale).toBe(1.4);
     expect(assignments[0]!.hints?.role).toBe("callout");
+  });
+
+  // --- Phase 7.6-fix D: approval-with-kpi-sidecar slot tests ---
+
+  function makeApprovalCtx(blocks: import("#src/index.js").ContentBlock[]) {
+    return makeContext(blocks, {
+      slideSpec: {
+        title: "施策承認をお願いします",
+        intent: { type: "decision", keyMessage: "承認", audienceTakeaway: "x" },
+      },
+      templateSlots: {
+        cta: { x: 80, y: 150, width: 1120, height: 80 },
+        main: { x: 80, y: 260, width: 560, height: 300 },
+        metrics: { x: 680, y: 260, width: 520, height: 160 },
+        supporting: { x: 680, y: 445, width: 520, height: 115 },
+        footer: { x: 80, y: 650, width: 1120, height: 32 },
+      },
+    });
+  }
+
+  it("matches Japanese approval keywords (承認事項, 施策承認)", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "施策承認をお願いします"),
+      makeParagraph("p1", "投資回収期間は18ヶ月"),
+    ]);
+    expect(decisionRequestStrategy.match(ctx)).toBe(true);
+  });
+
+  it("matches with table block present + decision signal", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "承認依頼"),
+      makeTable("t1"),
+      makeParagraph("p1", "詳細説明"),
+    ]);
+    expect(decisionRequestStrategy.match(ctx)).toBe(true);
+  });
+
+  it("layout uses cta slot for callout when cta slot exists", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "承認依頼"),
+      makeMetric("m1", "投資額", "¥200M"),
+      makeParagraph("p1", "承認後に実施"),
+    ]);
+    const assignments = decisionRequestStrategy.layout(ctx);
+
+    const ctaAssignment = assignments.find((a) => a.blockId === "c1");
+    expect(ctaAssignment?.slot).toBe("cta");
+  });
+
+  it("layout uses metrics slot for metric blocks when metrics slot exists", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "承認依頼"),
+      makeMetric("m1", "ROI", "35%"),
+      makeMetric("m2", "回収期間", "14ヶ月"),
+    ]);
+    const assignments = decisionRequestStrategy.layout(ctx);
+
+    const metricAssignments = assignments.filter(
+      (a) => a.blockId === "m1" || a.blockId === "m2",
+    );
+    for (const a of metricAssignments) {
+      expect(a.slot).toBe("metrics");
+    }
+  });
+
+  it("layout uses supporting slot for paragraph blocks when supporting slot exists", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "承認依頼"),
+      makeParagraph("p1", "承認後の実施事項"),
+    ]);
+    const assignments = decisionRequestStrategy.layout(ctx);
+
+    const pAssignment = assignments.find((a) => a.blockId === "p1");
+    expect(pAssignment?.slot).toBe("supporting");
+  });
+
+  it("table block does NOT produce a table fallback slot", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "承認依頼"),
+      makeTable("t1"),
+    ]);
+    const assignments = decisionRequestStrategy.layout(ctx);
+
+    for (const a of assignments) {
+      expect(a.fallbackSlots ?? []).not.toContain("table");
+    }
+  });
+
+  it("table block goes to main slot (not table slot)", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "承認依頼"),
+      makeTable("t1"),
+    ]);
+    const assignments = decisionRequestStrategy.layout(ctx);
+
+    const tableAssignment = assignments.find((a) => a.blockId === "t1");
+    expect(tableAssignment).toBeDefined();
+    expect(tableAssignment?.slot).toBe("main");
+  });
+
+  it("priority is higher than action-plan-table", () => {
+    expect(decisionRequestStrategy.priority).toBeGreaterThan(actionPlanTableStrategy.priority);
+  });
+
+  it("all slots produce non-zero frames", () => {
+    const ctx = makeApprovalCtx([
+      makeCallout("c1", "承認依頼"),
+      makeTable("t1"),
+      makeMetric("m1", "ROI", "35%"),
+      makeParagraph("p1", "補足"),
+    ]);
+    const assignments = decisionRequestStrategy.layout(ctx);
+    for (const a of assignments) {
+      expect(a.frame.width).toBeGreaterThan(0);
+      expect(a.frame.height).toBeGreaterThan(0);
+    }
   });
 });
 

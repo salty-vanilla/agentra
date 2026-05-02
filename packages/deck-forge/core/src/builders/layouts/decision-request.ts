@@ -14,14 +14,14 @@ import type {
 } from "#src/builders/layouts/types.js";
 
 /**
- * Decision Request: a prominent decision/approval callout at the top with
- * supporting rationale cards and an optional deadline/owner info band.
- * Designed for approval requests, go/no-go decisions, and executive asks.
+ * Decision Request: optimised for the `approval-with-kpi-sidecar` template layout.
+ * Uses cta → main → metrics → supporting slot order.
+ * Table blocks are placed in `main` (not a dedicated `table` slot) to avoid fallbacks.
  */
 export const decisionRequestStrategy: LayoutStrategy = {
   id: "decision-request",
   capability: "decision_request",
-  priority: 75,
+  priority: 90,
 
   match(ctx: LayoutContext): boolean {
     if (ctx.blocks.length < 2) return false;
@@ -33,29 +33,115 @@ export const decisionRequestStrategy: LayoutStrategy = {
     const density = ctx.layoutSpec.density;
     const region = mergeAllRegions(ctx);
 
-    // Resolve template slots via helper
-    const mainRes = resolveSlotFrame(ctx, ["main", "body"], region);
+    // Resolve template slots — approval-with-kpi-sidecar provides:
+    // cta, main, metrics, supporting, footer, title
+    // Note: no `table` slot — table blocks go to `main`.
     const ctaRes = resolveSlotFrame(ctx, ["cta", "callout"], region);
-    const tableRes = resolveSlotFrame(ctx, "table", region);
+    const mainRes = resolveSlotFrame(ctx, ["main", "body"], region);
+    const metricsRes = resolveSlotFrame(ctx, "metrics", region);
+    const supportingRes = resolveSlotFrame(ctx, ["supporting", "footer"], region);
 
-    // Categorise blocks
-    const decisionBlocks = ctx.blocks.filter(
-      (b) => b.type === "callout",
-    );
+    // Block categorisation
+    const decisionBlocks = ctx.blocks.filter((b) => b.type === "callout");
     const metricBlocks = ctx.blocks.filter((b) => b.type === "metric");
-    const tableBlocks = ctx.blocks.filter((b) => b.type === "table");
-    const bodyBlocks = ctx.blocks.filter(
+    const supportingBlocks = ctx.blocks.filter(
+      (b) => b.type === "paragraph" || b.type === "bullet_list",
+    );
+    // Tables and everything else go to main — no `table` slot in approval-with-kpi-sidecar
+    const mainBlocks = ctx.blocks.filter(
       (b) =>
         b.type !== "callout" &&
         b.type !== "metric" &&
-        b.type !== "table",
+        b.type !== "paragraph" &&
+        b.type !== "bullet_list",
     );
 
     const assignments: SubFrameAssignment[] = [];
 
-    // If we have a decision callout, give it the top ~30%
+    // When we have a `cta` slot, place decision callouts there;
+    // otherwise fall back to splitting the top 30% of the region.
+    const hasCtaSlot = !!ctaRes.slot;
+    const hasMetricsSlot = !!metricsRes.slot;
+    const hasSupportingSlot = !!supportingRes.slot;
+
+    if (hasCtaSlot) {
+      // --- Template-slot-aware layout ---
+
+      // 1) Decision callouts → cta slot
+      if (decisionBlocks.length > 0) {
+        const frames = splitVertical(ctaRes.frame, decisionBlocks.length, density);
+        decisionBlocks.forEach((block, i) => {
+          assignments.push(
+            assignmentFromSlot({
+              blockId: block.id,
+              resolution: ctaRes,
+              frame: frames[i] ?? ctaRes.frame,
+              hints: {
+                fontScale: 1.4,
+                alignment: "center",
+                role: "callout",
+                decoration: "accent-bar",
+              },
+            }),
+          );
+        });
+      }
+
+      // 2) Main content (table + other non-metric, non-supporting) → main slot
+      if (mainBlocks.length > 0) {
+        const frames = mainBlocks.length <= 4
+          ? createHorizontalCards(mainRes.frame, mainBlocks.length, density)
+          : splitVertical(mainRes.frame, mainBlocks.length, density);
+        mainBlocks.forEach((block, i) => {
+          const isTable = block.type === "table";
+          assignments.push(
+            assignmentFromSlot({
+              blockId: block.id,
+              resolution: mainRes,
+              frame: frames[i] ?? mainRes.frame,
+              hints: isTable ? undefined : { decoration: "card" },
+            }),
+          );
+        });
+      }
+
+      // 3) Metric blocks → metrics slot (grid or horizontal)
+      if (metricBlocks.length > 0) {
+        const frames = splitVertical(metricsRes.frame, metricBlocks.length, density);
+        metricBlocks.forEach((block, i) => {
+          assignments.push(
+            assignmentFromSlot({
+              blockId: block.id,
+              resolution: metricsRes,
+              frame: frames[i] ?? metricsRes.frame,
+              hints: { decoration: "card", fontScale: 1.2 },
+            }),
+          );
+        });
+      }
+
+      // 4) Supporting text → supporting slot
+      if (supportingBlocks.length > 0) {
+        const frames = splitVertical(supportingRes.frame, supportingBlocks.length, density);
+        supportingBlocks.forEach((block, i) => {
+          assignments.push(
+            assignmentFromSlot({
+              blockId: block.id,
+              resolution: supportingRes,
+              frame: frames[i] ?? supportingRes.frame,
+            }),
+          );
+        });
+      }
+
+      return assignments;
+    }
+
+    // --- Fallback: no template slots available, use geometric split ---
+
     if (decisionBlocks.length > 0) {
-      const hasBottom = bodyBlocks.length > 0 || metricBlocks.length > 0 || tableBlocks.length > 0;
+      const hasBottom =
+        mainBlocks.length > 0 || metricBlocks.length > 0 || supportingBlocks.length > 0;
       const topRatio = hasBottom ? 0.3 : 1.0;
 
       if (!hasBottom) {
@@ -78,17 +164,9 @@ export const decisionRequestStrategy: LayoutStrategy = {
         return assignments;
       }
 
-      const { top: decisionRegion, bottom: lowerRegion } = splitTopBottom(
-        region,
-        topRatio,
-      );
+      const { top: decisionRegion, bottom: lowerRegion } = splitTopBottom(region, topRatio);
 
-      // Decision callouts
-      const decFrames = splitVertical(
-        decisionRegion,
-        decisionBlocks.length,
-        density,
-      );
+      const decFrames = splitVertical(decisionRegion, decisionBlocks.length, density);
       decisionBlocks.forEach((block, i) => {
         assignments.push(
           assignmentFromSlot({
@@ -105,54 +183,29 @@ export const decisionRequestStrategy: LayoutStrategy = {
         );
       });
 
-      // Table blocks get table slot
-      tableBlocks.forEach((block) => {
-        assignments.push(
-          assignmentFromSlot({
-            blockId: block.id,
-            resolution: tableRes,
-            frame: tableRes.slot ? tableRes.frame : lowerRegion,
-          }),
-        );
-      });
-
-      // Remaining blocks in lower region
-      const remaining = [...bodyBlocks, ...metricBlocks];
-
-      if (remaining.length <= 4 && remaining.length > 0) {
-        const computedMain = mainRes.slot ? mainRes : { ...mainRes, frame: lowerRegion };
-        // Use horizontal cards for small counts
-        const cards = createHorizontalCards(
-          computedMain.frame,
-          remaining.length,
-          density,
-        );
+      // Distribute lower region across mainBlocks + metricBlocks + supportingBlocks
+      const remaining = [...mainBlocks, ...metricBlocks, ...supportingBlocks];
+      if (remaining.length > 0) {
+        const frames =
+          remaining.length <= 4
+            ? createHorizontalCards(lowerRegion, remaining.length, density)
+            : splitVertical(lowerRegion, remaining.length, density);
         remaining.forEach((block, i) => {
+          const isMetric = block.type === "metric";
+          const resolvedMain = hasMetricsSlot && isMetric ? metricsRes : mainRes;
+          const resolvedSupport =
+            hasSupportingSlot &&
+            (block.type === "paragraph" || block.type === "bullet_list")
+              ? supportingRes
+              : mainRes;
+          const resolution =
+            isMetric ? resolvedMain : resolvedSupport;
           assignments.push(
             assignmentFromSlot({
               blockId: block.id,
-              resolution: computedMain,
-              frame: cards[i] ?? lowerRegion,
-              hints: { decoration: "card" },
-            }),
-          );
-        });
-      } else {
-        const lowerFrames = splitVertical(
-          lowerRegion,
-          remaining.length,
-          density,
-        );
-        remaining.forEach((block, i) => {
-          assignments.push(
-            assignmentFromSlot({
-              blockId: block.id,
-              resolution: mainRes,
-              frame: lowerFrames[i] ?? lowerRegion,
-              hints:
-                block.type === "metric"
-                  ? { decoration: "card", fontScale: 1.2 }
-                  : undefined,
+              resolution,
+              frame: frames[i] ?? lowerRegion,
+              hints: isMetric ? { decoration: "card", fontScale: 1.2 } : { decoration: "card" },
             }),
           );
         });
@@ -162,10 +215,7 @@ export const decisionRequestStrategy: LayoutStrategy = {
       const [first, ...rest] = ctx.blocks;
       if (!first) return assignments;
 
-      const { top: decisionRegion, bottom: lowerRegion } = splitTopBottom(
-        region,
-        0.3,
-      );
+      const { top: decisionRegion, bottom: lowerRegion } = splitTopBottom(region, 0.3);
 
       assignments.push(
         assignmentFromSlot({
@@ -182,11 +232,7 @@ export const decisionRequestStrategy: LayoutStrategy = {
       );
 
       if (rest.length > 0) {
-        const cards = createHorizontalCards(
-          lowerRegion,
-          rest.length,
-          density,
-        );
+        const cards = createHorizontalCards(lowerRegion, rest.length, density);
         rest.forEach((block, i) => {
           assignments.push({
             blockId: block.id,

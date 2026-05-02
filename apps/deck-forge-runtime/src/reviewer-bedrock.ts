@@ -3,7 +3,9 @@ import type {
   ReviewIssue,
   ReviewPresentationInput,
 } from '@deck-forge/tools';
-import { extractJson, invokeBedrockText } from './bedrock-client.js';
+import { invokeBedrockText } from './bedrock-client.js';
+import { parseJsonFromModelOutput } from './json-extraction.js';
+import { getLogger } from './logging.js';
 
 const REVIEW_SYSTEM_PROMPT = `You are a senior presentation quality reviewer. You receive a review packet containing a presentation's validation report, inspect context, grounding constraints, and optionally slide images.
 
@@ -51,7 +53,16 @@ export function createBedrockReviewer(): PresentationReviewer {
         maxTokens: 8192,
       });
 
-      return extractJson<ReviewIssue[]>(response);
+      try {
+        const { value } = parseJsonFromModelOutput<ReviewIssue[]>(response);
+        return Array.isArray(value) ? value : [];
+      } catch (error) {
+        getLogger().warn(
+          { error: error instanceof Error ? error.message : String(error) },
+          '[deck-forge-runtime] [reviewer-bedrock] JSON parse failed; returning [] (graceful degradation)',
+        );
+        return [];
+      }
     },
   };
 }

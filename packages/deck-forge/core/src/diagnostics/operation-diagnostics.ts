@@ -46,6 +46,8 @@ export type OperationDiagnosticsSummary = {
     type: string;
     count: number;
   }>;
+
+  operationsWithoutSlideId: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -103,6 +105,7 @@ export function analyzeOperationLog(
   let likelyLayoutRepairOperations = 0;
   let likelyVisualPolishOperations = 0;
 
+  let operationsWithoutSlideId = 0;
   const operationsByType: Record<string, number> = {};
   const operationsBySlideId: Record<string, number> = {};
   const operationsByRepairCategory: Record<OperationRepairCategory, number> = {
@@ -126,6 +129,8 @@ export function analyzeOperationLog(
     const slideId = op?.slideId;
     if (typeof slideId === "string") {
       operationsBySlideId[slideId] = (operationsBySlideId[slideId] ?? 0) + 1;
+    } else {
+      operationsWithoutSlideId++;
     }
 
     // Fine-grained counters
@@ -192,5 +197,6 @@ export function analyzeOperationLog(
     contentRewriteRatio,
     topSlidesByOperations,
     topOperationTypes,
+    operationsWithoutSlideId,
   };
 }

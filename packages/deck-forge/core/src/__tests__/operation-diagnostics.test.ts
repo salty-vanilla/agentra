@@ -307,4 +307,56 @@ describe("analyzeOperationLog", () => {
     expect(summary.topOperationTypes[2]!.type).toBe("update_text");
     expect(summary.topOperationTypes[2]!.count).toBe(1);
   });
+
+  // --- Phase 7.6-fix E: operationsWithoutSlideId ---
+
+  it("counts operations without slideId in operationsWithoutSlideId", () => {
+    const log: OpLog = [
+      makeEntry("update_frame", "slide-1"),
+      makeEntry("update_text"), // no slideId
+      makeEntry("remove_slide"), // no slideId
+    ];
+    const summary = analyzeOperationLog(log);
+    expect(summary.operationsWithoutSlideId).toBe(2);
+    expect(summary.operationsBySlideId["slide-1"]).toBe(1);
+  });
+
+  it("operationsWithoutSlideId is 0 when all operations have slideId", () => {
+    const log: OpLog = [
+      makeEntry("update_frame", "slide-1"),
+      makeEntry("update_text", "slide-2"),
+    ];
+    const summary = analyzeOperationLog(log);
+    expect(summary.operationsWithoutSlideId).toBe(0);
+  });
+
+  it("totalOperations = slideId operations + operationsWithoutSlideId", () => {
+    const log: OpLog = [
+      makeEntry("update_frame", "slide-1"),
+      makeEntry("update_frame", "slide-1"),
+      makeEntry("update_text"), // no slideId
+      makeEntry("remove_slide"), // no slideId
+      makeEntry("update_style", "slide-2"),
+    ];
+    const summary = analyzeOperationLog(log);
+    const countWithSlideId = Object.values(summary.operationsBySlideId).reduce(
+      (s, c) => s + c,
+      0,
+    );
+    expect(countWithSlideId + summary.operationsWithoutSlideId).toBe(
+      summary.totalOperations,
+    );
+  });
+
+  it("topSlidesByOperations is unaffected by no-slideId operations", () => {
+    const log: OpLog = [
+      makeEntry("update_frame", "slide-1"),
+      makeEntry("update_frame", "slide-1"),
+      makeEntry("update_text"), // no slideId — should not appear in topSlidesByOperations
+    ];
+    const summary = analyzeOperationLog(log);
+    expect(summary.topSlidesByOperations).toHaveLength(1);
+    expect(summary.topSlidesByOperations[0]!.slideId).toBe("slide-1");
+    expect(summary.operationsWithoutSlideId).toBe(1);
+  });
 });

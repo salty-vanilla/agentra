@@ -9,6 +9,29 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — deck-forge Phase 7.6-fix: Decision-request strategy + diagnostics hardening
+
+- **decision-request strategy rewrite** — optimised for `approval-with-kpi-sidecar`
+  template layout; uses `cta → main → metrics → supporting` slot order; table
+  blocks placed in `main` (no dedicated `table` slot) to avoid fallback; priority
+  elevated from 75 → 90 to win over `action-plan-table` on approval slides
+- **Expanded decision keyword matching** — added `ask`, `request`, `go/no-go`,
+  and Japanese terms `審議`, `意思決定`, `本会議`, `お願いします`, `承認事項`, `施策承認`
+- **`operationsWithoutSlideId`** added to `OperationDiagnosticsSummary` — tracks
+  operations lacking `slideId` for better diagnostics coverage
+- **V1 diagnostics** — runtime now logs `diagnostics` event with
+  `diagnosticsPhase: 'v1'` before design-review loop (baseline measurement)
+- **`resolveQualityStatus()`** — derives `pass`/`warning`/`fail` from
+  stabilization diagnostics; included in runtime success log
+- **`json-extraction.ts`** — new LLM output JSON extraction utility
+  (`extractJsonText` + `parseJsonFromModelOutput`) handling fenced code
+  blocks, array/object slicing, and graceful fallback
+- **reviewer-bedrock hardening** — uses `parseJsonFromModelOutput` with
+  graceful degradation (returns `[]` on parse failure instead of throwing)
+- **Tests**: 8 new decision-request strategy tests (approval-with-kpi-sidecar
+  slot routing, Japanese keyword matching, metric/supporting placement),
+  4 new `operationsWithoutSlideId` tests, json-extraction test suite
+
 ### Added — deck-forge Phase 7.6: Diagnostics-driven Layout Stabilization
 
 - **Phase 7.6A: Operation diagnostics granularity**
