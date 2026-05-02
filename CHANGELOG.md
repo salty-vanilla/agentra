@@ -9,6 +9,18 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — deck-forge/core Phase 8E-fix: Clarify native layout trace semantics
+
+- **`"invalid-fallback"` mode added** — `StrategyInputMode` now distinguishes
+  invalid input that fell back to contentBlocks (`"invalid-fallback"`) from
+  invalid input with no usable fallback (`"invalid"`)
+- **LayoutResult marked transitional** — `SubFrameAssignment[]` form is
+  documented as migration-only; TODO(Phase 8F+) to require rich object form
+- **StrategyInput schema invariant tests** — verify that semantic inputs
+  contain no rendering keys (x/y/width/height/fill/stroke/fontSize)
+- **Comprehensive trace state tests** — 5 new tests covering all mode
+  transitions: native, legacy-fallback, invalid-fallback, invalid, missing
+
 ### Added — deck-forge/core Phase 8E: StrategyInput-native Layout Path
 
 - **LayoutContext extended** — `strategyInput?: unknown` and

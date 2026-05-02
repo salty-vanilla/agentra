@@ -74,7 +74,8 @@ export const layeredArchitectureStrategy: LayoutStrategy = {
       return { assignments, syntheticBlocks, strategyInputMode: "native", strategyInputWarnings: sir.warnings };
     }
     const assignments = layoutBlocks(ctx);
-    return { assignments, strategyInputMode: sir.mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
+    const mode = sir.mode === "invalid" && ctx.blocks.length > 0 ? "invalid-fallback" as const : sir.mode;
+    return { assignments, strategyInputMode: mode, strategyInputWarnings: sir.warnings.length > 0 ? sir.warnings : undefined };
   },
 };
 

@@ -195,7 +195,7 @@ function buildElements(
   theme: ThemeSpec,
   templateProfile: TemplateProfile,
   usedElementIds: Set<string>,
-): { elements: SlideIR["elements"]; layoutStrategyId: string; templateLayoutId: string; templateLayoutKind: string; usedSlots: string[]; fallbackSlots: string[]; selectedBy?: string; preferredStrategyId?: string; archetype?: string; strategyInputMode?: "native" | "legacy-fallback" | "invalid" | "missing"; strategyInputSource?: string; strategyInputWarnings?: string[] } {
+): { elements: SlideIR["elements"]; layoutStrategyId: string; templateLayoutId: string; templateLayoutKind: string; usedSlots: string[]; fallbackSlots: string[]; selectedBy?: string; preferredStrategyId?: string; archetype?: string; strategyInputMode?: "native" | "legacy-fallback" | "invalid-fallback" | "invalid" | "missing"; strategyInputSource?: string; strategyInputWarnings?: string[] } {
   const content = [...slideSpec.content];
   const titleBlock = firstBlockByType(content, "title");
   const ensuredTitleText = titleBlock?.text || slideSpec.title;
@@ -328,7 +328,7 @@ function buildElements(
 
   // Normalize LayoutResult: plain array (legacy) or rich object (8E native)
   let assignments: SubFrameAssignment[];
-  let strategyInputMode: "native" | "legacy-fallback" | "invalid" | "missing" | undefined;
+  let strategyInputMode: "native" | "legacy-fallback" | "invalid-fallback" | "invalid" | "missing" | undefined;
   let strategyInputWarnings: string[] | undefined;
   if (Array.isArray(layoutResult)) {
     assignments = layoutResult;

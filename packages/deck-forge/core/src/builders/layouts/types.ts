@@ -58,10 +58,11 @@ export type SubFrameAssignment = {
  * Indicates how the layout strategy consumed its input data.
  * - "native": valid StrategyInput was consumed directly
  * - "legacy-fallback": fell back to contentBlocks (no valid strategyInput)
- * - "invalid": strategyInput was present but failed validation
+ * - "invalid-fallback": strategyInput failed validation but legacy contentBlocks were used
+ * - "invalid": strategyInput was present and failed validation, no usable contentBlocks
  * - "missing": no strategyInput and no usable contentBlocks
  */
-export type StrategyInputMode = "native" | "legacy-fallback" | "invalid" | "missing";
+export type StrategyInputMode = "native" | "legacy-fallback" | "invalid-fallback" | "invalid" | "missing";
 
 /** Inputs every layout strategy receives. */
 export type LayoutContext = {
@@ -105,6 +106,10 @@ export type LayoutContext = {
  *
  * Can be either a plain array of SubFrameAssignments (backward-compatible)
  * or a richer result object when the strategy used StrategyInput natively.
+ *
+ * @transitional The plain `SubFrameAssignment[]` form is kept only for
+ * strategies not yet migrated to StrategyInput-native rendering.
+ * TODO(Phase 8F+): migrate remaining strategies and require the rich object form.
  */
 export type LayoutResult = SubFrameAssignment[] | {
   assignments: SubFrameAssignment[];

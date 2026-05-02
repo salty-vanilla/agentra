@@ -623,7 +623,7 @@ export type SlideIR = {
     archetype?: string;
     preferredStrategyId?: string;
     selectedBy?: "preferredStrategyId" | "deterministicSelector" | "fallback";
-    strategyInputMode?: "native" | "legacy-fallback" | "invalid" | "missing";
+    strategyInputMode?: "native" | "legacy-fallback" | "invalid-fallback" | "invalid" | "missing";
     strategyInputSource?: string;
     strategyInputWarnings?: string[];
   };

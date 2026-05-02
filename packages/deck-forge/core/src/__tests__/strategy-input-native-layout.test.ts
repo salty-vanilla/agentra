@@ -244,10 +244,39 @@ describe("one-message-summary native StrategyInput", () => {
 });
 
 // ---------------------------------------------------------------------------
-// Invalid strategyInput
+// Trace state tests (comprehensive mode coverage)
 // ---------------------------------------------------------------------------
-describe("invalid strategyInput handling", () => {
-	it("returns invalid mode for bad input", () => {
+describe("strategyInputMode trace states", () => {
+	it("valid input → native", () => {
+		const ctx = makeCtx({
+			strategyInput: {
+				headline: "Q4",
+				metrics: [
+					{ label: "A", value: "1" },
+					{ label: "B", value: "2" },
+					{ label: "C", value: "3" },
+				],
+			},
+			blocks: [],
+		});
+		const r = richResult(kpiCardOverviewStrategy.layout(ctx));
+		expect(r.strategyInputMode).toBe("native");
+	});
+
+	it("missing input with contentBlocks → legacy-fallback", () => {
+		const ctx = makeCtx({
+			blocks: [
+				{ id: "m1", type: "metric", label: "A", value: "1" },
+				{ id: "m2", type: "metric", label: "B", value: "2" },
+				{ id: "m3", type: "metric", label: "C", value: "3" },
+				{ id: "c1", type: "callout", text: "Note" },
+			],
+		});
+		const r = richResult(kpiCardOverviewStrategy.layout(ctx));
+		expect(r.strategyInputMode).toBe("missing");
+	});
+
+	it("invalid input with contentBlocks → invalid-fallback", () => {
 		const ctx = makeCtx({
 			strategyInput: { wrong: "shape" },
 			blocks: [
@@ -258,10 +287,62 @@ describe("invalid strategyInput handling", () => {
 			],
 		});
 		const r = richResult(kpiCardOverviewStrategy.layout(ctx));
+		expect(r.strategyInputMode).toBe("invalid-fallback");
+		expect(r.assignments.length).toBeGreaterThan(0);
+		if ("strategyInputWarnings" in r) {
+			expect(r.strategyInputWarnings).toBeDefined();
+			expect(r.strategyInputWarnings!.length).toBeGreaterThan(0);
+		}
+	});
+
+	it("invalid input without contentBlocks → invalid", () => {
+		const ctx = makeCtx({
+			strategyInput: { wrong: "shape" },
+			blocks: [],
+		});
+		const r = richResult(kpiCardOverviewStrategy.layout(ctx));
 		expect(r.strategyInputMode).toBe("invalid");
 		if ("strategyInputWarnings" in r) {
 			expect(r.strategyInputWarnings).toBeDefined();
 			expect(r.strategyInputWarnings!.length).toBeGreaterThan(0);
 		}
+	});
+
+	it("missing input without contentBlocks → missing", () => {
+		const ctx = makeCtx({ blocks: [] });
+		const r = richResult(kpiCardOverviewStrategy.layout(ctx));
+		expect(r.strategyInputMode).toBe("missing");
+	});
+});
+
+// ---------------------------------------------------------------------------
+// StrategyInput schema invariant: no rendering keys
+// ---------------------------------------------------------------------------
+describe("StrategyInput schemas contain no rendering keys", () => {
+	it("KpiCardOverviewInput has no x/y/width/height/fill/stroke keys", () => {
+		const input = {
+			headline: "Q4",
+			metrics: [
+				{ label: "Revenue", value: "$10M", trend: "up" },
+				{ label: "Margin", value: "22%", trend: "flat" },
+				{ label: "Growth", value: "15%", trend: "up" },
+			],
+			keyTakeaway: "Strong quarter.",
+		};
+		const json = JSON.stringify(input);
+		expect(json).not.toMatch(/"(x|y|width|height|fill|stroke|fontSize|fontFamily|shape)"/);
+	});
+
+	it("ThreePointSummaryInput has no rendering keys", () => {
+		const input = {
+			headline: "Three Pillars",
+			points: [
+				{ title: "Quality", description: "Ship well" },
+				{ title: "Speed", description: "Fast" },
+				{ title: "Scale", description: "Grow" },
+			],
+		};
+		const json = JSON.stringify(input);
+		expect(json).not.toMatch(/"(x|y|width|height|fill|stroke|fontSize|fontFamily|shape)"/);
 	});
 });
