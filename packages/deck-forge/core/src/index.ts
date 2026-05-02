@@ -160,6 +160,7 @@ export {
 export { buildPresentationIr } from "#src/builders/build-presentation-ir.js";
 export {
   EXECUTIVE_NAVY_TEMPLATE_PROFILE,
+  MINIMAL_TEMPLATE_PROFILE,
   resolveTemplateLayout,
 } from "#src/templates/index.js";
 export type {
@@ -849,3 +850,37 @@ export type ExportResult = {
   data?: Uint8Array | string;
   warnings?: string[];
 };
+
+// ---------------------------------------------------------------------------
+// Strategy (Phase 8A)
+// ---------------------------------------------------------------------------
+export type {
+  AudienceType,
+  CommunicationIntent,
+  ContentKind,
+  DensityLevel,
+  PresentationGenre,
+} from "#src/strategy/types.js";
+export type { StrategyManifest, StrategyExample } from "#src/strategy/manifest.js";
+export { StrategyRegistry } from "#src/strategy/registry.js";
+export type { StrategyQuery } from "#src/strategy/registry.js";
+export { createBuiltinStrategyRegistry } from "#src/strategy/index.js";
+export {
+  kpiCardOverviewManifest,
+  kpiDashboardWithInsightManifest,
+  decisionRequestManifest,
+  recommendationComparisonManifest,
+  actionPlanTableManifest,
+  processFlowWithImpactManifest,
+  implementationRoadmapManifest,
+  layeredArchitectureManifest,
+  dataInsightStoryManifest,
+  smallMultiplesTrendManifest,
+  optionComparisonTableManifest,
+  oneMessageSummaryManifest,
+  threePointSummaryManifest,
+  twoColumnComparisonManifest,
+  eventTimelineManifest,
+  metricTileDashboardManifest,
+  twoAxisMatrixManifest,
+} from "#src/strategy/index.js";

@@ -8,6 +8,51 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 ---
 
 ## [Unreleased]
+### Added — deck-forge/core Phase 8A: Strategy Manifest Normalization
+
+- **Strategy module** — new `packages/deck-forge/core/src/strategy/` module
+  with `StrategyManifest` type, `builtin-manifests.ts`, and
+  `createBuiltinStrategyRegistry()` factory
+- **17 English-ized manifests** — all strategy manifests rewritten with
+  canonical English `chooseWhen` / `avoidWhen` descriptions (previously
+  mixed Japanese/English)
+- **5 strategy ID renames** (pattern-based, not audience-based):
+  - `executive-summary-kpi` → `kpi-card-overview`
+  - `dashboard` → `metric-tile-dashboard`
+  - `comparison` → `two-column-comparison`
+  - `timeline` → `event-timeline`
+  - `matrix` / `matrix-2x2` → `two-axis-matrix`
+- **Capability renames** to match new IDs:
+  `kpi_card_overview`, `metric_tile_dashboard`, `two_column_comparison`,
+  `event_timeline`, `two_axis_matrix`
+- **`MINIMAL_TEMPLATE_PROFILE`** — new minimal-default template profile
+  used as fallback when no template is explicitly provided to
+  `buildPresentationIr()`
+- **Strategy manifest tests** — 34 tests covering ID uniqueness, canonical
+  English language, specificity (chooseWhen ≠ avoidWhen), and
+  boundary definitions
+
+### Changed — deck-forge/core Phase 8A
+
+- **`data-insight-story` contentKinds** — removed `root-cause`, added
+  `summary` (now: `["chart", "research-result", "summary"]`)
+- **`layered-architecture` capabilities** — added `supportsIcons: true`
+  (now: `{ supportsIcons: true, supportsImages: true }`)
+- **`ARCHETYPE_TO_PREFERRED_STRATEGY_ID`** — updated mappings:
+  `kpi_summary` → `"kpi-card-overview"`, `comparison` → `"two-column-comparison"`
+- **`STRATEGY_TO_LAYOUT_ID`** — updated key:
+  `"kpi-card-overview"` → `"dashboard-cards"` (was `"executive-summary-kpi"`)
+- **`buildPresentationIr()` default** — falls back to
+  `MINIMAL_TEMPLATE_PROFILE` when no `templateProfile` is provided
+  (was previously `EXECUTIVE_NAVY_TEMPLATE_PROFILE`)
+- **Intent-parser prompt** — updated strategy IDs in archetype mapping
+  guidance
+
+### Fixed — deck-forge/core Phase 8A
+
+- **Template profile tests** — `buildPresentationIr` trace tests now
+  explicitly pass `templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE`
+  instead of relying on the (changed) default
 
 ### Added — deck-forge Phase 7.8: Archetype + Content Contract + Layout Primitives
 

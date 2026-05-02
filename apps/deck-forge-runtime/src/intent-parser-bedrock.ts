@@ -596,13 +596,13 @@ Do NOT rely only on generic content blocks for slides that have a contentContrac
 
 Allowed archetypes and their preferredStrategyId:
   title                → "title-slide"
-  kpi_summary          → "executive-summary-kpi"
+  kpi_summary          → "kpi-card-overview"
   cause_analysis       → "data-insight-story"
   trend_small_multiples → "small-multiples-trend"
   process_with_impact  → "process-flow-with-impact"
   approval_request     → "decision-request"
   action_plan_table    → "action-plan-table"
-  comparison           → "comparison"
+  comparison           → "two-column-comparison"
   roadmap              → "implementation-roadmap"
   architecture         → "layered-architecture"
   generic_content      → (no preferredStrategyId needed)

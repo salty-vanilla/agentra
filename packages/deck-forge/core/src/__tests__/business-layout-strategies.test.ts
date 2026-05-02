@@ -24,16 +24,16 @@ import {
 } from "#src/builders/layouts/business-utils.js";
 import {
   BUILTIN_LAYOUT_STRATEGIES,
-  comparisonStrategy,
-  dashboardStrategy,
+  twoColumnComparisonStrategy,
+  metricTileDashboardStrategy,
   selectLayoutStrategy,
   singleStackStrategy,
-  timelineStrategy,
+  eventTimelineStrategy,
 } from "#src/builders/layouts/index.js";
 import { actionPlanTableStrategy } from "#src/builders/layouts/action-plan-table.js";
 import { dataInsightStoryStrategy } from "#src/builders/layouts/data-insight-story.js";
 import { decisionRequestStrategy } from "#src/builders/layouts/decision-request.js";
-import { executiveSummaryKpiStrategy } from "#src/builders/layouts/executive-summary-kpi.js";
+import { kpiCardOverviewStrategy } from "#src/builders/layouts/kpi-card-overview.js";
 import { implementationRoadmapStrategy } from "#src/builders/layouts/implementation-roadmap.js";
 import { kpiDashboardWithInsightStrategy } from "#src/builders/layouts/kpi-dashboard-with-insight.js";
 import { layeredArchitectureStrategy } from "#src/builders/layouts/layered-architecture.js";
@@ -259,10 +259,10 @@ describe("business-utils layout helpers", () => {
 });
 
 // ---------------------------------------------------------------------------
-// executive-summary-kpi strategy
+// kpi-card-overview strategy
 // ---------------------------------------------------------------------------
 
-describe("executive-summary-kpi strategy", () => {
+describe("kpi-card-overview strategy", () => {
   it("matches when 3+ metrics + callout present", () => {
     const ctx = makeContext([
       makeMetric("m1", "OEE", "87%"),
@@ -270,7 +270,7 @@ describe("executive-summary-kpi strategy", () => {
       makeMetric("m3", "Uptime", "98%"),
       makeCallout("c1", "Key takeaway: all metrics improved"),
     ]);
-    expect(executiveSummaryKpiStrategy.match(ctx)).toBe(true);
+    expect(kpiCardOverviewStrategy.match(ctx)).toBe(true);
   });
 
   it("matches when 3+ metrics + summary intent", () => {
@@ -282,7 +282,7 @@ describe("executive-summary-kpi strategy", () => {
       ],
       { slideSpec: { intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" } } },
     );
-    expect(executiveSummaryKpiStrategy.match(ctx)).toBe(true);
+    expect(kpiCardOverviewStrategy.match(ctx)).toBe(true);
   });
 
   it("does not match with fewer than 3 metrics", () => {
@@ -291,7 +291,7 @@ describe("executive-summary-kpi strategy", () => {
       makeMetric("m2", "Yield", "94%"),
       makeCallout("c1", "insight"),
     ]);
-    expect(executiveSummaryKpiStrategy.match(ctx)).toBe(false);
+    expect(kpiCardOverviewStrategy.match(ctx)).toBe(false);
   });
 
   it("does not match when too many blocks", () => {
@@ -300,7 +300,7 @@ describe("executive-summary-kpi strategy", () => {
       blocks.push(makeMetric(`m${i}`, `M${i}`, `${i}`));
     }
     const ctx = makeContext(blocks);
-    expect(executiveSummaryKpiStrategy.match(ctx)).toBe(false);
+    expect(kpiCardOverviewStrategy.match(ctx)).toBe(false);
   });
 
   it("layout produces non-zero frames for all blocks", () => {
@@ -311,7 +311,7 @@ describe("executive-summary-kpi strategy", () => {
       makeCallout("c1", "Key insight"),
     ];
     const ctx = makeContext(blocks);
-    const assignments = executiveSummaryKpiStrategy.layout(ctx);
+    const assignments = kpiCardOverviewStrategy.layout(ctx);
     expect(assignments).toHaveLength(4);
     for (const a of assignments) {
       expect(a.frame.width).toBeGreaterThan(0);
@@ -333,7 +333,7 @@ describe("executive-summary-kpi strategy", () => {
       makeCallout("c1", "insight"),
     ];
     const ctx = makeContext(blocks);
-    const assignments = executiveSummaryKpiStrategy.layout(ctx);
+    const assignments = kpiCardOverviewStrategy.layout(ctx);
     const metricAssignments = assignments.filter((a) => a.blockId.startsWith("m"));
     for (const a of metricAssignments) {
       expect(a.hints?.decoration).toBe("card");
@@ -598,7 +598,7 @@ describe("strategy precedence", () => {
     decisionRequestStrategy,
     recommendationComparisonStrategy,
     actionPlanTableStrategy,
-    executiveSummaryKpiStrategy,
+    kpiCardOverviewStrategy,
     kpiDashboardWithInsightStrategy,
     smallMultiplesTrendStrategy,
     dataInsightStoryStrategy,
@@ -611,7 +611,7 @@ describe("strategy precedence", () => {
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
   ];
 
-  it("executive-summary-kpi overrides dashboard when 4 metrics + summary intent + callout", () => {
+  it("kpi-card-overview overrides metric-tile-dashboard when 4 metrics + summary intent + callout", () => {
     const ctx = makeContext(
       [
         makeMetric("m1", "OEE", "87%"),
@@ -626,7 +626,7 @@ describe("strategy precedence", () => {
       },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
-    expect(strategy.id).toBe("executive-summary-kpi");
+    expect(strategy.id).toBe("kpi-card-overview");
   });
 
   it("kpi-dashboard-with-insight overrides dashboard when metrics + chart + insight", () => {
@@ -666,7 +666,7 @@ describe("strategy precedence", () => {
       { layoutSpec: { type: "dashboard", density: "medium" } },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
-    expect(strategy.id).toBe("dashboard");
+    expect(strategy.id).toBe("metric-tile-dashboard");
   });
 
   it("generic timeline is selected when no roadmap/action signals", () => {
@@ -675,7 +675,7 @@ describe("strategy precedence", () => {
       { layoutSpec: { type: "timeline", density: "medium" } },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
-    expect(strategy.id).toBe("timeline");
+    expect(strategy.id).toBe("event-timeline");
   });
 
   it("generic comparison is selected when no recommendation signals", () => {
@@ -687,7 +687,7 @@ describe("strategy precedence", () => {
       { layoutSpec: { type: "comparison", density: "medium" } },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
-    expect(strategy.id).toBe("comparison");
+    expect(strategy.id).toBe("two-column-comparison");
   });
 });
 
@@ -701,7 +701,7 @@ describe("strategy registration", () => {
       actionPlanTableStrategy,
       dataInsightStoryStrategy,
       decisionRequestStrategy,
-      executiveSummaryKpiStrategy,
+      kpiCardOverviewStrategy,
       implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
       layeredArchitectureStrategy,
@@ -712,7 +712,7 @@ describe("strategy registration", () => {
       smallMultiplesTrendStrategy,
       threePointSummaryStrategy,
     ];
-    const genericStrategies = [comparisonStrategy, dashboardStrategy, timelineStrategy];
+    const genericStrategies = [twoColumnComparisonStrategy, metricTileDashboardStrategy, eventTimelineStrategy];
 
     for (const biz of businessStrategies) {
       for (const gen of genericStrategies) {
@@ -727,7 +727,7 @@ describe("strategy registration", () => {
     const standardBusinessStrategies = [
       actionPlanTableStrategy,
       dataInsightStoryStrategy,
-      executiveSummaryKpiStrategy,
+      kpiCardOverviewStrategy,
       implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
       layeredArchitectureStrategy,
@@ -750,7 +750,7 @@ describe("strategy registration", () => {
     const bizStrategies = [
       actionPlanTableStrategy,
       dataInsightStoryStrategy,
-      executiveSummaryKpiStrategy,
+      kpiCardOverviewStrategy,
       implementationRoadmapStrategy,
       kpiDashboardWithInsightStrategy,
       layeredArchitectureStrategy,
@@ -780,7 +780,7 @@ describe("manufacturing report expected strategy selection", () => {
     decisionRequestStrategy,
     recommendationComparisonStrategy,
     actionPlanTableStrategy,
-    executiveSummaryKpiStrategy,
+    kpiCardOverviewStrategy,
     kpiDashboardWithInsightStrategy,
     smallMultiplesTrendStrategy,
     dataInsightStoryStrategy,
@@ -793,7 +793,7 @@ describe("manufacturing report expected strategy selection", () => {
     ...BUILTIN_LAYOUT_STRATEGIES.filter((s) => s.priority <= 70),
   ];
 
-  it("summary KPI slide selects executive-summary-kpi", () => {
+  it("summary KPI slide selects kpi-card-overview", () => {
     const ctx = makeContext(
       [
         makeMetric("m1", "OEE", "87.2%"),
@@ -811,7 +811,7 @@ describe("manufacturing report expected strategy selection", () => {
       },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
-    expect(strategy.id).toBe("executive-summary-kpi");
+    expect(strategy.id).toBe("kpi-card-overview");
   });
 
   it("KPI dashboard slide selects kpi-dashboard-with-insight", () => {
@@ -1495,7 +1495,7 @@ describe("6A-2 strategy precedence", () => {
     decisionRequestStrategy,
     recommendationComparisonStrategy,
     actionPlanTableStrategy,
-    executiveSummaryKpiStrategy,
+    kpiCardOverviewStrategy,
     kpiDashboardWithInsightStrategy,
     smallMultiplesTrendStrategy,
     dataInsightStoryStrategy,
@@ -1591,7 +1591,7 @@ describe("6A-2 strategy precedence", () => {
       { layoutSpec: { type: "comparison", density: "medium" } },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
-    expect(strategy.id).toBe("comparison");
+    expect(strategy.id).toBe("two-column-comparison");
   });
 });
 
@@ -2105,7 +2105,7 @@ describe("6A-3 strategy precedence", () => {
     decisionRequestStrategy,
     recommendationComparisonStrategy,
     actionPlanTableStrategy,
-    executiveSummaryKpiStrategy,
+    kpiCardOverviewStrategy,
     kpiDashboardWithInsightStrategy,
     smallMultiplesTrendStrategy,
     dataInsightStoryStrategy,
@@ -2147,7 +2147,7 @@ describe("6A-3 strategy precedence", () => {
       { layoutSpec: { type: "timeline", density: "medium" } },
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
-    expect(strategy.id).toBe("timeline");
+    expect(strategy.id).toBe("event-timeline");
   });
 
   it("one-message-summary does NOT match slides with charts", () => {
@@ -2194,5 +2194,37 @@ describe("6A-3 strategy precedence", () => {
     );
     const strategy = selectLayoutStrategy(ctx, strategies);
     expect(strategy.id).toBe("layered-architecture");
+  });
+});
+
+describe("selectLayoutStrategy – unknown preferredStrategyId warning", () => {
+  it("emits warning when preferredStrategyId does not match any strategy", () => {
+    const ctx = makeContext(
+      [],
+      {
+        slideSpec: {
+          preferredStrategyId: "non-existent-strategy",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const result = selectLayoutStrategy(ctx);
+    expect(result._selectionTrace?.warnings).toContainEqual(
+      expect.stringContaining("non-existent-strategy"),
+    );
+  });
+
+  it("does not emit warning when preferredStrategyId is valid", () => {
+    const ctx = makeContext(
+      [],
+      {
+        slideSpec: {
+          preferredStrategyId: "single-stack",
+          intent: { type: "summary", keyMessage: "x", audienceTakeaway: "x" },
+        },
+      },
+    );
+    const result = selectLayoutStrategy(ctx);
+    expect(result._selectionTrace?.warnings).toBeUndefined();
   });
 });

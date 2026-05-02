@@ -3,18 +3,18 @@ import { describe, expect, it } from "vitest";
 import { buildPresentationIr } from "#src/builders/build-presentation-ir.js";
 import {
   BUILTIN_LAYOUT_STRATEGIES,
-  comparisonStrategy,
-  dashboardStrategy,
+  twoColumnComparisonStrategy,
+  metricTileDashboardStrategy,
   diagramFocusStrategy,
   heroStrategy,
   kpiGridStrategy,
-  matrixStrategy,
+  twoAxisMatrixStrategy,
   selectLayoutStrategy,
   singleStackStrategy,
   splitGrid,
   splitVertical,
   threeColumnStrategy,
-  timelineStrategy,
+  eventTimelineStrategy,
   titleSlideStrategy,
   twoColumnStrategy,
 } from "#src/builders/layouts/index.js";
@@ -399,7 +399,7 @@ describe("title-slide / section-divider strategies", () => {
   });
 });
 
-describe("comparison strategy", () => {
+describe("two-column-comparison strategy", () => {
   it("matches comparison / image_left_text_right / text_left_image_right", () => {
     for (const t of ["comparison", "image_left_text_right", "text_left_image_right"] as const) {
       const ctx = makeContext(
@@ -409,7 +409,7 @@ describe("comparison strategy", () => {
         ] as ContentBlock[],
         { layoutSpec: { type: t, density: "medium" } },
       );
-      expect(comparisonStrategy.match(ctx)).toBe(true);
+      expect(twoColumnComparisonStrategy.match(ctx)).toBe(true);
     }
   });
 
@@ -423,7 +423,7 @@ describe("comparison strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "comparison", density: "medium" } },
     );
-    const assignments = comparisonStrategy.layout(ctx);
+    const assignments = twoColumnComparisonStrategy.layout(ctx);
     const a1 = assignments.find((a) => a.blockId === "a1");
     const b1 = assignments.find((a) => a.blockId === "b1");
     expect(a1 && b1).toBeTruthy();
@@ -439,7 +439,7 @@ describe("comparison strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "image_left_text_right", density: "medium" } },
     );
-    const assignments = comparisonStrategy.layout(ctx);
+    const assignments = twoColumnComparisonStrategy.layout(ctx);
     const image = assignments.find((a) => a.blockId === "i1");
     const body = assignments.find((a) => a.blockId === "p1");
     if (!image || !body) return;
@@ -463,7 +463,7 @@ describe("three-column strategy", () => {
   });
 });
 
-describe("matrix-2x2 strategy", () => {
+describe("two-axis-matrix strategy", () => {
   it("places 4 blocks in a 2x2 grid with card decoration", () => {
     const ctx = makeContext(
       [
@@ -474,7 +474,7 @@ describe("matrix-2x2 strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "matrix", density: "medium" } },
     );
-    const assignments = matrixStrategy.layout(ctx);
+    const assignments = twoAxisMatrixStrategy.layout(ctx);
     expect(assignments).toHaveLength(4);
     expect(new Set(assignments.map((a) => a.frame.x)).size).toBe(2);
     expect(new Set(assignments.map((a) => a.frame.y)).size).toBe(2);
@@ -484,7 +484,7 @@ describe("matrix-2x2 strategy", () => {
   });
 });
 
-describe("dashboard strategy", () => {
+describe("metric-tile-dashboard strategy", () => {
   it("metrics in upper grid, other blocks below", () => {
     const ctx = makeContext(
       [
@@ -494,7 +494,7 @@ describe("dashboard strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "dashboard", density: "medium" } },
     );
-    const assignments = dashboardStrategy.layout(ctx);
+    const assignments = metricTileDashboardStrategy.layout(ctx);
     const m1 = assignments.find((a) => a.blockId === "m1");
     const t1 = assignments.find((a) => a.blockId === "t1");
     if (!m1 || !t1) return;
@@ -503,7 +503,7 @@ describe("dashboard strategy", () => {
   });
 });
 
-describe("timeline strategy", () => {
+describe("event-timeline strategy", () => {
   it("matches timeline and lays events horizontally", () => {
     const ctx = makeContext(
       [
@@ -513,8 +513,8 @@ describe("timeline strategy", () => {
       ] as ContentBlock[],
       { layoutSpec: { type: "timeline", density: "medium" } },
     );
-    expect(timelineStrategy.match(ctx)).toBe(true);
-    const assignments = timelineStrategy.layout(ctx);
+    expect(eventTimelineStrategy.match(ctx)).toBe(true);
+    const assignments = eventTimelineStrategy.layout(ctx);
     expect(new Set(assignments.map((a) => a.frame.x)).size).toBe(3);
     expect(new Set(assignments.map((a) => a.frame.y)).size).toBe(1);
   });

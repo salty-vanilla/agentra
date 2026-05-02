@@ -1,16 +1,16 @@
 import { actionPlanTableStrategy } from "#src/builders/layouts/action-plan-table.js";
-import { comparisonStrategy } from "#src/builders/layouts/comparison.js";
-import { dashboardStrategy } from "#src/builders/layouts/dashboard.js";
+import { twoColumnComparisonStrategy } from "#src/builders/layouts/comparison.js";
+import { metricTileDashboardStrategy } from "#src/builders/layouts/dashboard.js";
 import { dataInsightStoryStrategy } from "#src/builders/layouts/data-insight-story.js";
 import { decisionRequestStrategy } from "#src/builders/layouts/decision-request.js";
 import { diagramFocusStrategy } from "#src/builders/layouts/diagram-focus.js";
-import { executiveSummaryKpiStrategy } from "#src/builders/layouts/executive-summary-kpi.js";
+import { kpiCardOverviewStrategy } from "#src/builders/layouts/kpi-card-overview.js";
 import { heroStrategy } from "#src/builders/layouts/hero.js";
 import { implementationRoadmapStrategy } from "#src/builders/layouts/implementation-roadmap.js";
 import { kpiDashboardWithInsightStrategy } from "#src/builders/layouts/kpi-dashboard-with-insight.js";
 import { kpiGridStrategy } from "#src/builders/layouts/kpi-grid.js";
 import { layeredArchitectureStrategy } from "#src/builders/layouts/layered-architecture.js";
-import { matrixStrategy } from "#src/builders/layouts/matrix.js";
+import { twoAxisMatrixStrategy } from "#src/builders/layouts/matrix.js";
 import { oneMessageSummaryStrategy } from "#src/builders/layouts/one-message-summary.js";
 import { optionComparisonTableStrategy } from "#src/builders/layouts/option-comparison-table.js";
 import { processFlowWithImpactStrategy } from "#src/builders/layouts/process-flow-with-impact.js";
@@ -20,7 +20,7 @@ import { singleStackStrategy } from "#src/builders/layouts/single-stack.js";
 import { smallMultiplesTrendStrategy } from "#src/builders/layouts/small-multiples-trend.js";
 import { threeColumnStrategy } from "#src/builders/layouts/three-column.js";
 import { threePointSummaryStrategy } from "#src/builders/layouts/three-point-summary.js";
-import { timelineStrategy } from "#src/builders/layouts/timeline.js";
+import { eventTimelineStrategy } from "#src/builders/layouts/timeline.js";
 import { titleSlideStrategy } from "#src/builders/layouts/title-slide.js";
 import { twoColumnStrategy } from "#src/builders/layouts/two-column.js";
 import type { LayoutContext, LayoutStrategy } from "#src/builders/layouts/types.js";
@@ -75,7 +75,7 @@ export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freez
   decisionRequestStrategy,
   recommendationComparisonStrategy,
   actionPlanTableStrategy,
-  executiveSummaryKpiStrategy,
+  kpiCardOverviewStrategy,
   kpiDashboardWithInsightStrategy,
   smallMultiplesTrendStrategy,
   dataInsightStoryStrategy,
@@ -86,11 +86,11 @@ export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freez
   oneMessageSummaryStrategy,
   threePointSummaryStrategy,
   // --- 70: generic explicit body-layout ---
-  comparisonStrategy,
+  twoColumnComparisonStrategy,
   threeColumnStrategy,
-  matrixStrategy,
-  dashboardStrategy,
-  timelineStrategy,
+  twoAxisMatrixStrategy,
+  metricTileDashboardStrategy,
+  eventTimelineStrategy,
   diagramFocusStrategy,
   // --- 60–0: content-driven + fallback ---
   heroStrategy,
@@ -105,13 +105,13 @@ export const BUILTIN_LAYOUT_STRATEGIES: readonly LayoutStrategy[] = Object.freez
  */
 const ARCHETYPE_TO_PREFERRED_STRATEGY_ID: Record<string, string> = {
   title: "title-slide",
-  kpi_summary: "executive-summary-kpi",
+  kpi_summary: "kpi-card-overview",
   cause_analysis: "data-insight-story",
   trend_small_multiples: "small-multiples-trend",
   process_with_impact: "process-flow-with-impact",
   approval_request: "decision-request",
   action_plan_table: "action-plan-table",
-  comparison: "comparison",
+  comparison: "two-column-comparison",
   roadmap: "implementation-roadmap",
   architecture: "layered-architecture",
   generic_content: "content-standard",
@@ -121,6 +121,7 @@ export type StrategySelectionTrace = {
   selectedBy: "preferredStrategyId" | "deterministicSelector" | "fallback";
   preferredStrategyId?: string;
   archetype?: string;
+  warnings?: string[];
 };
 
 /**
@@ -141,6 +142,8 @@ export function selectLayoutStrategy(
     spec.preferredStrategyId ??
     (spec.archetype ? ARCHETYPE_TO_PREFERRED_STRATEGY_ID[spec.archetype] : undefined);
 
+  const warnings: string[] = [];
+
   if (preferredId) {
     const preferred = strategies.find((s) => s.id === preferredId);
     if (preferred && preferred.match(ctx)) {
@@ -152,6 +155,9 @@ export function selectLayoutStrategy(
         },
       });
     }
+    if (!preferred) {
+      warnings.push(`Unknown preferredStrategyId "${preferredId}"; falling back to deterministic selection.`);
+    }
   }
 
   const sorted = [...strategies].sort((a, b) => b.priority - a.priority);
@@ -162,6 +168,7 @@ export function selectLayoutStrategy(
           selectedBy: "deterministicSelector" as const,
           preferredStrategyId: preferredId,
           archetype: spec.archetype,
+          ...(warnings.length > 0 && { warnings }),
         },
       });
     }
@@ -171,24 +178,25 @@ export function selectLayoutStrategy(
       selectedBy: "fallback" as const,
       preferredStrategyId: preferredId,
       archetype: spec.archetype,
+      ...(warnings.length > 0 && { warnings }),
     },
   });
 }
 
 export {
   actionPlanTableStrategy,
-  comparisonStrategy,
-  dashboardStrategy,
+  twoColumnComparisonStrategy,
+  metricTileDashboardStrategy,
   dataInsightStoryStrategy,
   decisionRequestStrategy,
   diagramFocusStrategy,
-  executiveSummaryKpiStrategy,
+  kpiCardOverviewStrategy,
   heroStrategy,
   implementationRoadmapStrategy,
   kpiDashboardWithInsightStrategy,
   kpiGridStrategy,
   layeredArchitectureStrategy,
-  matrixStrategy,
+  twoAxisMatrixStrategy,
   oneMessageSummaryStrategy,
   optionComparisonTableStrategy,
   processFlowWithImpactStrategy,
@@ -198,7 +206,7 @@ export {
   smallMultiplesTrendStrategy,
   threeColumnStrategy,
   threePointSummaryStrategy,
-  timelineStrategy,
+  eventTimelineStrategy,
   titleSlideStrategy,
   twoColumnStrategy,
 };

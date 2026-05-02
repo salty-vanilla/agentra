@@ -299,8 +299,8 @@ describe("resolveTemplateLayout", () => {
     expect(resolve("section").layout.id).toBe("section");
   });
 
-  it("executive-summary-kpi strategy -> dashboard-cards", () => {
-    const result = resolve("single_column", "executive-summary-kpi");
+  it("kpi-card-overview strategy -> dashboard-cards", () => {
+    const result = resolve("single_column", "kpi-card-overview");
     expect(result.layout.id).toBe("dashboard-cards");
   });
 
@@ -369,8 +369,8 @@ describe("resolveTemplateLayout", () => {
 
   // -- Priority: special layout type wins over strategy --
 
-  it("special type 'title' wins over strategy 'executive-summary-kpi'", () => {
-    expect(resolve("title", "executive-summary-kpi").layout.id).toBe("cover");
+  it("special type 'title' wins over strategy 'kpi-card-overview'", () => {
+    expect(resolve("title", "kpi-card-overview").layout.id).toBe("cover");
   });
 
   it("special type 'section' wins over strategy 'kpi-dashboard-with-insight'", () => {
@@ -470,7 +470,7 @@ describe("buildPresentationIr trace includes template info", () => {
       } as unknown as SlideSpec,
     ];
 
-    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs, templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE });
     const trace = result.slides[0]!._trace!;
 
     expect(trace.layoutStrategyId).toBe("title-slide");
@@ -498,7 +498,7 @@ describe("buildPresentationIr trace includes template info", () => {
       } as unknown as SlideSpec,
     ];
 
-    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs, templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE });
     const trace = result.slides[0]!._trace!;
 
     expect(trace.templateProfileId).toBe("executive-navy-v1");
@@ -542,7 +542,7 @@ describe("slot placement in buildPresentationIr", () => {
       } as unknown as SlideSpec,
     ];
 
-    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs, templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE });
     const titleEl = result.slides[0]!.elements.find((e) => "role" in e && e.role === "title");
     const subtitleEl = result.slides[0]!.elements.find((e) => "role" in e && e.role === "subtitle");
 
@@ -576,7 +576,7 @@ describe("slot placement in buildPresentationIr", () => {
       } as unknown as SlideSpec,
     ];
 
-    const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
+    const result = buildPresentationIr({ brief, deckPlan, slideSpecs, templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE });
     const titleEl = result.slides[0]!.elements.find((e) => "role" in e && e.role === "title");
 
     // content-standard title slot: { x: 80, y: 56, width: 1120, height: 72 }
@@ -599,7 +599,7 @@ describe("no business layout explosion", () => {
 
   it("no layout id matches a business strategy id", () => {
     const businessStrategyIds = [
-      "executive-summary-kpi",
+      "kpi-card-overview",
       "kpi-dashboard-with-insight",
       "data-insight-story",
       "small-multiples-trend",

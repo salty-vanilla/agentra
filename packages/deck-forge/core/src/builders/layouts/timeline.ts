@@ -10,9 +10,9 @@ import type {
  * along the body region.  Each event/block gets the same fixed-height
  * card spanning the full body height.
  */
-export const timelineStrategy: LayoutStrategy = {
-  id: "timeline",
-  capability: "timeline",
+export const eventTimelineStrategy: LayoutStrategy = {
+  id: "event-timeline",
+  capability: "event_timeline",
   priority: 70,
 
   match(ctx: LayoutContext): boolean {

@@ -16,9 +16,9 @@ import type {
  *   - For plain `comparison`: blocks are split evenly in arrival order
  *     (first half → left column, second half → right column).
  */
-export const comparisonStrategy: LayoutStrategy = {
-  id: "comparison",
-  capability: "comparison",
+export const twoColumnComparisonStrategy: LayoutStrategy = {
+  id: "two-column-comparison",
+  capability: "two_column_comparison",
   priority: 70,
 
   match(ctx: LayoutContext): boolean {

@@ -119,7 +119,7 @@ describe("analyzeDeckStabilization", () => {
           usedSlots: ["title", "subtitle"],
         }),
         makeTracedSlide("s2", 1, {
-          layoutStrategyId: "executive-summary-kpi",
+          layoutStrategyId: "kpi-card-overview",
           templateLayoutId: "dashboard-cards",
           templateLayoutKind: "dashboard",
           usedSlots: ["title", "metrics", "callout"],

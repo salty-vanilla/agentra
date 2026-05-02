@@ -8,7 +8,7 @@ export type NormalizedKpiSummaryContent = {
 
 /**
  * Normalize a set of ContentBlock[] into semantic groups for the
- * executive-summary-kpi strategy.
+ * kpi-card-overview strategy.
  *
  * - metric blocks → metrics
  * - primary callout → insight (first one)

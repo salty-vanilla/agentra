@@ -31,7 +31,7 @@ import type {
   TitleBlock,
 } from "#src/index.js";
 import { createResolvedRegions, defaultFrameForRole } from "#src/operations/utils.js";
-import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
+import { MINIMAL_TEMPLATE_PROFILE } from "#src/templates/builtins/minimal-default.js";
 import { resolveTemplateLayout } from "#src/templates/resolve-template-layout.js";
 import type { TemplateProfile, TemplateSlotName } from "#src/templates/template-profile.js";
 
@@ -59,7 +59,7 @@ export type BuildPresentationIrOutput = PresentationIR;
 
 export function buildPresentationIr(input: BuildPresentationIrInput): BuildPresentationIrOutput {
   const theme = input.theme ?? createTheme(input.brief);
-  const templateProfile = input.templateProfile ?? EXECUTIVE_NAVY_TEMPLATE_PROFILE;
+  const templateProfile = input.templateProfile ?? MINIMAL_TEMPLATE_PROFILE;
   const usedElementIds = new Set<string>();
   const slideSpecs = [...input.slideSpecs].sort((left, right) => {
     const leftOrder = left.slideNumber ?? Number.MAX_SAFE_INTEGER;

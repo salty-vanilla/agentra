@@ -10,9 +10,9 @@ import type {
  * quadrants" layout).  Extra blocks beyond four reuse the last quadrant
  * frame (validation surfaces resulting overlap).
  */
-export const matrixStrategy: LayoutStrategy = {
-  id: "matrix-2x2",
-  capability: "matrix",
+export const twoAxisMatrixStrategy: LayoutStrategy = {
+  id: "two-axis-matrix",
+  capability: "two_axis_matrix",
   priority: 70,
 
   match(ctx: LayoutContext): boolean {

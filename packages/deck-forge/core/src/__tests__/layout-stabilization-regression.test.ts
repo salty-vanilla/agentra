@@ -411,7 +411,7 @@ describe("decision-request V1 hardening (Phase 7.7-fix2)", () => {
   });
 });
 
-describe("executive-summary-kpi 4 metrics + callout (Phase 7.7-fix2)", () => {
+describe("kpi-card-overview 4 metrics + callout (Phase 7.7-fix2)", () => {
   const slideSpec = makeSlideSpec({
     id: "slide-02",
     title: "Q2業績サマリー",
@@ -595,7 +595,7 @@ describe("preferredStrategyId in selectLayoutStrategy (Phase 7.8)", () => {
   it("uses preferredStrategyId when strategy match succeeds", () => {
     const slideSpec = makeSlideSpec({
       id: "slide-preferred",
-      preferredStrategyId: "executive-summary-kpi",
+      preferredStrategyId: "kpi-card-overview",
       archetype: "kpi_summary",
       content: [
         { id: "t1", type: "title", text: "Preferred" } as ContentBlock,
@@ -607,7 +607,7 @@ describe("preferredStrategyId in selectLayoutStrategy (Phase 7.8)", () => {
       layout: { type: "dashboard", density: "medium" },
     });
     const { ir } = buildAndDiagnose([slideSpec]);
-    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("executive-summary-kpi");
+    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("kpi-card-overview");
     expect(ir.slides[0]._trace?.selectedBy).toBe("preferredStrategyId");
     expect(ir.slides[0]._trace?.archetype).toBe("kpi_summary");
   });
@@ -655,7 +655,7 @@ describe("contentContract → blocks integration (Phase 7.8)", () => {
     const slideSpec = makeSlideSpec({
       id: "slide-kpi-contract",
       archetype: "kpi_summary",
-      preferredStrategyId: "executive-summary-kpi",
+      preferredStrategyId: "kpi-card-overview",
       contentContract: {
         archetype: "kpi_summary",
         message: "稼働率・不良率は達成、OEE・ダウンタイムは未達",
@@ -681,7 +681,7 @@ describe("contentContract → blocks integration (Phase 7.8)", () => {
 
     const { diagnostics, ir } = buildAndDiagnose([slideSpec]);
     expect(diagnostics[0]!.overlapCount).toBe(0);
-    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("executive-summary-kpi");
+    expect(ir.slides[0]._trace?.layoutStrategyId).toBe("kpi-card-overview");
   });
 
   it("approval_request contract produces overlap-free decision slide", () => {
@@ -777,7 +777,7 @@ describe("manufacturing 6-slide regression (Phase 7.8)", () => {
       slideNumber: 2,
       title: "Q2業績KPI",
       archetype: "kpi_summary",
-      preferredStrategyId: "executive-summary-kpi",
+      preferredStrategyId: "kpi-card-overview",
       contentContract: {
         archetype: "kpi_summary",
         message: "稼働率・不良率は達成",
@@ -898,9 +898,9 @@ describe("manufacturing 6-slide regression (Phase 7.8)", () => {
     expect(totalOob).toBe(0);
   });
 
-  it("slide-02 uses executive-summary-kpi strategy via preferredStrategyId", () => {
+  it("slide-02 uses kpi-card-overview strategy via preferredStrategyId", () => {
     const { ir } = buildAndDiagnose(slideSpecs);
-    expect(ir.slides[1]._trace?.layoutStrategyId).toBe("executive-summary-kpi");
+    expect(ir.slides[1]._trace?.layoutStrategyId).toBe("kpi-card-overview");
     expect(ir.slides[1]._trace?.selectedBy).toBe("preferredStrategyId");
   });
 

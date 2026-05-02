@@ -92,7 +92,11 @@ export type LayoutContext = {
 export interface LayoutStrategy {
   /** Stable identifier; mirrors `ComponentSpec.id` where applicable. */
   id: string;
-  /** Human-readable capability name; mirrors `detectCapability()` output. */
+  /**
+   * Human-readable capability name; mirrors `detectCapability()` output.
+   * @legacy This is NOT the same as `StrategyManifest.capabilities`.
+   * TODO(Phase 8C+): unify or remove once manifest-driven selection is complete.
+   */
   capability: string;
   /** Higher number = considered first by `selectLayoutStrategy()`. */
   priority: number;

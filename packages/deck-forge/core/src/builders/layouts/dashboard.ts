@@ -11,9 +11,9 @@ import type {
  * If the slide has no metrics, falls back to placing the chart/table at
  * full body width.
  */
-export const dashboardStrategy: LayoutStrategy = {
-  id: "dashboard",
-  capability: "dashboard",
+export const metricTileDashboardStrategy: LayoutStrategy = {
+  id: "metric-tile-dashboard",
+  capability: "metric_tile_dashboard",
   priority: 70,
 
   match(ctx: LayoutContext): boolean {

@@ -15,7 +15,7 @@ export type ResolveTemplateLayoutOutput = {
 };
 
 const STRATEGY_TO_LAYOUT_ID: Record<string, string> = {
-  "executive-summary-kpi": "dashboard-cards",
+  "kpi-card-overview": "dashboard-cards",
   "kpi-dashboard-with-insight": "dashboard-cards-with-chart",
   "small-multiples-trend": "visual-top-insight-bottom",
   "data-insight-story": "visual-left-insight-right",

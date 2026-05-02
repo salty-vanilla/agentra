@@ -19,7 +19,7 @@ import type {
 import type { ResolvedFrame } from "#src/index.js";
 
 /**
- * Executive Summary KPI: 3–5 KPI/metric cards in a responsive grid with a
+ * KPI Card Overview: 3–5 KPI/metric cards in a responsive grid with a
  * key-takeaway band and optional action cards.  Designed for performance
  * reports and management summaries.
  *
@@ -27,9 +27,9 @@ import type { ResolvedFrame } from "#src/index.js";
  * (layoutMetricRail / layoutBottomCallout / layoutSidecarStack) for
  * deterministic, overlap-free placement.
  */
-export const executiveSummaryKpiStrategy: LayoutStrategy = {
-  id: "executive-summary-kpi",
-  capability: "executive_summary_kpi",
+export const kpiCardOverviewStrategy: LayoutStrategy = {
+  id: "kpi-card-overview",
+  capability: "kpi_card_overview",
   priority: 75,
 
   match(ctx: LayoutContext): boolean {

@@ -157,7 +157,7 @@ export function pickGridDimensions(count: number): { cols: number; rows: number 
  * Creates a horizontal KPI rail — one row of equal-width metric cards.
  * For 5+ items, falls back to a 2-row grid.
  *
- * Designed for executive-summary-kpi and dashboard strategies where
+ * Designed for kpi-card-overview and metric-tile-dashboard strategies where
  * KPI cards should always be side-by-side.
  */
 export function createMetricRail(

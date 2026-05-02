@@ -309,7 +309,7 @@ describe("analyzeDeckLayout", () => {
         usedSlots: ["title", "subtitle"],
       }),
       makeTracedSlide("s2", 1, {
-        strategyId: "executive-summary-kpi",
+        strategyId: "kpi-card-overview",
         layoutKind: "dashboard",
         layoutId: "dashboard-cards",
         usedSlots: ["title", "metrics", "callout"],
