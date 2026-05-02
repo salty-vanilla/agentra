@@ -911,6 +911,7 @@ export type {
   StrategyInputGenerationResult,
   StrategyInputGenerator,
   StrategyInputPrompt,
+  StrategyInputAttachedSlideSpec,
 } from "#src/strategy/index.js";
 export {
   validateStrategyInput,
@@ -918,6 +919,8 @@ export {
   buildStrategyInputPrompt,
   validateLlmStrategyInputResponse,
   applyStrategyInputToSlideSpec,
+  getStrategyInputJsonSchema,
+  getAllStrategyInputJsonSchemas,
 } from "#src/strategy/index.js";
 export {
   kpiCardOverviewManifest,

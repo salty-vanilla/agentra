@@ -9,6 +9,30 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — deck-forge/core Phase 8D-fix: Harden StrategyInput
+
+- **JSON Schema conversion via Zod 4 `z.toJSONSchema()`** — centralized in
+  `getStrategyInputJsonSchema()` / `getAllStrategyInputJsonSchemas()`; no
+  `zod-to-json-schema` dependency needed
+- **LLM prompt field renamed** `inputSchema` → `inputJsonSchema`; prompt now
+  receives a proper JSON Schema object (type, properties, required, enum,
+  minItems/maxItems all preserved)
+- **Source semantics clarified** — `"deterministic"` when sourceContent is
+  provided, `"fallback"` when generating from keyMessage placeholder only
+- **Per-strategy fallback warnings** — 15 strategies emit explicit warning
+  when generating placeholder content (e.g. "use LLM StrategyInput
+  generation for production-quality content")
+- **Typed bridge output** — `StrategyInputAttachedSlideSpec<T>` type
+  exported; `applyStrategyInputToSlideSpec()` accepts optional `validate`
+  flag that throws on schema mismatch
+- **No Zod internals leak into prompts** — tested that `_def`, `_cached`,
+  `typeName` are absent from all 17 JSON schemas
+- **No rendering keys in prompt schemas** — width/height/fill/stroke/
+  fontSize/shape tested absent across all 17 prompt schemas
+- **102 new tests** (183 total in strategy-input.test.ts): JSON schema
+  conversion (85+), prompt field rename (6), source semantics (4), bridge
+  validate (4)
+
 ### Added — deck-forge/core Phase 8D: StrategyInput Schemas
 
 - **Input schemas for all 17 built-in strategies** — Zod-validated semantic

@@ -8,7 +8,7 @@
 import type { ResolvedSlideIntent } from "#src/strategy/slide-intent.js";
 import type { StrategySelection } from "#src/strategy/strategy-selector.js";
 import type { StrategyManifest } from "#src/strategy/manifest.js";
-import { STRATEGY_INPUT_SCHEMAS } from "#src/strategy/strategy-input-schemas.js";
+import { getStrategyInputJsonSchema } from "#src/strategy/strategy-input-json-schema.js";
 import {
   validateStrategyInput,
   type StrategyInputValidationResult,
@@ -28,7 +28,7 @@ export interface StrategyInputPrompt {
     id: string;
     name: string;
     description: string;
-    inputSchema: unknown;
+    inputJsonSchema: unknown;
     limits?: unknown;
   };
   sourceContent?: unknown;
@@ -46,14 +46,8 @@ export function buildStrategyInputPrompt(input: {
 }): StrategyInputPrompt {
   const { slideIntent, selection, manifest, sourceContent } = input;
 
-  // Convert Zod schema to JSON Schema description for the LLM
-  const zodSchema = STRATEGY_INPUT_SCHEMAS[selection.strategyId];
-  let schemaDescription: unknown = null;
-  if (zodSchema && "shape" in zodSchema && typeof zodSchema.shape === "object") {
-    schemaDescription = Object.keys(zodSchema.shape as Record<string, unknown>);
-  } else {
-    schemaDescription = "See strategy description for expected fields.";
-  }
+  // Use proper JSON Schema conversion (not raw Zod)
+  const jsonSchema = getStrategyInputJsonSchema(selection.strategyId) ?? null;
 
   return {
     slideIntent: {
@@ -69,14 +63,14 @@ export function buildStrategyInputPrompt(input: {
       id: selection.strategyId,
       name: manifest.name,
       description: manifest.description,
-      inputSchema: schemaDescription,
+      inputJsonSchema: jsonSchema,
       limits: manifest.limits,
     },
     sourceContent,
     instruction: [
       "Generate only the semantic input object for the selected strategy.",
       "Do not include coordinates, shapes, colors, font sizes, or PowerPoint-specific rendering instructions.",
-      "Follow the provided input schema.",
+      "Follow the provided inputJsonSchema exactly.",
       "Return JSON only.",
     ].join("\n"),
   };

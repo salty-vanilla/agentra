@@ -29,6 +29,43 @@ export interface StrategyInputGenerator {
 }
 
 // ---------------------------------------------------------------------------
+// Per-strategy placeholder warnings
+// ---------------------------------------------------------------------------
+
+const PLACEHOLDER_WARNINGS: Record<string, string> = {
+  "recommendation-comparison":
+    'Generated placeholder options for "recommendation-comparison"; use LLM StrategyInput generation for production-quality content.',
+  "option-comparison-table":
+    'Generated placeholder options/criteria for "option-comparison-table"; use LLM StrategyInput generation for production-quality content.',
+  "process-flow-with-impact":
+    'Generated placeholder steps for "process-flow-with-impact"; use LLM StrategyInput generation for production-quality content.',
+  "implementation-roadmap":
+    'Generated placeholder milestones for "implementation-roadmap"; use LLM StrategyInput generation for production-quality content.',
+  "layered-architecture":
+    'Generated placeholder layers/components for "layered-architecture"; use LLM StrategyInput generation for production-quality content.',
+  "small-multiples-trend":
+    'Generated placeholder chart data for "small-multiples-trend"; use LLM StrategyInput generation for production-quality content.',
+  "two-axis-matrix":
+    'Generated placeholder matrix items for "two-axis-matrix"; use LLM StrategyInput generation for production-quality content.',
+  "metric-tile-dashboard":
+    'Generated placeholder tiles for "metric-tile-dashboard"; use LLM StrategyInput generation for production-quality content.',
+  "action-plan-table":
+    'Generated placeholder actions for "action-plan-table"; use LLM StrategyInput generation for production-quality content.',
+  "event-timeline":
+    'Generated placeholder events for "event-timeline"; use LLM StrategyInput generation for production-quality content.',
+  "kpi-card-overview":
+    'Generated placeholder metrics for "kpi-card-overview"; use LLM StrategyInput generation for production-quality content.',
+  "kpi-dashboard-with-insight":
+    'Generated placeholder metrics for "kpi-dashboard-with-insight"; use LLM StrategyInput generation for production-quality content.',
+  "two-column-comparison":
+    'Generated fallback StrategyInput for "two-column-comparison" because no comparison source content was provided.',
+  "three-point-summary":
+    'Generated fallback StrategyInput for "three-point-summary" because no detailed source content was provided.',
+  "data-insight-story":
+    'Generated fallback StrategyInput for "data-insight-story" because no data source content was provided.',
+};
+
+// ---------------------------------------------------------------------------
 // Minimal-valid input factories for each strategy
 // ---------------------------------------------------------------------------
 
@@ -174,10 +211,14 @@ function makeMinimalInput(strategyId: string, keyMessage: string): unknown {
  *
  * Produces a minimal valid semantic input from the slide intent's keyMessage.
  * Always validates output against the schema.
+ *
+ * Source semantics:
+ * - "deterministic": sourceContent was provided and could be used
+ * - "fallback": generating placeholder/minimal input from keyMessage only
  */
 export class DeterministicStrategyInputGenerator implements StrategyInputGenerator {
   generate(input: StrategyInputGenerationInput): StrategyInputGenerationResult {
-    const { slideIntent, selection } = input;
+    const { slideIntent, selection, sourceContent } = input;
     const strategyId = selection.strategyId;
     const keyMessage = slideIntent.keyMessage;
     const warnings: string[] = [];
@@ -200,10 +241,23 @@ export class DeterministicStrategyInputGenerator implements StrategyInputGenerat
       };
     }
 
+    // Determine source: "deterministic" if sourceContent was provided,
+    // "fallback" if generating from keyMessage placeholder only
+    const hasSourceContent = sourceContent != null && sourceContent !== "";
+    const source = hasSourceContent ? "deterministic" : "fallback";
+
+    // Add per-strategy placeholder warnings when no source content
+    if (!hasSourceContent) {
+      const placeholderWarning = PLACEHOLDER_WARNINGS[strategyId];
+      if (placeholderWarning) {
+        warnings.push(placeholderWarning);
+      }
+    }
+
     return {
       strategyId,
       input: validation.input ?? generated,
-      source: "deterministic",
+      source,
       warnings,
     };
   }

@@ -7,10 +7,13 @@ import {
   buildStrategyInputPrompt,
   validateLlmStrategyInputResponse,
   applyStrategyInputToSlideSpec,
+  getStrategyInputJsonSchema,
+  getAllStrategyInputJsonSchemas,
 } from "#src/strategy/index.js";
 import type {
   ResolvedSlideIntent,
   StrategySelection,
+  StrategyInputAttachedSlideSpec,
 } from "#src/strategy/index.js";
 
 const registry = createBuiltinStrategyRegistry();
@@ -53,6 +56,89 @@ describe("StrategyInput schema coverage", () => {
     const schemaIds = Object.keys(STRATEGY_INPUT_SCHEMAS).sort();
     const manifestIds = allIds.slice().sort();
     expect(schemaIds).toEqual(manifestIds);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// JSON Schema conversion
+// ---------------------------------------------------------------------------
+describe("getStrategyInputJsonSchema", () => {
+  for (const id of allIds) {
+    it(`${id}: converts to JSON-serializable object`, () => {
+      const jsonSchema = getStrategyInputJsonSchema(id);
+      expect(jsonSchema).toBeDefined();
+      const str = JSON.stringify(jsonSchema);
+      const parsed = JSON.parse(str);
+      expect(parsed).toEqual(jsonSchema);
+    });
+
+    it(`${id}: has type "object"`, () => {
+      const jsonSchema = getStrategyInputJsonSchema(id) as Record<string, unknown>;
+      expect(jsonSchema.type).toBe("object");
+    });
+
+    it(`${id}: has at least one property`, () => {
+      const jsonSchema = getStrategyInputJsonSchema(id) as Record<string, unknown>;
+      const props = jsonSchema.properties as Record<string, unknown> | undefined;
+      expect(props).toBeDefined();
+      expect(Object.keys(props!).length).toBeGreaterThan(0);
+    });
+
+    it(`${id}: contains no Zod internal fields`, () => {
+      const str = JSON.stringify(getStrategyInputJsonSchema(id));
+      expect(str).not.toContain('"_def"');
+      expect(str).not.toContain('"_cached"');
+      expect(str).not.toContain('"typeName"');
+    });
+
+    it(`${id}: does not expose rendering keys`, () => {
+      const str = JSON.stringify(getStrategyInputJsonSchema(id));
+      const forbidden = ['"width"', '"height"', '"fill"', '"stroke"', '"fontSize"', '"shape"'];
+      for (const key of forbidden) {
+        expect(str).not.toContain(key);
+      }
+    });
+  }
+
+  it("returns undefined for unknown strategyId", () => {
+    expect(getStrategyInputJsonSchema("nonexistent")).toBeUndefined();
+  });
+
+  it("enum values are present for StatusSchema fields", () => {
+    const schema = getStrategyInputJsonSchema("kpi-card-overview") as Record<string, unknown>;
+    const str = JSON.stringify(schema);
+    expect(str).toContain("good");
+    expect(str).toContain("warning");
+    expect(str).toContain("critical");
+    expect(str).toContain("neutral");
+  });
+
+  it("enum values are present for TrendSchema fields", () => {
+    const schema = getStrategyInputJsonSchema("kpi-card-overview") as Record<string, unknown>;
+    const str = JSON.stringify(schema);
+    expect(str).toContain("up");
+    expect(str).toContain("down");
+    expect(str).toContain("flat");
+  });
+
+  it("array min/max constraints are present", () => {
+    const schema = getStrategyInputJsonSchema("kpi-card-overview") as Record<string, unknown>;
+    const props = schema.properties as Record<string, unknown>;
+    const metrics = props.metrics as Record<string, unknown>;
+    expect(metrics.minItems).toBe(1);
+    expect(metrics.maxItems).toBe(6);
+  });
+
+  it("required fields are represented", () => {
+    const schema = getStrategyInputJsonSchema("decision-request") as Record<string, unknown>;
+    const required = schema.required as string[];
+    expect(required).toContain("headline");
+    expect(required).toContain("decisionNeeded");
+  });
+
+  it("getAllStrategyInputJsonSchemas returns all 17", () => {
+    const all = getAllStrategyInputJsonSchemas();
+    expect(Object.keys(all).sort()).toEqual(allIds.slice().sort());
   });
 });
 
@@ -188,25 +274,64 @@ describe("DeterministicStrategyInputGenerator", () => {
       expect(result.strategyId).toBe(id);
       expect(["deterministic", "fallback"]).toContain(result.source);
 
-      // Validate the generated input
       const validation = validateStrategyInput({ strategyId: id, value: result.input });
-      if (result.source === "deterministic") {
+      if (result.source !== "fallback" || result.warnings.length === 0) {
         expect(validation.ok, `Generated input for ${id} doesn't validate: ${validation.errors.join("; ")}`).toBe(true);
       }
     });
 
-    it(`${id}: no low-level rendering keys`, () => {
+    it(`${id}: no low-level rendering keys in generated input`, () => {
       const intent = makeIntent();
       const selection = makeSelection(id);
       const result = generator.generate({ slideIntent: intent, selection });
       const inputStr = JSON.stringify(result.input);
-      // Check for rendering-specific keys (not semantic axis labels used by two-axis-matrix)
       const forbidden = ["\"width\":", "\"height\":", "\"fill\":", "\"stroke\":", "\"fontSize\":", "\"shape\":"];
       for (const key of forbidden) {
         expect(inputStr).not.toContain(key);
       }
     });
   }
+
+  describe("source semantics", () => {
+    it("returns source: 'fallback' when no sourceContent provided", () => {
+      const intent = makeIntent();
+      const selection = makeSelection("kpi-card-overview");
+      const result = generator.generate({ slideIntent: intent, selection });
+      expect(result.source).toBe("fallback");
+    });
+
+    it("returns source: 'deterministic' when sourceContent provided", () => {
+      const intent = makeIntent();
+      const selection = makeSelection("kpi-card-overview");
+      const result = generator.generate({
+        slideIntent: intent,
+        selection,
+        sourceContent: { revenue: "$1.2M", growth: "15%" },
+      });
+      expect(result.source).toBe("deterministic");
+    });
+
+    it("emits placeholder warnings for strategies with placeholder content", () => {
+      const intent = makeIntent();
+      const selection = makeSelection("recommendation-comparison");
+      const result = generator.generate({ slideIntent: intent, selection });
+      expect(result.source).toBe("fallback");
+      expect(result.warnings.length).toBeGreaterThan(0);
+      expect(result.warnings[0]).toContain("placeholder");
+    });
+
+    it("no placeholder warnings when sourceContent provided", () => {
+      const intent = makeIntent();
+      const selection = makeSelection("recommendation-comparison");
+      const result = generator.generate({
+        slideIntent: intent,
+        selection,
+        sourceContent: { vendors: ["A", "B"] },
+      });
+      expect(result.source).toBe("deterministic");
+      expect(result.warnings).toEqual([]);
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -233,14 +358,55 @@ describe("buildStrategyInputPrompt", () => {
     expect(prompt.selectedStrategy.id).toBe("action-plan-table");
   });
 
-  it("includes inputSchema info", () => {
+  it("uses inputJsonSchema field (not inputSchema)", () => {
     const manifest = registry.getStrategyManifest("kpi-card-overview")!;
     const prompt = buildStrategyInputPrompt({
       slideIntent: makeIntent(),
       selection: makeSelection("kpi-card-overview"),
       manifest,
     });
-    expect(prompt.selectedStrategy.inputSchema).toBeDefined();
+    expect(prompt.selectedStrategy.inputJsonSchema).toBeDefined();
+    expect((prompt.selectedStrategy as Record<string, unknown>).inputSchema).toBeUndefined();
+  });
+
+  it("inputJsonSchema is a proper JSON Schema object", () => {
+    const manifest = registry.getStrategyManifest("kpi-card-overview")!;
+    const prompt = buildStrategyInputPrompt({
+      slideIntent: makeIntent(),
+      selection: makeSelection("kpi-card-overview"),
+      manifest,
+    });
+    const schema = prompt.selectedStrategy.inputJsonSchema as Record<string, unknown>;
+    expect(schema.type).toBe("object");
+    expect(schema.properties).toBeDefined();
+  });
+
+  it("inputJsonSchema does not contain Zod internals", () => {
+    const manifest = registry.getStrategyManifest("decision-request")!;
+    const prompt = buildStrategyInputPrompt({
+      slideIntent: makeIntent(),
+      selection: makeSelection("decision-request"),
+      manifest,
+    });
+    const str = JSON.stringify(prompt.selectedStrategy.inputJsonSchema);
+    expect(str).not.toContain("_def");
+    expect(str).not.toContain("typeName");
+  });
+
+  it("inputJsonSchema does not contain rendering keys", () => {
+    for (const id of allIds) {
+      const manifest = registry.getStrategyManifest(id)!;
+      const prompt = buildStrategyInputPrompt({
+        slideIntent: makeIntent(),
+        selection: makeSelection(id),
+        manifest,
+      });
+      const str = JSON.stringify(prompt.selectedStrategy.inputJsonSchema);
+      const forbidden = ['"width"', '"height"', '"fill"', '"stroke"', '"fontSize"', '"shape"'];
+      for (const key of forbidden) {
+        expect(str, `${id} prompt schema contains ${key}`).not.toContain(key);
+      }
+    }
   });
 
   it("instruction forbids coordinates and rendering", () => {
@@ -317,5 +483,49 @@ describe("applyStrategyInputToSlideSpec", () => {
     expect(result.id).toBe("slide-1");
     expect(result.title).toBe("Original");
     expect(result.customField).toBe(42);
+  });
+
+  it("validate: true passes for valid input", () => {
+    expect(() =>
+      applyStrategyInputToSlideSpec({
+        slideSpec: { id: "slide-1" },
+        strategyId: "one-message-summary",
+        strategyInput: { message: "Hello" },
+        validate: true,
+      }),
+    ).not.toThrow();
+  });
+
+  it("validate: true throws for invalid input", () => {
+    expect(() =>
+      applyStrategyInputToSlideSpec({
+        slideSpec: { id: "slide-1" },
+        strategyId: "one-message-summary",
+        strategyInput: {},
+        validate: true,
+      }),
+    ).toThrow(/validation failed/i);
+  });
+
+  it("validate: false (default) does not throw for invalid input", () => {
+    expect(() =>
+      applyStrategyInputToSlideSpec({
+        slideSpec: { id: "slide-1" },
+        strategyId: "one-message-summary",
+        strategyInput: {},
+      }),
+    ).not.toThrow();
+  });
+
+  it("returns StrategyInputAttachedSlideSpec type shape", () => {
+    const result: StrategyInputAttachedSlideSpec<{ id: string }> =
+      applyStrategyInputToSlideSpec({
+        slideSpec: { id: "slide-1" },
+        strategyId: "kpi-card-overview",
+        strategyInput: { headline: "X", metrics: [{ label: "A", value: "1" }] },
+      });
+    expect(result.id).toBe("slide-1");
+    expect(result.preferredStrategyId).toBe("kpi-card-overview");
+    expect(result.strategyInput).toBeDefined();
   });
 });

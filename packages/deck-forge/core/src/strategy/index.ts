@@ -112,7 +112,13 @@ export {
   validateLlmStrategyInputResponse,
 } from "#src/strategy/strategy-input-prompt.js";
 
+export type { StrategyInputAttachedSlideSpec } from "#src/strategy/strategy-input-to-slide-spec.js";
 export { applyStrategyInputToSlideSpec } from "#src/strategy/strategy-input-to-slide-spec.js";
+
+export {
+  getStrategyInputJsonSchema,
+  getAllStrategyInputJsonSchemas,
+} from "#src/strategy/strategy-input-json-schema.js";
 
 export {
   kpiCardOverviewManifest,

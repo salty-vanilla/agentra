@@ -3,7 +3,12 @@
   "version": "0.3.1",
   "type": "module",
   "repository": "https://github.com/salty-vanilla/deck-forge.git",
-  "files": ["dist", "!dist/**/__tests__/**", "!dist/**/*.test.*", "!dist/tsconfig.tsbuildinfo"],
+  "files": [
+    "dist",
+    "!dist/**/__tests__/**",
+    "!dist/**/*.test.*",
+    "!dist/tsconfig.tsbuildinfo"
+  ],
   "publishConfig": {
     "registry": "https://registry.npmjs.org",
     "access": "public"
@@ -17,7 +22,10 @@
     }
   },
   "imports": {
-    "#src/*": { "source": "./src/*.ts", "default": "./dist/*" }
+    "#src/*": {
+      "source": "./src/*.ts",
+      "default": "./dist/*"
+    }
   },
   "scripts": {
     "build": "tsc -b",
