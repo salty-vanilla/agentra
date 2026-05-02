@@ -1,4 +1,3 @@
-import { splitVertical } from "#src/builders/layouts/grid-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
@@ -9,8 +8,7 @@ import type {
  * Title slide: large centered title with optional subtitle / footer.  The
  * outer builder still emits the title element from `slideSpec.title`; this
  * strategy handles any non-title content blocks (subtitle, paragraph used
- * as tagline, footer-style caption) by stacking them centered below the
- * title region.
+ * as tagline, footer-style caption) by assigning them fixed centered positions.
  */
 export const titleSlideStrategy: LayoutStrategy = {
   id: "title-slide",
@@ -22,25 +20,32 @@ export const titleSlideStrategy: LayoutStrategy = {
   },
 
   layout(ctx: LayoutContext): SubFrameAssignment[] {
-    const density = ctx.layoutSpec.density;
-    const body = ctx.regionFrames.body;
-    const visual = ctx.regionFrames.visual;
-    const callout = ctx.regionFrames.callout;
+    // Fixed positions for title-slide content blocks (1280×720 canvas).
+    // Subtitle sits below the main title; additional blocks stack further down.
+    const SLIDE_WIDTH = 1280;
+    const CONTENT_MARGIN = 120;
+    const CONTENT_WIDTH = SLIDE_WIDTH - CONTENT_MARGIN * 2; // 1040
 
-    // Use full slide horizontal extent and the area beneath the title.
-    const left = Math.min(body.x, visual.x);
-    const right = Math.max(body.x + body.width, visual.x + visual.width);
-    const top = Math.min(body.y, visual.y);
-    const bottom = Math.max(body.y + body.height, callout.y + callout.height);
+    // Vertical positions for up to 3 content blocks (subtitle, tagline, footer)
+    const FIXED_POSITIONS = [
+      { y: 340, height: 80 },  // subtitle
+      { y: 440, height: 60 },  // tagline / paragraph
+      { y: 600, height: 40 },  // footer
+    ];
 
-    const fullArea = ctx.templateSlots.body ?? { x: left, y: top, width: right - left, height: bottom - top };
-    const frames = splitVertical(fullArea, ctx.blocks.length || 1, density);
-
-    return ctx.blocks.map((block, index) => ({
-      blockId: block.id,
-      frame: frames[index] ?? fullArea,
-      slot: ctx.templateSlots.body ? "body" as const : undefined,
-      hints: { alignment: "center" as const, fontScale: 1.1 },
-    }));
+    return ctx.blocks.map((block, index) => {
+      const pos = FIXED_POSITIONS[Math.min(index, FIXED_POSITIONS.length - 1)]!;
+      return {
+        blockId: block.id,
+        frame: {
+          x: CONTENT_MARGIN,
+          y: pos.y,
+          width: CONTENT_WIDTH,
+          height: pos.height,
+        },
+        slot: ctx.templateSlots.body ? ("body" as const) : undefined,
+        hints: { alignment: "center" as const, fontScale: index === 0 ? 1.2 : 1.0 },
+      };
+    });
   },
 };

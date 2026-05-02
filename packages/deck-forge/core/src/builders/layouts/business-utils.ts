@@ -63,6 +63,14 @@ export function isProcessIntent(ctx: LayoutContext): boolean {
   return ctx.slideSpec.intent?.type === "process";
 }
 
+const PROCESS_KEYWORDS =
+  /(?:\b(?:workflow|process|procedure|pipeline|step[\s-]*by[\s-]*step)\b|標準フロー|フロー|工程|手順|ステップ|プロセス|(?:→.*){2,})/i;
+
+/** Detect process-like content via keywords even if intent.type is not "process". */
+export function hasProcessSignals(ctx: LayoutContext): boolean {
+  return PROCESS_KEYWORDS.test(collectSearchText(ctx));
+}
+
 export function isTimelineIntent(ctx: LayoutContext): boolean {
   return ctx.slideSpec.intent?.type === "timeline";
 }

@@ -179,6 +179,18 @@ async function main() {
                   0,
                   5,
                 ),
+                hotspotSlides: v1Diag.hotspots
+                  .filter((h) => h.severity !== 'info')
+                  .slice(0, 3)
+                  .map((h) => ({
+                    slideId: h.slideId,
+                    slideIndex: h.slideIndex,
+                    severity: h.severity,
+                    overlapCount: h.overlapCount,
+                    layoutRepairOps: h.layoutRepairOperationCount,
+                    layoutStrategyId: h.layoutStrategyId,
+                    reasons: h.reasons,
+                  })),
                 recommendationCodes: v1Diag.recommendations.map((r) => r.code),
               });
             } catch (error) {
@@ -300,6 +312,18 @@ async function main() {
                   stabilizationDiagnostics.operations.operationsWithoutSlideId,
                 topSlidesByOperations:
                   stabilizationDiagnostics.operations.topSlidesByOperations.slice(0, 5),
+                hotspotSlides: stabilizationDiagnostics.hotspots
+                  .filter((h) => h.severity !== 'info')
+                  .slice(0, 3)
+                  .map((h) => ({
+                    slideId: h.slideId,
+                    slideIndex: h.slideIndex,
+                    severity: h.severity,
+                    overlapCount: h.overlapCount,
+                    layoutRepairOps: h.layoutRepairOperationCount,
+                    layoutStrategyId: h.layoutStrategyId,
+                    reasons: h.reasons,
+                  })),
                 recommendationCodes: stabilizationDiagnostics.recommendations.map(
                   (r) => r.code,
                 ),

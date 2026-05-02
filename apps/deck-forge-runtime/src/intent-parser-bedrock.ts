@@ -569,6 +569,8 @@ House style — the difference between "auto-generated" and "consultant-quality"
    ✗ Repeating the slide title in the body
    ✗ Numbers without units, units without numbers
    ✗ "図1" / "Figure 1" style captions — let the layout speak
+   ✗ Fabricating numeric breakdowns or percentages not present in the source material. If the brief says "稼働率 92%" do NOT invent sub-line breakdowns like "ライン A 95%, ライン B 89%". Only use numbers explicitly provided.
+   ✗ Adding trend data (前月比, 前年比, delta) unless the source explicitly states those figures.
 
 GOOD example (KPI slide body block):
   { type: "metric", label: "稼働率", value: 92, unit: "%", delta: { value: 2.1, direction: "up", unit: "pt" } }

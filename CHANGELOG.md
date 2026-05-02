@@ -9,6 +9,28 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge Phase 7.7-fix: V1 layout stabilization & strategy routing hardening
+
+- **Hotspot logging** — V1 and final diagnostics now emit `hotspotSlides`
+  (top 3 non-info severity) with `overlapCount`, `layoutRepairOps`,
+  `layoutStrategyId`, and `reasons` for faster root-cause identification
+- **`hasProcessSignals()` keyword detector** — detects process content via
+  Japanese/English keywords (標準フロー, 工程, 手順, ステップ, workflow,
+  `→`×2+) even when `intent.type` is not `"process"`
+- **Process strategy priority bump (75 → 85)** — `process-flow-with-impact`
+  now wins over table/dashboard strategies on slides with process keywords,
+  preventing process diagrams from being absorbed into generic grids
+- **Data faithfulness guard** — intent-parser and operation-planner prompts
+  now explicitly forbid fabricating numeric breakdowns or trend deltas not
+  present in the source material
+- **Title-slide deterministic layout** — replaced dynamic `splitVertical`
+  with fixed y-positions for subtitle (y=340), tagline (y=440), and footer
+  (y=600); enforces center alignment to eliminate reviewer corrections
+- **Manufacturing deck regression test** — verifies keyword-based process
+  routing and zero overlaps for 標準フロー-themed content
+- **Title slide regression test** — verifies no overlaps and center
+  paragraph alignment
+
 ### Added — deck-forge Phase 7.7: Initial layout repair reduction
 
 - **`createMetricRail()`** — deterministic horizontal KPI rail helper in

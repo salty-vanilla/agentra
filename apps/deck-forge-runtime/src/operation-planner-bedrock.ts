@@ -129,6 +129,7 @@ Hard rules:
 - Allowed ops: update_text, delete_element, add_text, set_slide_layout, update_chart_data.
 - Do NOT emit attach_asset, add_slide, remove_slide, move_slide, add_image, add_chart, add_table, apply_theme. These require resources / disruption beyond the planner's mandate.
 - Prefer SHORTER text. Most overlap/truncation comes from too much text.
+- Do NOT invent numeric breakdowns, percentages, or delta values that were not in the original content. If a metric says "92%" do not add sub-breakdowns.
 - Aim for 0–6 operations total. Return [] if no safe fix can be derived.
 - Keep the original language of each slide.
 

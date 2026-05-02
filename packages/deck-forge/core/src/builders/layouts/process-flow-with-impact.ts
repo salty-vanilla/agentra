@@ -2,6 +2,7 @@ import {
   countByType,
   createHorizontalCards,
   hasCallout,
+  hasProcessSignals,
   isProcessIntent,
   mergeAllRegions,
   splitTopBottom,
@@ -22,10 +23,10 @@ import type {
 export const processFlowWithImpactStrategy: LayoutStrategy = {
   id: "process-flow-with-impact",
   capability: "process_flow_with_impact",
-  priority: 75,
+  priority: 85,
 
   match(ctx: LayoutContext): boolean {
-    if (!isProcessIntent(ctx)) return false;
+    if (!isProcessIntent(ctx) && !hasProcessSignals(ctx)) return false;
     if (ctx.blocks.length < 3 || ctx.blocks.length > 10) return false;
     return hasCallout(ctx.blocks) || countByType(ctx.blocks, "metric") >= 1;
   },

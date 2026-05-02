@@ -278,4 +278,80 @@ describe("layout stabilization regression", () => {
       expect(diagnostics[0]!.fallbackSlots).toEqual([]);
     });
   });
+
+  describe("manufacturing process (keyword-routed, diagram + metrics + callout)", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-07",
+      title: "標準フロー改善",
+      intent: { type: "data_insight", keyMessage: "工程効率化", audienceTakeaway: "フロー最適化" },
+      layout: { type: "single_column", density: "medium" },
+      content: [
+        { id: "t1", type: "title", text: "標準フロー改善" } as ContentBlock,
+        makeDiagram("d1"),
+        makeMetric("m1", "稼働率", "92%"),
+        makeMetric("m2", "不良率", "0.3%"),
+        makeCallout("c1", "全工程で標準フロー導入完了。歩留まり改善に貢献。"),
+      ],
+    });
+
+    it("produces no overlaps", () => {
+      const { diagnostics } = buildAndDiagnose([slideSpec]);
+      expect(diagnostics[0]!.overlapCount).toBe(0);
+    });
+
+    it("produces no out-of-bounds", () => {
+      const { diagnostics } = buildAndDiagnose([slideSpec]);
+      expect(diagnostics[0]!.outOfBoundsCount).toBe(0);
+    });
+
+    it("has no fallback slots", () => {
+      const { diagnostics } = buildAndDiagnose([slideSpec]);
+      expect(diagnostics[0]!.fallbackSlots).toEqual([]);
+    });
+
+    it("routes via process strategy despite non-process intent type", () => {
+      const { ir } = buildAndDiagnose([slideSpec]);
+      const slide = ir.slides.find((s) => s.id === "slide-07");
+      // Strategy should be process-flow-with-impact due to keyword signals
+      expect(slide?._trace?.layoutStrategyId).toBe("process-flow-with-impact");
+    });
+  });
+
+  describe("title slide (subtitle + footer only)", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-08",
+      title: "2024年度 製造部門レビュー",
+      intent: { type: "summary", keyMessage: "タイトル", audienceTakeaway: "概要" },
+      layout: { type: "title", density: "low" },
+      content: [
+        { id: "t1", type: "title", text: "2024年度 製造部門レビュー" } as ContentBlock,
+        makeParagraph("p1", "Manufacturing Division Annual Review"),
+        makeParagraph("p2", "2024年12月"),
+      ],
+    });
+
+    it("produces no overlaps", () => {
+      const { diagnostics } = buildAndDiagnose([slideSpec]);
+      expect(diagnostics[0]!.overlapCount).toBe(0);
+    });
+
+    it("produces no out-of-bounds", () => {
+      const { diagnostics } = buildAndDiagnose([slideSpec]);
+      expect(diagnostics[0]!.outOfBoundsCount).toBe(0);
+    });
+
+    it("uses center alignment for text elements", () => {
+      const { ir } = buildAndDiagnose([slideSpec]);
+      const slide = ir.slides.find((s) => s.id === "slide-08");
+      const textElements = slide?.elements.filter((e) => e.type === "text" && e.role !== "title") ?? [];
+      for (const el of textElements) {
+        if (el.type === "text") {
+          // Check that paragraphs have center alignment
+          for (const para of el.text.paragraphs) {
+            expect(para.alignment).toBe("center");
+          }
+        }
+      }
+    });
+  });
 });

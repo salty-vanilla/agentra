@@ -722,9 +722,8 @@ describe("strategy registration", () => {
   });
 
   it("most business strategies remain below title/section priority (80)", () => {
-    // decision-request is intentionally elevated to 90 to win against action-plan-table
-    // on approval slides that also have table blocks. title-slide / section-divider have
-    // narrow match conditions so the priority inversion is safe in practice.
+    // decision-request (90) and process-flow-with-impact (85) are intentionally elevated.
+    // title-slide / section-divider have narrow match conditions so priority inversion is safe.
     const standardBusinessStrategies = [
       actionPlanTableStrategy,
       dataInsightStoryStrategy,
@@ -734,7 +733,6 @@ describe("strategy registration", () => {
       layeredArchitectureStrategy,
       oneMessageSummaryStrategy,
       optionComparisonTableStrategy,
-      processFlowWithImpactStrategy,
       recommendationComparisonStrategy,
       smallMultiplesTrendStrategy,
       threePointSummaryStrategy,
@@ -744,6 +742,8 @@ describe("strategy registration", () => {
     }
     // decision-request is elevated above standard business strategies
     expect(decisionRequestStrategy.priority).toBeGreaterThan(actionPlanTableStrategy.priority);
+    // process-flow-with-impact elevated to 85 to win over table/dashboard on process slides
+    expect(processFlowWithImpactStrategy.priority).toBe(85);
   });
 
   it("standard business strategies have priority 75", () => {
@@ -756,7 +756,6 @@ describe("strategy registration", () => {
       layeredArchitectureStrategy,
       oneMessageSummaryStrategy,
       optionComparisonTableStrategy,
-      processFlowWithImpactStrategy,
       recommendationComparisonStrategy,
       smallMultiplesTrendStrategy,
       threePointSummaryStrategy,
@@ -766,6 +765,8 @@ describe("strategy registration", () => {
     }
     // decision-request is elevated to 90 for Phase 7.6-fix
     expect(decisionRequestStrategy.priority).toBe(90);
+    // process-flow-with-impact is elevated to 85 for Phase 7.7-fix
+    expect(processFlowWithImpactStrategy.priority).toBe(85);
   });
 });
 
