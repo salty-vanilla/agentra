@@ -1,7 +1,8 @@
 /**
  * Strategy module barrel export.
  *
- * Re-exports types, manifest interface, registry, and built-in manifests.
+ * Re-exports types, manifest interface, registry, built-in manifests,
+ * SlideIntent, DeckPlan, candidate selection, and prompt helpers.
  */
 
 export type {
@@ -16,6 +17,26 @@ export type { StrategyManifest, StrategyExample } from "#src/strategy/manifest.j
 
 export { StrategyRegistry } from "#src/strategy/registry.js";
 export type { StrategyQuery } from "#src/strategy/registry.js";
+
+export type {
+  SlideIntent,
+  SlideIntentConstraints,
+  ResolvedSlideIntent,
+} from "#src/strategy/slide-intent.js";
+export { resolveSlideIntent } from "#src/strategy/slide-intent.js";
+
+export type { DeckPlan, NarrativeArc } from "#src/strategy/deck-plan.js";
+
+export type {
+  StrategyCandidate,
+  StrategyCandidateResult,
+} from "#src/strategy/intent-to-strategy.js";
+export { findStrategyCandidatesForIntent } from "#src/strategy/intent-to-strategy.js";
+
+export { createSlideIntentFromArchetype } from "#src/strategy/archetype-bridge.js";
+
+export type { StrategyCandidatePromptItem } from "#src/strategy/strategy-prompt.js";
+export { toStrategyCandidatePromptItems } from "#src/strategy/strategy-prompt.js";
 
 export {
   kpiCardOverviewManifest,

@@ -88,8 +88,9 @@ const minimalBrief = {
 const minimalDeckPlan = {
   id: "dp-1",
   title: "Test",
-  sections: [],
-  slides: [],
+  audience: "executive",
+  genre: "business-review",
+  slides: [{ keyMessage: "Test", intent: "summarize", contentKinds: ["summary"] }],
 } as unknown as DeckPlan;
 
 const defaultTheme = {

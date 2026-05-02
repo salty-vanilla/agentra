@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  type DeckPlan,
   type SlideSpec,
   buildPresentationIr,
   createPresentationSpec,
@@ -58,9 +59,10 @@ describe("buildPresentationIr", () => {
       },
     ];
 
+    const canonicalDeckPlan = deckPlan as unknown as DeckPlan;
     const first = buildPresentationIr({
       brief,
-      deckPlan,
+      deckPlan: canonicalDeckPlan,
       slideSpecs,
       assetSpecs: [
         {
@@ -76,7 +78,7 @@ describe("buildPresentationIr", () => {
     });
     const second = buildPresentationIr({
       brief,
-      deckPlan,
+      deckPlan: canonicalDeckPlan,
       slideSpecs,
       assetSpecs: [
         {
@@ -134,7 +136,7 @@ describe("buildPresentationIr", () => {
 
     const presentation = buildPresentationIr({
       brief,
-      deckPlan,
+      deckPlan: deckPlan as unknown as DeckPlan,
       slideSpecs: [
         {
           id: "slide-no-title",

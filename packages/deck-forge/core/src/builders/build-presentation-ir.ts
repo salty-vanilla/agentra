@@ -34,6 +34,8 @@ import { createResolvedRegions, defaultFrameForRole } from "#src/operations/util
 import { MINIMAL_TEMPLATE_PROFILE } from "#src/templates/builtins/minimal-default.js";
 import { resolveTemplateLayout } from "#src/templates/resolve-template-layout.js";
 import type { TemplateProfile, TemplateSlotName } from "#src/templates/template-profile.js";
+import type { SlideIntent } from "#src/strategy/slide-intent.js";
+import type { CommunicationIntent, ContentKind } from "#src/strategy/types.js";
 
 const DEFAULT_TIMESTAMP = "1970-01-01T00:00:00.000Z";
 const DEFAULT_SLIDE_SIZE: SlideSize = {
@@ -76,7 +78,7 @@ export function buildPresentationIr(input: BuildPresentationIrInput): BuildPrese
   const assets = buildAssetRegistry(input.assetSpecs ?? [], slides, slideSpecs);
 
   return {
-    id: input.id ?? input.deckPlan.id,
+    id: input.id ?? input.deckPlan.id ?? input.brief.id,
     version: input.version ?? "1.0.0",
     meta: {
       title: input.title ?? (input.deckPlan.title || input.brief.title),
@@ -108,6 +110,39 @@ export function buildPresentationIr(input: BuildPresentationIrInput): BuildPrese
   };
 }
 
+// ---------------------------------------------------------------------------
+// SlideSpec.intent → canonical SlideIntent converter
+// ---------------------------------------------------------------------------
+
+const INTENT_TYPE_MAP: Record<string, { intent: CommunicationIntent; contentKinds: ContentKind[] }> = {
+  title: { intent: "summarize", contentKinds: ["title"] },
+  agenda: { intent: "summarize", contentKinds: ["summary"] },
+  summary: { intent: "summarize", contentKinds: ["summary"] },
+  problem: { intent: "diagnose", contentKinds: ["root-cause"] },
+  comparison: { intent: "compare", contentKinds: ["comparison"] },
+  timeline: { intent: "explain", contentKinds: ["timeline"] },
+  process: { intent: "explain", contentKinds: ["process"] },
+  architecture: { intent: "explain", contentKinds: ["architecture"] },
+  data_insight: { intent: "report", contentKinds: ["chart"] },
+  case_study: { intent: "report", contentKinds: ["summary"] },
+  proposal: { intent: "persuade", contentKinds: ["summary"] },
+  decision: { intent: "decide", contentKinds: ["decision"] },
+  closing: { intent: "summarize", contentKinds: ["summary"] },
+};
+
+function slideSpecIntentToCanonical(
+  raw: { type: string; keyMessage: string; audienceTakeaway: string } | undefined | null,
+): SlideIntent {
+  const intentType = raw?.type ?? "";
+  const mapped = INTENT_TYPE_MAP[intentType] ?? { intent: "summarize" as const, contentKinds: ["summary" as ContentKind] };
+  return {
+    keyMessage: raw?.keyMessage ?? "",
+    audienceTakeaway: raw?.audienceTakeaway,
+    intent: mapped.intent,
+    contentKinds: mapped.contentKinds,
+  };
+}
+
 function buildSlideIr(
   slideSpec: SlideSpec,
   index: number,
@@ -130,7 +165,7 @@ function buildSlideIr(
     index,
     specId: slideSpec.id,
     title: slideSpec.title,
-    intent: slideSpec.intent,
+    intent: slideSpecIntentToCanonical(slideSpec.intent),
     layout,
     elements: fixedElements,
     speakerNotes: slideSpec.speakerNotes?.text,

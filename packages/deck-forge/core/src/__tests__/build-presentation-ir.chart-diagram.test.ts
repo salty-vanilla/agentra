@@ -21,11 +21,10 @@ function makeBrief(overrides: Partial<PresentationBrief> = {}): PresentationBrie
 function makeDeckPlan(): DeckPlan {
   return {
     id: "deck-1",
-    briefId: "brief-1",
     title: "Test Deck",
-    slideCountTarget: 1,
-    sections: [],
-    globalStoryline: "test",
+    audience: "executive",
+    genre: "business-review",
+    slides: [{ keyMessage: "Test", intent: "summarize", contentKinds: ["summary"] }],
   } as DeckPlan;
 }
 

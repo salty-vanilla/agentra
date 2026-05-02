@@ -454,8 +454,9 @@ describe("buildPresentationIr trace includes template info", () => {
   const deckPlan = {
     id: "deck-1",
     title: "Test Deck",
-    slideCount: 1,
-    slides: [{ slideNumber: 1, title: "Title Slide", intent: { type: "opening" } }],
+    audience: "executive",
+    genre: "business-review",
+    slides: [{ keyMessage: "Test", intent: "summarize", contentKinds: ["summary"] }],
   } as unknown as DeckPlan;
 
   it("title slide trace has template fields", () => {
@@ -523,8 +524,9 @@ describe("slot placement in buildPresentationIr", () => {
   const deckPlan = {
     id: "deck-1",
     title: "Test Deck",
-    slideCount: 1,
-    slides: [{ slideNumber: 1, title: "Title Slide", intent: { type: "opening" } }],
+    audience: "executive",
+    genre: "business-review",
+    slides: [{ keyMessage: "Test", intent: "summarize", contentKinds: ["summary"] }],
   } as unknown as DeckPlan;
 
   it("title element uses template slot frame for cover layout", () => {
@@ -631,8 +633,9 @@ describe("buildPresentationIr slot fallback tracing", () => {
   const deckPlan = {
     id: "deck-1",
     title: "Test Deck",
-    slideCount: 1,
-    slides: [{ slideNumber: 1, title: "Slide", intent: { type: "data_insight" } }],
+    audience: "executive",
+    genre: "business-review",
+    slides: [{ keyMessage: "Test", intent: "summarize", contentKinds: ["summary"] }],
   } as unknown as DeckPlan;
 
   it("fallbackSlots are collected from strategy assignments", () => {

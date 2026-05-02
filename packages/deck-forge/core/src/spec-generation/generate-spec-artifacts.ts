@@ -1,17 +1,16 @@
 import type {
   AssetSpec,
   ContentBlock,
-  DeckPlan,
   DeckSection,
   GoalSpec,
   LayoutSpec,
   PresentationBrief,
-  SlideIntent,
   SlidePlan,
   SlideSpec,
   ToneSpec,
   VisualDirectionSpec,
 } from "#src/index.js";
+import type { ParsedDeckPlan, ParsedSlideIntent } from "#src/schemas/intent-artifacts.js";
 import type {
   CreatePresentationSpecInput,
   CreatePresentationSpecOutput,
@@ -87,7 +86,7 @@ export async function generateDeckPlan(
   const slides = buildSlidePlans(slideCountTarget, brief);
   const sections = toSections(slides);
 
-  const deckPlan: DeckPlan = {
+  const deckPlan: ParsedDeckPlan = {
     id: deckId,
     briefId: brief.id,
     title: brief.title,
@@ -202,7 +201,7 @@ function buildSlidePlans(slideCount: number, brief: PresentationBrief): SlidePla
     const ordinal = index + 1;
     const slideId = `slide-${String(ordinal).padStart(3, "0")}`;
 
-    let intent: SlideIntent;
+    let intent: ParsedSlideIntent;
     if (isFirst) {
       intent = {
         type: "title",
@@ -327,7 +326,7 @@ function toSections(slides: SlidePlan[]): DeckSection[] {
   ];
 }
 
-function flattenSlides(plan: DeckPlan): SlidePlan[] {
+function flattenSlides(plan: ParsedDeckPlan): SlidePlan[] {
   const items: SlidePlan[] = [];
   for (const section of plan.sections) {
     for (const slide of section.slides) {
@@ -337,7 +336,7 @@ function flattenSlides(plan: DeckPlan): SlidePlan[] {
   return items;
 }
 
-function toLayout(intent: SlideIntent): LayoutSpec {
+function toLayout(intent: ParsedSlideIntent): LayoutSpec {
   switch (intent.type) {
     case "title":
       return { type: "title", density: "low", emphasis: "center" };
@@ -520,7 +519,7 @@ function parseTone(seed?: string): ToneSpec {
 }
 
 function buildSlideTitle(
-  intent: SlideIntent,
+  intent: ParsedSlideIntent,
   deckTitle: string,
   index: number,
   total: number,

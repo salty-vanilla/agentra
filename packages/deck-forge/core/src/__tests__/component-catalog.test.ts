@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 
 import { presentationFixture } from "#src/__tests__/fixtures/presentation.fixture.js";
 import { preflightComponents, synthesizeComponents } from "#src/components/component-catalog.js";
-import type { SlideSpec } from "#src/index.js";
+import type { SlideIntent, SlideSpec } from "#src/index.js";
 
 const DEFAULT_TEMPLATES_DIR = path.join("templates", "components");
 
@@ -14,7 +14,7 @@ function makeSlide(overrides: Partial<SlideSpec> & { id: string }): SlideSpec {
   return {
     slideNumber: 1,
     title: overrides.id,
-    intent: { type: "proposal", keyMessage: "k", audienceTakeaway: "a" },
+    intent: { type: "proposal", keyMessage: "k", audienceTakeaway: "a" } as SlideSpec["intent"],
     layout: { type: "single_column", density: "medium" },
     content: [],
     ...overrides,
@@ -28,13 +28,11 @@ describe("component catalog", () => {
       const slideSpecs = presentationFixture.slides.map((slide) => ({
         id: slide.id,
         title: slide.title ?? slide.id,
-        intent:
-          slide.intent ??
-          ({
-            type: "proposal",
-            keyMessage: "message",
-            audienceTakeaway: "takeaway",
-          } as const),
+        intent: {
+          type: "proposal" as const,
+          keyMessage: "message",
+          audienceTakeaway: "takeaway",
+        },
         layout: slide.layout.spec,
         content: [
           {

@@ -6,7 +6,8 @@
  */
 
 import type { BuildPresentationIrInput } from "#src/builders/build-presentation-ir.js";
-import type { SlideIntent, LayoutIntent } from "#src/schemas/intent-artifacts.js";
+import type { DeckPlan } from "#src/strategy/deck-plan.js";
+import type { LayoutIntent } from "#src/schemas/intent-artifacts.js";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -53,36 +54,21 @@ function makeDeckPlan(overrides: {
   slides: Array<{
     id: string;
     title: string;
-    intentType: SlideIntent["type"];
+    intentType: string;
     layout: LayoutIntent;
   }>;
-}) {
+}): DeckPlan {
   return {
     id: overrides.id,
-    briefId: overrides.briefId,
     title: overrides.title,
-    slideCountTarget: overrides.slides.length,
-    sections: [
-      {
-        id: "section-1",
-        title: "Main",
-        role: "proposal" as const,
-        slides: overrides.slides.map((s, i) => ({
-          id: s.id,
-          title: s.title,
-          intent: {
-            type: s.intentType,
-            keyMessage: s.title,
-            audienceTakeaway: s.title,
-          },
-          expectedLayout: s.layout,
-          contentRequirements: [
-            { id: `cr-${s.id}-${i}`, description: "content", priority: "medium" as const },
-          ],
-        })),
-      },
-    ],
-    globalStoryline: overrides.title,
+    audience: "executive",
+    genre: "business-review",
+    slides: overrides.slides.map((s) => ({
+      keyMessage: s.title,
+      audienceTakeaway: s.title,
+      intent: "summarize" as const,
+      contentKinds: ["summary" as const],
+    })),
   };
 }
 

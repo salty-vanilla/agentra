@@ -250,7 +250,6 @@ import type {
   CodeBlock,
   ContentBlock,
   ContentRequirement,
-  DeckPlan,
   DeckSection,
   DiagramAssetSpec,
   DiagramBlock,
@@ -277,7 +276,6 @@ import type {
   ScreenshotAssetSpec,
   SlideArchetype,
   SlideConstraints,
-  SlideIntent,
   SlidePlan,
   SlideSpec,
   SpeakerNotesSpec,
@@ -340,7 +338,6 @@ export type {
   CodeBlock,
   ContentBlock,
   ContentRequirement,
-  DeckPlan,
   DeckSection,
   DiagramAssetSpec,
   DiagramBlock,
@@ -367,7 +364,6 @@ export type {
   ScreenshotAssetSpec,
   SlideArchetype,
   SlideConstraints,
-  SlideIntent,
   SlidePlan,
   SlideSpec,
   SpeakerNotesSpec,
@@ -852,8 +848,10 @@ export type ExportResult = {
 };
 
 // ---------------------------------------------------------------------------
-// Strategy (Phase 8A)
+// Strategy (Phase 8A + 8B)
 // ---------------------------------------------------------------------------
+import type { SlideIntent } from "#src/strategy/slide-intent.js";
+import type { DeckPlan } from "#src/strategy/deck-plan.js";
 export type {
   AudienceType,
   CommunicationIntent,
@@ -865,6 +863,24 @@ export type { StrategyManifest, StrategyExample } from "#src/strategy/manifest.j
 export { StrategyRegistry } from "#src/strategy/registry.js";
 export type { StrategyQuery } from "#src/strategy/registry.js";
 export { createBuiltinStrategyRegistry } from "#src/strategy/index.js";
+
+// Phase 8B: SlideIntent, DeckPlan, candidate selection (canonical strategy types)
+export type {
+  SlideIntent,
+  SlideIntentConstraints,
+  ResolvedSlideIntent,
+  DeckPlan,
+  NarrativeArc,
+  StrategyCandidate,
+  StrategyCandidateResult,
+  StrategyCandidatePromptItem,
+} from "#src/strategy/index.js";
+export {
+  resolveSlideIntent,
+  findStrategyCandidatesForIntent,
+  createSlideIntentFromArchetype,
+  toStrategyCandidatePromptItems,
+} from "#src/strategy/index.js";
 export {
   kpiCardOverviewManifest,
   kpiDashboardWithInsightManifest,

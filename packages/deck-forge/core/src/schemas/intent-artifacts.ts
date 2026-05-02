@@ -821,10 +821,20 @@ export type PresentationConstraints = z.infer<
 export type BrandSpec = z.infer<typeof BrandSchema>;
 export type VisualDirectionSpec = z.infer<typeof VisualDirectionSchema>;
 
-export type DeckPlan = z.infer<typeof DeckPlanSchema>;
+/**
+ * Schema-derived intent artifact types.
+ *
+ * DeckPlanSchema and SlideIntentSchema are kept for internal spec-generation
+ * pipeline parsing only. The canonical public types are in strategy/.
+ *
+ * TODO(Phase 8C): remove once runtime intent parsing is migrated to strategy/DeckPlanSchema.
+ */
+/** @internal — used only by generate-spec-artifacts pipeline. */
+export type ParsedDeckPlan = z.infer<typeof DeckPlanSchema>;
 export type DeckSection = z.infer<typeof DeckSectionSchema>;
 export type SlidePlan = z.infer<typeof SlidePlanSchema>;
-export type SlideIntent = z.infer<typeof SlideIntentSchema>;
+/** @internal — used only by generate-spec-artifacts pipeline. */
+export type ParsedSlideIntent = z.infer<typeof SlideIntentSchema>;
 export type LayoutIntent = z.infer<typeof LayoutTypeSchema>;
 export type ContentRequirement = z.infer<typeof ContentRequirementSchema>;
 export type AssetRequirement = z.infer<typeof AssetRequirementSchema>;

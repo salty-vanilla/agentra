@@ -1,4 +1,5 @@
-import type { AssetSpec, DeckPlan, PresentationBrief, SlideSpec } from "#src/index.js";
+import type { AssetSpec, PresentationBrief, SlideSpec } from "#src/index.js";
+import type { ParsedDeckPlan } from "#src/schemas/intent-artifacts.js";
 
 export type CreatePresentationSpecInput = {
   userRequest: string;
@@ -18,12 +19,12 @@ export type GenerateDeckPlanInput = {
 };
 
 export type GenerateDeckPlanOutput = {
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
 };
 
 export type GenerateSlideSpecsInput = {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
 };
 
 export type GenerateSlideSpecsOutput = {

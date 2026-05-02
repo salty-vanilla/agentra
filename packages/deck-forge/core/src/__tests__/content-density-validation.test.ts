@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { validatePresentation } from "#src/validation/validate-presentation.js";
-import type { PresentationIR, TextElementIR, TableElementIR, RichText } from "#src/index.js";
+import type { PresentationIR, TextElementIR, TableElementIR, RichText, SlideIntent } from "#src/index.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -48,10 +48,11 @@ function makePresentation(
         index: 0,
         title: "Test Slide",
         intent: {
-          type: "summary",
           keyMessage: "Test",
           audienceTakeaway: "Test",
-        },
+          intent: "summarize",
+          contentKinds: ["summary"],
+        } satisfies SlideIntent,
         layout: {
           spec: { type: "single_column", density: "medium" },
           slideSize: { width: 1280, height: 720, unit: "px" },
