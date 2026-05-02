@@ -1,4 +1,6 @@
 export { repairPresentationLayout } from "#src/repair/repair-presentation-layout.js";
+export { repairSameFrameOverlaps } from "#src/repair/same-frame-repair.js";
+export type { SameFrameRepairResult } from "#src/repair/same-frame-repair.js";
 export { repairTextOverflow } from "#src/repair/text-overflow-repair.js";
 export type {
   TextOverflowRepairAction,

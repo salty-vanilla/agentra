@@ -17,6 +17,7 @@ import {
 export type DeckStabilizationDiagnostics = {
   layout: DeckLayoutDiagnosticsSummary;
   operations: OperationDiagnosticsSummary;
+  assetUsage: AssetUsageDiagnostics;
 
   status: "stable" | "needs_attention" | "unstable";
 
@@ -28,6 +29,15 @@ export type DeckStabilizationDiagnostics = {
   hotspots: SlideStabilizationHotspot[];
 
   recommendations: StabilizationRecommendation[];
+};
+
+export type AssetUsageDiagnostics = {
+  totalAssets: number;
+  imageAssetCount: number;
+  imageElementCount: number;
+  usedAssetCount: number;
+  unusedAssetCount: number;
+  unusedAssetIds: string[];
 };
 
 export type SlideStabilizationHotspot = {
@@ -152,14 +162,52 @@ export function analyzeDeckStabilization(input: {
   // ------ Recommendations ------
   const recommendations = buildRecommendations(layout, operations, hotspots, score);
 
+  // ------ Asset usage ------
+  const assetUsage = analyzeAssetUsage(presentation);
+
   return {
     layout,
     operations,
+    assetUsage,
     status,
     score,
     reasons,
     hotspots,
     recommendations,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Asset usage analysis
+// ---------------------------------------------------------------------------
+
+function analyzeAssetUsage(presentation: PresentationIR): AssetUsageDiagnostics {
+  const allAssets = presentation.assets?.assets ?? [];
+  const imageAssets = allAssets.filter((a) => a.type === "image");
+
+  // Collect all assetIds referenced by image elements across slides
+  const referencedAssetIds = new Set<string>();
+  let imageElementCount = 0;
+  for (const slide of presentation.slides) {
+    for (const el of slide.elements) {
+      if (el.type === "image") {
+        imageElementCount++;
+        if (el.assetId) referencedAssetIds.add(el.assetId);
+      }
+    }
+  }
+
+  const unusedAssetIds = allAssets
+    .filter((a) => !referencedAssetIds.has(a.id))
+    .map((a) => a.id);
+
+  return {
+    totalAssets: allAssets.length,
+    imageAssetCount: imageAssets.length,
+    imageElementCount,
+    usedAssetCount: allAssets.length - unusedAssetIds.length,
+    unusedAssetCount: unusedAssetIds.length,
+    unusedAssetIds,
   };
 }
 

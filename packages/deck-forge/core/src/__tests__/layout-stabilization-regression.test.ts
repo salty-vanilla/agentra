@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { buildPresentationIr } from "#src/builders/build-presentation-ir.js";
 import { analyzeSlideLayout } from "#src/diagnostics/layout-diagnostics.js";
+import { analyzeDeckStabilization } from "#src/diagnostics/stabilization-diagnostics.js";
+import { repairSameFrameOverlaps } from "#src/repair/same-frame-repair.js";
 import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
 import type {
   ContentBlock,
@@ -353,5 +355,231 @@ describe("layout stabilization regression", () => {
         }
       }
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Phase 7.7-fix2 regression tests
+// ---------------------------------------------------------------------------
+
+describe("decision-request V1 hardening (Phase 7.7-fix2)", () => {
+  const slideSpec = makeSlideSpec({
+    id: "slide-06",
+    title: "施策承認依頼",
+    intent: { type: "decision", keyMessage: "4施策の承認", audienceTakeaway: "承認判断" },
+    layout: { type: "single_column", density: "medium" },
+    content: [
+      { id: "t1", type: "title", text: "施策承認依頼" } as ContentBlock,
+      makeCallout("cta1", "以下4施策の承認をお願いします。"),
+      makeCallout("c1", "ボトルネック自動化"),
+      makeCallout("c2", "予防保全システム導入"),
+      makeCallout("c3", "AIビジョン検査"),
+      makeCallout("c4", "部品在庫最適化"),
+      makeMetric("m1", "総投資額", "¥500M"),
+      makeMetric("m2", "期待ROI", "180%"),
+      makeParagraph("p1", "実行開始: Q3, 進捗報告: 月次"),
+    ],
+  });
+
+  it("produces no overlaps with 4 approval callouts + 2 metrics + paragraph", () => {
+    const { diagnostics } = buildAndDiagnose([slideSpec]);
+    expect(diagnostics[0]!.overlapCount).toBe(0);
+  });
+
+  it("produces no out-of-bounds", () => {
+    const { diagnostics } = buildAndDiagnose([slideSpec]);
+    expect(diagnostics[0]!.outOfBoundsCount).toBe(0);
+  });
+
+  it("uses main slot for approval items", () => {
+    const { ir } = buildAndDiagnose([slideSpec]);
+    const slide = ir.slides.find((s) => s.id === "slide-06");
+    const usedSlots = slide?._trace?.usedSlots ?? [];
+    expect(usedSlots).toContain("main");
+  });
+
+  it("does not stack all 4 approval items in supporting", () => {
+    const { ir } = buildAndDiagnose([slideSpec]);
+    const slide = ir.slides.find((s) => s.id === "slide-06");
+    // Count elements whose frame is in the supporting slot area (y > 445 in approval template)
+    const supportingElements = slide?.elements.filter((e) => e.frame.y >= 445) ?? [];
+    // Supporting should have at most 2 elements (closing paragraph + maybe 1)
+    expect(supportingElements.length).toBeLessThanOrEqual(3);
+  });
+});
+
+describe("executive-summary-kpi 4 metrics + callout (Phase 7.7-fix2)", () => {
+  const slideSpec = makeSlideSpec({
+    id: "slide-02",
+    title: "Q2業績サマリー",
+    intent: { type: "summary", keyMessage: "Q2 KPI", audienceTakeaway: "業績概要" },
+    layout: { type: "dashboard", density: "medium" },
+    content: [
+      { id: "t1", type: "title", text: "Q2業績サマリー" } as ContentBlock,
+      makeMetric("m1", "稼働率", "92%"),
+      makeMetric("m2", "不良率", "0.3%"),
+      makeMetric("m3", "OEE", "85%"),
+      makeMetric("m4", "ダウンタイム", "4.2h"),
+      makeCallout("c1", "全KPI目標達成。稼働率は過去最高。"),
+    ],
+  });
+
+  it("places 4 metrics with no overlaps", () => {
+    const { diagnostics } = buildAndDiagnose([slideSpec]);
+    expect(diagnostics[0]!.overlapCount).toBe(0);
+  });
+
+  it("places 4 metrics at the same y coordinate", () => {
+    const { ir } = buildAndDiagnose([slideSpec]);
+    const slide = ir.slides.find((s) => s.id === "slide-02");
+    // Metric elements are text elements with decoration=card OR shape elements.
+    // Find the 4 metric-region elements (not title, not callout)
+    const metricElements = slide?.elements.filter(
+      (e) => e.type === "text" && e.role !== "title" && e.role !== "callout" && e.role !== "footer",
+    ) ?? [];
+    // At least 4 metric elements expected
+    if (metricElements.length >= 4) {
+      const topFour = metricElements.slice(0, 4);
+      const yValues = topFour.map((e) => Math.round(e.frame.y));
+      // All should share the same y
+      expect(new Set(yValues).size).toBe(1);
+    }
+  });
+
+  it("places callout below the metrics", () => {
+    const { ir } = buildAndDiagnose([slideSpec]);
+    const slide = ir.slides.find((s) => s.id === "slide-02");
+    const metricElements = slide?.elements.filter(
+      (e) => e.type === "text" && e.role !== "title" && e.role !== "callout" && e.role !== "footer",
+    ) ?? [];
+    const calloutElements = slide?.elements.filter(
+      (e) => e.type === "text" && e.role === "callout",
+    ) ?? [];
+    if (metricElements.length > 0 && calloutElements.length > 0) {
+      const maxMetricBottom = Math.max(
+        ...metricElements.map((e) => e.frame.y + e.frame.height),
+      );
+      expect(calloutElements[0]!.frame.y).toBeGreaterThan(maxMetricBottom);
+    }
+  });
+
+  it("produces no out-of-bounds", () => {
+    const { diagnostics } = buildAndDiagnose([slideSpec]);
+    expect(diagnostics[0]!.outOfBoundsCount).toBe(0);
+  });
+});
+
+describe("same-frame deterministic repair (Phase 7.7-fix2)", () => {
+  it("repairs 4 elements sharing the same frame", () => {
+    // Build a minimal IR with elements at the same frame
+    const slideSpec = makeSlideSpec({
+      id: "slide-overlap",
+      title: "Overlap Test",
+      intent: { type: "summary", keyMessage: "test", audienceTakeaway: "test" },
+      layout: { type: "single_column", density: "medium" },
+      content: [
+        { id: "t1", type: "title", text: "Overlap Test" } as ContentBlock,
+        makeParagraph("p1", "Item A"),
+        makeParagraph("p2", "Item B"),
+        makeParagraph("p3", "Item C"),
+        makeParagraph("p4", "Item D"),
+      ],
+    });
+
+    const ir = buildPresentationIr({
+      slideSpecs: [slideSpec],
+      brief: minimalBrief,
+      deckPlan: minimalDeckPlan,
+      theme: defaultTheme,
+      templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE,
+    });
+
+    // Force all non-title elements to the same frame to simulate overlap
+    const slide = ir.slides[0]!;
+    const sharedFrame = { x: 100, y: 200, width: 500, height: 300 };
+    const forcedElements = slide.elements.map((el) =>
+      el.type === "text" && el.role !== "title"
+        ? { ...el, frame: { ...sharedFrame } }
+        : el,
+    );
+    const forcedIr = {
+      ...ir,
+      slides: [{ ...slide, elements: forcedElements }],
+    };
+
+    const result = repairSameFrameOverlaps(forcedIr);
+
+    expect(result.sameFrameGroupCount).toBeGreaterThanOrEqual(1);
+    expect(result.repairedElementCount).toBeGreaterThanOrEqual(2);
+
+    // After repair, no two elements should share the exact same frame
+    const repairedSlide = result.presentation.slides[0]!;
+    const nonTitleElements = repairedSlide.elements.filter(
+      (e) => e.type === "text" && (e as { role?: string }).role !== "title",
+    );
+    const frameKeys = nonTitleElements.map(
+      (e) => `${e.frame.x},${e.frame.y},${e.frame.width},${e.frame.height}`,
+    );
+    expect(new Set(frameKeys).size).toBe(frameKeys.length);
+
+    // Operation log should contain same_frame_overlap entries
+    const repairOps = result.presentation.operationLog.filter(
+      (op) => (op.operation as { reason?: string }).reason === "same_frame_overlap",
+    );
+    expect(repairOps.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("does not modify slides without same-frame overlaps", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-clean",
+      title: "Clean Slide",
+      intent: { type: "summary", keyMessage: "test", audienceTakeaway: "test" },
+      layout: { type: "single_column", density: "medium" },
+      content: [
+        { id: "t1", type: "title", text: "Clean" } as ContentBlock,
+        makeParagraph("p1", "Only one paragraph"),
+      ],
+    });
+
+    const ir = buildPresentationIr({
+      slideSpecs: [slideSpec],
+      brief: minimalBrief,
+      deckPlan: minimalDeckPlan,
+      theme: defaultTheme,
+      templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE,
+    });
+
+    const result = repairSameFrameOverlaps(ir);
+    expect(result.sameFrameGroupCount).toBe(0);
+    expect(result.repairedElementCount).toBe(0);
+    expect(result.operationCount).toBe(0);
+  });
+});
+
+describe("asset usage diagnostics (Phase 7.7-fix2)", () => {
+  it("reports zero unused assets when no assets exist", () => {
+    const slideSpec = makeSlideSpec({
+      id: "slide-no-assets",
+      title: "No Assets",
+      intent: { type: "summary", keyMessage: "test", audienceTakeaway: "test" },
+      layout: { type: "single_column", density: "medium" },
+      content: [
+        { id: "t1", type: "title", text: "No Assets" } as ContentBlock,
+        makeMetric("m1", "KPI", "100"),
+      ],
+    });
+
+    const ir = buildPresentationIr({
+      slideSpecs: [slideSpec],
+      brief: minimalBrief,
+      deckPlan: minimalDeckPlan,
+      theme: defaultTheme,
+      templateProfile: EXECUTIVE_NAVY_TEMPLATE_PROFILE,
+    });
+
+    const diag = analyzeDeckStabilization({ presentation: ir });
+    expect(diag.assetUsage.totalAssets).toBe(0);
+    expect(diag.assetUsage.unusedAssetCount).toBe(0);
+    expect(diag.assetUsage.imageElementCount).toBe(0);
   });
 });

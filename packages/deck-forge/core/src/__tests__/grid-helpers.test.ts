@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  createApprovalItemFrames,
   createMetricRail,
   createSmallMultiplesGrid,
   createTwoByTwoCards,
@@ -191,5 +192,56 @@ describe("createTwoByTwoCards", () => {
     expect(frames).toHaveLength(6); // 2×3 grid
     const ys = new Set(frames.map((f) => f.y));
     expect(ys.size).toBe(3);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// createApprovalItemFrames  (Phase 7.7-fix2)
+// ---------------------------------------------------------------------------
+
+describe("createApprovalItemFrames", () => {
+  const region: ResolvedFrame = { x: 80, y: 260, width: 560, height: 300 };
+
+  it("returns 1 frame for 1 item", () => {
+    const frames = createApprovalItemFrames(region, 1);
+    expect(frames).toHaveLength(1);
+    expect(frames[0]).toEqual(region);
+  });
+
+  it("returns 2 non-overlapping vertical frames for 2 items", () => {
+    const frames = createApprovalItemFrames(region, 2);
+    expect(frames).toHaveLength(2);
+    expect(framesOverlap(frames[0]!, frames[1]!)).toBe(false);
+  });
+
+  it("returns 4 non-overlapping frames for 4 items (2x2 for wide region)", () => {
+    const frames = createApprovalItemFrames(region, 4);
+    expect(frames).toHaveLength(4);
+    for (let i = 0; i < frames.length; i++) {
+      for (let j = i + 1; j < frames.length; j++) {
+        expect(framesOverlap(frames[i]!, frames[j]!)).toBe(false);
+      }
+    }
+  });
+
+  it("returns 4 non-overlapping frames for narrow region", () => {
+    const narrow: ResolvedFrame = { x: 80, y: 260, width: 300, height: 300 };
+    const frames = createApprovalItemFrames(narrow, 4);
+    expect(frames).toHaveLength(4);
+    for (let i = 0; i < frames.length; i++) {
+      for (let j = i + 1; j < frames.length; j++) {
+        expect(framesOverlap(frames[i]!, frames[j]!)).toBe(false);
+      }
+    }
+  });
+
+  it("returns 5 non-overlapping frames for 5 items", () => {
+    const frames = createApprovalItemFrames(region, 5);
+    expect(frames).toHaveLength(5);
+    for (let i = 0; i < frames.length; i++) {
+      for (let j = i + 1; j < frames.length; j++) {
+        expect(framesOverlap(frames[i]!, frames[j]!)).toBe(false);
+      }
+    }
   });
 });

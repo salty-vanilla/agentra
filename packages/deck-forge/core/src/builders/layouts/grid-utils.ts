@@ -275,3 +275,48 @@ export function createTwoByTwoCards(
   const rows = Math.ceil(count / 2);
   return splitGrid(region, 2, rows, density);
 }
+
+// ---------------------------------------------------------------------------
+// Approval Item Frames  (Phase 7.7-fix2)
+// ---------------------------------------------------------------------------
+
+/**
+ * Create non-overlapping frames for approval items.
+ *
+ * - 1 item  → full card
+ * - 2 items → vertical stack (or horizontal if region is very wide)
+ * - 3–4     → 2×2 grid if width ≥ 400, otherwise vertical stack
+ * - 5+      → vertical stack with min height 50
+ */
+export function createApprovalItemFrames(
+  region: ResolvedFrame,
+  count: number,
+  density?: LayoutSpec["density"],
+): ResolvedFrame[] {
+  if (count <= 0) return [];
+  if (count === 1) return [region];
+
+  const gap = gapForDensity(density, 12);
+
+  if (count === 2) {
+    // Prefer vertical stack in typical approval slot (tall & narrow-ish)
+    if (region.width >= region.height * 2.5) {
+      return splitHorizontal(region, 2, density);
+    }
+    return splitVertical(region, 2, density);
+  }
+
+  // 3–4 items: 2×2 grid if the region is wide enough
+  if (count <= 4 && region.width >= 400) {
+    return splitGrid(region, 2, 2, density);
+  }
+
+  // Vertical stack for narrow regions or 5+ items
+  const rowHeight = Math.max(50, Math.floor((region.height - gap * (count - 1)) / count));
+  return Array.from({ length: count }, (_, i) => ({
+    x: region.x,
+    y: region.y + i * (rowHeight + gap),
+    width: region.width,
+    height: rowHeight,
+  }));
+}

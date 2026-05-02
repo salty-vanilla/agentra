@@ -1,10 +1,8 @@
 import {
   countByType,
-  createCardGrid,
   hasCallout,
   isSummaryIntent,
   mergeAllRegions,
-  splitTopBottom,
 } from "#src/builders/layouts/business-utils.js";
 import { createMetricRail, splitVertical } from "#src/builders/layouts/grid-utils.js";
 import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
@@ -13,6 +11,7 @@ import type {
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ResolvedFrame } from "#src/index.js";
 
 /**
  * Executive Summary KPI: 3–5 KPI/metric cards in a responsive grid with a
@@ -41,18 +40,7 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
       (b) => b.type !== "metric" && b.type !== "callout",
     );
 
-    const hasOthers = otherBlocks.length > 0;
-    const hasCallouts = calloutBlocks.length > 0;
-
-    // Determine vertical split ratios based on content composition
-    let metricRatio: number;
-    if (hasCallouts && hasOthers) {
-      metricRatio = 0.45;
-    } else if (hasCallouts || hasOthers) {
-      metricRatio = 0.55;
-    } else {
-      metricRatio = 1.0;
-    }
+    const hasLowerContent = calloutBlocks.length > 0 || otherBlocks.length > 0;
 
     const assignments: SubFrameAssignment[] = [];
 
@@ -60,7 +48,8 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
     const metrics = resolveSlotFrame(ctx, ["metrics", "cards"], region);
     const callout = resolveSlotFrame(ctx, "callout", region);
 
-    if (metricRatio >= 1.0) {
+    if (!hasLowerContent) {
+      // Metrics only — use full region
       const cells = createMetricRail(metrics.frame, metricBlocks.length, {
         minCardHeight: 120,
         maxCardHeight: 160,
@@ -79,10 +68,32 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
       return assignments;
     }
 
-    const { top: metricRegion, bottom: lowerRegion } = splitTopBottom(
-      region,
-      metricRatio,
+    // --- Metrics + callout/other layout ---
+    // Use fixed callout band height (90px) instead of ratio-based split.
+    // This prevents the metric region from being squeezed and reduces
+    // VLM layout repair operations.
+    const CALLOUT_BAND_HEIGHT = 90;
+    const GAP = 24;
+    const lowerBlocks = [...calloutBlocks, ...otherBlocks];
+    const lowerBandHeight = Math.max(
+      CALLOUT_BAND_HEIGHT,
+      lowerBlocks.length * 60,
     );
+
+    const metricRegion: ResolvedFrame = metrics.slot
+      ? metrics.frame
+      : {
+          x: region.x,
+          y: region.y,
+          width: region.width,
+          height: Math.max(140, region.height - lowerBandHeight - GAP),
+        };
+    const lowerRegion: ResolvedFrame = {
+      x: region.x,
+      y: metricRegion.y + metricRegion.height + GAP,
+      width: region.width,
+      height: lowerBandHeight,
+    };
 
     const computedMetrics = metrics.slot ? metrics : { ...metrics, frame: metricRegion };
     const cells = createMetricRail(computedMetrics.frame, metricBlocks.length, {
@@ -101,7 +112,6 @@ export const executiveSummaryKpiStrategy: LayoutStrategy = {
       );
     });
 
-    const lowerBlocks = [...calloutBlocks, ...otherBlocks];
     const computedCallout = callout.slot ? callout : { ...callout, frame: lowerRegion };
     const lowerFrames = splitVertical(computedCallout.frame, lowerBlocks.length, density);
     lowerBlocks.forEach((block, i) => {

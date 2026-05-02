@@ -9,6 +9,32 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge Phase 7.7-fix2: Asset pruning & decision-request V1 hardening
+
+- **Asset pruning** — image asset generation now requires at least one
+  `image` block in slideSpecs; `ASSET_SPECS_SYSTEM` prompt forbids
+  decorative images for KPI-heavy business decks; post-generation prune
+  removes assets targeting non-image-block slides
+- **Decision-request callout classification** — callouts are classified as
+  CTA / approval-item / supporting via keyword regex; approval items route
+  to `main` slot (grid) instead of `supporting` (prevents overlap)
+- **`createApprovalItemFrames()`** — new grid helper: 1→full, 2→vertical
+  stack, 3–4→2×2 grid (if width ≥ 400) or vertical, 5+→vertical stack
+- **Executive-summary-kpi hardening** — replaced ratio-based vertical split
+  with fixed callout band height (90px + gap), giving metric rail more
+  stable vertical space
+- **`repairSameFrameOverlaps()`** — deterministic LLM-free repair that
+  detects elements sharing the same frame and redistributes vertically;
+  runs after V1 diagnostics and before the VLM design-review loop;
+  operations logged with `source: deterministic-v1-repair`
+- **`AssetUsageDiagnostics`** — new type on `DeckStabilizationDiagnostics`
+  tracking `totalAssets`, `imageAssetCount`, `imageElementCount`,
+  `usedAssetCount`, `unusedAssetCount`, `unusedAssetIds`; logged in V1
+  and final diagnostics
+- **Data faithfulness: partial breakdown guard** — intent-parser and
+  operation-planner prompts now forbid inventing breakdown categories;
+  if only one category is given, only that + "その他" is allowed
+
 ### Added — deck-forge Phase 7.7-fix: V1 layout stabilization & strategy routing hardening
 
 - **Hotspot logging** — V1 and final diagnostics now emit `hotspotSlides`

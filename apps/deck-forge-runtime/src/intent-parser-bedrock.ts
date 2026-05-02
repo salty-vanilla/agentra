@@ -56,7 +56,13 @@ const SLIDE_SPEC_TOOL = {
 const ASSET_SPECS_SYSTEM = `You are a visual design consultant.
 Given the PresentationBrief and SlideSpecs, create AssetSpecs for images and diagrams.
 Use "retrieved_image" with specific searchQuery for photo content, "generated_image" with detailed prompts for illustrations.
-Target each asset to specific slides via targetSlideIds.`;
+Target each asset to specific slides via targetSlideIds.
+
+IMPORTANT:
+- Generate image assets ONLY when a slide explicitly contains an image block or the user explicitly requested photos/illustrations/background images.
+- Do NOT generate decorative images for KPI-heavy business decks unless they will be referenced by an image element.
+- If no slide uses an image block, return an empty assetSpecs array.
+- Every generated asset MUST be referenced by at least one image element in the slides.`;
 
 const ASSET_SPECS_TOOL = {
   name: 'create_asset_specs',
@@ -571,6 +577,7 @@ House style — the difference between "auto-generated" and "consultant-quality"
    ✗ "図1" / "Figure 1" style captions — let the layout speak
    ✗ Fabricating numeric breakdowns or percentages not present in the source material. If the brief says "稼働率 92%" do NOT invent sub-line breakdowns like "ライン A 95%, ライン B 89%". Only use numbers explicitly provided.
    ✗ Adding trend data (前月比, 前年比, delta) unless the source explicitly states those figures.
+   ✗ Inventing breakdown categories. If only one category percentage is given (e.g. "設備起因60%"), use that category plus "その他" as the complement ("設備起因60% / その他40%"). Do NOT add unlisted categories like "段取り25% / 品質不良15%".
 
 GOOD example (KPI slide body block):
   { type: "metric", label: "稼働率", value: 92, unit: "%", delta: { value: 2.1, direction: "up", unit: "pt" } }
@@ -598,7 +605,12 @@ Apply these rules silently — do not mention them in the output content.`;
   const hasVisualNeeds = deckPlan.sections?.some((s) =>
     s.slides?.some((sl) => sl.assetRequirements && sl.assetRequirements.length > 0),
   );
-  if (hasVisualNeeds) {
+  // Also check whether any slide actually has an image block — if not,
+  // generating image assets would only produce unused artifacts.
+  const hasImageBlocks = slideSpecs.some((spec) =>
+    spec.content?.some((block: { type: string }) => block.type === 'image'),
+  );
+  if (hasVisualNeeds && hasImageBlocks) {
     log('assetSpecs', 'invoking tool_use...');
     const result = await invokeBedrockToolUse<{ assetSpecs: AssetSpec[] }>({
       system: ASSET_SPECS_SYSTEM,
@@ -606,9 +618,25 @@ Apply these rules silently — do not mention them in the output content.`;
       tool: ASSET_SPECS_TOOL,
     });
     assetSpecs = result.assetSpecs ?? [];
+    // Prune assets that target no image-block-bearing slide
+    const slideIdsWithImages = new Set(
+      slideSpecs
+        .filter((spec) =>
+          spec.content?.some((block: { type: string }) => block.type === 'image'),
+        )
+        .map((spec) => spec.id),
+    );
+    assetSpecs = assetSpecs.filter((asset) => {
+      const targetIds = asset.targetSlideIds;
+      if (!targetIds || targetIds.length === 0) return true;
+      return targetIds.some((id) => slideIdsWithImages.has(id));
+    });
     log('assetSpecs', 'done', { count: assetSpecs.length });
   } else {
-    log('assetSpecs', 'skipped (no asset requirements in deckPlan)');
+    log(
+      'assetSpecs',
+      `skipped (${!hasVisualNeeds ? 'no asset requirements in deckPlan' : 'no image blocks in slideSpecs'})`,
+    );
   }
 
   const intent = buildStructuredIntent({

@@ -4,6 +4,7 @@ import type { PresentationIR } from '@deck-forge/core';
 import {
   analyzeDeckStabilization,
   type DeckStabilizationDiagnostics,
+  repairSameFrameOverlaps,
   runDesignReviewLoop,
 } from '@deck-forge/core';
 import type { DeckForgeRunInput } from '@deck-forge/runner';
@@ -191,6 +192,9 @@ async function main() {
                     layoutStrategyId: h.layoutStrategyId,
                     reasons: h.reasons,
                   })),
+                unusedAssetCount: v1Diag.assetUsage.unusedAssetCount,
+                imageElementCount: v1Diag.assetUsage.imageElementCount,
+                imageAssetCount: v1Diag.assetUsage.imageAssetCount,
                 recommendationCodes: v1Diag.recommendations.map((r) => r.code),
               });
             } catch (error) {
@@ -198,6 +202,21 @@ async function main() {
                 runId,
                 diagnosticsPhase: 'v1',
                 error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+          // -----------------------------------------------------------
+
+          // ----- Deterministic same-frame repair (before VLM loop) ----
+          if (finalPresentation) {
+            const repair = repairSameFrameOverlaps(finalPresentation);
+            if (repair.sameFrameGroupCount > 0) {
+              finalPresentation = repair.presentation;
+              logDeckForgeEvent('deterministic-v1-repair', {
+                runId,
+                sameFrameGroupCount: repair.sameFrameGroupCount,
+                repairedElementCount: repair.repairedElementCount,
+                operationCount: repair.operationCount,
               });
             }
           }
@@ -324,6 +343,9 @@ async function main() {
                     layoutStrategyId: h.layoutStrategyId,
                     reasons: h.reasons,
                   })),
+                unusedAssetCount: stabilizationDiagnostics.assetUsage.unusedAssetCount,
+                imageElementCount: stabilizationDiagnostics.assetUsage.imageElementCount,
+                imageAssetCount: stabilizationDiagnostics.assetUsage.imageAssetCount,
                 recommendationCodes: stabilizationDiagnostics.recommendations.map(
                   (r) => r.code,
                 ),

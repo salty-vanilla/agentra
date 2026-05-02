@@ -5,18 +5,42 @@ import {
   mergeAllRegions,
   splitTopBottom,
 } from "#src/builders/layouts/business-utils.js";
-import { createMetricRail, createTwoByTwoCards, splitVertical } from "#src/builders/layouts/grid-utils.js";
+import { createApprovalItemFrames, createMetricRail, createTwoByTwoCards, splitVertical } from "#src/builders/layouts/grid-utils.js";
 import { assignmentFromSlot, resolveSlotFrame } from "#src/builders/layouts/slot-utils.js";
 import type {
   LayoutContext,
   LayoutStrategy,
   SubFrameAssignment,
 } from "#src/builders/layouts/types.js";
+import type { ContentBlock } from "#src/index.js";
+
+// ---------------------------------------------------------------------------
+// Callout classification for decision-request slides
+// ---------------------------------------------------------------------------
+
+const CTA_KEYWORDS =
+  /(?:承認|お願い|本日|決議|判断|依頼|approval|decision|request|go[\s/]no[\s-]?go)/i;
+
+const SUPPORTING_KEYWORDS =
+  /(?:実行開始|進捗報告|補足|next\s*action|owner|担当|実施スケジュール|follow[\s-]*up)/i;
+
+type CalloutRole = "cta" | "approval_item" | "supporting";
+
+function classifyCallout(block: ContentBlock): CalloutRole {
+  const text = "text" in block ? (block.text as string) : "";
+  if (CTA_KEYWORDS.test(text)) return "cta";
+  if (SUPPORTING_KEYWORDS.test(text)) return "supporting";
+  // Default: treat as approval item (initiative / measure)
+  return "approval_item";
+}
 
 /**
  * Decision Request: optimised for the `approval-with-kpi-sidecar` template layout.
  * Uses cta → main → metrics → supporting slot order.
- * Table blocks are placed in `main` (not a dedicated `table` slot) to avoid fallbacks.
+ *
+ * Phase 7.7-fix2: Classify callouts into CTA / approval-item / supporting so
+ * that multiple approval items go to `main` (grid) instead of `supporting`
+ * (small slot that causes overlaps).
  */
 export const decisionRequestStrategy: LayoutStrategy = {
   id: "decision-request",
@@ -35,19 +59,17 @@ export const decisionRequestStrategy: LayoutStrategy = {
 
     // Resolve template slots — approval-with-kpi-sidecar provides:
     // cta, main, metrics, supporting, footer, title
-    // Note: no `table` slot — table blocks go to `main`.
     const ctaRes = resolveSlotFrame(ctx, ["cta", "callout"], region);
     const mainRes = resolveSlotFrame(ctx, ["main", "body"], region);
     const metricsRes = resolveSlotFrame(ctx, "metrics", region);
     const supportingRes = resolveSlotFrame(ctx, ["supporting", "footer"], region);
 
-    // Block categorisation
-    const decisionBlocks = ctx.blocks.filter((b) => b.type === "callout");
+    // --- Block classification ---
+    const allCallouts = ctx.blocks.filter((b) => b.type === "callout");
     const metricBlocks = ctx.blocks.filter((b) => b.type === "metric");
     const allParagraphBlocks = ctx.blocks.filter(
       (b) => b.type === "paragraph" || b.type === "bullet_list",
     );
-    // Tables and everything else go to main — no `table` slot in approval-with-kpi-sidecar
     const nonTextMainBlocks = ctx.blocks.filter(
       (b) =>
         b.type !== "callout" &&
@@ -56,59 +78,68 @@ export const decisionRequestStrategy: LayoutStrategy = {
         b.type !== "bullet_list",
     );
 
-    // When there are 3+ paragraphs, treat the first ones as initiative/main
-    // blocks and the last one as supporting. This prevents cramming all
-    // paragraphs into the small supporting slot.
-    let mainBlocks: typeof ctx.blocks;
-    let supportingBlocks: typeof ctx.blocks;
-    if (allParagraphBlocks.length >= 3) {
-      mainBlocks = [...nonTextMainBlocks, ...allParagraphBlocks.slice(0, -1)];
-      supportingBlocks = allParagraphBlocks.slice(-1);
-    } else {
-      mainBlocks = nonTextMainBlocks;
-      supportingBlocks = allParagraphBlocks;
+    // Classify callouts into CTA / approval-item / supporting
+    const ctaCallouts: typeof allCallouts = [];
+    const approvalCallouts: typeof allCallouts = [];
+    const supportingCallouts: typeof allCallouts = [];
+    for (const block of allCallouts) {
+      const role = classifyCallout(block);
+      if (role === "cta" && ctaCallouts.length === 0) {
+        ctaCallouts.push(block);
+      } else if (role === "supporting") {
+        supportingCallouts.push(block);
+      } else {
+        approvalCallouts.push(block);
+      }
+    }
+    // If no CTA callout was detected but we have callouts, promote the first one.
+    if (ctaCallouts.length === 0 && approvalCallouts.length > 0) {
+      ctaCallouts.push(approvalCallouts.shift()!);
     }
 
-    const assignments: SubFrameAssignment[] = [];
+    // Main blocks = approval-item callouts + non-text blocks + paragraphs (except last)
+    let mainParagraphs: typeof ctx.blocks;
+    let supportingParagraphs: typeof ctx.blocks;
+    if (allParagraphBlocks.length >= 3) {
+      mainParagraphs = allParagraphBlocks.slice(0, -1);
+      supportingParagraphs = allParagraphBlocks.slice(-1);
+    } else if (allParagraphBlocks.length >= 1 && approvalCallouts.length > 0) {
+      // If there are approval callouts, send paragraphs to supporting
+      mainParagraphs = [];
+      supportingParagraphs = allParagraphBlocks;
+    } else {
+      mainParagraphs = [];
+      supportingParagraphs = allParagraphBlocks;
+    }
+    const mainBlocks = [...nonTextMainBlocks, ...approvalCallouts, ...mainParagraphs];
+    const supportingBlocks = [...supportingParagraphs, ...supportingCallouts];
 
-    // When we have a `cta` slot, place decision callouts there;
-    // otherwise fall back to splitting the top 30% of the region.
+    const assignments: SubFrameAssignment[] = [];
     const hasCtaSlot = !!ctaRes.slot;
-    const hasMetricsSlot = !!metricsRes.slot;
-    const hasSupportingSlot = !!supportingRes.slot;
 
     if (hasCtaSlot) {
       // --- Template-slot-aware layout ---
 
-      // 1) Decision callouts → cta slot (first callout only; extras go to supporting)
-      const ctaBlocks = decisionBlocks.length > 0 ? [decisionBlocks[0]!] : [];
-      const extraCallouts = decisionBlocks.slice(1);
-
-      if (ctaBlocks.length > 0) {
-        ctaBlocks.forEach((block) => {
-          assignments.push(
-            assignmentFromSlot({
-              blockId: block.id,
-              resolution: ctaRes,
-              frame: ctaRes.frame,
-              hints: {
-                fontScale: 1.4,
-                alignment: "center",
-                role: "callout",
-                decoration: "accent-bar",
-              },
-            }),
-          );
-        });
+      // 1) CTA callout → cta slot
+      for (const block of ctaCallouts) {
+        assignments.push(
+          assignmentFromSlot({
+            blockId: block.id,
+            resolution: ctaRes,
+            frame: ctaRes.frame,
+            hints: {
+              fontScale: 1.4,
+              alignment: "center",
+              role: "callout",
+              decoration: "accent-bar",
+            },
+          }),
+        );
       }
 
-      // 2) Main content → main slot (3–4 blocks use 2×2 grid)
+      // 2) Main content (approval items + tables) → main slot
       if (mainBlocks.length > 0) {
-        const frames = mainBlocks.length >= 3
-          ? createTwoByTwoCards(mainRes.frame, mainBlocks.length, density)
-          : mainBlocks.length === 2
-            ? createHorizontalCards(mainRes.frame, mainBlocks.length, density)
-            : [mainRes.frame];
+        const frames = createApprovalItemFrames(mainRes.frame, mainBlocks.length, density);
         mainBlocks.forEach((block, i) => {
           const isTable = block.type === "table";
           assignments.push(
@@ -141,11 +172,10 @@ export const decisionRequestStrategy: LayoutStrategy = {
         });
       }
 
-      // 4) Supporting text + extra callouts → supporting slot
-      const allSupportingBlocks = [...supportingBlocks, ...extraCallouts];
-      if (allSupportingBlocks.length > 0) {
-        const frames = splitVertical(supportingRes.frame, allSupportingBlocks.length, density);
-        allSupportingBlocks.forEach((block, i) => {
+      // 4) Supporting text → supporting slot
+      if (supportingBlocks.length > 0) {
+        const frames = splitVertical(supportingRes.frame, supportingBlocks.length, density);
+        supportingBlocks.forEach((block, i) => {
           assignments.push(
             assignmentFromSlot({
               blockId: block.id,
@@ -159,16 +189,17 @@ export const decisionRequestStrategy: LayoutStrategy = {
       return assignments;
     }
 
-    // --- Fallback: no template slots available, use geometric split ---
+    // --- Fallback: no template slots, geometric split ---
 
-    if (decisionBlocks.length > 0) {
+    const allDecision = [...ctaCallouts, ...approvalCallouts];
+    if (allDecision.length > 0) {
       const hasBottom =
         mainBlocks.length > 0 || metricBlocks.length > 0 || supportingBlocks.length > 0;
       const topRatio = hasBottom ? 0.3 : 1.0;
 
       if (!hasBottom) {
-        const frames = splitVertical(region, decisionBlocks.length, density);
-        decisionBlocks.forEach((block, i) => {
+        const frames = splitVertical(region, allDecision.length, density);
+        allDecision.forEach((block, i) => {
           assignments.push(
             assignmentFromSlot({
               blockId: block.id,
@@ -188,8 +219,8 @@ export const decisionRequestStrategy: LayoutStrategy = {
 
       const { top: decisionRegion, bottom: lowerRegion } = splitTopBottom(region, topRatio);
 
-      const decFrames = splitVertical(decisionRegion, decisionBlocks.length, density);
-      decisionBlocks.forEach((block, i) => {
+      const decFrames = splitVertical(decisionRegion, allDecision.length, density);
+      allDecision.forEach((block, i) => {
         assignments.push(
           assignmentFromSlot({
             blockId: block.id,
@@ -214,18 +245,10 @@ export const decisionRequestStrategy: LayoutStrategy = {
             : splitVertical(lowerRegion, remaining.length, density);
         remaining.forEach((block, i) => {
           const isMetric = block.type === "metric";
-          const resolvedMain = hasMetricsSlot && isMetric ? metricsRes : mainRes;
-          const resolvedSupport =
-            hasSupportingSlot &&
-            (block.type === "paragraph" || block.type === "bullet_list")
-              ? supportingRes
-              : mainRes;
-          const resolution =
-            isMetric ? resolvedMain : resolvedSupport;
           assignments.push(
             assignmentFromSlot({
               blockId: block.id,
-              resolution,
+              resolution: isMetric ? metricsRes : mainRes,
               frame: frames[i] ?? lowerRegion,
               hints: isMetric ? { decoration: "card", fontScale: 1.2 } : { decoration: "card" },
             }),

@@ -98,6 +98,8 @@ export {
 } from "#src/measurement/index.js";
 export { repairPresentationLayout } from "#src/repair/index.js";
 export { repairTextOverflow } from "#src/repair/index.js";
+export { repairSameFrameOverlaps } from "#src/repair/index.js";
+export type { SameFrameRepairResult } from "#src/repair/index.js";
 export type {
   TextOverflowRepairAction,
   TextOverflowRepairOptions,
@@ -212,6 +214,7 @@ export type {
 } from "#src/diagnostics/operation-diagnostics.js";
 export { analyzeDeckStabilization } from "#src/diagnostics/stabilization-diagnostics.js";
 export type {
+  AssetUsageDiagnostics,
   DeckStabilizationDiagnostics,
   SlideStabilizationHotspot,
   StabilizationRecommendation,
