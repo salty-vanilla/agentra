@@ -316,27 +316,26 @@ describe("analyzeDeckLayout", () => {
       }),
       makeTracedSlide("s3", 2, {
         strategyId: "kpi-dashboard-with-insight",
-        layoutKind: "visual-insight",
-        layoutId: "visual-insight",
-        usedSlots: ["title", "visual", "insight", "callout"],
-        fallbackSlots: ["metrics", "cards"],
+        layoutKind: "dashboard",
+        layoutId: "dashboard-cards-with-chart",
+        usedSlots: ["title", "metrics", "visual", "insight", "callout"],
       }),
       makeTracedSlide("s4", 3, {
         strategyId: "small-multiples-trend",
         layoutKind: "visual-insight",
-        layoutId: "visual-insight",
+        layoutId: "visual-top-insight-bottom",
         usedSlots: ["title", "visual", "insight"],
       }),
       makeTracedSlide("s5", 4, {
         strategyId: "process-flow-with-impact",
         layoutKind: "process",
-        layoutId: "process",
-        usedSlots: ["title", "process", "callout"],
+        layoutId: "process-with-impact",
+        usedSlots: ["title", "process", "impact", "callout"],
       }),
       makeTracedSlide("s6", 5, {
         strategyId: "action-plan-table",
         layoutKind: "table",
-        layoutId: "table",
+        layoutId: "table-with-cta",
         usedSlots: ["title", "table", "cta"],
       }),
     ];
@@ -351,16 +350,17 @@ describe("analyzeDeckLayout", () => {
     expect(result.summary.templateLayoutIdUsage).toEqual({
       cover: 1,
       "dashboard-cards": 1,
-      "visual-insight": 2,
-      process: 1,
-      table: 1,
+      "dashboard-cards-with-chart": 1,
+      "visual-top-insight-bottom": 1,
+      "process-with-impact": 1,
+      "table-with-cta": 1,
     });
 
     // Template layout kind usage
     expect(result.summary.templateLayoutKindUsage).toEqual({
       cover: 1,
-      dashboard: 1,
-      "visual-insight": 2,
+      dashboard: 2,
+      "visual-insight": 1,
       process: 1,
       table: 1,
     });
@@ -370,10 +370,8 @@ describe("analyzeDeckLayout", () => {
     expect(result.summary.layoutStrategyUsage["kpi-dashboard-with-insight"]).toBe(1);
     expect(result.summary.layoutStrategyUsage["action-plan-table"]).toBe(1);
 
-    // Fallback slots
-    expect(result.summary.slidesWithFallbackSlots).toBe(1);
-    expect(result.summary.fallbackSlotUsage.metrics).toBe(1);
-    expect(result.summary.fallbackSlotUsage.cards).toBe(1);
+    // Fallback slots — clean scenario has no fallbacks now
+    expect(result.summary.slidesWithFallbackSlots).toBe(0);
 
     // No overlaps or out-of-bounds in this clean scenario
     expect(result.summary.totalOverlapCount).toBe(0);

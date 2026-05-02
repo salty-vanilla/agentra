@@ -55,7 +55,7 @@ export const processFlowWithImpactStrategy: LayoutStrategy = {
 
     // Resolve template slots via helper
     const processRes = resolveSlotFrame(ctx, "process", region);
-    const calloutRes = resolveSlotFrame(ctx, "callout", region);
+    const calloutRes = resolveSlotFrame(ctx, ["impact", "callout"], region);
 
     if (flowBlocks.length === 0) {
       // No flow blocks — just stack everything vertically

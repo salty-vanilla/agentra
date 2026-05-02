@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { EXECUTIVE_NAVY_TEMPLATE_PROFILE } from "#src/templates/builtins/executive-navy-v1.js";
 import { resolveTemplateLayout } from "#src/templates/resolve-template-layout.js";
 import type { TemplateSlotName } from "#src/templates/template-profile.js";
+import { frameOverlapRatio } from "#src/geometry/frame-geometry.js";
 import { buildPresentationIr } from "#src/builders/build-presentation-ir.js";
 import type { ContentBlock, SlideSpec, PresentationBrief, DeckPlan } from "#src/index.js";
 
@@ -32,6 +33,19 @@ describe("executive-navy-v1 template profile", () => {
     "table",
     "process",
     "blank",
+    // Phase 7.5 expansion
+    "content-with-sidebar",
+    "content-with-callout",
+    "visual-left-insight-right",
+    "visual-top-insight-bottom",
+    "dashboard-cards-with-chart",
+    "table-with-cta",
+    "comparison-two-column",
+    "roadmap-horizontal",
+    "process-with-impact",
+    "architecture-layered",
+    "matrix-with-insight",
+    "message-focus",
   ];
 
   it("contains all expected layout profiles", () => {
@@ -41,9 +55,9 @@ describe("executive-navy-v1 template profile", () => {
     }
   });
 
-  it("has 9 layouts (no business layout explosion)", () => {
-    expect(profile.layouts.length).toBe(9);
-    expect(profile.layouts.length).toBeLessThanOrEqual(10);
+  it("has 21 layouts (no business layout explosion)", () => {
+    expect(profile.layouts.length).toBeGreaterThanOrEqual(18);
+    expect(profile.layouts.length).toBeLessThanOrEqual(22);
   });
 
   it("cover has title, subtitle, and footer slots", () => {
@@ -114,6 +128,120 @@ describe("executive-navy-v1 template profile", () => {
     expect(layout.slots.callout).toBeDefined();
   });
 
+  // Phase 7.5 expansion layout tests
+
+  it("content-with-sidebar has title, main, body, sidebar, callout, footer", () => {
+    const layout = profile.layouts.find((l) => l.id === "content-with-sidebar")!;
+    expect(layout.kind).toBe("content");
+    expect(layout.slots.title).toBeDefined();
+    expect(layout.slots.main).toBeDefined();
+    expect(layout.slots.sidebar).toBeDefined();
+    expect(layout.slots.callout).toBeDefined();
+    expect(layout.slots.footer).toBeDefined();
+  });
+
+  it("dashboard-cards-with-chart has metrics, visual, insight", () => {
+    const layout = profile.layouts.find((l) => l.id === "dashboard-cards-with-chart")!;
+    expect(layout.kind).toBe("dashboard");
+    expect(layout.slots.metrics).toBeDefined();
+    expect(layout.slots.visual).toBeDefined();
+    expect(layout.slots.insight).toBeDefined();
+  });
+
+  it("process-with-impact has process, impact, callout", () => {
+    const layout = profile.layouts.find((l) => l.id === "process-with-impact")!;
+    expect(layout.kind).toBe("process");
+    expect(layout.slots.process).toBeDefined();
+    expect(layout.slots.impact).toBeDefined();
+    expect(layout.slots.callout).toBeDefined();
+  });
+
+  it("roadmap-horizontal has process, milestones, callout", () => {
+    const layout = profile.layouts.find((l) => l.id === "roadmap-horizontal")!;
+    expect(layout.kind).toBe("roadmap");
+    expect(layout.slots.process).toBeDefined();
+    expect(layout.slots.milestones).toBeDefined();
+    expect(layout.slots.callout).toBeDefined();
+  });
+
+  it("architecture-layered has architecture, insight, callout", () => {
+    const layout = profile.layouts.find((l) => l.id === "architecture-layered")!;
+    expect(layout.kind).toBe("architecture");
+    expect(layout.slots.architecture).toBeDefined();
+    expect(layout.slots.insight).toBeDefined();
+    expect(layout.slots.callout).toBeDefined();
+  });
+
+  it("matrix-with-insight has matrix, insight, callout", () => {
+    const layout = profile.layouts.find((l) => l.id === "matrix-with-insight")!;
+    expect(layout.kind).toBe("matrix");
+    expect(layout.slots.matrix).toBeDefined();
+    expect(layout.slots.insight).toBeDefined();
+    expect(layout.slots.callout).toBeDefined();
+  });
+
+  it("comparison-two-column has left, right, callout", () => {
+    const layout = profile.layouts.find((l) => l.id === "comparison-two-column")!;
+    expect(layout.kind).toBe("comparison");
+    expect(layout.slots.left).toBeDefined();
+    expect(layout.slots.right).toBeDefined();
+    expect(layout.slots.callout).toBeDefined();
+  });
+
+  it("message-focus has message, supporting, footer", () => {
+    const layout = profile.layouts.find((l) => l.id === "message-focus")!;
+    expect(layout.kind).toBe("message");
+    expect(layout.slots.message).toBeDefined();
+    expect(layout.slots.supporting).toBeDefined();
+    expect(layout.slots.footer).toBeDefined();
+  });
+
+  it("has no duplicate template layout ids", () => {
+    const ids = profile.layouts.map((l) => l.id);
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("every non-blank layout has title and footer slots", () => {
+    for (const layout of profile.layouts) {
+      if (layout.kind === "blank") continue;
+      expect(layout.slots.title, `${layout.id} missing title`).toBeDefined();
+      expect(layout.slots.footer, `${layout.id} missing footer`).toBeDefined();
+    }
+  });
+
+  it("all slot frames are within slide bounds", () => {
+    for (const layout of profile.layouts) {
+      for (const [, frame] of Object.entries(layout.slots)) {
+        expect(frame.x).toBeGreaterThanOrEqual(0);
+        expect(frame.y).toBeGreaterThanOrEqual(0);
+        expect(frame.x + frame.width).toBeLessThanOrEqual(profile.slideSize.width);
+        expect(frame.y + frame.height).toBeLessThanOrEqual(profile.slideSize.height);
+      }
+    }
+  });
+
+  it("major content slots do not heavily overlap within a layout", () => {
+    const skipSlots = new Set<string>(["title", "footer", "subtitle"]);
+    for (const layout of profile.layouts) {
+      const contentSlots = Object.entries(layout.slots).filter(
+        ([name]) => !skipSlots.has(name),
+      );
+      for (let i = 0; i < contentSlots.length; i++) {
+        for (let j = i + 1; j < contentSlots.length; j++) {
+          const [nameA, a] = contentSlots[i]!;
+          const [nameB, b] = contentSlots[j]!;
+          // main/body are intentionally overlapping aliases
+          if ((nameA === "main" && nameB === "body") || (nameA === "body" && nameB === "main")) continue;
+          const ratio = frameOverlapRatio(a, b);
+          expect(
+            ratio,
+            `${layout.id}: ${nameA} and ${nameB} overlap ratio ${ratio.toFixed(3)} >= 0.08`,
+          ).toBeLessThan(0.08);
+        }
+      }
+    }
+  });
+
   it("blank has no slots", () => {
     const layout = profile.layouts.find((l) => l.id === "blank")!;
     expect(layout.kind).toBe("blank");
@@ -163,34 +291,44 @@ describe("resolveTemplateLayout", () => {
     expect(result.layout.id).toBe("dashboard-cards");
   });
 
-  it("kpi-dashboard-with-insight strategy -> visual-insight", () => {
+  it("kpi-dashboard-with-insight strategy -> dashboard-cards-with-chart", () => {
     const result = resolve("single_column", "kpi-dashboard-with-insight");
-    expect(result.layout.id).toBe("visual-insight");
+    expect(result.layout.id).toBe("dashboard-cards-with-chart");
   });
 
-  it("data-insight-story strategy -> visual-insight", () => {
+  it("data-insight-story strategy -> visual-left-insight-right", () => {
     const result = resolve("single_column", "data-insight-story");
-    expect(result.layout.id).toBe("visual-insight");
+    expect(result.layout.id).toBe("visual-left-insight-right");
   });
 
-  it("process-flow-with-impact strategy -> process", () => {
+  it("process-flow-with-impact strategy -> process-with-impact", () => {
     const result = resolve("single_column", "process-flow-with-impact");
-    expect(result.layout.id).toBe("process");
+    expect(result.layout.id).toBe("process-with-impact");
   });
 
-  it("implementation-roadmap strategy -> process", () => {
+  it("implementation-roadmap strategy -> roadmap-horizontal", () => {
     const result = resolve("single_column", "implementation-roadmap");
-    expect(result.layout.id).toBe("process");
+    expect(result.layout.id).toBe("roadmap-horizontal");
   });
 
-  it("action-plan-table strategy -> table", () => {
+  it("action-plan-table strategy -> table-with-cta", () => {
     const result = resolve("single_column", "action-plan-table");
-    expect(result.layout.id).toBe("table");
+    expect(result.layout.id).toBe("table-with-cta");
   });
 
-  it("decision-request strategy -> content-standard", () => {
+  it("decision-request strategy -> table-with-cta", () => {
     const result = resolve("single_column", "decision-request");
-    expect(result.layout.id).toBe("content-standard");
+    expect(result.layout.id).toBe("table-with-cta");
+  });
+
+  it("small-multiples-trend strategy -> visual-top-insight-bottom", () => {
+    const result = resolve("single_column", "small-multiples-trend");
+    expect(result.layout.id).toBe("visual-top-insight-bottom");
+  });
+
+  it("layered-architecture strategy -> architecture-layered", () => {
+    const result = resolve("single_column", "layered-architecture");
+    expect(result.layout.id).toBe("architecture-layered");
   });
 
   it("dashboard layout type -> dashboard-cards", () => {
@@ -229,19 +367,19 @@ describe("resolveTemplateLayout", () => {
   // -- Priority: business strategy wins over generic layoutSpec.type --
 
   it("strategy 'kpi-dashboard-with-insight' wins over generic 'dashboard'", () => {
-    expect(resolve("dashboard", "kpi-dashboard-with-insight").layout.id).toBe("visual-insight");
+    expect(resolve("dashboard", "kpi-dashboard-with-insight").layout.id).toBe("dashboard-cards-with-chart");
   });
 
   it("strategy 'data-insight-story' wins over generic 'dashboard'", () => {
-    expect(resolve("dashboard", "data-insight-story").layout.id).toBe("visual-insight");
+    expect(resolve("dashboard", "data-insight-story").layout.id).toBe("visual-left-insight-right");
   });
 
   it("strategy 'implementation-roadmap' wins over generic 'timeline'", () => {
-    expect(resolve("timeline", "implementation-roadmap").layout.id).toBe("process");
+    expect(resolve("timeline", "implementation-roadmap").layout.id).toBe("roadmap-horizontal");
   });
 
-  it("strategy 'action-plan-table' with generic 'table' still picks table", () => {
-    expect(resolve("table", "action-plan-table").layout.id).toBe("table");
+  it("strategy 'action-plan-table' with generic 'table' still picks table-with-cta", () => {
+    expect(resolve("table", "action-plan-table").layout.id).toBe("table-with-cta");
   });
 
   // -- Unknown strategy falls through to generic layoutSpec.type --
@@ -252,6 +390,32 @@ describe("resolveTemplateLayout", () => {
 
   it("no strategy with 'two_column' falls to content-two-column", () => {
     expect(resolve("two_column", undefined).layout.id).toBe("content-two-column");
+  });
+
+  // -- Generic layout type tests for Phase 7.5 additions --
+
+  it("timeline layout type -> roadmap-horizontal", () => {
+    expect(resolve("timeline").layout.id).toBe("roadmap-horizontal");
+  });
+
+  it("comparison layout type -> comparison-two-column", () => {
+    expect(resolve("comparison").layout.id).toBe("comparison-two-column");
+  });
+
+  it("text_left_image_right layout type -> visual-left-insight-right", () => {
+    expect(resolve("text_left_image_right").layout.id).toBe("visual-left-insight-right");
+  });
+
+  it("image_left_text_right layout type -> visual-left-insight-right", () => {
+    expect(resolve("image_left_text_right").layout.id).toBe("visual-left-insight-right");
+  });
+
+  it("matrix layout type -> matrix-with-insight", () => {
+    expect(resolve("matrix").layout.id).toBe("matrix-with-insight");
+  });
+
+  it("diagram_focus layout type -> visual-left-insight-right", () => {
+    expect(resolve("diagram_focus").layout.id).toBe("visual-left-insight-right");
   });
 
   // -- Nothing matches -> content-standard --
@@ -416,8 +580,8 @@ describe("slot placement in buildPresentationIr", () => {
 // ---------------------------------------------------------------------------
 
 describe("no business layout explosion", () => {
-  it("built-in profile has fewer than 10 layouts", () => {
-    expect(EXECUTIVE_NAVY_TEMPLATE_PROFILE.layouts.length).toBeLessThanOrEqual(10);
+  it("built-in profile has fewer than 22 layouts", () => {
+    expect(EXECUTIVE_NAVY_TEMPLATE_PROFILE.layouts.length).toBeLessThanOrEqual(22);
   });
 
   it("no layout id matches a business strategy id", () => {
@@ -459,7 +623,8 @@ describe("buildPresentationIr slot fallback tracing", () => {
   } as unknown as DeckPlan;
 
   it("fallbackSlots are collected from strategy assignments", () => {
-    // kpi-dashboard-with-insight expects metrics/cards but visual-insight has neither
+    // kpi-dashboard-with-insight now maps to dashboard-cards-with-chart
+    // which has metrics, visual, insight, callout — no cards slot
     const slideSpecs: SlideSpec[] = [
       {
         id: "s1",
@@ -482,18 +647,16 @@ describe("buildPresentationIr slot fallback tracing", () => {
     const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
     const trace = result.slides[0]!._trace!;
 
-    // The strategy should resolve to kpi-dashboard-with-insight or similar
-    // visual-insight layout has visual, insight, callout but NOT metrics/cards
     expect(trace.templateLayoutId).toBeDefined();
     expect(Array.isArray(trace.fallbackSlots)).toBe(true);
-    // metrics and cards are expected as fallback since visual-insight doesn't have them
-    if (trace.templateLayoutId === "visual-insight") {
-      expect(trace.fallbackSlots).toContain("metrics");
+    // dashboard-cards-with-chart has metrics but not cards
+    if (trace.templateLayoutId === "dashboard-cards-with-chart") {
+      expect(trace.fallbackSlots).toContain("cards");
     }
   });
 
   it("usedSlots records insight when insight slot is used", () => {
-    // data-insight-story with visual-insight layout has insight slot
+    // data-insight-story now maps to visual-left-insight-right
     const slideSpecs: SlideSpec[] = [
       {
         id: "s2",
@@ -515,10 +678,9 @@ describe("buildPresentationIr slot fallback tracing", () => {
     const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
     const trace = result.slides[0]!._trace!;
 
-    // Verify strategy resolved correctly
     expect(trace.layoutStrategyId).toBe("data-insight-story");
-    expect(trace.templateLayoutId).toBe("visual-insight");
-    // visual-insight layout has an insight slot — strategy should use it
+    expect(trace.templateLayoutId).toBe("visual-left-insight-right");
+    // visual-left-insight-right has an insight slot — strategy should use it
     expect(trace.usedSlots).toContain("insight");
   });
 
@@ -542,8 +704,8 @@ describe("buildPresentationIr slot fallback tracing", () => {
     const result = buildPresentationIr({ brief, deckPlan, slideSpecs });
     const trace = result.slides[0]!._trace!;
 
-    // action-plan-table resolves to table layout which has cta slot
-    if (trace.templateLayoutId === "table") {
+    // action-plan-table now resolves to table-with-cta which has table and cta slots
+    if (trace.templateLayoutId === "table-with-cta" || trace.templateLayoutId === "table") {
       expect(trace.usedSlots).toContain("table");
       expect(trace.usedSlots).toContain("cta");
     }

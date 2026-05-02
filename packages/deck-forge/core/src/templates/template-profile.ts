@@ -9,6 +9,11 @@ export type TemplateLayoutKind =
   | "visual-insight"
   | "table"
   | "process"
+  | "comparison"
+  | "roadmap"
+  | "architecture"
+  | "matrix"
+  | "message"
   | "blank";
 
 export type TemplateSlotName =
@@ -18,12 +23,19 @@ export type TemplateSlotName =
   | "body"
   | "left"
   | "right"
+  | "sidebar"
   | "visual"
   | "table"
   | "metrics"
   | "cards"
   | "process"
+  | "milestones"
+  | "architecture"
+  | "matrix"
+  | "impact"
   | "insight"
+  | "message"
+  | "supporting"
   | "callout"
   | "footer"
   | "cta";

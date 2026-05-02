@@ -16,13 +16,16 @@ export type ResolveTemplateLayoutOutput = {
 
 const STRATEGY_TO_LAYOUT_ID: Record<string, string> = {
   "executive-summary-kpi": "dashboard-cards",
-  "kpi-dashboard-with-insight": "visual-insight",
-  "small-multiples-trend": "dashboard-cards",
-  "data-insight-story": "visual-insight",
-  "process-flow-with-impact": "process",
-  "implementation-roadmap": "process",
-  "action-plan-table": "table",
-  "decision-request": "content-standard",
+  "kpi-dashboard-with-insight": "dashboard-cards-with-chart",
+  "small-multiples-trend": "visual-top-insight-bottom",
+  "data-insight-story": "visual-left-insight-right",
+  "process-flow-with-impact": "process-with-impact",
+  "implementation-roadmap": "roadmap-horizontal",
+  "action-plan-table": "table-with-cta",
+  "decision-request": "table-with-cta",
+  "layered-architecture": "architecture-layered",
+  "one-message-summary": "message-focus",
+  "recommendation-comparison": "comparison-two-column",
 };
 
 const SPECIAL_LAYOUT_TYPE_TO_LAYOUT_ID: Record<string, string> = {
@@ -35,9 +38,12 @@ const GENERIC_LAYOUT_TYPE_TO_LAYOUT_ID: Record<string, string> = {
   dashboard: "dashboard-cards",
   table: "table",
   two_column: "content-two-column",
-  text_left_image_right: "content-two-column",
-  image_left_text_right: "content-two-column",
-  comparison: "content-two-column",
+  text_left_image_right: "visual-left-insight-right",
+  image_left_text_right: "visual-left-insight-right",
+  comparison: "comparison-two-column",
+  timeline: "roadmap-horizontal",
+  matrix: "matrix-with-insight",
+  diagram_focus: "visual-left-insight-right",
 };
 
 function findLayout(

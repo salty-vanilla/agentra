@@ -49,7 +49,7 @@ export const implementationRoadmapStrategy: LayoutStrategy = {
     const assignments: SubFrameAssignment[] = [];
 
     // Resolve template slots via helper
-    const processRes = resolveSlotFrame(ctx, "process", region);
+    const processRes = resolveSlotFrame(ctx, ["process", "milestones"], region);
     const calloutRes = resolveSlotFrame(ctx, "callout", region);
 
     if (calloutBlocks.length === 0) {
