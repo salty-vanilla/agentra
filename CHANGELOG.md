@@ -9,6 +9,12 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — presentation-author: dogfood fixes & skia-canvas avoidance
+
+- **`prompts.ts` / `revision-prompts.ts`**: Replace `require("./helpers/pptxgenjs_helpers")` (which eagerly loads `text.js` → `skia-canvas` native binary) with targeted submodule imports (`util`, `layout`); remove `autoFontSize` / `calcTextBox` references; add "size text boxes generously" heuristic
+- **`authoring-script.ts`**: Relax `deck.pptx` filename validation from hard error to warning (LLM sometimes uses a variable for the filename)
+- **`scripts/dogfood.ts`**: Resolve `OUTPUT_DIR` to absolute path (fixes doubled-path in child process `cwd`); increase `max_tokens` 8192 → 16384 (prevents truncated scripts)
+
 ### Added — presentation-author: PA-4 Lite single diagnostics-driven revision
 
 - **`revision-prompts.ts`**: `buildSingleRevisionPrompt()` — compact diagnostics summary + revision constraints

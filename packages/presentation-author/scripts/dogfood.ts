@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+import { resolve } from 'node:path';
 /**
  * PA-4.5 Dogfooding smoke script.
  *
@@ -21,10 +22,10 @@ import {
 import { runPresentationAuthor } from '../src/index.js';
 import type { LlmClient } from '../src/types.js';
 
-const MODEL_ID = process.env['BEDROCK_MODEL_ID'] ?? 'us.anthropic.claude-sonnet-4-6';
-const REGION = process.env['AWS_REGION'] ?? 'us-east-1';
+const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-6';
+const REGION = process.env.AWS_REGION ?? 'us-east-1';
 
-const OUTPUT_DIR = '.tmp/presentation-author-dogfood';
+const OUTPUT_DIR = resolve('.tmp/presentation-author-dogfood');
 
 const PROMPT = `
 製造ライン #4 のQ2実績報告資料を作成してください。
@@ -55,11 +56,11 @@ function createBedrockLlm(): LlmClient {
 
       const body: Record<string, unknown> = {
         anthropic_version: 'bedrock-2023-05-31',
-        max_tokens: 8192,
+        max_tokens: 16384,
         messages,
       };
       if (system) {
-        body['system'] = system;
+        body.system = system;
       }
 
       const command = new InvokeModelCommand({

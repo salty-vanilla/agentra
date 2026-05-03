@@ -56,7 +56,9 @@ export function validateAuthoringScript(code: string): {
     errors.push('Script does not reference pptxgenjs.');
   }
   if (!code.includes('deck.pptx')) {
-    errors.push('Script does not reference deck.pptx output filename.');
+    warnings.push(
+      'Script does not contain literal "deck.pptx". Ensure output filename is exactly deck.pptx.',
+    );
   }
 
   for (const { pattern, label } of DANGEROUS_PATTERNS) {
