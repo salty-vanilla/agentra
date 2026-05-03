@@ -21,6 +21,11 @@ export interface AuthoringWorkspace {
   workDir: string;
   sourceJsPath: string;
   pptxPath: string;
+  helpersDir: string;
+  scriptsDir: string;
+  renderDir: string;
+  artifactsDir: string;
+  packageJsonPath: string;
 }
 
 export interface LlmClient {
@@ -39,4 +44,6 @@ export interface AuthoringScriptExecutionResult {
   stdout: string;
   stderr: string;
   durationMs: number;
+  timedOut?: boolean | undefined;
+  nodePathUsed?: string | undefined;
 }

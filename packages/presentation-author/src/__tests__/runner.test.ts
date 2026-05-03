@@ -9,20 +9,23 @@ import {
 } from '../authoring-script.js';
 import { runPresentationAuthor } from '../runner.js';
 import type { LlmClient, PresentationAuthorDeps } from '../types.js';
+import { createPresentationWorkspace } from '../workspace.js';
 
 const FAKE_PPTX_SCRIPT = `
 const pptxgen = require("pptxgenjs");
+const { autoFontSize, calcTextBox } = require("./helpers/pptxgenjs_helpers");
 
 async function main() {
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "presentation-author";
 
+  const titleSize = autoFontSize("テスト資料", { maxWidth: 12, maxHeight: 1 });
   const slide = pptx.addSlide();
   slide.background = { color: "FFFFFF" };
   slide.addText("テスト資料", {
     x: 0.7, y: 0.5, w: 12, h: 0.6,
-    fontFace: "Arial", fontSize: 32, bold: true, color: "111827",
+    fontFace: "Arial", fontSize: titleSize, bold: true, color: "111827",
   });
   slide.addText("Presentation Author smoke test", {
     x: 0.7, y: 1.4, w: 12, h: 0.5,
@@ -36,6 +39,20 @@ main().catch((err) => {
   console.error(err);
   process.exit(1);
 });
+`;
+
+const FAKE_PPTX_SCRIPT_NO_HELPERS = `
+const pptxgen = require("pptxgenjs");
+
+async function main() {
+  const pptx = new pptxgen();
+  pptx.layout = "LAYOUT_WIDE";
+  const slide = pptx.addSlide();
+  slide.addText("No helpers", { x: 1, y: 1, w: 10, h: 1, fontSize: 24 });
+  await pptx.writeFile({ fileName: "deck.pptx" });
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });
 `;
 
 function fakeLlm(response: string): LlmClient {
@@ -60,8 +77,30 @@ afterEach(async () => {
   cleanupDirs.length = 0;
 });
 
+describe('workspace resources', () => {
+  it('creates workspace with helpers and scripts', async () => {
+    const outputDir = join(tmpdir(), 'pa-test-workspace');
+    cleanupDirs.push(outputDir);
+
+    const ws = await createPresentationWorkspace({ outputDir, runId: 'res-test' });
+
+    expect(existsSync(join(ws.helpersDir, 'index.js'))).toBe(true);
+    expect(existsSync(join(ws.helpersDir, 'text.js'))).toBe(true);
+    expect(existsSync(join(ws.helpersDir, 'image.js'))).toBe(true);
+    expect(existsSync(join(ws.helpersDir, 'layout.js'))).toBe(true);
+    expect(existsSync(join(ws.scriptsDir, 'render_slides.py'))).toBe(true);
+    expect(existsSync(join(ws.scriptsDir, 'create_montage.py'))).toBe(true);
+    expect(existsSync(join(ws.scriptsDir, 'slides_test.py'))).toBe(true);
+    expect(existsSync(join(ws.scriptsDir, 'detect_font.py'))).toBe(true);
+    expect(existsSync(join(ws.scriptsDir, 'ensure_raster_image.py'))).toBe(true);
+    expect(existsSync(ws.packageJsonPath)).toBe(true);
+    expect(existsSync(ws.renderDir)).toBe(true);
+    expect(existsSync(ws.artifactsDir)).toBe(true);
+  });
+});
+
 describe('runPresentationAuthor', () => {
-  it('executes a fake LLM script and produces deck.pptx', async () => {
+  it('executes script with helpers and produces deck.pptx', async () => {
     const outputDir = join(tmpdir(), 'pa-test-runner');
     cleanupDirs.push(outputDir);
 
@@ -78,6 +117,21 @@ describe('runPresentationAuthor', () => {
     expect(Array.isArray(result.warnings)).toBe(true);
     expect(result.execution.success).toBe(true);
     expect(result.execution.exitCode).toBe(0);
+    expect(result.execution.nodePathUsed).toBeTruthy();
+  }, 30_000);
+
+  it('executes script without helpers (produces warning)', async () => {
+    const outputDir = join(tmpdir(), 'pa-test-nohelp');
+    cleanupDirs.push(outputDir);
+
+    const result = await runPresentationAuthor(
+      { prompt: 'test', outputDir },
+      makeDeps(FAKE_PPTX_SCRIPT_NO_HELPERS),
+    );
+
+    expect(result.execution.success).toBe(true);
+    expect(existsSync(result.pptxPath)).toBe(true);
+    expect(result.warnings.some((w) => w.includes('helpers'))).toBe(true);
   }, 30_000);
 
   it('throws on execution failure with stderr summary', async () => {
@@ -136,11 +190,19 @@ describe('extractJavaScriptFromLlmOutput', () => {
 });
 
 describe('validateAuthoringScript', () => {
-  it('passes valid script', () => {
-    const code = `const p = require("pptxgenjs"); pptx.writeFile({ fileName: "deck.pptx" });`;
+  it('passes valid script with helpers', () => {
+    const code = `const p = require("pptxgenjs"); const h = require("./helpers/pptxgenjs_helpers"); pptx.writeFile({ fileName: "deck.pptx" });`;
     const result = validateAuthoringScript(code);
     expect(result.valid).toBe(true);
     expect(result.errors).toHaveLength(0);
+    expect(result.warnings).toHaveLength(0);
+  });
+
+  it('warns when helpers not imported', () => {
+    const code = `const p = require("pptxgenjs"); pptx.writeFile({ fileName: "deck.pptx" });`;
+    const result = validateAuthoringScript(code);
+    expect(result.valid).toBe(true);
+    expect(result.warnings.some((w) => w.includes('helpers'))).toBe(true);
   });
 
   it('rejects script missing pptxgenjs', () => {

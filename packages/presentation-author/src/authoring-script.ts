@@ -65,6 +65,13 @@ export function validateAuthoringScript(code: string): {
     }
   }
 
+  // Recommend helper usage (warning, not error)
+  if (!code.includes('./helpers/pptxgenjs_helpers')) {
+    warnings.push(
+      'Script does not import ./helpers/pptxgenjs_helpers. Consider using helpers for text sizing and layout validation.',
+    );
+  }
+
   return {
     valid: errors.length === 0,
     warnings,

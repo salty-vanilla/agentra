@@ -10,6 +10,11 @@
       "import": "./dist/index.js"
     }
   },
+  "files": [
+    "dist",
+    "assets",
+    "scripts"
+  ],
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc --noEmit"
