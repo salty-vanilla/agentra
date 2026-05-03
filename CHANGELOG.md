@@ -9,6 +9,38 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge/core Phase 8H: Runtime Pipeline Integration
+
+- **`runStrategyPipeline()`** — canonical orchestration:
+  DeckPlan → resolveSlideIntent → selectStrategy → generateStrategyInput → SlideSpec
+  - Uses `DeterministicStrategySelector` and `DeterministicStrategyInputGenerator` by default
+  - All injection points (registry, selector, generator, slideSpecFactory) are overridable
+  - Source content routing: `sourceContentBySlideId` wins over `sourceContentBySlideIndex`
+  - Warnings prefixed with slide identity
+- **`buildPresentationIrFromDeckPlan()`** — convenience end-to-end helper:
+  DeckPlan → runStrategyPipeline → buildPresentationIr → analyzeDeckStrategyQuality (opt-in)
+  - Creates minimal `PresentationBrief` when not provided
+  - Returns `{ presentation, pipeline, quality?, warnings }`
+- **`createSlideSpecFromStrategyPipeline()`** — converts pipeline results to `SlideSpec`:
+  - Infers `SlideIntentSchema.type` from `CommunicationIntent` + `ContentKind[]`
+  - Infers `LayoutType` from `ContentKind[]`
+  - Sets `preferredStrategyId`, `strategyInput`, `strategyInputSource`
+  - Empty `content[]` — native path uses strategyInput, not contentBlocks
+- **`StrategyQualityGateError`** — typed error thrown when `qualityGate: true` and status is `fail`
+- **New types**: `StrategyPipelineInput`, `StrategyPipelineOutput`, `StrategyPipelineSlideResult`,
+  `StrategySlideSpecFactoryInput`, `StrategySlideSpecFactory`, `BuildIrFromDeckPlanInput`,
+  `BuildIrFromDeckPlanOutput`
+- **Core exports**: all pipeline types and functions exported from index.ts
+- **19 new tests** (strategy-pipeline.test.ts):
+  - runStrategyPipeline: 3-slide deck, preferredStrategyId/strategyInput presence,
+    resolved intent fields, varied content kinds
+  - buildPresentationIrFromDeckPlan: IR build, native mode, pipeline trace,
+    qualityDiagnostics on/off
+  - sourceContent routing: id-based vs index-based
+  - Quality gate: error class shape, no-throw when disabled
+  - createSlideSpecFromStrategyPipeline: field mapping, title fallback
+  - No legacy path: empty content, strategyInput present, full build without contentBlocks
+
 ### Fixed — deck-forge/core Phase 8G-fix: Tighten quality gate severity
 
 - **empty-slide** penalty increased from -25 to -40; any empty slide now forces deck status `fail`

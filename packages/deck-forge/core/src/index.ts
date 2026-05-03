@@ -958,3 +958,20 @@ export {
   metricTileDashboardManifest,
   twoAxisMatrixManifest,
 } from "#src/strategy/index.js";
+
+// Phase 8H: Strategy Pipeline — DeckPlan → StrategySelection → StrategyInput → IR
+export type {
+  StrategyPipelineInput,
+  StrategyPipelineSlideResult,
+  StrategyPipelineOutput,
+  StrategySlideSpecFactoryInput,
+  StrategySlideSpecFactory,
+  BuildIrFromDeckPlanInput,
+  BuildIrFromDeckPlanOutput,
+} from "#src/pipeline/strategy-pipeline.js";
+export {
+  runStrategyPipeline,
+  createSlideSpecFromStrategyPipeline,
+  buildPresentationIrFromDeckPlan,
+  StrategyQualityGateError,
+} from "#src/pipeline/strategy-pipeline.js";
