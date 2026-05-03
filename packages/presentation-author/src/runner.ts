@@ -4,9 +4,11 @@ import {
   validateAuthoringScript,
   writeAuthoringScript,
 } from './authoring-script.js';
+import { runPresentationDiagnostics } from './diagnostics.js';
 import { executeAuthoringScript } from './executor.js';
 import { buildAuthoringPrompt } from './prompts.js';
 import type {
+  DiagnosticsOptions,
   PresentationAuthorDeps,
   PresentationAuthorInput,
   PresentationAuthorResult,
@@ -64,11 +66,28 @@ export async function runPresentationAuthor(
     );
   }
 
+  let diagnosticsResult: PresentationAuthorResult['diagnostics'];
+  if (input.diagnostics) {
+    const diagOpts: DiagnosticsOptions =
+      typeof input.diagnostics === 'object' ? input.diagnostics : {};
+    diagnosticsResult = await runPresentationDiagnostics({
+      pptxPath: workspace.pptxPath,
+      workDir: workspace.workDir,
+      scriptsDir: workspace.scriptsDir,
+      render: diagOpts.render,
+      contactSheet: diagOpts.contactSheet,
+      overflow: diagOpts.overflow,
+      fonts: diagOpts.fonts,
+    });
+    warnings.push(...diagnosticsResult.warnings);
+  }
+
   return {
     workDir: workspace.workDir,
     sourceJsPath: workspace.sourceJsPath,
     pptxPath: workspace.pptxPath,
     warnings,
     execution,
+    diagnostics: diagnosticsResult,
   };
 }

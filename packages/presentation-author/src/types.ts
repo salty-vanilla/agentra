@@ -1,5 +1,12 @@
 export type PresentationLanguage = 'ja' | 'en';
 
+export interface DiagnosticsOptions {
+  render?: boolean | undefined;
+  contactSheet?: boolean | undefined;
+  overflow?: boolean | undefined;
+  fonts?: boolean | undefined;
+}
+
 export interface PresentationAuthorInput {
   prompt: string;
   language?: PresentationLanguage | undefined;
@@ -7,7 +14,10 @@ export interface PresentationAuthorInput {
   styleGuide?: string | undefined;
   outputDir?: string | undefined;
   timeoutMs?: number | undefined;
+  diagnostics?: boolean | DiagnosticsOptions | undefined;
 }
+
+import type { PresentationDiagnosticsResult } from './diagnostics.js';
 
 export interface PresentationAuthorResult {
   workDir: string;
@@ -15,6 +25,7 @@ export interface PresentationAuthorResult {
   pptxPath: string;
   warnings: string[];
   execution: AuthoringScriptExecutionResult;
+  diagnostics?: PresentationDiagnosticsResult | undefined;
 }
 
 export interface AuthoringWorkspace {

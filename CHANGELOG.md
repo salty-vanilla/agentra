@@ -9,6 +9,19 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — presentation-author: PA-3 render / diagnostics wrappers
+
+- **`python-runner.ts`**: Generic Python script execution utility (`runPythonScript()`)
+- **`render.ts`**: `renderPresentation()` — calls `render_slides.py`, returns PNG paths
+- **`contact-sheet.ts`**: `createContactSheet()` — calls `create_montage.py`, produces a montage PNG
+- **`validation.ts`**: `validatePresentationOverflow()` (overflow detection) and `detectPresentationFonts()` (font audit)
+- **`diagnostics.ts`**: `runPresentationDiagnostics()` — orchestrates all checks, returns pass/warn/fail status
+- **Runner integration**: `PresentationAuthorInput.diagnostics` option; result includes `diagnostics` field
+- **Tests**: Unit tests for `python-runner`, env-gated integration tests for render/overflow/fonts
+- **`python/requirements.txt`**: pdf2image, Pillow, python-pptx, numpy
+- **`scripts/smoke-render.ts`**: Manual smoke test script
+- **Dependencies**: fontkit, linebreak, mathjax-full, prismjs, skia-canvas (required by vendor pptxgenjs_helpers)
+
 ### Changed — presentation-author: Vendor copy OpenAI slides skill
 
 - **Vendor copy** (`packages/presentation-author/vendor/openai-slides/`):

@@ -77,9 +77,55 @@ const result = await runPresentationAuthor(
 console.log(result.pptxPath); // /tmp/presentation-author/<id>/deck.pptx
 ```
 
+## Diagnostics (PA-3)
+
+After generating a PPTX, run render, contact-sheet, overflow validation, and font detection:
+
+```ts
+import { runPresentationAuthor } from "@agentra/presentation-author";
+
+const result = await runPresentationAuthor(
+  {
+    prompt: "売上報告Q4のプレゼンを作成してください",
+    language: "ja",
+    diagnostics: { render: true, contactSheet: true, overflow: true, fonts: false },
+  },
+  { llm: myLlmClient },
+);
+
+console.log(result.diagnostics?.status); // 'pass' | 'warn' | 'fail'
+```
+
+Or use the low-level wrappers directly:
+
+```ts
+import {
+  renderPresentation,
+  createContactSheet,
+  validatePresentationOverflow,
+  detectPresentationFonts,
+  runPresentationDiagnostics,
+} from "@agentra/presentation-author";
+```
+
+### Python / OS dependencies
+
+Install the Python packages:
+
+```bash
+pip install -r packages/presentation-author/python/requirements.txt
+```
+
+Required OS tools:
+- LibreOffice (soffice) — PPTX→PDF conversion
+- poppler-utils (pdftoppm) — PDF→PNG rasterization
+- fontconfig (fc-list) — font detection
+- Optional: inkscape, imagemagick, ghostscript, libheif-examples
+
 ## Status
 
 - **PA-1**: Minimal script execution path
-- **PA-2**: Self-contained workspace with helpers and scripts (current)
-- Rendering, validation, revision loops, and AgentCore integration will be added in later phases
+- **PA-2**: Self-contained workspace with helpers and scripts
+- **PA-3**: Render, contact sheet, overflow validation, font detection, diagnostics (current)
+- Revision loops and AgentCore integration will be added in later phases
 - The DeckForge typed strategy engine is frozen (`deck-forge-typed-engine-freeze-v0`) and not part of this package
