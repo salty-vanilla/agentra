@@ -38,6 +38,11 @@ const baseSchema = z.object({
    */
   designReviewIterations: z.number().int().min(0).max(3).default(1),
   includeTrace: z.boolean().default(false),
+  /**
+   * Run strategy quality diagnostics after IR build.
+   * Logs quality report and includes it in the response trace.
+   */
+  qualityDiagnostics: z.boolean().default(true),
   presentation: z.unknown().optional(),
   operations: z.array(z.unknown()).optional(),
   traceId: z.string().trim().min(1).optional(),

@@ -1,4 +1,4 @@
-import type { DeckPlan, PresentationBrief } from "@deck-forge/core";
+import type { ParsedDeckPlan, PresentationBrief } from "@deck-forge/core";
 import { describe, expect, it } from "vitest";
 import {
   getBriefGenerationPrompt,
@@ -22,7 +22,7 @@ const brief: PresentationBrief = {
   visualDirection: { style: "corporate", mood: "trustworthy" },
 };
 
-const deckPlan: DeckPlan = {
+const deckPlan: ParsedDeckPlan = {
   id: "deck-1",
   briefId: "brief-1",
   title: "Manufacturing AI PoC",

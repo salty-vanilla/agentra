@@ -47,7 +47,7 @@ const DEFAULT_SLIDE_SIZE: SlideSize = {
 
 export type BuildPresentationIrInput = {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: { id?: string; title?: string };
   slideSpecs: SlideSpec[];
   assetSpecs?: AssetSpec[];
   id?: string;
@@ -89,7 +89,7 @@ export function buildPresentationIr(input: BuildPresentationIrInput): BuildPrese
       source: input.meta?.source ?? input.brief.id,
     },
     brief: input.brief,
-    deckPlan: input.deckPlan,
+    deckPlan: input.deckPlan as DeckPlan,
     theme,
     slides,
     assets: {

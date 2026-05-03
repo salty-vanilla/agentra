@@ -7,6 +7,7 @@ import type {
   ComponentSpec,
   CreatePresentationSpecInput,
   DeckPlan,
+  ParsedDeckPlan,
   DesignFocus,
   ExportResult,
   ExternalImageAssetSpec,
@@ -193,12 +194,12 @@ export type GenerateDeckPlanInput = {
 };
 
 export type GenerateDeckPlanOutput = {
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
 };
 
 export type GenerateSlideSpecsInput = {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
 };
 
 export type GenerateSlideSpecsOutput = {
@@ -218,7 +219,7 @@ export type GenerateAssetPlanOutput = {
 
 export type BuildPresentationIrInput = {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: DeckPlan | ParsedDeckPlan;
   slideSpecs: SlideSpec[];
   assetSpecs: AssetSpec[];
   id?: string;
@@ -288,7 +289,7 @@ export type AttachRetrievedAssetOutput = {
 
 export type CreatePresentationArtifacts = {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
   slideSpecs: SlideSpec[];
   assetSpecs?: AssetSpec[];
 };

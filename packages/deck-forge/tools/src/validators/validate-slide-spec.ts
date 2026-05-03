@@ -49,7 +49,7 @@ function semanticIssues(
   if (!slide.title.trim()) {
     issues.push(`slide ${slide.id} is missing a title`);
   }
-  if (slide.content.length === 0) {
+  if (slide.content.length === 0 && !slide.strategyInput) {
     issues.push(`slide ${slide.id} has no content blocks`);
   }
 

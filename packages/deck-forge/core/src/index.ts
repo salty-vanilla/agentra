@@ -393,6 +393,7 @@ export type {
   TrendSmallMultiplesContract,
   ProcessWithImpactContract,
   CauseAnalysisContract,
+  ParsedDeckPlan,
 } from "#src/schemas/intent-artifacts.js";
 
 export type Id = string;
@@ -975,3 +976,7 @@ export {
   buildPresentationIrFromDeckPlan,
   StrategyQualityGateError,
 } from "#src/pipeline/strategy-pipeline.js";
+
+// Phase 8I: ParsedDeckPlan → canonical DeckPlan converter
+export type { ConvertToDeckPlanResult } from "#src/pipeline/convert-to-canonical-deck-plan.js";
+export { convertParsedDeckPlanToCanonicalDeckPlan } from "#src/pipeline/convert-to-canonical-deck-plan.js";

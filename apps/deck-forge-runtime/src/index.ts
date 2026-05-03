@@ -3,9 +3,14 @@ import { dirname } from 'node:path';
 import type { PresentationIR } from '@deck-forge/core';
 import {
   analyzeDeckStabilization,
+  analyzeDeckStrategyQuality,
+  convertParsedDeckPlanToCanonicalDeckPlan,
   type DeckStabilizationDiagnostics,
+  type DeckStrategyQualityReport,
+  formatDeckStrategyQualityReport,
   repairSameFrameOverlaps,
   runDesignReviewLoop,
+  runStrategyPipeline,
 } from '@deck-forge/core';
 import type { DeckForgeRunInput } from '@deck-forge/runner';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
@@ -75,6 +80,45 @@ async function main() {
           // Run the create pipeline ourselves so we get the brief / deckPlan /
           // slideSpecs intermediates needed for downstream design + review.
           const pipeline = await runCreatePipeline(request.goal);
+
+          // ─── Phase 8I: Strategy Pipeline Integration ───
+          // Convert LLM-generated ParsedDeckPlan to canonical DeckPlan,
+          // then run the strategy pipeline to produce SlideSpecs with
+          // native StrategyInput (no contentBlocks dependency).
+          const createArtifacts = pipeline.intent.createArtifacts;
+          if (!createArtifacts) {
+            throw new Error('runCreatePipeline returned no createArtifacts');
+          }
+          const { deckPlan: canonicalDeckPlan, warnings: bridgeWarnings } =
+            convertParsedDeckPlanToCanonicalDeckPlan({
+              parsedDeckPlan: createArtifacts.deckPlan,
+              brief: createArtifacts.brief,
+            });
+
+          const strategyPipelineResult = await runStrategyPipeline({
+            deckPlan: canonicalDeckPlan,
+          });
+
+          // Replace LLM-generated slideSpecs with strategy-pipeline-enhanced
+          // slideSpecs that carry preferredStrategyId + strategyInput.
+          createArtifacts.slideSpecs = strategyPipelineResult.slideSpecs;
+
+          if (bridgeWarnings.length > 0 || strategyPipelineResult.warnings.length > 0) {
+            logDeckForgeEvent('strategy-pipeline', {
+              runId,
+              bridgeWarnings,
+              pipelineWarnings: strategyPipelineResult.warnings,
+              slideCount: strategyPipelineResult.slideSpecs.length,
+              strategies: strategyPipelineResult.slideResults.map((r) => ({
+                slideId: r.slideSpec.id,
+                strategyId: r.selection.strategyId,
+                confidence: r.selection.confidence,
+                inputSource: r.strategyInputResult.source,
+              })),
+            });
+          }
+          // ─── End Phase 8I ───
+
           const useAiReview = request.revisionPolicy === 'ai_review';
 
           const runner = createDeckForgeRunner({
@@ -201,6 +245,34 @@ async function main() {
               logDeckForgeEvent('diagnostics-failed', {
                 runId,
                 diagnosticsPhase: 'v1',
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+          // -----------------------------------------------------------
+
+          // ----- Strategy quality diagnostics (Phase 8I) --------
+          let strategyQualityReport: DeckStrategyQualityReport | undefined;
+          if (initialPresentation && request.qualityDiagnostics) {
+            try {
+              strategyQualityReport = analyzeDeckStrategyQuality({
+                presentation: initialPresentation,
+              });
+              logDeckForgeEvent('strategy-quality-diagnostics', {
+                runId,
+                status: strategyQualityReport.summary.status,
+                score: strategyQualityReport.summary.score,
+                slideCount: strategyQualityReport.summary.slideCount,
+                nativeRatio: strategyQualityReport.summary.nativeRatio,
+                fallbackRatio: strategyQualityReport.summary.fallbackRatio,
+                invalidRatio: strategyQualityReport.summary.invalidRatio,
+                errorCount: strategyQualityReport.summary.errorCount,
+                warningCount: strategyQualityReport.summary.warningCount,
+                formattedReport: formatDeckStrategyQualityReport(strategyQualityReport),
+              });
+            } catch (error) {
+              logDeckForgeEvent('strategy-quality-diagnostics-failed', {
+                runId,
                 error: error instanceof Error ? error.message : String(error),
               });
             }
@@ -522,6 +594,18 @@ async function main() {
               runId,
               result: finalResult,
               artifact,
+              ...(strategyQualityReport
+                ? {
+                    strategyQuality: {
+                      status: strategyQualityReport.summary.status,
+                      score: strategyQualityReport.summary.score,
+                      nativeRatio: strategyQualityReport.summary.nativeRatio,
+                      fallbackRatio: strategyQualityReport.summary.fallbackRatio,
+                      invalidRatio: strategyQualityReport.summary.invalidRatio,
+                      slideCount: strategyQualityReport.summary.slideCount,
+                    },
+                  }
+                : {}),
             },
           };
         } catch (error: unknown) {

@@ -9,6 +9,32 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge Phase 8I: Runtime Strategy Pipeline Integration
+
+- **`convertParsedDeckPlanToCanonicalDeckPlan()`** — bridge from Zod `ParsedDeckPlan` (sections/SlidePlan) to canonical strategy `DeckPlan` (flat SlideIntent[])
+  - Maps all 13 SlideIntentSchema types to CommunicationIntent
+  - Maps ContentRequirement.expectedBlockType to ContentKind
+  - Infers audience/genre from PresentationBrief
+  - Warns on unmapped values with graceful fallbacks
+- **Runtime integration** (`deck-forge-runtime/src/index.ts`) — strategy pipeline injected after `runCreatePipeline()`:
+  1. Converts LLM `ParsedDeckPlan` → canonical `DeckPlan`
+  2. Runs `runStrategyPipeline()` to produce enhanced SlideSpecs with `strategyInput` + `preferredStrategyId`
+  3. Replaces LLM-generated slideSpecs in pipeline intent
+  4. Runs strategy quality diagnostics after IR build (opt-in via `qualityDiagnostics` flag)
+  5. Logs detailed strategy pipeline and quality diagnostics events
+  6. Includes `strategyQuality` summary in success response
+- **`qualityDiagnostics`** request flag in `schemas.ts` (default: `true`)
+- **`ParsedDeckPlan`** exported from `@deck-forge/core` — distinct from strategy `DeckPlan`
+- **Type fixes across tools/runner/runtime** — `DeckPlan` imports corrected to `ParsedDeckPlan` where Zod shape is used
+- **Runtime-path E2E smoke test** — exercises the actual runtime path:
+  ParsedDeckPlan → `convertParsedDeckPlanToCanonicalDeckPlan()` → `runStrategyPipeline()` →
+  inject strategy-enhanced slideSpecs → `DeckForgeRunner.run()` → assert IR quality
+  (5-slide fixture: title / dashboard / two\_column / diagram\_focus / single\_column)
+- **`validateSlideSpec`** — allow empty `content[]` when `strategyInput` is present
+  (native strategy pipeline path produces slideSpecs with `content: []`)
+- **11 converter tests** + **2 core E2E tests** + **1 runtime-path E2E test**
+- No archetype dependency — strategy pipeline is archetype-free
+
 ### Fixed — deck-forge/core Phase 8H-fix: Type-safe intent/contentKind mapping
 
 - **SchemaSlideIntentType** now derived from `z.infer<typeof SlideIntentSchema>["type"]` — compile error if Zod schema changes

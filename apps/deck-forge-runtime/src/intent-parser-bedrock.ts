@@ -1,4 +1,9 @@
-import type { AssetSpec, DeckPlan, PresentationBrief, SlideSpec } from '@deck-forge/core';
+import type {
+  AssetSpec,
+  ParsedDeckPlan,
+  PresentationBrief,
+  SlideSpec,
+} from '@deck-forge/core';
 import type { IntentParser, StructuredIntent, ValidationResult } from '@deck-forge/tools';
 import {
   ASSET_SPEC_JSON_SCHEMA,
@@ -438,7 +443,7 @@ Fix every issue and call the tool again with a corrected payload.`;
  */
 export type CreatePipelineResult = {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
   slideSpecs: SlideSpec[];
   assetSpecs: AssetSpec[];
   intent: StructuredIntent;
@@ -487,7 +492,7 @@ ${briefExtraGuidance(language)}`;
   const deckPlanSystem = `${deckPlanSystemBase}
 
 ${deckPlanExtraGuidance(language)}`;
-  const deckPlan = await generateAndValidate<DeckPlan>({
+  const deckPlan = await generateAndValidate<ParsedDeckPlan>({
     step: 'deckPlan',
     system: deckPlanSystem,
     userMessage: `PresentationBrief:\n${JSON.stringify(brief, null, 2)}`,
@@ -706,7 +711,7 @@ archetype 専用の contentContract がある場合は、その schema に従っ
  */
 export function buildStructuredIntent(input: {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
   slideSpecs: SlideSpec[];
   assetSpecs: AssetSpec[];
   userRequest: string;

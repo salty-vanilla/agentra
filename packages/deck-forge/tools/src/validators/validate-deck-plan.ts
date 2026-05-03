@@ -1,4 +1,4 @@
-import { type DeckPlan, DeckPlanSchema } from "@deck-forge/core";
+import { type ParsedDeckPlan, DeckPlanSchema } from "@deck-forge/core";
 import type { ValidationResult } from "#src/types.js";
 import { flattenZodIssues } from "#src/validators/_internal.js";
 
@@ -30,7 +30,7 @@ export function validateDeckPlan(
 }
 
 function semanticIssues(
-  deckPlan: DeckPlan,
+  deckPlan: ParsedDeckPlan,
   { slideIds, expectedSlideCount }: ValidateDeckPlanOptions,
 ): string[] {
   const issues: string[] = [];

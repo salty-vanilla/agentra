@@ -1,4 +1,4 @@
-import type { DeckPlan, PresentationBrief } from "@deck-forge/core";
+import type { ParsedDeckPlan, PresentationBrief } from "@deck-forge/core";
 
 const COMMON_RULES_EN = `
 General rules:
@@ -95,7 +95,7 @@ export function getDeckPlanGenerationPrompt(input: DeckPlanPromptInput): string 
 
 export type SlideSpecPromptInput = {
   brief: PresentationBrief;
-  deckPlan: DeckPlan;
+  deckPlan: ParsedDeckPlan;
   slideId: string;
 };
 

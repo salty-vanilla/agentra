@@ -1,7 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import type { DeckPlan, PresentationBrief, PresentationIR, SlideSpec } from "@deck-forge/core";
+import type { ParsedDeckPlan, PresentationBrief, PresentationIR, SlideSpec } from "@deck-forge/core";
+import {
+  analyzeDeckStrategyQuality,
+  convertParsedDeckPlanToCanonicalDeckPlan,
+  runStrategyPipeline,
+} from "@deck-forge/core";
 import { describe, expect, it } from "vitest";
 
 import { DeckForgeRunner } from "#src/runner.js";
@@ -627,9 +632,10 @@ describe("DeckForgeRunner", () => {
         slideId: "slide-1",
         title: "Inserted",
         intent: {
-          type: "proposal" as const,
+          intent: "persuade" as const,
           keyMessage: "Inserted slide addresses the missing deck structure.",
           audienceTakeaway: "The deck has a concrete starting point.",
+          contentKinds: ["summary" as const],
         },
         layout: { type: "single_column" as const, density: "medium" as const },
       },
@@ -896,6 +902,174 @@ describe("DeckForgeRunner", () => {
     );
     expect(repairTraces).toHaveLength(0);
   });
+
+  // -----------------------------------------------------------------------
+  // Phase 8I: Runtime-path E2E (strategy pipeline → runner)
+  // -----------------------------------------------------------------------
+
+  it("runtime path: ParsedDeckPlan → canonical → strategy pipeline → runner.run()", async () => {
+    // Step 1: Build fixtures
+    const brief: PresentationBrief = {
+      id: "brief-runtime-e2e",
+      title: "Product Launch Strategy",
+      audience: { primary: "stakeholders", expertiseLevel: "intermediate" },
+      goal: { type: "persuade", mainMessage: "Launch Q4 product line", desiredOutcome: "Approve launch budget" },
+      tone: { formality: "business", energy: "confident", technicalDepth: "medium" },
+      narrative: { structure: "analysis", arc: [{ role: "hook", message: "Market opportunity" }] },
+      output: { formats: ["json"], aspectRatio: "16:9", language: "en" },
+      constraints: { slideCount: 5 },
+      visualDirection: { style: "corporate", mood: "trustworthy" },
+    };
+
+    const parsedDeckPlan: ParsedDeckPlan = {
+      id: "deck-runtime-e2e",
+      briefId: brief.id,
+      title: brief.title,
+      slideCountTarget: 5,
+      globalStoryline: "Opportunity → KPIs → Comparison → Architecture → Action Plan",
+      sections: [
+        {
+          id: "sec-open", title: "Opening", role: "intro",
+          slides: [{
+            id: "s1", title: "Product Launch Strategy",
+            intent: { type: "title", keyMessage: "Launch Q4 product line", audienceTakeaway: "Context" },
+            expectedLayout: "title",
+            contentRequirements: [{ id: "cr1", description: "Title", expectedBlockType: "title", priority: "high" }],
+          }],
+        },
+        {
+          id: "sec-analysis", title: "Analysis", role: "analysis",
+          slides: [
+            {
+              id: "s2", title: "KPI Overview",
+              intent: { type: "data_insight", keyMessage: "Revenue targets exceeded", audienceTakeaway: "Strong metrics" },
+              expectedLayout: "dashboard",
+              contentRequirements: [
+                { id: "cr2", description: "KPI cards", expectedBlockType: "metric", priority: "high" },
+              ],
+            },
+            {
+              id: "s3", title: "Competitive Landscape",
+              intent: { type: "comparison", keyMessage: "We lead in 3 of 5 segments", audienceTakeaway: "Market position" },
+              expectedLayout: "two_column",
+              contentRequirements: [
+                { id: "cr3", description: "Competitor comparison", expectedBlockType: "table", priority: "high" },
+              ],
+            },
+            {
+              id: "s4", title: "Platform Architecture",
+              intent: { type: "process", keyMessage: "Modular design enables scale", audienceTakeaway: "Technical feasibility" },
+              expectedLayout: "diagram_focus",
+              contentRequirements: [
+                { id: "cr4", description: "Architecture diagram", expectedBlockType: "diagram", priority: "high" },
+              ],
+            },
+          ],
+        },
+        {
+          id: "sec-close", title: "Close", role: "proposal",
+          slides: [{
+            id: "s5", title: "Action Plan",
+            intent: { type: "proposal", keyMessage: "Approve Q4 launch budget", audienceTakeaway: "Clear next steps" },
+            expectedLayout: "single_column",
+            contentRequirements: [
+              { id: "cr5", description: "Action items", expectedBlockType: "bullet_list", priority: "high" },
+            ],
+          }],
+        },
+      ],
+    };
+
+    // Step 2: Convert to canonical DeckPlan (same as runtime index.ts)
+    const { deckPlan: canonicalDeckPlan, warnings: bridgeWarnings } =
+      convertParsedDeckPlanToCanonicalDeckPlan({
+        parsedDeckPlan: parsedDeckPlan,
+        brief,
+      });
+
+    expect(canonicalDeckPlan.slides).toHaveLength(5);
+
+    // Step 3: Run strategy pipeline (same as runtime index.ts)
+    const strategyPipelineResult = await runStrategyPipeline({
+      deckPlan: canonicalDeckPlan,
+    });
+
+    expect(strategyPipelineResult.slideSpecs).toHaveLength(5);
+
+    // Every slideSpec must carry strategy metadata
+    for (const spec of strategyPipelineResult.slideSpecs) {
+      expect(spec.strategyInput).toBeDefined();
+      expect(spec.preferredStrategyId).toBeDefined();
+    }
+
+    // Step 4: Inject strategy-enhanced slideSpecs into createArtifacts
+    // (mirrors runtime: createArtifacts.slideSpecs = strategyPipelineResult.slideSpecs)
+    const createArtifacts = {
+      brief,
+      deckPlan: parsedDeckPlan,
+      slideSpecs: strategyPipelineResult.slideSpecs,
+    };
+
+    // Step 5: Wire into runner (same pattern as runtime createStaticIntentParser)
+    const runner = new DeckForgeRunner({
+      runtime: {} as never,
+      intentParser: {
+        parseCreate: async () => ({
+          mode: "create" as const,
+          confidence: 0.95,
+          goal: brief.title,
+          slideCount: 5,
+          createArtifacts,
+          grounding: {
+            language: "en",
+            requestedSlideCount: 5,
+            mustInclude: ["Launch Q4 product line"],
+          },
+        }),
+        parseModify: async () => ({
+          mode: "modify" as const,
+          confidence: 0.95,
+          modifyIntent: { changeRequest: "none", operations: [] },
+        }),
+      },
+    });
+
+    // Step 6: Run (same as runtime runner.run())
+    const result = await runner.run({
+      goal: "Product Launch Strategy",
+      mode: "create",
+      exportFormat: "json",
+      includeTrace: true,
+    });
+
+    // Step 7: Assertions — runtime output shape
+    expect(result.finalStatus).toBe("success");
+    expect(result.mode).toBe("create");
+    expect(result.errors).toHaveLength(0);
+
+    const presentation = result.artifacts.presentation as PresentationIR;
+    expect(presentation).toBeDefined();
+    expect(presentation.slides).toHaveLength(5);
+
+    // All slides should have non-empty elements
+    for (const slide of presentation.slides) {
+      expect(slide.elements.length).toBeGreaterThan(0);
+    }
+
+    // Step 8: Quality diagnostics (same as runtime analyzeDeckStrategyQuality)
+    const qualityReport = analyzeDeckStrategyQuality({ presentation });
+
+    expect(qualityReport.summary.slideCount).toBe(5);
+    expect(qualityReport.summary.nativeRatio).toBeGreaterThanOrEqual(0.8);
+    expect(qualityReport.summary.status).not.toBe("fail");
+    expect(["pass", "warn", "fail"]).toContain(qualityReport.summary.status);
+
+    // Bridge warnings should be minimal for well-formed fixtures
+    expect(bridgeWarnings.length).toBeLessThanOrEqual(2);
+
+    // Trace should include agent artifact validation
+    expect(result.trace?.some((item) => item.step === "validate_agent_artifacts")).toBe(true);
+  });
 });
 
 function createAiReviewRunner(options: Partial<DeckForgeRunnerOptions>): DeckForgeRunner {
@@ -922,7 +1096,7 @@ function createAgentArtifacts(input: {
   language: string;
   requiredText: string;
   visualSlide?: boolean;
-}): { brief: PresentationBrief; deckPlan: DeckPlan; slideSpecs: SlideSpec[] } {
+}): { brief: PresentationBrief; deckPlan: ParsedDeckPlan; slideSpecs: SlideSpec[] } {
   const brief: PresentationBrief = {
     id: `brief-${input.title.toLowerCase().replaceAll(/\s+/g, "-")}`,
     title: input.title,
@@ -985,7 +1159,7 @@ function createAgentArtifacts(input: {
     };
   });
 
-  const deckPlan: DeckPlan = {
+  const deckPlan: ParsedDeckPlan = {
     id: `deck-${input.title.toLowerCase().replaceAll(/\s+/g, "-")}`,
     briefId: brief.id,
     title: input.title,
@@ -1070,9 +1244,10 @@ function createWarningOnlyPresentation(): PresentationIR {
         index: 0,
         title: "Warning-only slide",
         intent: {
-          type: "summary",
+          intent: "summarize",
           keyMessage: "Deck has a warning but no blocking validation error.",
           audienceTakeaway: "A reviewer can improve presentation quality.",
+          contentKinds: ["summary"],
         },
         layout: {
           spec: { type: "single_column", density: "medium" },
@@ -1113,9 +1288,10 @@ function createInvalidPresentationWithImageAndChart(): PresentationIR {
         index: 0,
         title: "Invalid slide",
         intent: {
-          type: "data_insight",
+          intent: "report",
           keyMessage: "Show validation failures",
           audienceTakeaway: "Needs fixing",
+          contentKinds: ["chart"],
         },
         layout: {
           spec: { type: "single_column", density: "medium" },
@@ -1192,9 +1368,10 @@ function createPresentationWithOobElement(): PresentationIR {
         index: 0,
         title: "Slide with OOB element",
         intent: {
-          type: "summary",
+          intent: "summarize",
           keyMessage: "Test deterministic repair",
           audienceTakeaway: "Layout should be repaired",
+          contentKinds: ["summary"],
         },
         layout: {
           spec: { type: "single_column", density: "medium" },
@@ -1237,9 +1414,10 @@ function createOverflowingTextPresentation(): PresentationIR {
         index: 0,
         title: "Overflow slide",
         intent: {
-          type: "summary",
+          intent: "summarize",
           keyMessage: "Test text overflow repair",
           audienceTakeaway: "Font size should be reduced",
+          contentKinds: ["summary"],
         },
         layout: {
           spec: { type: "single_column", density: "medium" },

@@ -1,7 +1,7 @@
 import type {
   AssetSpec,
   ContentBlock,
-  DeckPlan,
+  ParsedDeckPlan,
   PresentationBrief,
   SlideSpec,
 } from "@deck-forge/core";
@@ -38,7 +38,7 @@ const validBrief: PresentationBrief = {
   visualDirection: { style: "corporate", mood: "trustworthy" },
 };
 
-const validDeckPlan: DeckPlan = {
+const validDeckPlan: ParsedDeckPlan = {
   id: "deck-1",
   briefId: "brief-1",
   title: "Manufacturing AI PoC",
