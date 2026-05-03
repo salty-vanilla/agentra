@@ -9,6 +9,15 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — presentation-author: PA-5 AgentCore-ready tool wrapper
+
+- **`tool-types.ts`**: `CreatePresentationToolInput`, `CreatePresentationToolOutput`, `CreatePresentationArtifact` — stable tool-boundary types
+- **`create-presentation-tool.ts`**: `createPresentation()` high-level function wrapping `runPresentationAuthor()` with structured success/failure output, input validation, language inference, error mapping, and summary builder
+- **`artifacts.ts`**: `collectPresentationArtifacts()`, `extractContactSheetPath()`, `extractRenderedSlidePaths()`, `fileExists()` — artifact extraction helpers
+- **`docs/agentcore-tool-usage.md`**: Registration guide with pseudo-code for Strands/AgentCore tool wrapping
+- **`fixtures/manufacturing-line-q2-report/`**: Dogfooding fixture with prompt and expected-notes
+- **Tests**: 19 new tests — successful output, defaults, input validation (empty/whitespace/oversized), script validation/execution failure mapping, artifact collection, language inference, summary builder, error mapping
+
 ### Fixed — presentation-author: dogfood fixes & skia-canvas avoidance
 
 - **`prompts.ts` / `revision-prompts.ts`**: Replace `require("./helpers/pptxgenjs_helpers")` (which eagerly loads `text.js` → `skia-canvas` native binary) with targeted submodule imports (`util`, `layout`); remove `autoFontSize` / `calcTextBox` references; add "size text boxes generously" heuristic

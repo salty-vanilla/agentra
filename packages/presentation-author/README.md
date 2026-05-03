@@ -47,14 +47,11 @@ Generated scripts import helpers locally:
 
 ```js
 const pptxgen = require("pptxgenjs");
+const { safeOuterShadow } = require("./helpers/pptxgenjs_helpers/util");
 const {
-  autoFontSize,
-  calcTextBox,
-  imageSizingCrop,
-  imageSizingContain,
   warnIfSlideHasOverlaps,
   warnIfSlideElementsOutOfBounds,
-} = require("./helpers/pptxgenjs_helpers");
+} = require("./helpers/pptxgenjs_helpers/layout");
 ```
 
 ## Usage
@@ -147,6 +144,50 @@ console.log(result.revision?.reason);
 - No scoring, no multi-pass quality engine.
 - The revised `presentation.js` and `deck.pptx` replace the root files only on success.
 
+## Tool usage (PA-5)
+
+`createPresentation()` is the high-level function intended to become an AgentCore / Strands tool.
+It returns structured output instead of throwing for normal generation failures.
+
+```ts
+import { createPresentation } from "@agentra/presentation-author";
+
+const result = await createPresentation(
+  {
+    prompt: "製造ライン #4 のQ2報告資料を作ってください",
+    diagnostics: true,
+    revision: true,
+  },
+  {
+    llm: {
+      generateText: async ({ prompt }) => {
+        // call your LLM here
+        return llmGeneratedJavaScript;
+      },
+    },
+  },
+);
+
+if (result.success) {
+  console.log(result.pptxPath);        // path to deck.pptx
+  console.log(result.contactSheetPath); // path to contact sheet PNG
+  console.log(result.summary);         // one-line human-readable summary
+  console.log(result.artifacts);       // all output file paths with existence checks
+} else {
+  console.log(result.error?.phase);    // 'input-validation' | 'script-execution' | ...
+  console.log(result.error?.message);
+}
+```
+
+Key differences from `runPresentationAuthor()`:
+- Never throws for normal generation failures — returns `{ success: false, error }`
+- Defaults to `diagnostics: true` and `revision: true`
+- Returns artifact list with existence checks
+- Returns compact human-readable summary
+- Infers language from prompt when not specified
+
+See [docs/agentcore-tool-usage.md](docs/agentcore-tool-usage.md) for AgentCore registration guide.
+
 ## Local dogfooding
 
 ### Prerequisites
@@ -196,6 +237,7 @@ ls .tmp/presentation-author-dogfood/*/rendered/
 - **PA-1**: Minimal script execution path
 - **PA-2**: Self-contained workspace with helpers and scripts
 - **PA-3**: Render, contact sheet, overflow validation, font detection, diagnostics
-- **PA-4 Lite**: Single diagnostics-driven revision attempt (current)
+- **PA-4 Lite**: Single diagnostics-driven revision attempt
+- **PA-5**: AgentCore-ready tool wrapper (`createPresentation()`)
 - AgentCore integration and visual review will be added in later phases
 - The DeckForge typed strategy engine is frozen (`deck-forge-typed-engine-freeze-v0`) and not part of this package

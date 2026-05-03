@@ -1,5 +1,7 @@
+export * from './artifacts.js';
 export * from './authoring-script.js';
 export * from './contact-sheet.js';
+export * from './create-presentation-tool.js';
 export * from './diagnostics.js';
 export * from './executor.js';
 export * from './prompts.js';
@@ -8,6 +10,7 @@ export * from './render.js';
 export * from './revision.js';
 export * from './revision-prompts.js';
 export * from './runner.js';
+export * from './tool-types.js';
 export * from './types.js';
 export * from './validation.js';
 export * from './workspace.js';
