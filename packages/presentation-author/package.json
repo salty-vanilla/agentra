@@ -16,7 +16,8 @@
   ],
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "dogfood": "tsx scripts/dogfood.ts"
   },
   "dependencies": {
     "fontkit": "^2.0.2",
@@ -27,6 +28,7 @@
     "skia-canvas": "^2.0.2"
   },
   "devDependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1038.0",
     "typescript": "latest"
   }
 }

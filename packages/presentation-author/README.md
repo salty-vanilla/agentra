@@ -147,6 +147,50 @@ console.log(result.revision?.reason);
 - No scoring, no multi-pass quality engine.
 - The revised `presentation.js` and `deck.pptx` replace the root files only on success.
 
+## Local dogfooding
+
+### Prerequisites
+
+Install Python dependencies:
+
+```bash
+pip install -r packages/presentation-author/python/requirements.txt
+```
+
+Install OS tools (macOS):
+
+```bash
+brew install --cask libreoffice
+brew install poppler fontconfig
+```
+
+### Running the smoke script
+
+```bash
+# Ensure AWS credentials are configured (Bedrock access required)
+pnpm --filter @agentra/presentation-author dogfood
+```
+
+Env overrides:
+
+| Variable | Default | Description |
+|---|---|---|
+| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | Bedrock model ID |
+| `AWS_REGION` | `us-east-1` | AWS region |
+
+### Inspecting results
+
+```bash
+# Open the generated deck
+open .tmp/presentation-author-dogfood/*/deck.pptx
+
+# View the contact sheet (all slides at a glance)
+open .tmp/presentation-author-dogfood/*/artifacts/contact_sheet.png
+
+# Check rendered individual slides
+ls .tmp/presentation-author-dogfood/*/rendered/
+```
+
 ## Status
 
 - **PA-1**: Minimal script execution path
