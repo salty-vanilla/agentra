@@ -4,7 +4,6 @@ import { AgentraAgentCoreRuntimeStack } from '../lib/agentra-agentcore-runtime-s
 import { AgentraAgentCoreStack } from '../lib/agentra-agentcore-stack.js';
 import { AgentraAppStack } from '../lib/agentra-app-stack.js';
 import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';
-import { AgentraDeckForgeRuntimeStack } from '../lib/agentra-deck-forge-runtime-stack.js';
 import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
 
 const app = new cdk.App();
@@ -64,37 +63,14 @@ new AgentraAgentCoreStack(app, `AgentraAgentCoreStack-${stageLabel}`, {
   stage: stageLabel,
 });
 
-const deckForgeRuntimeStack = new AgentraDeckForgeRuntimeStack(
-  app,
-  `AgentraDeckForgeRuntimeStack-${stageLabel}`,
-  {
-    description: `Agentra ${stageLabel} Deck Forge runtime stack.`,
-    stage: stageLabel,
-    bedrockImageModelId:
-      (
-        app.node.tryGetContext('deckForgeBedrockImageModelId') as string | undefined
-      )?.trim() || 'amazon.nova-canvas-v1:0',
-    bedrockTextModelId:
-      (
-        app.node.tryGetContext('deckForgeBedrockTextModelId') as string | undefined
-      )?.trim() || 'global.anthropic.claude-sonnet-4-6',
-    artifactPrefix:
-      (app.node.tryGetContext('deckForgeArtifactPrefix') as string | undefined)?.trim() ||
-      'deck-forge/',
-  },
-);
-
 const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
   app,
   `AgentraAgentCoreRuntimeStack-${stageLabel}`,
   {
     description: `Agentra ${stageLabel} AgentCore runtime stack (TypeScript runtime and endpoint).`,
     stage: stageLabel,
-    deckForgeRuntimeArn: deckForgeRuntimeStack.runtimeArn,
-    deckForgeRuntimeQualifier: 'prod',
   },
 );
-agentCoreRuntimeStack.addDependency(deckForgeRuntimeStack);
 
 const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
   description: `Agentra ${stageLabel} backend application stack (Lambda and HTTP API).`,

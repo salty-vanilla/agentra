@@ -18,8 +18,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   stage: string;
-  deckForgeRuntimeArn?: string;
-  deckForgeRuntimeQualifier?: string;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -98,19 +96,6 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       }),
     );
 
-    if (props.deckForgeRuntimeArn) {
-      runtimeRole.addToPolicy(
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-          resources: [
-            props.deckForgeRuntimeArn,
-            `${props.deckForgeRuntimeArn}/runtime-endpoint/*`,
-          ],
-        }),
-      );
-    }
-
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
@@ -147,8 +132,6 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         BEDROCK_REGION: Stack.of(this).region,
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentcore-${props.stage}`,
         TAVILY_API_KEY_SECRET_ID: tavilyApiKeySecret.secretArn,
-        DECK_FORGE_RUNTIME_ARN: props.deckForgeRuntimeArn ?? '',
-        DECK_FORGE_RUNTIME_QUALIFIER: props.deckForgeRuntimeQualifier ?? '',
       },
       agentRuntimeArtifact: {
         containerConfiguration: {

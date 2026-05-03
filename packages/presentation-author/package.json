@@ -1,0 +1,23 @@
+{
+  "name": "@agentra/presentation-author",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "PptxGenJS-based presentation authoring package",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -b",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}

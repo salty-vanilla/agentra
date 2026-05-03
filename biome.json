@@ -11,8 +11,7 @@
       "!apps/frontend/mocks/generated",
       "!apps/frontend/out",
       "!apps/frontend/out",
-      "!packages/shared/src/generated",
-      "!packages/deck-forge"
+      "!packages/shared/src/generated"
     ]
   },
   "formatter": {
