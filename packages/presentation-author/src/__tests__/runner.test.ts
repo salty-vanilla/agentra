@@ -13,19 +13,20 @@ import { createPresentationWorkspace } from '../workspace.js';
 
 const FAKE_PPTX_SCRIPT = `
 const pptxgen = require("pptxgenjs");
-const { autoFontSize, calcTextBox } = require("./helpers/pptxgenjs_helpers");
+const { safeOuterShadow } = require("./helpers/pptxgenjs_helpers/util");
 
 async function main() {
   const pptx = new pptxgen();
   pptx.layout = "LAYOUT_WIDE";
   pptx.author = "presentation-author";
 
-  const titleSize = autoFontSize("テスト資料", { maxWidth: 12, maxHeight: 1 });
+  const shadow = safeOuterShadow("333333", 0.3);
   const slide = pptx.addSlide();
   slide.background = { color: "FFFFFF" };
   slide.addText("テスト資料", {
     x: 0.7, y: 0.5, w: 12, h: 0.6,
-    fontFace: "Arial", fontSize: titleSize, bold: true, color: "111827",
+    fontFace: "Arial", fontSize: 32, bold: true, color: "111827",
+    shadow,
   });
   slide.addText("Presentation Author smoke test", {
     x: 0.7, y: 1.4, w: 12, h: 0.5,

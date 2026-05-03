@@ -16,7 +16,7 @@ User prompt → LLM generates PptxGenJS code → execute with Node.js → deck.p
 
 ## Workspace layout
 
-Each run creates a self-contained workspace:
+Each run creates a self-contained workspace (helpers/scripts are copied from `vendor/openai-slides/`):
 
 ```
 {workDir}/

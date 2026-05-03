@@ -9,6 +9,17 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Changed — presentation-author: Vendor copy OpenAI slides skill
+
+- **Vendor copy** (`packages/presentation-author/vendor/openai-slides/`):
+  - Vendor-copied `openai/skills` repo `codex/fax-machine-skill` branch `skills/.curated/slides/` directory
+  - Includes: `assets/pptxgenjs_helpers/` (9 JS modules), `scripts/` (5 Python scripts), `SKILL.md`, `references/`, `agents/`, `LICENSE.txt`
+  - Source commit: `7b54889398822db28c72aeec8e95be7c20418d1a`
+- **Removed** `packages/presentation-author/assets/` and `scripts/` (replaced by vendor copy)
+- **Updated** `workspace.ts`: paths now reference `vendor/openai-slides/` within the package
+- **Updated** `package.json`: `files` field includes `vendor` instead of `assets`/`scripts`
+- **Updated** test: use `safeOuterShadow` from `util.js` (no native deps) instead of `autoFontSize` (requires `skia-canvas`)
+
 ### Added — deck-forge Phase 8J: LLM StrategyInput Generation, Audience Normalization & Strategy Diversity
 
 - **Audience normalization** (`convert-to-canonical-deck-plan.ts`):

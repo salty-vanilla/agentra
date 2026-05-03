@@ -9,8 +9,9 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const SOURCE_JS_NAME = 'presentation.js';
 const PPTX_NAME = 'deck.pptx';
-const HELPERS_SRC = join(__dirname, '..', 'assets', 'pptxgenjs_helpers');
-const SCRIPTS_SRC = join(__dirname, '..', 'scripts');
+const VENDOR_ROOT = join(__dirname, '..', 'vendor', 'openai-slides');
+const HELPERS_SRC = join(VENDOR_ROOT, 'assets', 'pptxgenjs_helpers');
+const SCRIPTS_SRC = join(VENDOR_ROOT, 'scripts');
 
 const WORKSPACE_PACKAGE_JSON = JSON.stringify(
   {

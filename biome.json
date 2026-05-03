@@ -6,6 +6,7 @@
       "!**/dist",
       "!**/cdk.out",
       "!**/node_modules",
+      "!**/vendor",
       "!apps/frontend/public/mockServiceWorker.js",
       "!apps/frontend/lib/generated",
       "!apps/frontend/mocks/generated",
