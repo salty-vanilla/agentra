@@ -15,9 +15,38 @@ export interface PresentationAuthorInput {
   outputDir?: string | undefined;
   timeoutMs?: number | undefined;
   diagnostics?: boolean | DiagnosticsOptions | undefined;
+  revision?: boolean | RevisionOptions | undefined;
 }
 
-import type { PresentationDiagnosticsResult } from './diagnostics.js';
+import type {
+  PresentationDiagnosticsInput,
+  PresentationDiagnosticsResult,
+} from './diagnostics.js';
+
+export interface RevisionOptions {
+  enabled?: boolean | undefined;
+}
+
+export type RevisionAttemptReason =
+  | 'disabled'
+  | 'diagnostics-pass'
+  | 'diagnostics-not-run'
+  | 'revision-succeeded'
+  | 'revision-generation-failed'
+  | 'revision-validation-failed'
+  | 'revision-execution-failed'
+  | 'revision-output-missing';
+
+export interface RevisionAttemptResult {
+  attempted: boolean;
+  succeeded: boolean;
+  reason: RevisionAttemptReason;
+  sourceJsPath?: string | undefined;
+  pptxPath?: string | undefined;
+  execution?: AuthoringScriptExecutionResult | undefined;
+  diagnostics?: PresentationDiagnosticsResult | undefined;
+  warnings: string[];
+}
 
 export interface PresentationAuthorResult {
   workDir: string;
@@ -26,6 +55,7 @@ export interface PresentationAuthorResult {
   warnings: string[];
   execution: AuthoringScriptExecutionResult;
   diagnostics?: PresentationDiagnosticsResult | undefined;
+  revision?: RevisionAttemptResult | undefined;
 }
 
 export interface AuthoringWorkspace {
@@ -47,6 +77,9 @@ export interface PresentationAuthorDeps {
   llm: LlmClient;
   now?: (() => Date) | undefined;
   randomId?: (() => string) | undefined;
+  runDiagnostics?: (
+    input: PresentationDiagnosticsInput,
+  ) => Promise<PresentationDiagnosticsResult>;
 }
 
 export interface AuthoringScriptExecutionResult {

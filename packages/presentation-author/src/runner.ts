@@ -4,16 +4,34 @@ import {
   validateAuthoringScript,
   writeAuthoringScript,
 } from './authoring-script.js';
+import type { PresentationDiagnosticsInput } from './diagnostics.js';
 import { runPresentationDiagnostics } from './diagnostics.js';
 import { executeAuthoringScript } from './executor.js';
 import { buildAuthoringPrompt } from './prompts.js';
+import { runSingleRevisionAttempt } from './revision.js';
 import type {
   DiagnosticsOptions,
   PresentationAuthorDeps,
   PresentationAuthorInput,
   PresentationAuthorResult,
+  RevisionOptions,
 } from './types.js';
 import { createPresentationWorkspace } from './workspace.js';
+
+function isRevisionEnabled(revision: PresentationAuthorInput['revision']): boolean {
+  if (revision === true) return true;
+  if (typeof revision === 'object' && revision.enabled !== false) return true;
+  return false;
+}
+
+async function invokeDiagnostics(
+  input: PresentationDiagnosticsInput,
+  deps: PresentationAuthorDeps,
+) {
+  return deps.runDiagnostics
+    ? deps.runDiagnostics(input)
+    : runPresentationDiagnostics(input);
+}
 
 export async function runPresentationAuthor(
   input: PresentationAuthorInput,
@@ -44,7 +62,7 @@ export async function runPresentationAuthor(
     code,
   });
 
-  const execution = await executeAuthoringScript({
+  let execution = await executeAuthoringScript({
     workDir: workspace.workDir,
     sourceJsPath: workspace.sourceJsPath,
     pptxPath: workspace.pptxPath,
@@ -67,19 +85,61 @@ export async function runPresentationAuthor(
   }
 
   let diagnosticsResult: PresentationAuthorResult['diagnostics'];
-  if (input.diagnostics) {
+  const revisionEnabled = isRevisionEnabled(input.revision);
+
+  // If revision is enabled, ensure diagnostics run by default
+  const shouldRunDiagnostics = input.diagnostics || revisionEnabled;
+
+  if (shouldRunDiagnostics) {
     const diagOpts: DiagnosticsOptions =
       typeof input.diagnostics === 'object' ? input.diagnostics : {};
-    diagnosticsResult = await runPresentationDiagnostics({
-      pptxPath: workspace.pptxPath,
-      workDir: workspace.workDir,
-      scriptsDir: workspace.scriptsDir,
-      render: diagOpts.render,
-      contactSheet: diagOpts.contactSheet,
-      overflow: diagOpts.overflow,
-      fonts: diagOpts.fonts,
-    });
+    diagnosticsResult = await invokeDiagnostics(
+      {
+        pptxPath: workspace.pptxPath,
+        workDir: workspace.workDir,
+        scriptsDir: workspace.scriptsDir,
+        render: diagOpts.render,
+        contactSheet: diagOpts.contactSheet,
+        overflow: diagOpts.overflow,
+        fonts: diagOpts.fonts,
+      },
+      deps,
+    );
     warnings.push(...diagnosticsResult.warnings);
+  }
+
+  // Revision attempt
+  let revisionResult: PresentationAuthorResult['revision'];
+  if (revisionEnabled) {
+    if (!diagnosticsResult) {
+      revisionResult = {
+        attempted: false,
+        succeeded: false,
+        reason: 'diagnostics-not-run',
+        warnings: [],
+      };
+    } else {
+      revisionResult = await runSingleRevisionAttempt({
+        workDir: workspace.workDir,
+        originalUserPrompt: input.prompt,
+        language: input.language,
+        initialSourceJsPath: workspace.sourceJsPath,
+        initialPptxPath: workspace.pptxPath,
+        initialDiagnostics: diagnosticsResult,
+        deps,
+        timeoutMs: input.timeoutMs,
+        diagnosticsOptions: input.diagnostics,
+      });
+      warnings.push(...revisionResult.warnings);
+
+      // If revision succeeded, update top-level diagnostics/execution
+      if (revisionResult.succeeded && revisionResult.execution) {
+        execution = revisionResult.execution;
+        if (revisionResult.diagnostics) {
+          diagnosticsResult = revisionResult.diagnostics;
+        }
+      }
+    }
   }
 
   return {
@@ -89,5 +149,6 @@ export async function runPresentationAuthor(
     warnings,
     execution,
     diagnostics: diagnosticsResult,
+    revision: revisionResult,
   };
 }

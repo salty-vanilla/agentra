@@ -122,10 +122,36 @@ Required OS tools:
 - fontconfig (fc-list) — font detection
 - Optional: inkscape, imagemagick, ghostscript, libheif-examples
 
+## Single revision attempt (PA-4 Lite)
+
+When `revision: true`, the runner asks the LLM for one revised script if diagnostics return `warn` or `fail`:
+
+```ts
+const result = await runPresentationAuthor(
+  {
+    prompt: "製造ライン #4 のQ2報告資料を作成してください",
+    language: "ja",
+    diagnostics: true,
+    revision: true,
+  },
+  deps,
+);
+
+console.log(result.revision?.reason);
+// 'diagnostics-pass' | 'revision-succeeded' | 'revision-execution-failed' | ...
+```
+
+- Revision runs at most once.
+- Revision only triggers when diagnostics status is `warn` or `fail`.
+- If revision fails, the initial deck is returned with warnings.
+- No scoring, no multi-pass quality engine.
+- The revised `presentation.js` and `deck.pptx` replace the root files only on success.
+
 ## Status
 
 - **PA-1**: Minimal script execution path
 - **PA-2**: Self-contained workspace with helpers and scripts
-- **PA-3**: Render, contact sheet, overflow validation, font detection, diagnostics (current)
-- Revision loops and AgentCore integration will be added in later phases
+- **PA-3**: Render, contact sheet, overflow validation, font detection, diagnostics
+- **PA-4 Lite**: Single diagnostics-driven revision attempt (current)
+- AgentCore integration and visual review will be added in later phases
 - The DeckForge typed strategy engine is frozen (`deck-forge-typed-engine-freeze-v0`) and not part of this package

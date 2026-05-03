@@ -9,6 +9,15 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — presentation-author: PA-4 Lite single diagnostics-driven revision
+
+- **`revision-prompts.ts`**: `buildSingleRevisionPrompt()` — compact diagnostics summary + revision constraints
+- **`revision.ts`**: `reviseAuthoringScript()` (LLM call + extract/validate) and `runSingleRevisionAttempt()` (full revision workspace lifecycle)
+- **Runner integration**: `PresentationAuthorInput.revision` option (`boolean | RevisionOptions`); `PresentationAuthorResult.revision` field with `RevisionAttemptResult`
+- **`RevisionAttemptResult`**: tracks `attempted`, `succeeded`, `reason` (disabled / diagnostics-pass / diagnostics-not-run / revision-succeeded / revision-*-failed / revision-output-missing)
+- **Diagnostics injection**: `PresentationAuthorDeps.runDiagnostics` optional override for testing without LibreOffice
+- **Tests**: 7 revision tests (disabled preserves PA-3, skip on pass, revise on warn, validation/execution/output failure keeps initial, prompt constraints)
+
 ### Added — presentation-author: PA-3 render / diagnostics wrappers
 
 - **`python-runner.ts`**: Generic Python script execution utility (`runPythonScript()`)

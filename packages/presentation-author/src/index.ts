@@ -5,6 +5,8 @@ export * from './executor.js';
 export * from './prompts.js';
 export * from './python-runner.js';
 export * from './render.js';
+export * from './revision.js';
+export * from './revision-prompts.js';
 export * from './runner.js';
 export * from './types.js';
 export * from './validation.js';
