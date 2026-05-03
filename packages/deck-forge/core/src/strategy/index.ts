@@ -112,6 +112,20 @@ export {
   validateLlmStrategyInputResponse,
 } from "#src/strategy/strategy-input-prompt.js";
 
+// Phase 8J: LLM-first StrategyInput generator
+export type {
+  LlmStrategyInputGenerationRequest,
+  LlmStrategyInputGenerationResult,
+  LlmStrategyInputGenerateFn,
+  LlmFirstStrategyInputGeneratorOptions,
+} from "#src/strategy/llm-strategy-input-generator.js";
+export {
+  LlmFirstStrategyInputGenerator,
+  stripForbiddenKeys,
+  buildLlmStrategyInputSystemPrompt,
+  buildLlmStrategyInputUserMessage,
+} from "#src/strategy/llm-strategy-input-generator.js";
+
 export type { StrategyInputAttachedSlideSpec } from "#src/strategy/strategy-input-to-slide-spec.js";
 export { applyStrategyInputToSlideSpec } from "#src/strategy/strategy-input-to-slide-spec.js";
 

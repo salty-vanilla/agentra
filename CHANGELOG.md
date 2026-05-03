@@ -9,6 +9,39 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — deck-forge Phase 8J: LLM StrategyInput Generation, Audience Normalization & Strategy Diversity
+
+- **Audience normalization** (`convert-to-canonical-deck-plan.ts`):
+  - Expanded `BRIEF_AUDIENCE_TO_CANONICAL` map with Japanese keys (経営層, 役員, 取締役, 開発者, エンジニア, 製造現場, 運用担当, etc.) and English synonyms (CxO, Senior Management, etc.)
+  - Added `AUDIENCE_SUBSTRING_PATTERNS` for composite labels like "経営層（取締役・役員・部長級）"
+  - `inferAudience()` now tries exact match → substring pattern → fallback to "general" with warning
+- **Text signal scoring** (`intent-to-strategy.ts`):
+  - `TEXT_SIGNAL_RULES` array with 7 rules matching keyMessage/audienceTakeaway to strategy affinity (trend, root-cause, process, action-plan, decision, KPI, comparison)
+  - `computeTextSignalScore()` applied as bonus in candidate scoring loop
+- **Strategy diversity penalty** (`deterministic-strategy-selector.ts`):
+  - `rerankCandidates()` penalizes overused strategies (≥50% of previous selections → penalty 3+count)
+  - Final-slide heuristic: penalizes generic KPI strategies (+5), boosts decision strategies (−3) on decision/approval slides
+  - `select()` accepts `previousSelections`, `slideCount`, `slideIndex` context
+- **Deck context threading** (`strategy-pipeline.ts`, `select-strategy-for-intent.ts`, `strategy-selector.ts`):
+  - `previousSelections` tracking array accumulated across slides
+  - `StrategySelectionInput` extended with optional `previousSelections`, `slideCount`, `slideIndex`
+- **`LlmFirstStrategyInputGenerator`** (`llm-strategy-input-generator.ts` — new):
+  - Tries LLM generation first, validates against strategy schema, strips forbidden layout/styling keys, falls back to `DeterministicStrategyInputGenerator`
+  - `stripForbiddenKeys()` recursively removes x, y, width, height, fontSize, fill, stroke, color, shape, position
+  - `buildLlmStrategyInputSystemPrompt()` / `buildLlmStrategyInputUserMessage()` prompt builders with language/audience hints
+  - Supports `mode: "llm" | "deterministic" | "fallback"` override
+- **Bedrock implementation** (`strategy-input-bedrock.ts` — new):
+  - `createBedrockStrategyInputGenerateFn()` using `invokeBedrockToolUse` with `generate_strategy_input` tool
+- **Runtime integration** (`deck-forge-runtime/src/index.ts`):
+  - Strategy pipeline uses `LlmFirstStrategyInputGenerator` with mode from `request.strategyInputMode` (default: "llm")
+  - Strategy-input-summary logging after pipeline
+  - `resolveRuntimeQualitySummary()` combines stabilization, strategy quality, strategy input source ratios, and design review trace into unified `quality` response
+- **`strategyInputMode`** request field in `schemas.ts`: `"llm" | "deterministic" | "fallback"` (default: `"llm"`)
+- **32 new tests**:
+  - `audience-normalization.test.ts` (13): Japanese/English/substring/unknown/missing audience mapping
+  - `strategy-selection-diversity.test.ts` (7): 8I dogfooding fixture diversity, text signals, final-slide heuristic, diversity penalty
+  - `llm-strategy-input-generator.test.ts` (12): stripForbiddenKeys, LLM success/fallback/error paths, prompt builders
+
 ### Added — deck-forge Phase 8I: Runtime Strategy Pipeline Integration
 
 - **`convertParsedDeckPlanToCanonicalDeckPlan()`** — bridge from Zod `ParsedDeckPlan` (sections/SlidePlan) to canonical strategy `DeckPlan` (flat SlideIntent[])

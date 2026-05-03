@@ -107,7 +107,64 @@ const BRIEF_AUDIENCE_TO_CANONICAL: Record<string, AudienceType> = {
 	business: "manager",
 	leadership: "executive",
 	stakeholder: "executive",
+	// English synonyms
+	executives: "executive",
+	"senior management": "executive",
+	management: "executive",
+	board: "executive",
+	director: "executive",
+	cxo: "executive",
+	ceo: "executive",
+	cto: "executive",
+	cfo: "executive",
+	developer: "engineer",
+	architect: "engineer",
+	factory: "operator",
+	manufacturing: "operator",
+	operations: "operator",
+	maintenance: "operator",
+	// Japanese → executive
+	経営層: "executive",
+	役員: "executive",
+	取締役: "executive",
+	部長級: "executive",
+	本部長: "executive",
+	部長: "executive",
+	// Japanese → engineer
+	開発者: "engineer",
+	技術者: "engineer",
+	エンジニア: "engineer",
+	設計者: "engineer",
+	アーキテクト: "engineer",
+	// Japanese → operator
+	現場: "operator",
+	製造現場: "operator",
+	生産技術: "operator",
+	保全: "operator",
+	オペレーション: "operator",
+	運用担当: "operator",
 };
+
+/**
+ * Japanese audience patterns that appear inside longer strings.
+ * Ordered from most specific to least specific so the first match wins.
+ */
+const AUDIENCE_SUBSTRING_PATTERNS: Array<{
+	pattern: RegExp;
+	audience: AudienceType;
+}> = [
+	// Executive / leadership patterns
+	{ pattern: /経営層|取締役|役員|本部長|部長級|CxO|CEO|CTO|CFO/i, audience: "executive" },
+	{ pattern: /senior\s+management|board|leadership|director/i, audience: "executive" },
+	// Technical patterns
+	{ pattern: /開発者|技術者|エンジニア|設計者|アーキテクト/i, audience: "engineer" },
+	{ pattern: /developer|engineer|architect|technical/i, audience: "engineer" },
+	// Operator / manufacturing patterns
+	{ pattern: /製造現場|生産技術|保全|現場|オペレーション|運用担当/i, audience: "operator" },
+	{ pattern: /factory|manufacturing|operations|maintenance/i, audience: "operator" },
+	// Manager patterns
+	{ pattern: /manager|management/i, audience: "manager" },
+];
 
 // ---------------------------------------------------------------------------
 // Genre mapping
@@ -268,13 +325,21 @@ function inferAudience(
 	warnings: string[],
 ): AudienceType {
 	const primary = brief.audience?.primary;
-	if (primary) {
-		const mapped = BRIEF_AUDIENCE_TO_CANONICAL[primary.toLowerCase()];
-		if (mapped) return mapped;
-		warnings.push(
-			`Unknown audience "${primary}", defaulting to "general"`,
-		);
+	if (!primary) return "general";
+
+	// 1. Exact match (case-insensitive)
+	const mapped = BRIEF_AUDIENCE_TO_CANONICAL[primary.toLowerCase()];
+	if (mapped) return mapped;
+
+	// 2. Substring pattern match for composite labels like
+	//    "経営層（取締役・役員・部長級）"
+	for (const { pattern, audience } of AUDIENCE_SUBSTRING_PATTERNS) {
+		if (pattern.test(primary)) return audience;
 	}
+
+	warnings.push(
+		`Unknown audience "${primary}", defaulting to "general"`,
+	);
 	return "general";
 }
 

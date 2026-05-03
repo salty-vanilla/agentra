@@ -267,6 +267,7 @@ export async function runStrategyPipeline(
 
 	const slideResults: StrategyPipelineSlideResult[] = [];
 	const allWarnings: string[] = [];
+	const previousSelections: string[] = [];
 
 	for (let i = 0; i < deckPlan.slides.length; i++) {
 		const rawIntent = deckPlan.slides[i]!;
@@ -278,15 +279,21 @@ export async function runStrategyPipeline(
 		// 1. Resolve intent with deck defaults
 		const resolved = resolveSlideIntent(rawIntent, deckDefaults);
 
-		// 2. Select strategy
+		// 2. Select strategy (with deck-level diversity context)
 		const selection = await selectStrategyForIntent(
 			resolved,
 			registry,
 			selector,
+			{
+				previousSelections,
+				slideCount: deckPlan.slides.length,
+				slideIndex: i,
+			},
 		);
 		for (const w of selection.warnings) {
 			slideWarnings.push(`${slideLabel} selection: ${w}`);
 		}
+		previousSelections.push(selection.strategyId);
 
 		// 3. Resolve source content (id wins over index)
 		let sourceContent: unknown;

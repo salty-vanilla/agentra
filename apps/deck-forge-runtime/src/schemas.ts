@@ -43,6 +43,13 @@ const baseSchema = z.object({
    * Logs quality report and includes it in the response trace.
    */
   qualityDiagnostics: z.boolean().default(true),
+  /**
+   * StrategyInput generation mode.
+   * - "llm": use LLM-backed generator with deterministic fallback (default).
+   * - "deterministic": use deterministic generator only.
+   * - "fallback": use minimal fallback generator only.
+   */
+  strategyInputMode: z.enum(['llm', 'deterministic', 'fallback']).default('llm'),
   presentation: z.unknown().optional(),
   operations: z.array(z.unknown()).optional(),
   traceId: z.string().trim().min(1).optional(),

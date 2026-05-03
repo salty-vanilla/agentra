@@ -980,3 +980,17 @@ export {
 // Phase 8I: ParsedDeckPlan → canonical DeckPlan converter
 export type { ConvertToDeckPlanResult } from "#src/pipeline/convert-to-canonical-deck-plan.js";
 export { convertParsedDeckPlanToCanonicalDeckPlan } from "#src/pipeline/convert-to-canonical-deck-plan.js";
+
+// Phase 8J: LLM StrategyInput generation, audience normalization, quality aggregation
+export type {
+  LlmStrategyInputGenerationRequest,
+  LlmStrategyInputGenerationResult,
+  LlmStrategyInputGenerateFn,
+  LlmFirstStrategyInputGeneratorOptions,
+} from "#src/strategy/index.js";
+export {
+  LlmFirstStrategyInputGenerator,
+  stripForbiddenKeys,
+  buildLlmStrategyInputSystemPrompt,
+  buildLlmStrategyInputUserMessage,
+} from "#src/strategy/index.js";

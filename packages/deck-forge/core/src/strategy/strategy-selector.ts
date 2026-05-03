@@ -9,6 +9,12 @@ import type { StrategyCandidateResult } from "#src/strategy/intent-to-strategy.j
 export interface StrategySelectionInput {
   intent: ResolvedSlideIntent;
   candidateResult: StrategyCandidateResult;
+  /** Previous strategy selections in this deck (for diversity tracking). */
+  previousSelections?: string[];
+  /** Total number of slides in the deck. */
+  slideCount?: number;
+  /** Index of this slide within the deck (0-based). */
+  slideIndex?: number;
 }
 
 export interface StrategySelection {

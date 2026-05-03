@@ -21,10 +21,21 @@ export async function selectStrategyForIntent(
   intent: ResolvedSlideIntent,
   registry: StrategyRegistry,
   selector?: StrategySelector,
+  deckContext?: {
+    previousSelections?: string[];
+    slideCount?: number;
+    slideIndex?: number;
+  },
 ): Promise<StrategySelection> {
   const candidateResult = findStrategyCandidatesForIntent(intent, registry);
   const effectiveSelector = selector ?? new DeterministicStrategySelector();
-  const selection = await effectiveSelector.select({ intent, candidateResult });
+  const selection = await effectiveSelector.select({
+    intent,
+    candidateResult,
+    previousSelections: deckContext?.previousSelections,
+    slideCount: deckContext?.slideCount,
+    slideIndex: deckContext?.slideIndex,
+  });
 
   // Validate fallback strategy exists in registry
   if (selection.selectedBy === "fallback") {

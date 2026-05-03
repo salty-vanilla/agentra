@@ -5,9 +5,12 @@ import {
   analyzeDeckStabilization,
   analyzeDeckStrategyQuality,
   convertParsedDeckPlanToCanonicalDeckPlan,
+  createBuiltinStrategyRegistry,
   type DeckStabilizationDiagnostics,
   type DeckStrategyQualityReport,
   formatDeckStrategyQualityReport,
+  LlmFirstStrategyInputGenerator,
+  type LlmFirstStrategyInputGeneratorOptions,
   repairSameFrameOverlaps,
   runDesignReviewLoop,
   runStrategyPipeline,
@@ -30,6 +33,7 @@ import { renderPptxToPngs } from './pptx-renderer.js';
 import { createBedrockReviewer } from './reviewer-bedrock.js';
 import { bootstrapDeckForgeRuntimeEnv } from './runtime-env.js';
 import { DeckForgeRequestSchema } from './schemas.js';
+import { createBedrockStrategyInputGenerateFn } from './strategy-input-bedrock.js';
 
 type DeckForgeRunInputWithImageProvider = DeckForgeRunInput & {
   imageProvider?: 'pexels' | 'unsplash' | 'pixabay';
@@ -95,8 +99,30 @@ async function main() {
               brief: createArtifacts.brief,
             });
 
+          // ─── Phase 8J: LLM StrategyInput Generation ───
+          // Use LLM-backed StrategyInput generator for production-quality
+          // semantic content, with deterministic fallback on failure.
+          const strategyInputMode =
+            (request.strategyInputMode as
+              | 'llm'
+              | 'deterministic'
+              | 'fallback'
+              | undefined) ?? 'llm';
+          const registry = createBuiltinStrategyRegistry();
+          const llmGeneratorOpts: LlmFirstStrategyInputGeneratorOptions = {
+            llmGenerateFn: createBedrockStrategyInputGenerateFn(),
+            registry,
+            mode: strategyInputMode,
+            slideCount: canonicalDeckPlan.slides.length,
+          };
+          const briefLanguage = createArtifacts.brief?.output?.language;
+          if (briefLanguage) llmGeneratorOpts.language = briefLanguage;
+          const llmGenerator = new LlmFirstStrategyInputGenerator(llmGeneratorOpts);
+
           const strategyPipelineResult = await runStrategyPipeline({
             deckPlan: canonicalDeckPlan,
+            registry,
+            strategyInputGenerator: llmGenerator,
           });
 
           // Replace LLM-generated slideSpecs with strategy-pipeline-enhanced
@@ -117,7 +143,27 @@ async function main() {
               })),
             });
           }
-          // ─── End Phase 8I ───
+
+          // ─── Strategy input source summary ───
+          {
+            const sources = strategyPipelineResult.slideResults.map(
+              (r) => r.strategyInputResult.source,
+            );
+            const llmCount = sources.filter((s) => s === 'llm').length;
+            const deterministicCount = sources.filter(
+              (s) => s === 'deterministic',
+            ).length;
+            const fallbackCount = sources.filter((s) => s === 'fallback').length;
+            logDeckForgeEvent('strategy-input-summary', {
+              runId,
+              llmCount,
+              deterministicCount,
+              fallbackCount,
+              invalidCount: 0,
+              strategyInputMode,
+            });
+          }
+          // ─── End Phase 8J ───
 
           const useAiReview = request.revisionPolicy === 'ai_review';
 
@@ -566,15 +612,48 @@ async function main() {
               : {}),
           });
 
-          const qualityStatus = resolveQualityStatus(stabilizationDiagnostics);
+          // ─── Phase 8J: Combined quality summary ───
+          const strategyInputSources = strategyPipelineResult.slideResults.map(
+            (r) => r.strategyInputResult.source,
+          );
+          const strategyInputSourceRatios = {
+            llmRatio:
+              strategyInputSources.filter((s) => s === 'llm').length /
+              (strategyInputSources.length || 1),
+            deterministicRatio:
+              strategyInputSources.filter((s) => s === 'deterministic').length /
+              (strategyInputSources.length || 1),
+            fallbackRatio:
+              strategyInputSources.filter((s) => s === 'fallback').length /
+              (strategyInputSources.length || 1),
+          };
+
+          const qualitySummaryInput: Parameters<typeof resolveRuntimeQualitySummary>[0] =
+            {
+              strategyInputSourceRatios,
+              slideCount: finalPresentation?.slides.length ?? 0,
+            };
+          if (stabilizationDiagnostics)
+            qualitySummaryInput.stabilization = stabilizationDiagnostics;
+          if (strategyQualityReport)
+            qualitySummaryInput.strategyQuality = strategyQualityReport;
+          if (designReviewTrace) {
+            qualitySummaryInput.designReviewTrace = designReviewTrace as {
+              stoppedReason?: string;
+              iterations?: Array<{ operations: unknown[] }>;
+            };
+          }
+          const qualitySummary = resolveRuntimeQualitySummary(qualitySummaryInput);
 
           logDeckForgeEvent('success', {
             runId,
             traceId: request.traceId,
             finalStatus: finalResult.finalStatus,
-            qualityStatus,
+            qualityStatus: qualitySummary.status,
+            qualityScore: qualitySummary.score,
             stabilizationStatus: stabilizationDiagnostics?.status,
             stabilizationScore: stabilizationDiagnostics?.score,
+            strategyInputSourceRatios,
             artifactExists: artifact?.exists,
             s3Uri: artifact?.s3Uri,
             bundleS3Uri: artifact?.bundleS3Uri,
@@ -594,18 +673,7 @@ async function main() {
               runId,
               result: finalResult,
               artifact,
-              ...(strategyQualityReport
-                ? {
-                    strategyQuality: {
-                      status: strategyQualityReport.summary.status,
-                      score: strategyQualityReport.summary.score,
-                      nativeRatio: strategyQualityReport.summary.nativeRatio,
-                      fallbackRatio: strategyQualityReport.summary.fallbackRatio,
-                      invalidRatio: strategyQualityReport.summary.invalidRatio,
-                      slideCount: strategyQualityReport.summary.slideCount,
-                    },
-                  }
-                : {}),
+              quality: qualitySummary,
             },
           };
         } catch (error: unknown) {
@@ -639,20 +707,109 @@ async function main() {
   await app.run();
 }
 
-function resolveQualityStatus(
-  diag: DeckStabilizationDiagnostics | undefined,
-): 'pass' | 'warning' | 'fail' {
-  if (!diag) return 'pass';
-  if (diag.layout.deployReadiness.status === 'fail' || diag.status === 'unstable') {
-    return 'fail';
+interface RuntimeQualitySummary {
+  status: 'pass' | 'warn' | 'fail';
+  score?: number;
+  strategyQuality?: {
+    status: 'pass' | 'warn' | 'fail';
+    score: number;
+    nativeRatio: number;
+    fallbackRatio: number;
+    invalidRatio: number;
+  };
+  strategyInputSource?: {
+    llmRatio: number;
+    deterministicRatio: number;
+    fallbackRatio: number;
+  };
+  stabilization?: {
+    status?: 'stable' | 'unstable' | 'needs_attention' | 'unknown';
+    totalOperations?: number;
+    layoutRepairRatio?: number;
+    stoppedReason?: string;
+  };
+}
+
+function resolveRuntimeQualitySummary(input: {
+  stabilization?: DeckStabilizationDiagnostics;
+  strategyQuality?: DeckStrategyQualityReport;
+  strategyInputSourceRatios: {
+    llmRatio: number;
+    deterministicRatio: number;
+    fallbackRatio: number;
+  };
+  designReviewTrace?: {
+    stoppedReason?: string;
+    iterations?: Array<{ operations: unknown[] }>;
+  };
+  slideCount: number;
+}): RuntimeQualitySummary {
+  const {
+    stabilization,
+    strategyQuality,
+    strategyInputSourceRatios,
+    designReviewTrace,
+    slideCount,
+  } = input;
+  const reasons: Array<'pass' | 'warn' | 'fail'> = [];
+
+  // Stabilization checks
+  if (stabilization) {
+    if (stabilization.layout.deployReadiness.status === 'fail') reasons.push('fail');
+    if (stabilization.status === 'unstable') reasons.push('warn');
+    if (stabilization.status === 'needs_attention') reasons.push('warn');
+    if (stabilization.operations.layoutRepairRatio > 0.25) reasons.push('warn');
+    const totalOps = stabilization.operations.totalOperations;
+    // Proportional threshold: ~13 ops per slide
+    if (slideCount > 0 && totalOps > slideCount * 13) reasons.push('warn');
   }
-  if (
-    diag.layout.deployReadiness.status === 'warning' ||
-    diag.status === 'needs_attention'
-  ) {
-    return 'warning';
+
+  // Design review loop checks
+  if (designReviewTrace) {
+    if (designReviewTrace.stoppedReason === 'max-iterations') reasons.push('warn');
   }
-  return 'pass';
+
+  // Strategy quality checks
+  if (strategyQuality) {
+    if (strategyQuality.summary.status === 'fail') reasons.push('fail');
+    if (strategyQuality.summary.status === 'warn') reasons.push('warn');
+  }
+
+  // StrategyInput source checks
+  if (strategyInputSourceRatios.fallbackRatio > 0.3) reasons.push('warn');
+
+  // Aggregate
+  let status: 'pass' | 'warn' | 'fail' = 'pass';
+  if (reasons.includes('fail')) status = 'fail';
+  else if (reasons.includes('warn')) status = 'warn';
+
+  return {
+    status,
+    ...(strategyQuality
+      ? {
+          strategyQuality: {
+            status: strategyQuality.summary.status,
+            score: strategyQuality.summary.score,
+            nativeRatio: strategyQuality.summary.nativeRatio,
+            fallbackRatio: strategyQuality.summary.fallbackRatio,
+            invalidRatio: strategyQuality.summary.invalidRatio,
+          },
+        }
+      : {}),
+    strategyInputSource: strategyInputSourceRatios,
+    ...(stabilization
+      ? {
+          stabilization: {
+            status: stabilization.status as 'stable' | 'unstable' | 'needs_attention',
+            totalOperations: stabilization.operations.totalOperations,
+            layoutRepairRatio: stabilization.operations.layoutRepairRatio,
+            ...(designReviewTrace?.stoppedReason
+              ? { stoppedReason: designReviewTrace.stoppedReason }
+              : {}),
+          },
+        }
+      : {}),
+  };
 }
 
 void main().catch((error: unknown) => {
