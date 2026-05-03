@@ -9,6 +9,14 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — deck-forge/core Phase 8G-fix: Tighten quality gate severity
+
+- **empty-slide** penalty increased from -25 to -40; any empty slide now forces deck status `fail`
+- **minSlideScore** threshold is now used: `slideScore < minSlideScore` → deck status `warn`
+- **schema-warning** severity escalated to `warning` when text contains "fallback", "invalid", or "placeholder"; otherwise remains `info`
+- **CJK text overflow**: already handled via `estimateTextBoxHeight()` + `inferTextLanguage()` — no change needed
+- **9 new tests**: empty-slide deck fail, minSlideScore warn/fail boundary, schema-warning escalation (fallback/invalid/normal)
+
 ### Added — deck-forge/core Phase 8G: Diagnostics, Quality Gates, and Preview Validation
 
 - **`analyzeSlideStrategyQuality()`** — deterministic slide-level diagnostics:

@@ -112,6 +112,13 @@ const DEFAULT_THRESHOLDS: StrategyQualityThresholds = {
 
 const DEFAULT_SLIDE_SIZE = { width: 1280, height: 720 };
 
+const SCHEMA_WARNING_ESCALATION_PATTERN = /fallback|invalid|placeholder/i;
+
+/** Promote schema-warning to "warning" if text mentions fallback/invalid/placeholder. */
+function schemaWarningSeverity(text: string): StrategyQualitySeverity {
+	return SCHEMA_WARNING_ESCALATION_PATTERN.test(text) ? "warning" : "info";
+}
+
 // ---------------------------------------------------------------------------
 // Slide-level diagnostics
 // ---------------------------------------------------------------------------
@@ -190,9 +197,10 @@ export function analyzeSlideStrategyQuality(input: {
 
 		if (trace.strategyInputWarnings && trace.strategyInputWarnings.length > 0) {
 			for (const w of trace.strategyInputWarnings) {
+				const severity = schemaWarningSeverity(w);
 				issues.push({
 					code: "schema-warning",
-					severity: "info",
+					severity,
 					message: w,
 					slideId: slide.id,
 					slideIndex,
@@ -379,7 +387,8 @@ function computeSlideScore(
 	let score = 100;
 
 	for (const issue of issues) {
-		if (issue.severity === "error") score -= 25;
+		if (issue.code === "empty-slide") score -= 40;
+		else if (issue.severity === "error") score -= 25;
 		else if (issue.severity === "warning") score -= 10;
 		else score -= 2;
 	}
@@ -497,12 +506,17 @@ function computeQualityGateStatus(input: {
 	const { deckScore, slideReports, errorCount, invalidRatio, fallbackRatio, nativeRatio, thresholds } = input;
 
 	// Fail conditions
+	const hasEmptySlide = slideReports.some((r) =>
+		r.issues.some((i) => i.code === "empty-slide"),
+	);
+	if (hasEmptySlide) return "fail";
 	if (errorCount > 0) return "fail";
 	if (invalidRatio > thresholds.maxInvalidRatio) return "fail";
 	if (deckScore < thresholds.minDeckScore - 15) return "fail";
 	if (slideReports.some((r) => r.score < 40)) return "fail";
 
 	// Warn conditions
+	if (slideReports.some((r) => r.score < thresholds.minSlideScore)) return "warn";
 	if (fallbackRatio > thresholds.maxFallbackRatio) return "warn";
 	if (nativeRatio < thresholds.minNativeRatio) return "warn";
 	if (deckScore < thresholds.minDeckScore) return "warn";
