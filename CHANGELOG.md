@@ -9,6 +9,16 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — deck-forge/core Phase 8H-fix: Type-safe intent/contentKind mapping
+
+- **SchemaSlideIntentType** now derived from `z.infer<typeof SlideIntentSchema>["type"]` — compile error if Zod schema changes
+- **LayoutType** now uses `LayoutIntent` (Zod-inferred) instead of hand-written union — compile error if schema changes
+- Removed `LayoutTypeSchema` unused import
+- No stale intent literals found (mapping was already type-safe via `Record<CommunicationIntent, ...>`)
+- No stale ContentKind literals found (mapping was already `Partial<Record<ContentKind, ...>>`)
+- **27 new tests**: exhaustive CommunicationIntent (10) and ContentKind (17) mapping coverage
+- Total pipeline tests: 46
+
 ### Added — deck-forge/core Phase 8H: Runtime Pipeline Integration
 
 - **`runStrategyPipeline()`** — canonical orchestration:

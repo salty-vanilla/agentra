@@ -14,6 +14,8 @@ import type {
 	StrategySlideSpecFactoryInput,
 } from "#src/pipeline/strategy-pipeline.js";
 import type { DeckPlan } from "#src/strategy/deck-plan.js";
+import type { CommunicationIntent, ContentKind } from "#src/strategy/types.js";
+import { SlideIntentSchema } from "#src/schemas/intent-artifacts.js";
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -415,4 +417,118 @@ describe("no legacy primary path", () => {
 			expect(slide.elements).toBeDefined();
 		}
 	});
+});
+
+// ---------------------------------------------------------------------------
+// 10.7 — CommunicationIntent mapping coverage
+// ---------------------------------------------------------------------------
+
+const ALL_COMMUNICATION_INTENTS: CommunicationIntent[] = [
+	"summarize",
+	"compare",
+	"explain",
+	"persuade",
+	"decide",
+	"report",
+	"teach",
+	"diagnose",
+	"plan",
+	"review",
+];
+
+const VALID_SLIDE_INTENT_TYPES = SlideIntentSchema.shape.type.options;
+
+describe("CommunicationIntent → SlideIntentSchema.type mapping", () => {
+	for (const intent of ALL_COMMUNICATION_INTENTS) {
+		it(`${intent} → valid SlideIntentSchema.type`, () => {
+			const spec = createSlideSpecFromStrategyPipeline({
+				slideIntent: {
+					keyMessage: "Test",
+					intent,
+					contentKinds: [],
+					audience: "general",
+					genre: "business-review",
+					density: "medium",
+				},
+				selection: {
+					strategyId: "three-point-summary",
+					confidence: "medium",
+					rationale: "test",
+					selectedBy: "deterministicSelector",
+					candidateIds: [],
+					warnings: [],
+				},
+				strategyInputResult: {
+					strategyId: "three-point-summary",
+					input: { message: "Test" },
+					source: "deterministic",
+					warnings: [],
+				},
+				slideIndex: 0,
+			});
+
+			expect(VALID_SLIDE_INTENT_TYPES).toContain(spec.intent.type);
+		});
+	}
+});
+
+// ---------------------------------------------------------------------------
+// 10.8 — ContentKind → LayoutType mapping coverage
+// ---------------------------------------------------------------------------
+
+const ALL_CONTENT_KINDS: ContentKind[] = [
+	"title",
+	"section",
+	"summary",
+	"kpi",
+	"comparison",
+	"timeline",
+	"process",
+	"architecture",
+	"flow",
+	"table",
+	"chart",
+	"research-result",
+	"action-plan",
+	"risk",
+	"decision",
+	"root-cause",
+	"training-step",
+];
+
+describe("ContentKind → layout/intent mapping", () => {
+	for (const kind of ALL_CONTENT_KINDS) {
+		it(`${kind} → valid SlideIntentSchema.type and LayoutType`, () => {
+			const spec = createSlideSpecFromStrategyPipeline({
+				slideIntent: {
+					keyMessage: "Test",
+					intent: "summarize",
+					contentKinds: [kind],
+					audience: "general",
+					genre: "business-review",
+					density: "medium",
+				},
+				selection: {
+					strategyId: "three-point-summary",
+					confidence: "medium",
+					rationale: "test",
+					selectedBy: "deterministicSelector",
+					candidateIds: [],
+					warnings: [],
+				},
+				strategyInputResult: {
+					strategyId: "three-point-summary",
+					input: { message: "Test" },
+					source: "deterministic",
+					warnings: [],
+				},
+				slideIndex: 0,
+			});
+
+			expect(VALID_SLIDE_INTENT_TYPES).toContain(spec.intent.type);
+			// layout.type is validated by SlideSpec Zod schema at build time
+			expect(spec.layout.type).toBeDefined();
+			expect(typeof spec.layout.type).toBe("string");
+		});
+	}
 });

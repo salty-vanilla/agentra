@@ -28,7 +28,10 @@ import { DeterministicStrategySelector } from "#src/strategy/deterministic-strat
 import type {
 	PresentationBrief,
 	SlideSpec,
+	LayoutIntent,
 } from "#src/schemas/intent-artifacts.js";
+import { SlideIntentSchema } from "#src/schemas/intent-artifacts.js";
+import type { z } from "zod";
 import type { PresentationIR } from "#src/index.js";
 import type { TemplateProfile } from "#src/templates/template-profile.js";
 import type { ThemeSpec } from "#src/index.js";
@@ -128,20 +131,8 @@ export class StrategyQualityGateError extends Error {
 // CommunicationIntent → SlideIntentSchema.type mapping
 // ---------------------------------------------------------------------------
 
-type SchemaSlideIntentType =
-	| "title"
-	| "agenda"
-	| "summary"
-	| "problem"
-	| "comparison"
-	| "timeline"
-	| "process"
-	| "architecture"
-	| "data_insight"
-	| "case_study"
-	| "proposal"
-	| "decision"
-	| "closing";
+/** Derived from Zod SlideIntentSchema.type — compile error if schema changes. */
+type SchemaSlideIntentType = z.infer<typeof SlideIntentSchema>["type"];
 
 const CONTENT_KIND_TO_INTENT_TYPE: Partial<
 	Record<ContentKind, SchemaSlideIntentType>
@@ -189,23 +180,7 @@ function inferSlideIntentType(
 // Layout type inference from strategy / content
 // ---------------------------------------------------------------------------
 
-type LayoutType =
-	| "title"
-	| "section"
-	| "single_column"
-	| "two_column"
-	| "three_column"
-	| "hero"
-	| "image_left_text_right"
-	| "text_left_image_right"
-	| "comparison"
-	| "dashboard"
-	| "timeline"
-	| "matrix"
-	| "diagram_focus"
-	| "custom";
-
-const CONTENT_KIND_TO_LAYOUT: Partial<Record<ContentKind, LayoutType>> = {
+const CONTENT_KIND_TO_LAYOUT: Partial<Record<ContentKind, LayoutIntent>> = {
 	title: "title",
 	section: "section",
 	comparison: "comparison",
@@ -217,7 +192,7 @@ const CONTENT_KIND_TO_LAYOUT: Partial<Record<ContentKind, LayoutType>> = {
 	table: "single_column",
 };
 
-function inferLayoutType(contentKinds: ContentKind[]): LayoutType {
+function inferLayoutType(contentKinds: ContentKind[]): LayoutIntent {
 	for (const kind of contentKinds) {
 		const mapped = CONTENT_KIND_TO_LAYOUT[kind];
 		if (mapped) return mapped;
