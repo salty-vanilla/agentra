@@ -134,10 +134,10 @@ describe('font policy', () => {
 });
 
 describe('slide agent system prompt', () => {
-  it('includes font policy references', () => {
-    expect(SLIDE_AGENT_SYSTEM_PROMPT).toContain('BIZ UDPGothic');
-    expect(SLIDE_AGENT_SYSTEM_PROMPT).toContain('BIZ UDGothic');
-    expect(SLIDE_AGENT_SYSTEM_PROMPT).toContain('Arial');
+  it('does not embed font policy inline (loaded via AgentSkills plugin)', () => {
+    // Font policy is now loaded on-demand via the skills tool,
+    // not baked into the system prompt
+    expect(SLIDE_AGENT_SYSTEM_PROMPT).not.toContain('BIZ UDPGothic');
   });
 
   it('instructs to use create_presentation tool', () => {

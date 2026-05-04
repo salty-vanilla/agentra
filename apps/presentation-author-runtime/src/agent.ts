@@ -1,12 +1,19 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Agent, BedrockModel } from '@strands-agents/sdk';
+import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
-import { getPresentationAuthorSlideAgentInstructions } from './skills/presentation-author-skill.js';
 import { createPresentationTool } from './tools/create-presentation.js';
 
-const SLIDE_AGENT_SYSTEM_PROMPT = `You are a presentation generation agent.
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SKILLS_DIR = join(__dirname, '../../../skills');
 
-${getPresentationAuthorSlideAgentInstructions()}
+const presentationAuthorPlugin = new AgentSkills({
+  skills: [join(SKILLS_DIR, 'presentation-author')],
+});
+
+const SLIDE_AGENT_SYSTEM_PROMPT = `You are a presentation generation agent.
 
 Use create_presentation when the user asks to create, generate, edit, or revise a PowerPoint deck or slide presentation.
 Prefer Japanese output when the user asks in Japanese.
@@ -28,6 +35,7 @@ export function createSlideAgent(): Agent {
   return new Agent({
     model,
     systemPrompt: SLIDE_AGENT_SYSTEM_PROMPT,
+    plugins: [presentationAuthorPlugin],
     tools: [createPresentationTool],
   });
 }

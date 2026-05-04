@@ -11,18 +11,14 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ### Added — PA-9: Presentation Author Skill Packaging & Router Handoff
 
-- **`skills/presentation-author/`**: New skill package with SKILL.md index, README, references, and examples
-- **Router handoff** (`references/router-handoff.md`): Compact delegation rules — trigger patterns (JP/EN), tool to call, result presentation format
-- **Slide Agent guidance** (`references/slide-agent-guidance.md`): Full authoring instructions — workflow, deck quality rules, editable output requirements
-- **Font policy** (`references/font-policy.md`): 5 presets (standard, readable, product-lp, research-elegant, table-numeric) with BIZ UD / Noto fallback rules
-- **Artifact response** (`references/artifact-response.md`): User-facing result format with PPTX URL, contact sheet, diagnostics/revision status
-- **Tool contract** (`references/tool-contract.md`): Input/output schemas for `create_slide_presentation` (Router) and `create_presentation` (Slide Agent)
-- **Diagnostics/revision policy** (`references/diagnostics-revision.md`): One revision attempt, no multi-pass, no scoring engine
-- **Example** (`examples/manufacturing-line-q2-report.md`): E2E scenario for manufacturing Q2 report
-- **Skill loaders**: `getPresentationAuthorRouterInstructions()` and `getPresentationAuthorSlideAgentInstructions()` in both runtimes
-- **Router Agent**: Replaced inline `SLIDE_TOOL_INSTRUCTIONS` array with `getPresentationAuthorRouterInstructions()` from skill files
-- **Slide Agent**: Replaced inline font policy/guidance with `getPresentationAuthorSlideAgentInstructions()` injected into system prompt
-- **Tests** (20 new): Skill file existence (9), font preset content, diagnostics policy, router handoff content (4), skill loader Router/SlideAgent (2), prompt integration (2)
+- **`skills/presentation-author/`**: Slide Agent skill with YAML frontmatter SKILL.md (name, description, allowed-tools), README, references, and examples
+- **`skills/presentation-author-handoff/`**: Compact Router handoff skill — delegation triggers (JP/EN), tool to call, result presentation rules
+- **Strands `AgentSkills` plugin**: Both agents use `AgentSkills` from `@strands-agents/sdk/vended-plugins/skills` for on-demand skill loading instead of system prompt injection
+- **Router Agent**: `AgentSkills` plugin with `presentation-author-handoff` skill — metadata only in system prompt, full instructions loaded via `skills` tool call
+- **Slide Agent**: `AgentSkills` plugin with `presentation-author` skill — font policy, deck quality, artifact response, diagnostics/revision loaded on-demand
+- **Removed**: Custom `getPresentationAuthorRouterInstructions()` / `getPresentationAuthorSlideAgentInstructions()` loaders replaced by native SDK plugin
+- **References** preserved: router-handoff.md, slide-agent-guidance.md, font-policy.md, artifact-response.md, tool-contract.md, diagnostics-revision.md
+- **Tests** (21 + 7): SKILL.md frontmatter validation, skill file existence (10), content separation assertions, AgentSkills integration checks
 
 ### Fixed — PA-8.5: Deploy & Chat E2E Smoke — runtime fixes for full chat→router→slide handoff
 

@@ -1,25 +1,15 @@
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 describe('Slide Agent prompt integration', () => {
-  it('agent.ts uses skill loader for system prompt', async () => {
+  it('agent.ts uses AgentSkills plugin', async () => {
     const { readFile } = await import('node:fs/promises');
-    const { join } = await import('node:path');
     const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
-    expect(agentSource).toContain('getPresentationAuthorSlideAgentInstructions');
-    // Should NOT have inline font policy
+    expect(agentSource).toContain('AgentSkills');
+    expect(agentSource).toContain('presentation-author');
+    expect(agentSource).toContain('plugins:');
+    // Should NOT have inline font policy or skill loader
     expect(agentSource).not.toContain('prefer the standard font policy: BIZ UDPGothic');
-  });
-});
-
-describe('Slide Agent skill loader', () => {
-  it('returns full slide agent guidance with font policy', async () => {
-    const { getPresentationAuthorSlideAgentInstructions } = await import(
-      '../skills/presentation-author-skill.js'
-    );
-    const instructions = getPresentationAuthorSlideAgentInstructions();
-    expect(instructions).toContain('BIZ UDPGothic');
-    expect(instructions).toContain('16:9 widescreen');
-    expect(instructions).toContain('Artifact Response');
-    expect(instructions).toContain('one revision attempt');
+    expect(agentSource).not.toContain('getPresentationAuthorSlideAgentInstructions');
   });
 });

@@ -70,13 +70,13 @@ describe('create_slide_presentation tool', () => {
 });
 
 describe('Router Agent prompt', () => {
-  it('system prompt uses skill-based slide instructions', async () => {
+  it('uses AgentSkills plugin for presentation handoff', async () => {
     const { readFile } = await import('node:fs/promises');
     const { join } = await import('node:path');
     const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
 
-    expect(agentSource).toContain('getPresentationAuthorRouterInstructions');
-    expect(agentSource).toContain('SLIDE_TOOL_INSTRUCTIONS');
+    expect(agentSource).toContain('AgentSkills');
+    expect(agentSource).toContain('presentation-author-handoff');
     expect(agentSource).toContain('createSlidePresentationTool');
   });
 });

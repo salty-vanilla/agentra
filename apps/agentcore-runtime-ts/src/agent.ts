@@ -1,10 +1,12 @@
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { Agent, BedrockModel } from '@strands-agents/sdk';
+import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import { buildLoggerOptions } from './logging.js';
 import { ObservationCollector } from './observability.js';
-import { getPresentationAuthorRouterInstructions } from './skills/presentation-author-skill.js';
 import { createSlidePresentationTool } from './tools/create-slide-presentation.js';
 import { dateResolverTool } from './tools/date-resolver.js';
 
@@ -83,7 +85,12 @@ const DATE_TOOL_INSTRUCTIONS = [
   '回答時は、可能な限り YYYY-MM-DD などの具体的な絶対日付を明示してください。',
 ].join('\n');
 
-const SLIDE_TOOL_INSTRUCTIONS = getPresentationAuthorRouterInstructions();
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const SKILLS_DIR = join(__dirname, '../../../skills');
+
+const presentationAuthorHandoffPlugin = new AgentSkills({
+  skills: [join(SKILLS_DIR, 'presentation-author-handoff')],
+});
 
 const RequestSchema = z.object({
   prompt: z.string().trim().min(1).default('Hello! How can I help you today?'),
@@ -127,8 +134,6 @@ function buildPrompt(userPrompt: string, tone: ToneKey): string {
     '',
     DATE_TOOL_INSTRUCTIONS,
     '',
-    SLIDE_TOOL_INSTRUCTIONS,
-    '',
     '以下がユーザーの依頼です。',
     userPrompt,
   ].join('\n');
@@ -149,6 +154,7 @@ function createAgent(config: {
 
   return new Agent({
     model,
+    plugins: [presentationAuthorHandoffPlugin],
     tools: [
       dateResolverTool,
       weatherTool,
