@@ -4,6 +4,7 @@ import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import { buildLoggerOptions } from './logging.js';
 import { ObservationCollector } from './observability.js';
+import { getPresentationAuthorRouterInstructions } from './skills/presentation-author-skill.js';
 import { createSlidePresentationTool } from './tools/create-slide-presentation.js';
 import { dateResolverTool } from './tools/date-resolver.js';
 
@@ -82,32 +83,7 @@ const DATE_TOOL_INSTRUCTIONS = [
   '回答時は、可能な限り YYYY-MM-DD などの具体的な絶対日付を明示してください。',
 ].join('\n');
 
-const SLIDE_TOOL_INSTRUCTIONS = [
-  '# スライド生成',
-  'ユーザーが PowerPoint / スライド / プレゼン資料 / PPTX / 報告資料 / 提案資料 / 研修資料を作成・生成・ドラフトするよう依頼した場合は、',
-  'create_slide_presentation ツールを使ってください。',
-  '',
-  '例:',
-  '- 「スライドを作って」',
-  '- 「PowerPointにして」',
-  '- 「PPTXを作成して」',
-  '- 「報告資料を作って」',
-  '- 「提案資料を作って」',
-  '- 「製造ラインのQ2報告資料を作って」',
-  '- "Create a presentation about..."',
-  '- "Make a report deck for..."',
-  '',
-  'スライド生成は自分でPPTX XMLを書かないでください。必ず create_slide_presentation に委任してください。',
-  '',
-  'ツールが成功した場合、以下を簡潔にまとめてユーザーに返答してください:',
-  '- 生成された資料の概要',
-  '- PPTXダウンロードURL (pptxDownloadUrl)',
-  '- コンタクトシートURL (contactSheetDownloadUrl) があれば',
-  '- Diagnostics状態',
-  '- Revision状態',
-  '',
-  'ツールが失敗した場合、失敗フェーズとメッセージを伝えてください。',
-].join('\n');
+const SLIDE_TOOL_INSTRUCTIONS = getPresentationAuthorRouterInstructions();
 
 const RequestSchema = z.object({
   prompt: z.string().trim().min(1).default('Hello! How can I help you today?'),

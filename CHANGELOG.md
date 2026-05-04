@@ -9,6 +9,21 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — PA-9: Presentation Author Skill Packaging & Router Handoff
+
+- **`skills/presentation-author/`**: New skill package with SKILL.md index, README, references, and examples
+- **Router handoff** (`references/router-handoff.md`): Compact delegation rules — trigger patterns (JP/EN), tool to call, result presentation format
+- **Slide Agent guidance** (`references/slide-agent-guidance.md`): Full authoring instructions — workflow, deck quality rules, editable output requirements
+- **Font policy** (`references/font-policy.md`): 5 presets (standard, readable, product-lp, research-elegant, table-numeric) with BIZ UD / Noto fallback rules
+- **Artifact response** (`references/artifact-response.md`): User-facing result format with PPTX URL, contact sheet, diagnostics/revision status
+- **Tool contract** (`references/tool-contract.md`): Input/output schemas for `create_slide_presentation` (Router) and `create_presentation` (Slide Agent)
+- **Diagnostics/revision policy** (`references/diagnostics-revision.md`): One revision attempt, no multi-pass, no scoring engine
+- **Example** (`examples/manufacturing-line-q2-report.md`): E2E scenario for manufacturing Q2 report
+- **Skill loaders**: `getPresentationAuthorRouterInstructions()` and `getPresentationAuthorSlideAgentInstructions()` in both runtimes
+- **Router Agent**: Replaced inline `SLIDE_TOOL_INSTRUCTIONS` array with `getPresentationAuthorRouterInstructions()` from skill files
+- **Slide Agent**: Replaced inline font policy/guidance with `getPresentationAuthorSlideAgentInstructions()` injected into system prompt
+- **Tests** (20 new): Skill file existence (9), font preset content, diagnostics policy, router handoff content (4), skill loader Router/SlideAgent (2), prompt integration (2)
+
 ### Fixed — PA-8.5: Deploy & Chat E2E Smoke — runtime fixes for full chat→router→slide handoff
 
 - **Dockerfile** (`apps/presentation-author-runtime/Dockerfile`):

@@ -70,21 +70,12 @@ describe('create_slide_presentation tool', () => {
 });
 
 describe('Router Agent prompt', () => {
-  it('system prompt includes slide generation keywords', async () => {
-    // We can't easily test the full agent without Bedrock, but we can test
-    // that the prompt builder includes the expected instructions
-    // The agent module runs app.run() which requires Bedrock, so instead
-    // we just verify the file content contains expected patterns
+  it('system prompt uses skill-based slide instructions', async () => {
     const { readFile } = await import('node:fs/promises');
     const { join } = await import('node:path');
     const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
 
-    expect(agentSource).toContain('create_slide_presentation');
-    expect(agentSource).toContain('PowerPoint');
-    expect(agentSource).toContain('PPTX');
-    expect(agentSource).toContain('報告資料');
-    expect(agentSource).toContain('スライドを作って');
-    expect(agentSource).toContain('提案資料を作って');
+    expect(agentSource).toContain('getPresentationAuthorRouterInstructions');
     expect(agentSource).toContain('SLIDE_TOOL_INSTRUCTIONS');
     expect(agentSource).toContain('createSlidePresentationTool');
   });
