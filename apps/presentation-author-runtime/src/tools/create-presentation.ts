@@ -1,8 +1,11 @@
 import { randomUUID } from 'node:crypto';
 import type { CreatePresentationToolInput } from '@agentra/presentation-author';
 import { createPresentation } from '@agentra/presentation-author';
+import { S3Client } from '@aws-sdk/client-s3';
 import { tool } from '@strands-agents/sdk';
 import { z } from 'zod';
+import type { UploadedPresentationArtifact } from '../artifacts/artifact-upload-types.js';
+import { uploadPresentationArtifacts } from '../artifacts/s3-artifact-uploader.js';
 import { FONT_POLICY_STYLE_GUIDE } from '../font-policy.js';
 import { createPresentationAuthorLlmClient } from '../llm-adapter.js';
 import { logger } from '../logger.js';
@@ -10,8 +13,16 @@ import { logger } from '../logger.js';
 const envDiagnostics = process.env.PRESENTATION_AUTHOR_ENABLE_DIAGNOSTICS !== 'false';
 const envRevision = process.env.PRESENTATION_AUTHOR_ENABLE_REVISION !== 'false';
 const envOutputDir = process.env.PRESENTATION_AUTHOR_OUTPUT_DIR;
+const envBucketName = process.env.PRESENTATION_ARTIFACT_BUCKET_NAME ?? '';
+const envPrefix = process.env.PRESENTATION_ARTIFACT_PREFIX ?? 'runs';
+const envPresignedUrls = process.env.PRESENTATION_ARTIFACT_PRESIGNED_URLS !== 'false';
+const envUrlExpires = Number.parseInt(
+  process.env.PRESENTATION_ARTIFACT_URL_EXPIRES_SECONDS ?? '3600',
+  10,
+);
 
 const llmClient = createPresentationAuthorLlmClient();
+const s3Client = envBucketName ? new S3Client({}) : undefined;
 
 const createPresentationTool = tool({
   name: 'create_presentation',
@@ -87,6 +98,64 @@ const createPresentationTool = tool({
         contactSheetPath: result.contactSheetPath,
         warningCount: result.warnings?.length ?? 0,
       });
+
+      // --- Artifact upload ---
+      let uploadedArtifacts: UploadedPresentationArtifact[] | undefined;
+      let pptxDownloadUrl: string | undefined;
+      let contactSheetDownloadUrl: string | undefined;
+      const uploadWarnings: string[] = [];
+
+      if (envBucketName && s3Client) {
+        try {
+          const uploadResult = await uploadPresentationArtifacts(
+            {
+              result,
+              bucketName: envBucketName,
+              prefix: envPrefix,
+              runId,
+              includePresignedUrls: envPresignedUrls,
+              presignedUrlExpiresSeconds: envUrlExpires,
+            },
+            { s3Client },
+          );
+
+          uploadedArtifacts = uploadResult.uploadedArtifacts;
+          uploadWarnings.push(...uploadResult.warnings);
+
+          pptxDownloadUrl = uploadedArtifacts.find(
+            (a) => a.kind === 'pptx' && a.downloadUrl,
+          )?.downloadUrl;
+          contactSheetDownloadUrl = uploadedArtifacts.find(
+            (a) => a.kind === 'contact-sheet' && a.downloadUrl,
+          )?.downloadUrl;
+        } catch (uploadErr) {
+          const msg = uploadErr instanceof Error ? uploadErr.message : String(uploadErr);
+          uploadWarnings.push(`Artifact upload failed: ${msg}`);
+          logger.error({
+            component: 'create-presentation-tool',
+            runId,
+            step: 'artifact_upload_error',
+            error: msg,
+          });
+        }
+      } else {
+        uploadWarnings.push(
+          'PRESENTATION_ARTIFACT_BUCKET_NAME is not set; artifacts were not uploaded.',
+        );
+      }
+
+      const extendedResult = {
+        ...result,
+        warnings: [...result.warnings, ...uploadWarnings],
+        uploadedArtifacts,
+        pptxDownloadUrl,
+        contactSheetDownloadUrl,
+      };
+
+      return {
+        status: 'success' as const,
+        content: [{ text: JSON.stringify(extendedResult) }],
+      };
     } else {
       logger.error({
         component: 'create-presentation-tool',

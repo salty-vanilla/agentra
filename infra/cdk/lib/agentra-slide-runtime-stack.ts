@@ -148,6 +148,8 @@ export class AgentraSlideRuntimeStack extends Stack {
         PRESENTATION_AUTHOR_ENABLE_REVISION: 'true',
         PRESENTATION_ARTIFACT_BUCKET_NAME: artifactsBucket.bucketName,
         PRESENTATION_ARTIFACT_PREFIX: 'runs',
+        PRESENTATION_ARTIFACT_PRESIGNED_URLS: 'true',
+        PRESENTATION_ARTIFACT_URL_EXPIRES_SECONDS: '3600',
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentra-slide-${props.stage}`,
         LOG_LEVEL: 'info',
       },

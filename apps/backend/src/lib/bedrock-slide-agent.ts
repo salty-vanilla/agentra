@@ -37,6 +37,20 @@ export interface SlideRuntimeInvokeResult {
   revisionReason?: string;
   artifacts?: SlideRuntimeArtifact[];
   warnings?: string[];
+  uploadedArtifacts?: Array<{
+    kind: string;
+    label: string;
+    localPath: string;
+    bucket: string;
+    key: string;
+    s3Uri: string;
+    downloadUrl?: string;
+    uploaded: boolean;
+    contentType?: string;
+    sizeBytes?: number;
+  }>;
+  pptxDownloadUrl?: string;
+  contactSheetDownloadUrl?: string;
   error?: {
     message: string;
     phase?: string;

@@ -60,4 +60,62 @@ describe('parseSlideRuntimeResponse', () => {
     expect(result.success).toBe(true);
     expect(result.pptxPath).toBe('/tmp/x/deck.pptx');
   });
+
+  it('preserves uploadedArtifacts and download URLs from response', () => {
+    const raw = JSON.stringify({
+      success: true,
+      pptxPath: '/tmp/deck.pptx',
+      uploadedArtifacts: [
+        {
+          kind: 'pptx',
+          label: 'PowerPoint',
+          localPath: '/tmp/deck.pptx',
+          bucket: 'my-bucket',
+          key: 'runs/run-1/deck.pptx',
+          s3Uri: 's3://my-bucket/runs/run-1/deck.pptx',
+          downloadUrl: 'https://s3.example.com/presigned',
+          uploaded: true,
+          contentType:
+            'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          sizeBytes: 50000,
+        },
+      ],
+      pptxDownloadUrl: 'https://s3.example.com/presigned',
+      contactSheetDownloadUrl: 'https://s3.example.com/contact-presigned',
+    });
+    const result = parseSlideRuntimeResponse(raw);
+    expect(result.success).toBe(true);
+    expect(result.uploadedArtifacts).toHaveLength(1);
+    const firstArtifact = result.uploadedArtifacts?.[0];
+    expect(firstArtifact?.kind).toBe('pptx');
+    expect(firstArtifact?.downloadUrl).toBe('https://s3.example.com/presigned');
+    expect(result.pptxDownloadUrl).toBe('https://s3.example.com/presigned');
+    expect(result.contactSheetDownloadUrl).toBe(
+      'https://s3.example.com/contact-presigned',
+    );
+  });
+
+  it('parses Strands content with uploadedArtifacts', () => {
+    const inner = JSON.stringify({
+      success: true,
+      pptxPath: '/tmp/deck.pptx',
+      pptxDownloadUrl: 'https://presigned.url/deck',
+      uploadedArtifacts: [
+        {
+          kind: 'pptx',
+          label: 'PPTX',
+          localPath: '/tmp/deck.pptx',
+          bucket: 'b',
+          key: 'runs/r/deck.pptx',
+          s3Uri: 's3://b/runs/r/deck.pptx',
+          uploaded: true,
+        },
+      ],
+    });
+    const raw = JSON.stringify({ status: 'success', content: [{ text: inner }] });
+    const result = parseSlideRuntimeResponse(raw);
+    expect(result.success).toBe(true);
+    expect(result.pptxDownloadUrl).toBe('https://presigned.url/deck');
+    expect(result.uploadedArtifacts).toHaveLength(1);
+  });
 });

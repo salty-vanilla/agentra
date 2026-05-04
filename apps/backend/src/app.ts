@@ -426,11 +426,14 @@ app.post('/api/presentations', authMiddleware, async (context) => {
     });
 
     if (result.success) {
+      const warning = result.uploadedArtifacts?.some((a) => a.uploaded)
+        ? `Artifacts were uploaded to S3. Presigned URLs expire in ${result.uploadedArtifacts?.find((a) => a.downloadUrl) ? '3600' : 'N/A'} seconds.`
+        : 'Artifact paths are local to the Slide Runtime container. Download URLs require a future artifact upload phase.';
+
       return context.json({
         ...result,
         traceId,
-        warning:
-          'Artifact paths are local to the Slide Runtime container. Download URLs require a future artifact upload phase.',
+        warning,
       });
     }
 
