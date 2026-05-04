@@ -9,6 +9,21 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Changed — Remove DeckForge dependency & simplify progress display
+
+- **Removed `bedrock-slide-agent.ts`**: BFF no longer calls SlideRuntime directly; all slide requests go through Router Agent only
+- **Removed `/api/presentations` endpoint**: No direct presentation API — Router handles delegation via `create_slide_presentation` tool
+- **Removed `bedrock-slide-agent.test.ts`**: Tests for deleted module
+- **Simplified BFF progress**: Replaced 6-phase silence-based timer with single "スライドを作成しています" spinner message; added TODO for future AsyncQueue-based real progress
+- **Router `create-slide-presentation` tool**: Simplified to `prompt` + `language` params only (removed DeckForge-specific fields)
+- **Router `slide-runtime-client.ts`**: Simplified response parsing — removed DeckForge artifact handling, returns `{ success, text, error? }`
+- **Handoff skill**: Added DeckForge-era field deprecation notes to SKILL.md
+- **Frontend `agentra-workspace.tsx`**: Enhanced slide command detection and progress display with spinner UI
+- **Frontend `thread.tsx`**: Added progress summary event rendering
+- **Frontend `api.ts`**: Handle `progress_summary` SSE event type
+- **OpenAPI spec**: Added `progress_summary` SSE event schema to `agentra-bff.openapi.yaml`
+- **Shared `chat.ts`**: Added `progressPhaseSchema`, `ProgressSummaryEvent` type, and `ChatCommand` schema
+
 ### Changed — PA-9.1: Skills colocated with runtimes
 
 - **Skills moved into runtimes**: Each runtime now owns its `skills/` directory instead of a shared top-level `skills/`

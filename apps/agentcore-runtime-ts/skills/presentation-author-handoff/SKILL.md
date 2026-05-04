@@ -10,6 +10,18 @@ When the user asks for PowerPoint, PPTX, slides, a presentation, a report deck, 
 
 Call `create_slide_presentation`.
 
+## Explicit UI command directive
+
+When the request contains an explicit UI command directive with type `create_slide_presentation`, you must call `create_slide_presentation` exactly once unless required fields are missing.
+
+If `audience` or `purpose` are not specified in the directive, ask the user one brief clarifying question before calling the tool (e.g. "対象読者と目的を教えていただけますか？"). Once the user answers, proceed with the tool call.
+
+Do not respond with only explanatory text.
+Do not call or mention `/api/presentations`.
+Do not generate slides directly in the Router.
+Do not paste or emit PPTX XML.
+Delegate to the slide generation tool.
+
 ## Trigger examples
 
 Japanese:

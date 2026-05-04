@@ -1,8 +1,11 @@
 import {
   APP_NAME,
   APP_VERSION,
+  type ChatCommand,
   type ChatObservationSummary,
+  chatCommandSchema,
   healthResponseSchema,
+  type ProgressSummaryEvent,
   type ThreadSummary,
   threadMessagesResponseSchema,
   threadResponseSchema,
@@ -15,7 +18,7 @@ import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
 import { uuidv7 } from 'uuidv7';
 import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
-import { invokeSlideRuntime } from './lib/bedrock-slide-agent.js';
+import { buildRouterCommandDirective } from './lib/command-directive.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { authMiddleware } from './middleware/auth.js';
 import {
@@ -135,12 +138,25 @@ app.post('/chat', async (context) => {
     message: string;
     threadId?: string;
     model?: ModelKey;
+    command?: ChatCommand;
   };
 
   const { message, threadId } = parsed;
   const modelKey: ModelKey = parsed.model ?? 'sonnet';
+  const command = parsed.command;
   const userId = context.get('userId');
   const traceId = uuidv7();
+
+  // Validate command if present
+  if (command) {
+    const commandResult = chatCommandSchema.safeParse(command);
+    if (!commandResult.success) {
+      return jsonWithValidation(context, 'postChat', 400, {
+        error: `Invalid command: ${commandResult.error.issues.map((i) => i.message).join(', ')}`,
+      });
+    }
+  }
+
   let thread: ThreadSummary;
 
   if (threadId) {
@@ -166,11 +182,47 @@ app.post('/chat', async (context) => {
     let fullReply = '';
     let latestObservabilitySummary: ChatObservationSummary | undefined;
 
+    const isSlideCommand = command?.type === 'create_slide_presentation';
+
+    async function emitProgress(
+      phase: ProgressSummaryEvent['phase'],
+      title: string,
+      summary: string,
+    ) {
+      const event: ProgressSummaryEvent = {
+        type: 'progress_summary',
+        phase,
+        title,
+        summary,
+        timestamp: nowIso(),
+      };
+      await stream.writeSSE({
+        data: JSON.stringify({ type: 'progress_summary', event }),
+      });
+    }
+
     try {
+      // Build the effective prompt: append command directive if present
+      const effectiveMessage = command
+        ? `${message}\n\n${buildRouterCommandDirective(command)}`
+        : message;
+
+      // Emit a simple "in progress" message for slide commands.
+      // TODO: Replace with real pipeline progress events once the Router
+      // supports progress callbacks from tool execution (see: progress
+      // channel / merge-iterables approach).
+      if (isSlideCommand) {
+        await emitProgress(
+          'router_handoff',
+          'スライドを作成しています',
+          'Presentation Author エージェントが資料を生成中です。しばらくお待ちください。',
+        );
+      }
+
       for await (const runtimeEvent of invokeAgentStream(
         modelKey,
         thread.threadId,
-        message,
+        effectiveMessage,
         traceId,
       )) {
         if (runtimeEvent.type === 'text') {
@@ -390,71 +442,6 @@ app.delete('/threads/:threadId', async (context) => {
     thread: deleted,
   });
   return jsonWithValidation(context, 'deleteThread', 200, response);
-});
-
-// --- Presentation generation ---
-
-app.post('/api/presentations', authMiddleware, async (context) => {
-  const body = await context.req.json().catch(() => null);
-  if (!body || typeof body !== 'object') {
-    return context.json({ error: 'Invalid JSON body.' }, 400);
-  }
-
-  const { prompt, language, diagnostics, revision } = body as {
-    prompt?: unknown;
-    language?: unknown;
-    diagnostics?: unknown;
-    revision?: unknown;
-  };
-
-  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
-    return context.json(
-      { error: 'prompt is required and must be a non-empty string.' },
-      400,
-    );
-  }
-
-  const traceId = uuidv7();
-
-  try {
-    const result = await invokeSlideRuntime({
-      prompt: prompt.trim(),
-      language: language === 'ja' || language === 'en' ? language : undefined,
-      diagnostics: typeof diagnostics === 'boolean' ? diagnostics : true,
-      revision: typeof revision === 'boolean' ? revision : true,
-      traceId,
-    });
-
-    if (result.success) {
-      const warning = result.uploadedArtifacts?.some((a) => a.uploaded)
-        ? `Artifacts were uploaded to S3. Presigned URLs expire in ${result.uploadedArtifacts?.find((a) => a.downloadUrl) ? '3600' : 'N/A'} seconds.`
-        : 'Artifact paths are local to the Slide Runtime container. Download URLs require a future artifact upload phase.';
-
-      return context.json({
-        ...result,
-        traceId,
-        warning,
-      });
-    }
-
-    return context.json(
-      {
-        ...result,
-        traceId,
-      },
-      502,
-    );
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    return context.json(
-      {
-        success: false,
-        traceId,
-        error: { message, phase: 'invocation' },
-      },
-      500,
-    );
-  }
 });
 
 app.onError((error, context) => {

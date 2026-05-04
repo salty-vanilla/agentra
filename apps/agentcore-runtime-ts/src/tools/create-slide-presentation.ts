@@ -5,7 +5,7 @@ import { invokeSlideRuntime } from './slide-runtime-client.js';
 const createSlidePresentationTool = tool({
   name: 'create_slide_presentation',
   description:
-    "Create an editable PowerPoint presentation from the user's request. Use this when the user asks to create slides, a PowerPoint, a presentation deck, a report deck, or a PPTX file. Returns download URLs for generated artifacts when available.",
+    "Create an editable PowerPoint presentation from the user's request. Use this when the user asks to create slides, a PowerPoint, a presentation deck, a report deck, or a PPTX file. Returns the presentation author agent's response.",
   inputSchema: z.object({
     prompt: z
       .string()
@@ -14,14 +14,6 @@ const createSlidePresentationTool = tool({
       .enum(['ja', 'en'])
       .optional()
       .describe('Output language. Inferred from prompt if omitted.'),
-    diagnostics: z
-      .boolean()
-      .optional()
-      .describe('Enable quality diagnostics. Default: true.'),
-    revision: z
-      .boolean()
-      .optional()
-      .describe('Enable one revision attempt. Default: true.'),
   }),
   callback: async (input) => {
     const traceId = process.env.TRACE_ID ?? undefined;
@@ -33,8 +25,6 @@ const createSlidePresentationTool = tool({
         step: 'slide_handoff_start',
         traceId,
         language: input.language,
-        diagnostics: input.diagnostics ?? true,
-        revision: input.revision ?? true,
       }),
     );
 
@@ -42,8 +32,6 @@ const createSlidePresentationTool = tool({
       const result = await invokeSlideRuntime({
         prompt: input.prompt,
         language: input.language ?? undefined,
-        diagnostics: input.diagnostics ?? true,
-        revision: input.revision ?? true,
         traceId,
       });
 
@@ -56,17 +44,12 @@ const createSlidePresentationTool = tool({
           traceId,
           success: result.success,
           durationMs,
-          diagnosticsStatus: result.diagnosticsStatus,
-          hasPptxDownloadUrl: !!result.pptxDownloadUrl,
-          hasContactSheetDownloadUrl: !!result.contactSheetDownloadUrl,
-          uploadedCount: result.uploadedArtifacts?.filter((a) => a.uploaded).length ?? 0,
-          warningCount: result.warnings?.length ?? 0,
         }),
       );
 
       return {
         status: result.success ? ('success' as const) : ('error' as const),
-        content: [{ text: JSON.stringify(result) }],
+        content: [{ text: result.text }],
       };
     } catch (err) {
       const durationMs = Date.now() - startTime;
@@ -88,7 +71,7 @@ const createSlidePresentationTool = tool({
           {
             text: JSON.stringify({
               success: false,
-              error: { message, phase: 'configuration' },
+              error: { message },
             }),
           },
         ],

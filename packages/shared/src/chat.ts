@@ -19,7 +19,62 @@ export const chatRoleSchema = postChatMessageSchema.shape.role;
 export const chatMessageSchema = postChatMessageSchema;
 export const threadSummarySchema = threadSummarySchemaInternal;
 export const persistedChatMessageSchema = persistedChatMessageSchemaInternal;
-export const chatRequestSchema = PostChatBody;
+
+// ---------------------------------------------------------------------------
+// ChatCommand — structured command payload for explicit UI actions
+// ---------------------------------------------------------------------------
+export const chatCommandSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('create_slide_presentation'),
+    topic: z.string().trim().min(1),
+    audience: z
+      .enum(['executive', 'manager', 'engineer', 'operator', 'customer', 'general'])
+      .or(z.string().min(1))
+      .optional(),
+    purpose: z
+      .enum(['report', 'proposal', 'decision', 'knowledge_share', 'training'])
+      .or(z.string().min(1))
+      .optional(),
+    slideCount: z.union([z.number().int().min(1), z.literal('auto')]).optional(),
+    durationMinutes: z.union([z.number().int().min(1), z.literal('auto')]).optional(),
+    language: z.enum(['ja', 'en']).optional(),
+    tone: z
+      .enum(['executive', 'technical', 'sales', 'simple'])
+      .or(z.string().min(1))
+      .optional(),
+    outputFormat: z.literal('pptx').optional(),
+  }),
+]);
+
+export const chatRequestSchema = PostChatBody.extend({
+  command: chatCommandSchema.optional(),
+});
+
+// ---------------------------------------------------------------------------
+// ProgressSummaryEvent — public task progress for long-running operations
+// ---------------------------------------------------------------------------
+export const progressPhaseSchema = z.enum([
+  'request_understanding',
+  'router_handoff',
+  'outline',
+  'authoring',
+  'pptx_generation',
+  'rendering',
+  'diagnostics',
+  'revision',
+  'upload',
+  'done',
+  'error',
+]);
+
+export const progressSummaryEventSchema = z.object({
+  type: z.literal('progress_summary'),
+  phase: progressPhaseSchema,
+  title: z.string(),
+  summary: z.string(),
+  details: z.array(z.string()).optional(),
+  timestamp: z.string(),
+});
 export const chatStreamTextEventSchema = z.object({
   type: z.literal('text'),
   text: z.string(),
@@ -88,6 +143,9 @@ export type ChatMessage = z.infer<typeof chatMessageSchema>;
 export type ThreadSummary = z.infer<typeof threadSummarySchema>;
 export type PersistedChatMessage = z.infer<typeof persistedChatMessageSchema>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
+export type ChatCommand = z.infer<typeof chatCommandSchema>;
+export type ProgressPhase = z.infer<typeof progressPhaseSchema>;
+export type ProgressSummaryEvent = z.infer<typeof progressSummaryEventSchema>;
 export type ChatStreamTextEvent = z.infer<typeof chatStreamTextEventSchema>;
 export type ChatObservationToolCall = z.infer<typeof chatObservationToolCallSchema>;
 export type ChatObservationSummary = z.infer<typeof chatObservationSummarySchema>;

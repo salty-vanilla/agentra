@@ -2,9 +2,15 @@ import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const SKILLS_ROOT = join(import.meta.dirname, '../../../../skills');
-const SLIDE_SKILL = join(SKILLS_ROOT, 'presentation-author');
+const SKILLS_ROOT = join(import.meta.dirname, '../../skills');
 const HANDOFF_SKILL = join(SKILLS_ROOT, 'presentation-author-handoff');
+
+// The presentation-author skill lives in its own runtime
+const PA_RUNTIME_SKILLS = join(
+  import.meta.dirname,
+  '../../../presentation-author-runtime/skills',
+);
+const SLIDE_SKILL = join(PA_RUNTIME_SKILLS, 'presentation-author');
 
 function readSkillFile(skillDir: string, relativePath: string): string {
   return readFileSync(join(skillDir, relativePath), 'utf-8');

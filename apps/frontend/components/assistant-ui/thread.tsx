@@ -1,6 +1,10 @@
 'use client';
 
-import type { ChatObservationSummary } from '@agentra/shared';
+import type {
+  ChatCommand,
+  ChatObservationSummary,
+  ProgressSummaryEvent,
+} from '@agentra/shared';
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -35,13 +39,16 @@ import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { type ModelKey, ModelSelector } from '@/components/model-selector';
+import { ProgressSummaryCard } from '@/components/progress-summary-card';
+import { SlideCommandBadge } from '@/components/slide-command-badge';
+import { SlideCommandDialog } from '@/components/slide-command-dialog';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { API_BASE_URL, API_MODE, isMockApiMode } from '@/lib/api-config';
+import { isMockApiMode } from '@/lib/api-config';
 import { cn } from '@/lib/utils';
 
 const threadMessageRootVariants = cva(
@@ -66,7 +73,24 @@ const actionBarMoreItemVariants = cva(
 export const Thread: FC<{
   modelValue: ModelKey;
   onModelChange: (m: ModelKey) => void;
-}> = ({ modelValue, onModelChange }) => {
+  slideCommandActive?: boolean;
+  onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
+  onSlideCommandDeactivate?: () => void;
+  slideDialogOpen?: boolean;
+  onSlideDialogOpenChange?: (open: boolean) => void;
+  progressEvents?: ProgressSummaryEvent[];
+  activeProgressPhase?: string;
+}> = ({
+  modelValue,
+  onModelChange,
+  slideCommandActive,
+  onSlideCommandActivate,
+  onSlideCommandDeactivate,
+  slideDialogOpen,
+  onSlideDialogOpenChange,
+  progressEvents,
+  activeProgressPhase,
+}) => {
   return (
     <ThreadPrimitive.Root
       className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
@@ -94,8 +118,24 @@ export const Thread: FC<{
           </div>
 
           <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mt-auto flex flex-col gap-3 overflow-visible rounded-t-(--composer-radius) bg-transparent pb-2 md:pb-3">
+            {progressEvents && progressEvents.length > 0 && (
+              <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
+                <ProgressSummaryCard
+                  events={progressEvents}
+                  {...(activeProgressPhase ? { activePhase: activeProgressPhase } : {})}
+                />
+              </div>
+            )}
             <ThreadScrollToBottom />
-            <Composer modelValue={modelValue} onModelChange={onModelChange} />
+            <Composer
+              modelValue={modelValue}
+              onModelChange={onModelChange}
+              {...(slideCommandActive != null ? { slideCommandActive } : {})}
+              {...(onSlideCommandActivate ? { onSlideCommandActivate } : {})}
+              {...(onSlideCommandDeactivate ? { onSlideCommandDeactivate } : {})}
+              {...(slideDialogOpen != null ? { slideDialogOpen } : {})}
+              {...(onSlideDialogOpenChange ? { onSlideDialogOpenChange } : {})}
+            />
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -149,24 +189,60 @@ const ThreadWelcome: FC = () => {
   );
 };
 
-const Composer: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void }> = ({
+const Composer: FC<{
+  modelValue: ModelKey;
+  onModelChange: (m: ModelKey) => void;
+  slideCommandActive?: boolean;
+  onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
+  onSlideCommandDeactivate?: () => void;
+  slideDialogOpen?: boolean;
+  onSlideDialogOpenChange?: (open: boolean) => void;
+}> = ({
   modelValue,
   onModelChange,
+  slideCommandActive,
+  onSlideCommandActivate,
+  onSlideCommandDeactivate,
+  slideDialogOpen,
+  onSlideDialogOpenChange,
 }) => {
+  // Detect /slide prefix in live composer text
+  const hasSlidePrefix = useAuiState((s) => /^\/slide(\s|$)/.test(s.composer.text));
+  const showBadge = slideCommandActive || hasSlidePrefix;
+
   return (
     <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
       <div
         data-slot="aui_composer-shell"
         className="flex w-full flex-col gap-1.5 rounded-(--composer-radius) border bg-card/90 p-(--composer-padding) shadow-sm backdrop-blur-sm transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20"
       >
+        {showBadge && (
+          <div className="px-1.5">
+            <SlideCommandBadge
+              {...(onSlideCommandDeactivate && slideCommandActive
+                ? { onRemove: onSlideCommandDeactivate }
+                : {})}
+            />
+          </div>
+        )}
         <ComposerPrimitive.Input
-          placeholder="質問や次の実装指示を入力してください"
+          placeholder={
+            showBadge
+              ? 'スライドの依頼内容を入力してください'
+              : '質問や次の実装指示を入力してください（/slide でスライド作成）'
+          }
           className="aui-composer-input max-h-32 min-h-[1.75rem] w-full resize-none bg-transparent px-1.5 py-0.5 text-sm leading-6 outline-none placeholder:text-muted-foreground/80"
           rows={1}
           autoFocus
           aria-label="Message input"
         />
-        <ComposerAction modelValue={modelValue} onModelChange={onModelChange} />
+        <ComposerAction
+          modelValue={modelValue}
+          onModelChange={onModelChange}
+          {...(onSlideCommandActivate ? { onSlideCommandActivate } : {})}
+          {...(slideDialogOpen != null ? { slideDialogOpen } : {})}
+          {...(onSlideDialogOpenChange ? { onSlideDialogOpenChange } : {})}
+        />
       </div>
     </ComposerPrimitive.Root>
   );
@@ -175,16 +251,27 @@ const Composer: FC<{ modelValue: ModelKey; onModelChange: (m: ModelKey) => void 
 const ComposerAction: FC<{
   modelValue: ModelKey;
   onModelChange: (m: ModelKey) => void;
-}> = ({ modelValue, onModelChange }) => {
+  onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
+  slideDialogOpen?: boolean;
+  onSlideDialogOpenChange?: (open: boolean) => void;
+}> = ({
+  modelValue,
+  onModelChange,
+  onSlideCommandActivate,
+  slideDialogOpen,
+  onSlideDialogOpenChange,
+}) => {
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between gap-3">
       <div className="flex min-w-0 items-center gap-1">
+        <SlideCommandDialog
+          onSubmit={(params) => {
+            onSlideCommandActivate?.(params);
+          }}
+          {...(slideDialogOpen != null ? { externalOpen: slideDialogOpen } : {})}
+          {...(onSlideDialogOpenChange ? { onOpenChange: onSlideDialogOpenChange } : {})}
+        />
         {!isMockApiMode && <ModelSelector value={modelValue} onChange={onModelChange} />}
-        <p className="truncate px-1 text-muted-foreground text-xs">
-          {isMockApiMode
-            ? `mode:${API_MODE} / target:MSW intercept (${API_BASE_URL}/chat)`
-            : `mode:${API_MODE} / target:${API_BASE_URL}/chat`}
-        </p>
       </div>
       <AuiIf condition={(s) => !s.thread.isRunning}>
         <ComposerPrimitive.Send
@@ -378,6 +465,11 @@ const AssistantActionBar: FC = () => {
 };
 
 const UserMessage: FC = () => {
+  const hasSlideCommand = useAuiState((s) => {
+    const custom = s.message.metadata.custom as { command?: ChatCommand } | undefined;
+    return custom?.command?.type === 'create_slide_presentation';
+  });
+
   return (
     <MessagePrimitive.Root
       data-slot="aui_user-message-root"
@@ -386,6 +478,11 @@ const UserMessage: FC = () => {
     >
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
         <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden">
+          {hasSlideCommand && (
+            <span className="mr-1.5">
+              <SlideCommandBadge />
+            </span>
+          )}
           <MessagePrimitive.Parts />
         </div>
         <div className="aui-user-action-bar-wrapper absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2 peer-empty:hidden">

@@ -266,6 +266,48 @@ components:
           format: date-time
         observabilitySummary:
           $ref: '#/components/schemas/ChatObservationSummary'
+    ChatCommand:
+      type: object
+      required:
+        - type
+        - topic
+      properties:
+        type:
+          type: string
+          enum:
+            - create_slide_presentation
+        topic:
+          type: string
+          minLength: 1
+        audience:
+          type: string
+        purpose:
+          type: string
+        slideCount:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: string
+              enum:
+                - auto
+        durationMinutes:
+          oneOf:
+            - type: integer
+              minimum: 1
+            - type: string
+              enum:
+                - auto
+        language:
+          type: string
+          enum:
+            - ja
+            - en
+        tone:
+          type: string
+        outputFormat:
+          type: string
+          enum:
+            - pptx
     ChatRequest:
       type: object
       additionalProperties: false
@@ -290,6 +332,8 @@ components:
             - sonnet
             - haiku
           default: sonnet
+        command:
+          $ref: '#/components/schemas/ChatCommand'
     ChatResponse:
       type: object
       additionalProperties: false

@@ -1,6 +1,11 @@
 'use client';
 
-import type { ChatObservationSummary, PersistedChatMessage } from '@agentra/shared';
+import type {
+  ChatCommand,
+  ChatObservationSummary,
+  PersistedChatMessage,
+  ProgressSummaryEvent,
+} from '@agentra/shared';
 import { APP_NAME } from '@agentra/shared';
 import { AssistantRuntimeProvider as AssistantRuntimeProviderCore } from '@assistant-ui/core/react';
 import {
@@ -11,7 +16,7 @@ import {
 } from '@assistant-ui/react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { parseAsString, useQueryState } from 'nuqs';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Thread } from '@/components/assistant-ui/thread';
 import type { ModelKey } from '@/components/model-selector';
@@ -24,13 +29,19 @@ import {
   sendChatStream,
   updateThreadTitle,
 } from '@/lib/api';
-import { API_BASE_URL, API_MODE, isMockApiMode } from '@/lib/api-config';
+import { isMockApiMode } from '@/lib/api-config';
 import {
   agentraQueryKeys,
   healthQueryOptions,
   threadMessagesQueryOptions,
   threadsQueryOptions,
 } from '@/lib/query-options';
+import {
+  createInitialProgressEvent,
+  SIMULATED_ERROR_EVENT,
+  SIMULATED_SLIDE_PROGRESS_EVENTS,
+  SIMULATED_STEP_DELAYS_MS,
+} from '@/lib/slide-progress';
 import { cn } from '@/lib/utils';
 
 type HealthState = 'checking' | 'online' | 'offline';
@@ -46,11 +57,88 @@ export function AgentraWorkspace() {
   );
   const [liveObservabilitySummary, setLiveObservabilitySummary] =
     useState<ChatObservationSummary | null>(null);
+  const [slideCommandActive, setSlideCommandActive] = useState(false);
+  const [slideDialogOpen, setSlideDialogOpen] = useState(false);
+  const [pendingSlideCommand, setPendingSlideCommand] = useState<ChatCommand | null>(
+    null,
+  );
+  const [progressEvents, setProgressEvents] = useState<ProgressSummaryEvent[]>([]);
+  const [activeProgressPhase, setActiveProgressPhase] = useState<string | undefined>();
+  const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressIndexRef = useRef(0);
   // Use a ref so the memoized modelAdapter can read the latest model key without
   // invalidating the memo on every selector change.
   const selectedModelRef = useRef<ModelKey>('sonnet');
   selectedModelRef.current = selectedModel;
+  const pendingSlideCommandRef = useRef<ChatCommand | null>(null);
+  pendingSlideCommandRef.current = pendingSlideCommand;
   const queryClient = useQueryClient();
+
+  const clearProgressTimer = useCallback(() => {
+    if (progressTimerRef.current) {
+      clearTimeout(progressTimerRef.current);
+      progressTimerRef.current = null;
+    }
+    progressIndexRef.current = 0;
+  }, []);
+
+  // Mock-only: schedule simulated progress steps
+  const scheduleNextStep = useCallback(() => {
+    const index = progressIndexRef.current;
+    if (index >= SIMULATED_SLIDE_PROGRESS_EVENTS.length) return;
+    const delay = SIMULATED_STEP_DELAYS_MS[index] ?? 10_000;
+    if (delay === 0) return;
+
+    progressTimerRef.current = setTimeout(() => {
+      const nextEvent = SIMULATED_SLIDE_PROGRESS_EVENTS[index];
+      if (!nextEvent) return;
+      const event: ProgressSummaryEvent = {
+        ...nextEvent,
+        timestamp: new Date().toISOString(),
+      };
+      setProgressEvents((prev) => [...prev, event]);
+      setActiveProgressPhase(event.phase);
+      progressIndexRef.current = index + 1;
+      scheduleNextStep();
+    }, delay);
+  }, []);
+
+  // Mock-only: start simulation for mock API mode
+  const startProgressSimulation = useCallback(
+    (command: ChatCommand & { type: 'create_slide_presentation' }) => {
+      clearProgressTimer();
+      const initialEvent = createInitialProgressEvent(command);
+      setProgressEvents([initialEvent]);
+      setActiveProgressPhase('request_understanding');
+      progressIndexRef.current = 0;
+      scheduleNextStep();
+    },
+    [clearProgressTimer, scheduleNextStep],
+  );
+
+  // Real mode: handle progress events from SSE stream
+  const handleProgressEvent = useCallback((event: ProgressSummaryEvent) => {
+    setProgressEvents((prev) => [...prev, event]);
+    setActiveProgressPhase(event.phase);
+  }, []);
+
+  const stopProgressSimulation = useCallback(
+    (error?: boolean) => {
+      clearProgressTimer();
+      if (error) {
+        const errorEvent: ProgressSummaryEvent = {
+          ...SIMULATED_ERROR_EVENT,
+          timestamp: new Date().toISOString(),
+        };
+        setProgressEvents((prev) => [...prev, errorEvent]);
+        setActiveProgressPhase('error');
+      } else {
+        setProgressEvents([]);
+        setActiveProgressPhase(undefined);
+      }
+    },
+    [clearProgressTimer],
+  );
 
   const healthQuery = useQuery(healthQueryOptions());
   const threadsQuery = useQuery(threadsQueryOptions());
@@ -104,7 +192,6 @@ export function AgentraWorkspace() {
   const persistedMessages: PersistedChatMessage[] =
     threadMessagesQuery.data?.messages ?? [];
   const isThreadsLoading = threadsQuery.isLoading;
-  const isMessagesLoading = threadMessagesQuery.isFetching;
 
   const initialMessages = useMemo(
     () => persistedMessages.map(convertPersistedMessageToRuntimeMessage),
@@ -155,10 +242,72 @@ export function AgentraWorkspace() {
           model: selectedModelRef.current,
         };
 
+        // Detect /slide command or use pending slide command
+        let resolvedCommand = pendingSlideCommandRef.current;
+        let resolvedMessage = chatRequest.message;
+
+        const slideMatch = resolvedMessage.match(/^\/slide(\s|$)/);
+        if (slideMatch) {
+          const topic = resolvedMessage.slice(slideMatch[0].length).trim();
+          if (!topic) {
+            // /slide without topic: open the dialog so user can fill in details
+            setSlideDialogOpen(true);
+            return;
+          }
+          if (topic) {
+            resolvedCommand = {
+              type: 'create_slide_presentation',
+              topic,
+              language: /[\u3000-\u303f\u3040-\u309f\u30a0-\u30ff\u4e00-\u9faf]/.test(
+                topic,
+              )
+                ? 'ja'
+                : 'en',
+              slideCount: 'auto',
+              durationMinutes: 'auto',
+              outputFormat: 'pptx',
+            };
+            resolvedMessage = topic;
+          }
+        }
+
+        // If slide command from dialog, use command topic as message if message is empty or the topic
+        if (resolvedCommand?.type === 'create_slide_presentation' && !slideMatch) {
+          if (!resolvedMessage || resolvedMessage === resolvedCommand.topic) {
+            resolvedMessage = resolvedCommand.topic;
+          }
+          // Update topic to match message if user typed something
+          resolvedCommand = { ...resolvedCommand, topic: resolvedMessage };
+        }
+
+        const finalRequest = {
+          ...chatRequest,
+          message: resolvedMessage,
+          ...(resolvedCommand ? { command: resolvedCommand } : {}),
+        };
+
+        // Start progress tracking for slide commands
+        if (resolvedCommand?.type === 'create_slide_presentation') {
+          if (isMockApiMode) {
+            // Mock mode: simulate progress since there's no SSE stream
+            startProgressSimulation(resolvedCommand);
+          } else {
+            // Real mode: reset progress state; real events arrive via SSE
+            clearProgressTimer();
+            setProgressEvents([]);
+            setActiveProgressPhase(undefined);
+          }
+        }
+
+        // Clear pending command
+        setPendingSlideCommand(null);
+        setSlideCommandActive(false);
+
         if (isMockApiMode) {
           // Mock mode: non-streaming, existing sendChat path
-          const response = await sendChat(chatRequest, { signal: abortSignal }).catch(
+          const response = await sendChat(finalRequest, { signal: abortSignal }).catch(
             (error: unknown) => {
+              stopProgressSimulation(true);
               toast.error('メッセージ送信に失敗しました', {
                 description: getErrorMessage(
                   error,
@@ -172,6 +321,7 @@ export function AgentraWorkspace() {
           await setSelectedThreadId(response.threadId);
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
           await queryClient.fetchQuery(threadMessagesQueryOptions(response.threadId));
+          stopProgressSimulation();
           yield { content: [{ type: 'text', text: response.reply }] };
           return;
         }
@@ -182,10 +332,12 @@ export function AgentraWorkspace() {
         let doneObservabilitySummary: ChatObservationSummary | null = null;
 
         try {
-          for await (const event of sendChatStream(chatRequest, abortSignal)) {
+          for await (const event of sendChatStream(finalRequest, abortSignal)) {
             if (event.type === 'text') {
               fullText += event.text;
               yield { content: [{ type: 'text', text: fullText }] };
+            } else if (event.type === 'progress_summary') {
+              handleProgressEvent(event.event);
             } else if (event.type === 'observation') {
               doneObservabilitySummary = event.observation;
               setLiveObservabilitySummary(event.observation);
@@ -204,6 +356,7 @@ export function AgentraWorkspace() {
             }
           }
         } catch (error: unknown) {
+          stopProgressSimulation(true);
           if (selectedThreadId) {
             await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
             await queryClient.invalidateQueries({
@@ -221,6 +374,7 @@ export function AgentraWorkspace() {
         }
 
         const resolvedThreadId = doneThreadId ?? selectedThreadId;
+        stopProgressSimulation();
         if (resolvedThreadId) {
           await setSelectedThreadId(resolvedThreadId);
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
@@ -241,7 +395,15 @@ export function AgentraWorkspace() {
         }
       },
     }),
-    [queryClient, selectedThreadId, setSelectedThreadId],
+    [
+      queryClient,
+      selectedThreadId,
+      setSelectedThreadId,
+      clearProgressTimer,
+      handleProgressEvent,
+      startProgressSimulation,
+      stopProgressSimulation,
+    ],
   );
 
   const runtime = useLocalRuntime(modelAdapter, {
@@ -255,7 +417,12 @@ export function AgentraWorkspace() {
   useEffect(() => {
     void selectedThreadId;
     setLiveObservabilitySummary(null);
-  }, [selectedThreadId]);
+    clearProgressTimer();
+    setProgressEvents([]);
+    setActiveProgressPhase(undefined);
+    setSlideCommandActive(false);
+    setPendingSlideCommand(null);
+  }, [selectedThreadId, clearProgressTimer]);
 
   useEffect(() => {
     if (persistedLatestObservabilitySummary) {
@@ -366,9 +533,37 @@ export function AgentraWorkspace() {
     }
   }
 
+  const handleSlideCommandActivate = useCallback((params?: Record<string, unknown>) => {
+    setSlideCommandActive(true);
+    const cmd: ChatCommand = {
+      type: 'create_slide_presentation',
+      topic: '', // will be filled from chat message on send
+      language: (params?.language as 'ja' | 'en') ?? 'ja',
+      audience: params?.audience as string | undefined,
+      purpose: params?.purpose as string | undefined,
+      slideCount: (params?.slideCount as number | 'auto') ?? 'auto',
+      durationMinutes: (params?.durationMinutes as number | 'auto') ?? 'auto',
+      outputFormat: 'pptx',
+      tone: params?.tone as string | undefined,
+    };
+    setPendingSlideCommand(cmd);
+
+    // If topic is provided from dialog, auto-submit by setting topic in command
+    // The user still needs to press send; the topic becomes the message
+  }, []);
+
+  const handleSlideCommandDeactivate = useCallback(() => {
+    setSlideCommandActive(false);
+    setPendingSlideCommand(null);
+  }, []);
+
   const displayedThreadCount = threads.length;
   const visibleObservabilitySummary =
     liveObservabilitySummary ?? persistedLatestObservabilitySummary;
+
+  const showDebugPanel =
+    process.env.NODE_ENV === 'development' ||
+    process.env.NEXT_PUBLIC_SHOW_DEBUG_PANEL === 'true';
 
   return (
     <AssistantRuntimeProviderCore runtime={runtime}>
@@ -399,25 +594,18 @@ export function AgentraWorkspace() {
               </div>
 
               <div className="flex items-center gap-3">
-                <div className="hidden text-right text-muted-foreground text-xs sm:block">
-                  <p>{displayedThreadCount} server thread(s)</p>
-                  <p>
-                    mode:{API_MODE} / target:{API_BASE_URL}
-                  </p>
-                  {visibleObservabilitySummary ? (
-                    <p>
-                      {formatTokenUsage(visibleObservabilitySummary)} / tools:{' '}
-                      {visibleObservabilitySummary.toolCallCount} /{' '}
-                      {formatDuration(visibleObservabilitySummary.durationMs)}
-                    </p>
-                  ) : (
-                    <p>
-                      {isMessagesLoading
-                        ? 'Loading messages...'
-                        : 'Current phase: thread sync'}
-                    </p>
-                  )}
-                </div>
+                {showDebugPanel && (
+                  <div className="hidden text-right text-muted-foreground text-xs sm:block">
+                    <p>{displayedThreadCount} thread(s)</p>
+                    {visibleObservabilitySummary ? (
+                      <p>
+                        {formatTokenUsage(visibleObservabilitySummary)} / tools:{' '}
+                        {visibleObservabilitySummary.toolCallCount} /{' '}
+                        {formatDuration(visibleObservabilitySummary.durationMs)}
+                      </p>
+                    ) : null}
+                  </div>
+                )}
                 <span
                   className={cn(
                     'inline-flex items-center rounded-full border px-3 py-1 font-medium text-xs',
@@ -431,7 +619,17 @@ export function AgentraWorkspace() {
 
             <main className="h-[calc(100svh-4rem)] min-h-0">
               <section className="h-full min-h-0">
-                <Thread modelValue={selectedModel} onModelChange={setSelectedModel} />
+                <Thread
+                  modelValue={selectedModel}
+                  onModelChange={setSelectedModel}
+                  slideCommandActive={slideCommandActive}
+                  onSlideCommandActivate={handleSlideCommandActivate}
+                  onSlideCommandDeactivate={handleSlideCommandDeactivate}
+                  slideDialogOpen={slideDialogOpen}
+                  onSlideDialogOpenChange={setSlideDialogOpen}
+                  progressEvents={progressEvents}
+                  {...(activeProgressPhase ? { activeProgressPhase } : {})}
+                />
               </section>
             </main>
           </SidebarInset>

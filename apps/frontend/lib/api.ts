@@ -1,4 +1,4 @@
-import type { ChatObservationSummary } from '@agentra/shared';
+import type { ChatObservationSummary, ProgressSummaryEvent } from '@agentra/shared';
 import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
 import {
   createThread as createThreadRequest,
@@ -81,6 +81,7 @@ export async function sendChat(
 
 export type ChatStreamEvent =
   | { type: 'text'; text: string }
+  | { type: 'progress_summary'; event: ProgressSummaryEvent }
   | { type: 'observation'; observation: ChatObservationSummary }
   | {
       type: 'done';

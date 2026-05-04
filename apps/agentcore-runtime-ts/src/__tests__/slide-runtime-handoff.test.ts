@@ -2,50 +2,32 @@ import { describe, expect, it } from 'vitest';
 import { parseSlideRuntimeResponse } from '../tools/slide-runtime-client.js';
 
 describe('parseSlideRuntimeResponse', () => {
-  it('parses direct JSON success response', () => {
-    const raw = JSON.stringify({
-      success: true,
-      summary: '5-slide deck generated',
-      pptxDownloadUrl: 'https://s3.example.com/deck.pptx',
-      contactSheetDownloadUrl: 'https://s3.example.com/contact.png',
-      diagnosticsStatus: 'pass',
-      uploadedArtifacts: [
-        { kind: 'pptx', label: 'PPTX', s3Uri: 's3://bucket/deck.pptx', uploaded: true },
-      ],
-    });
+  it('parses plain text response', () => {
+    const raw = 'スライド資料が完成しました。PPTXは /tmp/deck.pptx にあります。';
     const result = parseSlideRuntimeResponse(raw);
     expect(result.success).toBe(true);
-    expect(result.pptxDownloadUrl).toBe('https://s3.example.com/deck.pptx');
-    expect(result.contactSheetDownloadUrl).toBe('https://s3.example.com/contact.png');
-    expect(result.uploadedArtifacts).toHaveLength(1);
+    expect(result.text).toBe(raw);
   });
 
   it('unwraps Strands content wrapper', () => {
-    const inner = JSON.stringify({
-      success: true,
-      summary: 'Generated deck',
-      pptxDownloadUrl: 'https://example.com/presigned',
-    });
-    const raw = JSON.stringify({ status: 'success', content: [{ text: inner }] });
+    const innerText = 'Generated a 5-slide presentation.';
+    const raw = JSON.stringify({ status: 'success', content: [{ text: innerText }] });
     const result = parseSlideRuntimeResponse(raw);
     expect(result.success).toBe(true);
-    expect(result.pptxDownloadUrl).toBe('https://example.com/presigned');
+    expect(result.text).toBe(innerText);
   });
 
-  it('returns rawText fallback for unparsable response', () => {
-    const raw = 'Some non-JSON garbage';
+  it('unwraps { type: text, text: ... } shape', () => {
+    const raw = JSON.stringify({ type: 'text', text: 'Presentation created.' });
     const result = parseSlideRuntimeResponse(raw);
+    expect(result.success).toBe(true);
+    expect(result.text).toBe('Presentation created.');
+  });
+
+  it('returns error for empty response', () => {
+    const result = parseSlideRuntimeResponse('');
     expect(result.success).toBe(false);
-    expect(result.rawText).toBe(raw);
-    expect(result.error?.phase).toBe('response-parsing');
-  });
-
-  it('extracts JSON from mixed text', () => {
-    const json = JSON.stringify({ success: true, summary: 'Done' });
-    const raw = `data: prefix\n${json}`;
-    const result = parseSlideRuntimeResponse(raw);
-    expect(result.success).toBe(true);
-    expect(result.summary).toBe('Done');
+    expect(result.error?.message).toContain('Empty response');
   });
 });
 

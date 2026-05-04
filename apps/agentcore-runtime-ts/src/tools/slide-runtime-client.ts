@@ -9,35 +9,16 @@ import { uuidv7 } from 'uuidv7';
 export interface InvokeSlideRuntimeInput {
   prompt: string;
   language?: 'ja' | 'en' | undefined;
-  diagnostics?: boolean | undefined;
-  revision?: boolean | undefined;
   traceId?: string | undefined;
   sessionId?: string | undefined;
 }
 
 export interface InvokeSlideRuntimeResult {
   success: boolean;
-  summary?: string;
-  pptxDownloadUrl?: string;
-  contactSheetDownloadUrl?: string;
-  uploadedArtifacts?: Array<{
-    kind: string;
-    label: string;
-    s3Uri?: string;
-    downloadUrl?: string;
-    uploaded?: boolean;
-  }>;
-  diagnosticsStatus?: 'pass' | 'warn' | 'fail';
-  revisionAttempted?: boolean;
-  revisionSucceeded?: boolean;
-  revisionReason?: string;
-  warnings?: string[];
+  text: string;
   error?: {
     message: string;
-    phase?: string;
-    details?: string;
   };
-  rawText?: string;
 }
 
 // --- Config ---
@@ -53,48 +34,35 @@ const client = new BedrockAgentCoreClient({
 // --- Response parsing ---
 
 export function parseSlideRuntimeResponse(rawText: string): InvokeSlideRuntimeResult {
+  if (!rawText.trim()) {
+    return {
+      success: false,
+      text: '',
+      error: { message: 'Empty response from Slide Runtime.' },
+    };
+  }
+
+  // The presentation-author-runtime returns plain text or JSON-wrapped text.
+  // Try to unwrap { content: [{ text: "..." }] } shape (Strands SDK envelope).
   try {
-    const direct = JSON.parse(rawText) as Record<string, unknown>;
-    if ('success' in direct) {
-      return direct as unknown as InvokeSlideRuntimeResult;
-    }
-    if ('content' in direct && Array.isArray(direct.content)) {
-      const textContent = (direct.content as Array<{ text?: string }>).find(
+    const parsed = JSON.parse(rawText) as Record<string, unknown>;
+    if ('content' in parsed && Array.isArray(parsed.content)) {
+      const textContent = (parsed.content as Array<{ text?: string }>).find(
         (c) => typeof c.text === 'string',
       );
       if (textContent?.text) {
-        const inner = JSON.parse(textContent.text) as Record<string, unknown>;
-        if ('success' in inner) {
-          return inner as unknown as InvokeSlideRuntimeResult;
-        }
+        return { success: true, text: textContent.text };
       }
+    }
+    // Direct { type: 'text', text: '...' } shape
+    if (typeof parsed.text === 'string') {
+      return { success: true, text: parsed.text };
     }
   } catch {
-    // Not valid JSON
+    // Not JSON — treat as plain text
   }
 
-  const jsonMatch = rawText.match(/\{[\s\S]*"success"\s*:/);
-  if (jsonMatch) {
-    const startIndex = rawText.indexOf(jsonMatch[0]);
-    const candidate = rawText.slice(startIndex);
-    try {
-      const parsed = JSON.parse(candidate) as Record<string, unknown>;
-      if ('success' in parsed) {
-        return parsed as unknown as InvokeSlideRuntimeResult;
-      }
-    } catch {
-      // Partial JSON
-    }
-  }
-
-  return {
-    success: false,
-    rawText,
-    error: {
-      message: 'Could not parse Slide Runtime response.',
-      phase: 'response-parsing',
-    },
-  };
+  return { success: true, text: rawText };
 }
 
 // --- Invocation ---
@@ -112,8 +80,6 @@ export async function invokeSlideRuntime(
   const payload = {
     prompt: input.prompt,
     ...(input.language ? { language: input.language } : {}),
-    ...(input.diagnostics !== undefined ? { diagnostics: input.diagnostics } : {}),
-    ...(input.revision !== undefined ? { revision: input.revision } : {}),
     ...(input.traceId ? { traceId: input.traceId } : {}),
   };
 
