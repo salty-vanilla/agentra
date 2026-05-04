@@ -3,6 +3,7 @@ import {
   BedrockRuntimeClient,
   InvokeModelCommand,
 } from '@aws-sdk/client-bedrock-runtime';
+import { logger } from './logger.js';
 
 export interface CreatePresentationAuthorLlmClientOptions {
   modelId?: string | undefined;
@@ -24,6 +25,15 @@ export function createPresentationAuthorLlmClient(
 
   return {
     generateText: async ({ system, prompt }) => {
+      const startTime = Date.now();
+      logger.info({
+        component: 'llm-adapter',
+        step: 'bedrock_invoke_start',
+        modelId,
+        hasSystem: !!system,
+        promptLength: prompt.length,
+      });
+
       const messages: Array<{ role: string; content: string }> = [
         { role: 'user', content: prompt },
       ];
@@ -53,6 +63,15 @@ export function createPresentationAuthorLlmClient(
         .filter((c) => c.type === 'text' && c.text)
         .map((c) => c.text)
         .join('');
+
+      const durationMs = Date.now() - startTime;
+      logger.info({
+        component: 'llm-adapter',
+        step: 'bedrock_invoke_done',
+        modelId,
+        durationMs,
+        responseLength: text.length,
+      });
 
       return text;
     },

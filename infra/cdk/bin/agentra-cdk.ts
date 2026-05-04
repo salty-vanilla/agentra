@@ -4,6 +4,7 @@ import { AgentraAgentCoreRuntimeStack } from '../lib/agentra-agentcore-runtime-s
 import { AgentraAgentCoreStack } from '../lib/agentra-agentcore-stack.js';
 import { AgentraAppStack } from '../lib/agentra-app-stack.js';
 import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';
+import { AgentraSlideRuntimeStack } from '../lib/agentra-slide-runtime-stack.js';
 import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
 
 const app = new cdk.App();
@@ -71,6 +72,11 @@ const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
     stage: stageLabel,
   },
 );
+
+new AgentraSlideRuntimeStack(app, `AgentraSlideRuntimeStack-${stageLabel}`, {
+  description: `Agentra ${stageLabel} slide generation runtime stack.`,
+  stage: stageLabel,
+});
 
 const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
   description: `Agentra ${stageLabel} backend application stack (Lambda and HTTP API).`,

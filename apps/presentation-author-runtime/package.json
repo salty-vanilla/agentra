@@ -14,6 +14,7 @@
     "@agentra/presentation-author": "workspace:*",
     "@aws-sdk/client-bedrock-runtime": "^3.1032.0",
     "@strands-agents/sdk": "latest",
+    "pino": "^10.3.1",
     "zod": "latest"
   },
   "devDependencies": {

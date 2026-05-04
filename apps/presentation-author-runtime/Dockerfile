@@ -1,4 +1,4 @@
-FROM node:22-slim AS build
+FROM node:24-slim AS build
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY apps/presentation-author-runtime/ apps/presentation-author-runtime/
 RUN pnpm --filter @agentra/presentation-author-runtime build
 
 # --- Production stage ---
-FROM node:22-slim
+FROM node:24-slim
 
 # OS dependencies for PPTX rendering and Japanese fonts
 RUN apt-get update && apt-get install -y --no-install-recommends \

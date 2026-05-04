@@ -1,9 +1,11 @@
+import { randomUUID } from 'node:crypto';
 import type { CreatePresentationToolInput } from '@agentra/presentation-author';
 import { createPresentation } from '@agentra/presentation-author';
 import { tool } from '@strands-agents/sdk';
 import { z } from 'zod';
 import { FONT_POLICY_STYLE_GUIDE } from '../font-policy.js';
 import { createPresentationAuthorLlmClient } from '../llm-adapter.js';
+import { logger } from '../logger.js';
 
 const envDiagnostics = process.env.PRESENTATION_AUTHOR_ENABLE_DIAGNOSTICS !== 'false';
 const envRevision = process.env.PRESENTATION_AUTHOR_ENABLE_REVISION !== 'false';
@@ -40,6 +42,18 @@ const createPresentationTool = tool({
       .describe('Script execution timeout in milliseconds.'),
   }),
   callback: async (input) => {
+    const runId = randomUUID();
+    const startTime = Date.now();
+
+    logger.info({
+      component: 'create-presentation-tool',
+      runId,
+      step: 'create_presentation_start',
+      language: input.language,
+      diagnostics: input.diagnostics ?? envDiagnostics,
+      revision: input.revision ?? envRevision,
+    });
+
     const styleGuide = input.styleGuide
       ? `${input.styleGuide}\n\n${FONT_POLICY_STYLE_GUIDE}`
       : FONT_POLICY_STYLE_GUIDE;
@@ -55,6 +69,35 @@ const createPresentationTool = tool({
     };
 
     const result = await createPresentation(toolInput, { llm: llmClient });
+    const durationMs = Date.now() - startTime;
+
+    if (result.success) {
+      logger.info({
+        component: 'create-presentation-tool',
+        runId,
+        step: 'create_presentation_done',
+        success: true,
+        durationMs,
+        diagnosticsStatus: result.diagnosticsStatus,
+        revisionAttempted: result.revisionAttempted,
+        revisionSucceeded: result.revisionSucceeded,
+        revisionReason: result.revisionReason,
+        artifactCount: result.artifacts?.length ?? 0,
+        pptxPath: result.pptxPath,
+        contactSheetPath: result.contactSheetPath,
+        warningCount: result.warnings?.length ?? 0,
+      });
+    } else {
+      logger.error({
+        component: 'create-presentation-tool',
+        runId,
+        step: 'create_presentation_failed',
+        success: false,
+        durationMs,
+        phase: result.error?.phase,
+        message: result.error?.message,
+      });
+    }
 
     return {
       status: result.success ? ('success' as const) : ('error' as const),
