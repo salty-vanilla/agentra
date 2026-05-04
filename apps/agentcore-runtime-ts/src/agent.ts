@@ -86,7 +86,7 @@ const DATE_TOOL_INSTRUCTIONS = [
 ].join('\n');
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const SKILLS_DIR = join(__dirname, '../../../skills');
+const SKILLS_DIR = join(__dirname, '../skills');
 
 const presentationAuthorHandoffPlugin = new AgentSkills({
   skills: [join(SKILLS_DIR, 'presentation-author-handoff')],

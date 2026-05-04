@@ -71,6 +71,9 @@ ENV HOME=/tmp
 # Copy the self-contained deploy output (includes node_modules + dist)
 COPY --from=build /deploy ./
 
+# Copy skill definitions (SKILL.md files read at runtime by AgentSkills plugin)
+COPY apps/presentation-author-runtime/skills/ ./skills/
+
 # Copy vendored helpers and scripts (needed at runtime by @agentra/presentation-author)
 COPY packages/presentation-author/vendor/ ./node_modules/@agentra/presentation-author/vendor/
 

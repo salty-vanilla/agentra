@@ -9,6 +9,19 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Changed — PA-9.1: Skills colocated with runtimes
+
+- **Skills moved into runtimes**: Each runtime now owns its `skills/` directory instead of a shared top-level `skills/`
+  - `skills/presentation-author-handoff/` → `apps/agentcore-runtime-ts/skills/presentation-author-handoff/`
+  - `skills/presentation-author/` → `apps/presentation-author-runtime/skills/presentation-author/`
+- **`AgentSkills` path**: Both `agent.ts` files now use `join(__dirname, '../skills')` — no cross-package path resolution needed
+- **Dockerfile updates**: Both Dockerfiles `COPY skills ./skills` so SKILL.md files are available inside containers at runtime
+- **Removed**: Top-level `skills/` directory (redundant after move)
+
+---
+
+## [PA-9] — 2026-05-04
+
 ### Added — PA-9: Presentation Author Skill Packaging & Router Handoff
 
 - **`skills/presentation-author/`**: Slide Agent skill with YAML frontmatter SKILL.md (name, description, allowed-tools), README, references, and examples
