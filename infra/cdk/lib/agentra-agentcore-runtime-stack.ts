@@ -18,6 +18,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   stage: string;
+  slideRuntimeArn?: string;
+  slideRuntimeQualifier?: string;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -120,6 +122,20 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       }),
     );
 
+    // Grant permission to invoke Slide Runtime if configured
+    if (props.slideRuntimeArn) {
+      runtimeRole.addToPolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [
+            props.slideRuntimeArn,
+            `${props.slideRuntimeArn}/runtime-endpoint/*`,
+          ],
+        }),
+      );
+    }
+
     const runtime = new CfnRuntime(this, 'AgentCoreRuntime', {
       agentRuntimeName: `agentraRuntime${runtimeNameSuffix}`,
       description: 'Agentra TypeScript AgentCore Runtime (Strands).',
@@ -132,6 +148,8 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         BEDROCK_REGION: Stack.of(this).region,
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentcore-${props.stage}`,
         TAVILY_API_KEY_SECRET_ID: tavilyApiKeySecret.secretArn,
+        SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
+        SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
       },
       agentRuntimeArtifact: {
         containerConfiguration: {

@@ -64,15 +64,6 @@ new AgentraAgentCoreStack(app, `AgentraAgentCoreStack-${stageLabel}`, {
   stage: stageLabel,
 });
 
-const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
-  app,
-  `AgentraAgentCoreRuntimeStack-${stageLabel}`,
-  {
-    description: `Agentra ${stageLabel} AgentCore runtime stack (TypeScript runtime and endpoint).`,
-    stage: stageLabel,
-  },
-);
-
 const slideRuntimeStack = new AgentraSlideRuntimeStack(
   app,
   `AgentraSlideRuntimeStack-${stageLabel}`,
@@ -81,6 +72,18 @@ const slideRuntimeStack = new AgentraSlideRuntimeStack(
     stage: stageLabel,
   },
 );
+
+const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
+  app,
+  `AgentraAgentCoreRuntimeStack-${stageLabel}`,
+  {
+    description: `Agentra ${stageLabel} AgentCore runtime stack (TypeScript runtime and endpoint).`,
+    stage: stageLabel,
+    slideRuntimeArn: slideRuntimeStack.runtimeArn,
+    slideRuntimeQualifier: 'prod',
+  },
+);
+agentCoreRuntimeStack.addDependency(slideRuntimeStack);
 
 const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
   description: `Agentra ${stageLabel} backend application stack (Lambda and HTTP API).`,

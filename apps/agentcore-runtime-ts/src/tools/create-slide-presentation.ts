@@ -1,0 +1,100 @@
+import { tool } from '@strands-agents/sdk';
+import { z } from 'zod';
+import { invokeSlideRuntime } from './slide-runtime-client.js';
+
+const createSlidePresentationTool = tool({
+  name: 'create_slide_presentation',
+  description:
+    "Create an editable PowerPoint presentation from the user's request. Use this when the user asks to create slides, a PowerPoint, a presentation deck, a report deck, or a PPTX file. Returns download URLs for generated artifacts when available.",
+  inputSchema: z.object({
+    prompt: z
+      .string()
+      .describe('What to create in the presentation. Pass the full user request.'),
+    language: z
+      .enum(['ja', 'en'])
+      .optional()
+      .describe('Output language. Inferred from prompt if omitted.'),
+    diagnostics: z
+      .boolean()
+      .optional()
+      .describe('Enable quality diagnostics. Default: true.'),
+    revision: z
+      .boolean()
+      .optional()
+      .describe('Enable one revision attempt. Default: true.'),
+  }),
+  callback: async (input) => {
+    const traceId = process.env.TRACE_ID ?? undefined;
+    const startTime = Date.now();
+
+    console.info(
+      JSON.stringify({
+        component: 'create-slide-presentation-tool',
+        step: 'slide_handoff_start',
+        traceId,
+        language: input.language,
+        diagnostics: input.diagnostics ?? true,
+        revision: input.revision ?? true,
+      }),
+    );
+
+    try {
+      const result = await invokeSlideRuntime({
+        prompt: input.prompt,
+        language: input.language ?? undefined,
+        diagnostics: input.diagnostics ?? true,
+        revision: input.revision ?? true,
+        traceId,
+      });
+
+      const durationMs = Date.now() - startTime;
+
+      console.info(
+        JSON.stringify({
+          component: 'create-slide-presentation-tool',
+          step: result.success ? 'slide_handoff_done' : 'slide_handoff_failed',
+          traceId,
+          success: result.success,
+          durationMs,
+          diagnosticsStatus: result.diagnosticsStatus,
+          hasPptxDownloadUrl: !!result.pptxDownloadUrl,
+          hasContactSheetDownloadUrl: !!result.contactSheetDownloadUrl,
+          uploadedCount: result.uploadedArtifacts?.filter((a) => a.uploaded).length ?? 0,
+          warningCount: result.warnings?.length ?? 0,
+        }),
+      );
+
+      return {
+        status: result.success ? ('success' as const) : ('error' as const),
+        content: [{ text: JSON.stringify(result) }],
+      };
+    } catch (err) {
+      const durationMs = Date.now() - startTime;
+      const message = err instanceof Error ? err.message : String(err);
+
+      console.error(
+        JSON.stringify({
+          component: 'create-slide-presentation-tool',
+          step: 'slide_handoff_error',
+          traceId,
+          durationMs,
+          error: message,
+        }),
+      );
+
+      return {
+        status: 'error' as const,
+        content: [
+          {
+            text: JSON.stringify({
+              success: false,
+              error: { message, phase: 'configuration' },
+            }),
+          },
+        ],
+      };
+    }
+  },
+});
+
+export { createSlidePresentationTool };
