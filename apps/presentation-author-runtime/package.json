@@ -8,7 +8,9 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/agent.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "dogfood:presentation": "tsx scripts/dogfood-create-presentation.ts"
+    "dogfood:presentation": "tsx scripts/dogfood-create-presentation.ts",
+    "dogfood:fake": "tsx src/scripts/dogfood-fake-llm.ts",
+    "docker:smoke": "node dist/scripts/docker-smoke.js"
   },
   "dependencies": {
     "@agentra/presentation-author": "workspace:*",
