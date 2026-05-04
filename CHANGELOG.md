@@ -9,6 +9,18 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — PA-10: Session Memory Integration
+
+- **Session manager factory** (`apps/agentcore-runtime-ts/src/memory/`): `createRuntimeSessionManager()` with S3-backed `SessionManager` from `@strands-agents/sdk`, noop fallback when disabled
+- **Memory config** (`memory-config.ts`): `resolveMemoryConfig()` reads `AGENT_MEMORY_ENABLED`, `AGENT_SESSION_S3_BUCKET/PREFIX/REGION` env vars
+- **Request schema**: Added `userId` and `threadId` optional fields to General Runtime `RequestSchema`
+- **Agent creation**: `createAgent()` accepts optional `sessionManager` plugin for conversation persistence
+- **Prompt guardrails**: Added `MEMORY_INSTRUCTIONS` to system prompt — guides LLM to use session context for follow-ups ("さっき", "前回")
+- **Backend**: `/chat` now passes `userId` to General Runtime invocation payload alongside existing `threadId`
+- **CDK**: `AgentraAgentCoreRuntimeStack` creates S3 session bucket when `memoryEnabled: true`, grants scoped IAM permissions, passes memory env vars to runtime
+- **Tests**: 8 new tests — memory config resolution (4), session manager factory (4)
+- **Investigation doc**: `docs/pa-10-memory-session-manager-findings.md` — TypeScript SDK API availability, Path B chosen (SessionManager + S3Storage)
+
 ### Changed — Remove DeckForge dependency & simplify progress display
 
 - **Removed `bedrock-slide-agent.ts`**: BFF no longer calls SlideRuntime directly; all slide requests go through Router Agent only

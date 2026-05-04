@@ -81,6 +81,7 @@ const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
     stage: stageLabel,
     slideRuntimeArn: slideRuntimeStack.runtimeArn,
     slideRuntimeQualifier: 'prod',
+    memoryEnabled: true,
   },
 );
 agentCoreRuntimeStack.addDependency(slideRuntimeStack);

@@ -1,9 +1,18 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CfnOutput, CfnResource, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
+import {
+  CfnOutput,
+  CfnResource,
+  Duration,
+  RemovalPolicy,
+  SecretValue,
+  Stack,
+  type StackProps,
+} from 'aws-cdk-lib';
 import { CfnRuntime, CfnRuntimeEndpoint } from 'aws-cdk-lib/aws-bedrockagentcore';
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 
@@ -14,6 +23,8 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   slideRuntimeArn?: string;
   slideRuntimeQualifier?: string;
   tavilyApiKey?: string;
+  memoryEnabled?: boolean;
+  sessionS3Prefix?: string;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -131,6 +142,39 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       );
     }
 
+    // --- Memory / Session S3 bucket ---
+    const memoryEnabled = props.memoryEnabled ?? false;
+    const sessionS3Prefix = props.sessionS3Prefix ?? 'sessions';
+    let sessionBucket: Bucket | undefined;
+
+    if (memoryEnabled) {
+      sessionBucket = new Bucket(this, 'AgentSessionBucket', {
+        blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
+        encryption: BucketEncryption.S3_MANAGED,
+        enforceSSL: true,
+        removalPolicy:
+          props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+        autoDeleteObjects: props.stage === 'dev',
+        lifecycleRules: props.stage === 'dev' ? [{ expiration: Duration.days(30) }] : [],
+      });
+
+      // Grant S3 read/write to session prefix
+      sessionBucket.grantReadWrite(runtimeRole, `${sessionS3Prefix}/*`);
+      // ListBucket is needed for SessionManager snapshot listing
+      runtimeRole.addToPolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:ListBucket'],
+          resources: [sessionBucket.bucketArn],
+          conditions: {
+            StringLike: {
+              's3:prefix': [`${sessionS3Prefix}/*`],
+            },
+          },
+        }),
+      );
+    }
+
     const runtime = new CfnRuntime(this, 'AgentCoreRuntime', {
       agentRuntimeName: `agentraRuntime${runtimeNameSuffix}`,
       description: 'Agentra TypeScript AgentCore Runtime (Strands).',
@@ -145,6 +189,10 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         TAVILY_API_KEY_SECRET_ID: tavilyApiKeySecret.secretArn,
         SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
         SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
+        AGENT_MEMORY_ENABLED: memoryEnabled ? 'true' : 'false',
+        AGENT_SESSION_S3_BUCKET: sessionBucket?.bucketName ?? '',
+        AGENT_SESSION_S3_PREFIX: sessionS3Prefix,
+        AGENT_SESSION_S3_REGION: Stack.of(this).region,
       },
       agentRuntimeArtifact: {
         containerConfiguration: {
@@ -186,5 +234,13 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     new CfnOutput(this, 'TavilyApiKeySecretArn', {
       value: tavilyApiKeySecret.secretArn,
     });
+    new CfnOutput(this, 'AgentMemoryEnabled', {
+      value: memoryEnabled ? 'true' : 'false',
+    });
+    if (sessionBucket) {
+      new CfnOutput(this, 'AgentSessionS3BucketName', {
+        value: sessionBucket.bucketName,
+      });
+    }
   }
 }

@@ -1,11 +1,17 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { Agent, BedrockModel } from '@strands-agents/sdk';
+import {
+  Agent,
+  BedrockModel,
+  type Plugin,
+  type SessionManager,
+} from '@strands-agents/sdk';
 import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import { buildLoggerOptions } from './logging.js';
+import { createRuntimeSessionManager } from './memory/session-manager-factory.js';
 import { ObservationCollector } from './observability.js';
 import { createSlidePresentationTool } from './tools/create-slide-presentation.js';
 import { dateResolverTool } from './tools/date-resolver.js';
@@ -98,6 +104,8 @@ const RequestSchema = z.object({
   tone: z.enum(['business', 'engineer']).default(DEFAULT_TONE),
   length: z.enum(['short', 'normal', 'detailed']).default(DEFAULT_LENGTH),
   traceId: z.string().trim().min(1).optional(),
+  userId: z.string().trim().min(1).optional(),
+  threadId: z.string().trim().min(1).optional(),
 });
 
 function nowIso(): string {
@@ -128,15 +136,33 @@ function resolveConfig(
   };
 }
 
-function buildPrompt(userPrompt: string, tone: ToneKey): string {
-  return [
-    TONE_INSTRUCTIONS[tone],
+const MEMORY_INSTRUCTIONS = [
+  'セッション内の会話履歴やユーザーの好みが利用可能な場合は、参考にしてください。',
+  'メモリが完全・最新であるとは限りません。',
+  'ユーザーが「さっき」「前回」と言った場合は、現在のスレッド/セッションのコンテキストから解決してください。',
+  '内部のメモリID・ストレージキーをユーザーに見せないでください。',
+].join('\n');
+
+function buildPrompt(input: {
+  userPrompt: string;
+  tone: ToneKey;
+  commandDirective?: string;
+}): string {
+  const parts = [
+    TONE_INSTRUCTIONS[input.tone],
     '',
     DATE_TOOL_INSTRUCTIONS,
     '',
-    '以下がユーザーの依頼です。',
-    userPrompt,
-  ].join('\n');
+    MEMORY_INSTRUCTIONS,
+  ];
+
+  if (input.commandDirective) {
+    parts.push('', input.commandDirective);
+  }
+
+  parts.push('', '以下がユーザーの依頼です。', input.userPrompt);
+
+  return parts.join('\n');
 }
 
 function createAgent(config: {
@@ -144,6 +170,7 @@ function createAgent(config: {
   region: string;
   temperature: number;
   maxTokens: number;
+  sessionManager?: SessionManager | undefined;
 }): Agent {
   const model = new BedrockModel({
     modelId: config.modelId,
@@ -152,9 +179,14 @@ function createAgent(config: {
     temperature: config.temperature,
   });
 
+  const plugins: Plugin[] = [presentationAuthorHandoffPlugin];
+  if (config.sessionManager) {
+    plugins.push(config.sessionManager);
+  }
+
   return new Agent({
     model,
-    plugins: [presentationAuthorHandoffPlugin],
+    plugins,
     tools: [
       dateResolverTool,
       weatherTool,
@@ -177,8 +209,19 @@ const app = new BedrockAgentCoreApp({
     requestSchema: RequestSchema,
 
     process: async function* (request) {
-      const agent = createAgent(resolveConfig(request.preset, request.length));
-      const finalPrompt = buildPrompt(request.prompt, request.tone);
+      const userId = request.userId || 'dev-user';
+      const threadId = request.threadId || `ephemeral-${createTraceId()}`;
+
+      const session = await createRuntimeSessionManager({ userId, threadId });
+
+      const agent = createAgent({
+        ...resolveConfig(request.preset, request.length),
+        sessionManager: session.sessionManager,
+      });
+      const finalPrompt = buildPrompt({
+        userPrompt: request.prompt,
+        tone: request.tone,
+      });
       const traceId = request.traceId ?? createTraceId();
       const startedAt = nowIso();
       const observability = new ObservationCollector(

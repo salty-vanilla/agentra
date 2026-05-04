@@ -224,6 +224,7 @@ app.post('/chat', async (context) => {
         thread.threadId,
         effectiveMessage,
         traceId,
+        { userId },
       )) {
         if (runtimeEvent.type === 'text') {
           fullReply += runtimeEvent.text;

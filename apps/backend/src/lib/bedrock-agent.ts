@@ -181,6 +181,7 @@ async function* invokeAgentCoreRuntimeStream(
   sessionId: string,
   inputText: string,
   traceId?: string,
+  extra?: { userId?: string },
 ): AsyncGenerator<RuntimeStreamEvent> {
   if (!AGENTCORE_RUNTIME_ARN) {
     throw new Error('AGENTCORE_RUNTIME_ARN is not set. AgentCore runtime is required.');
@@ -198,6 +199,8 @@ async function* invokeAgentCoreRuntimeStream(
         prompt: inputText,
         model: modelKey,
         ...(traceId ? { traceId } : {}),
+        ...(extra?.userId ? { userId: extra.userId } : {}),
+        ...(sessionId ? { threadId: sessionId } : {}),
       }),
     ),
   });
@@ -220,8 +223,9 @@ export async function* invokeAgentStream(
   sessionId: string,
   inputText: string,
   traceId?: string,
+  extra?: { userId?: string },
 ): AsyncGenerator<RuntimeStreamEvent> {
-  yield* invokeAgentCoreRuntimeStream(modelKey, sessionId, inputText, traceId);
+  yield* invokeAgentCoreRuntimeStream(modelKey, sessionId, inputText, traceId, extra);
 }
 
 export function getModelId(modelKey: ModelKey): string {
