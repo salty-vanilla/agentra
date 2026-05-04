@@ -12,7 +12,7 @@ import { resolve } from 'node:path';
  *   npx tsx packages/presentation-author/scripts/dogfood.ts
  *
  * Env overrides:
- *   BEDROCK_MODEL_ID   — model to use (default: us.anthropic.claude-sonnet-4-6)
+ *   BEDROCK_MODEL_ID   — model to use (default: global.anthropic.claude-sonnet-4-6)
  *   AWS_REGION          — Bedrock region (default: us-east-1)
  */
 import {
@@ -22,7 +22,7 @@ import {
 import { runPresentationAuthor } from '../src/index.js';
 import type { LlmClient } from '../src/types.js';
 
-const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? 'us.anthropic.claude-sonnet-4-6';
+const MODEL_ID = process.env.BEDROCK_MODEL_ID ?? 'global.anthropic.claude-sonnet-4-6';
 const REGION = process.env.AWS_REGION ?? 'us-east-1';
 
 const OUTPUT_DIR = resolve('.tmp/presentation-author-dogfood');

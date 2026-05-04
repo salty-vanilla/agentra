@@ -17,8 +17,12 @@ export function createPresentationAuthorLlmClient(
   const modelId =
     options?.modelId ??
     process.env.PRESENTATION_AUTHOR_MODEL_ID ??
-    'us.anthropic.claude-sonnet-4-6';
-  const region = options?.region ?? process.env.AWS_REGION ?? 'us-east-1';
+    'global.anthropic.claude-sonnet-4-6';
+  const region =
+    options?.region ??
+    process.env.BEDROCK_REGION ??
+    process.env.AWS_REGION ??
+    'us-east-1';
   const maxTokens = options?.maxTokens ?? 16384;
 
   const client = new BedrockRuntimeClient({ region });

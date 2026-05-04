@@ -12,9 +12,9 @@ export type RuntimeStreamEvent =
   | { type: 'error'; error: string; observabilitySummary?: ChatObservationSummary };
 
 const MODEL_ID_MAP: Record<ModelKey, string> = {
-  opus: 'us.anthropic.claude-opus-4-6-v1',
-  sonnet: 'us.anthropic.claude-sonnet-4-6',
-  haiku: 'us.anthropic.claude-haiku-4-5-20251001-v1:0',
+  opus: 'global.anthropic.claude-opus-4-6-v1',
+  sonnet: 'global.anthropic.claude-sonnet-4-6',
+  haiku: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
 };
 
 const agentCoreClient = new BedrockAgentCoreClient({

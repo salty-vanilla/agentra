@@ -117,7 +117,8 @@ export class AgentraSlideRuntimeStack extends Stack {
 
     // --- Docker Image Asset ---
     const runtimeImageAsset = new DockerImageAsset(this, 'SlideRuntimeImageAsset', {
-      directory: join(__dirname, '../../../apps/presentation-author-runtime'),
+      directory: join(__dirname, '../../..'),
+      file: 'apps/presentation-author-runtime/Dockerfile',
     });
     runtimeImageAsset.repository.grantPull(runtimeRole);
     runtimeRole.addToPolicy(
@@ -143,6 +144,8 @@ export class AgentraSlideRuntimeStack extends Stack {
       },
       environmentVariables: {
         BEDROCK_REGION: Stack.of(this).region,
+        BEDROCK_MODEL_ID: 'global.anthropic.claude-sonnet-4-6',
+        PRESENTATION_AUTHOR_MODEL_ID: 'global.anthropic.claude-sonnet-4-6',
         PRESENTATION_AUTHOR_OUTPUT_DIR: '/tmp/presentation-author',
         PRESENTATION_AUTHOR_ENABLE_DIAGNOSTICS: 'true',
         PRESENTATION_AUTHOR_ENABLE_REVISION: 'true',

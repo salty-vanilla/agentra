@@ -1,13 +1,6 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import {
-  CfnOutput,
-  CfnParameter,
-  CfnResource,
-  SecretValue,
-  Stack,
-  type StackProps,
-} from 'aws-cdk-lib';
+import { CfnOutput, CfnResource, SecretValue, Stack, type StackProps } from 'aws-cdk-lib';
 import { CfnRuntime, CfnRuntimeEndpoint } from 'aws-cdk-lib/aws-bedrockagentcore';
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
@@ -20,6 +13,7 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   stage: string;
   slideRuntimeArn?: string;
   slideRuntimeQualifier?: string;
+  tavilyApiKey?: string;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -35,17 +29,18 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       normalizedStage.length > 0
         ? normalizedStage.charAt(0).toUpperCase() + normalizedStage.slice(1)
         : 'Default';
-    const tavilyApiKeyParam = new CfnParameter(this, 'TavilyApiKey', {
-      type: 'String',
-      noEcho: true,
-      description: 'Tavily API key for runtime web search tools.',
-    });
+    const tavilyApiKey = props.tavilyApiKey ?? this.node.tryGetContext('tavilyApiKey');
+    if (!tavilyApiKey) {
+      throw new Error(
+        'tavilyApiKey must be provided via props or context (-c tavilyApiKey=...)',
+      );
+    }
 
     const tavilyApiKeySecret = new Secret(this, 'TavilyApiKeySecret', {
       secretName: `agentra/${props.stage}/tavily-api-key`,
       description: `Tavily API key for Agentra ${props.stage} runtime.`,
       secretObjectValue: {
-        TAVILY_API_KEY: SecretValue.cfnParameter(tavilyApiKeyParam),
+        TAVILY_API_KEY: SecretValue.unsafePlainText(tavilyApiKey),
       },
     });
 

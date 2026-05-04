@@ -72,9 +72,9 @@ Default: `standard`. Falls back to Noto Sans CJK JP if BIZ fonts are not install
 
 | Variable | Default | Description |
 |---|---|---|
-| `PRESENTATION_AUTHOR_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | LLM for script generation |
+| `PRESENTATION_AUTHOR_MODEL_ID` | `global.anthropic.claude-sonnet-4-6` | LLM for script generation |
 | `AWS_REGION` | `us-east-1` | Bedrock region |
-| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | Slide Agent model |
+| `BEDROCK_MODEL_ID` | `global.anthropic.claude-sonnet-4-6` | Slide Agent model |
 | `PRESENTATION_AUTHOR_OUTPUT_DIR` | (temp dir) | Output directory |
 | `PRESENTATION_AUTHOR_ENABLE_DIAGNOSTICS` | `true` | Enable diagnostics |
 | `PRESENTATION_AUTHOR_ENABLE_REVISION` | `true` | Enable revision |

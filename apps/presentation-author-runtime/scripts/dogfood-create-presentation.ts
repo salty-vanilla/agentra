@@ -7,7 +7,7 @@
  *   pnpm --filter @agentra/presentation-author-runtime dogfood:presentation
  *
  * Env overrides:
- *   PRESENTATION_AUTHOR_MODEL_ID — model for script generation (default: us.anthropic.claude-sonnet-4-6)
+ *   PRESENTATION_AUTHOR_MODEL_ID — model for script generation (default: global.anthropic.claude-sonnet-4-6)
  *   AWS_REGION                   — Bedrock region (default: us-east-1)
  *   PRESENTATION_AUTHOR_OUTPUT_DIR — output directory
  */

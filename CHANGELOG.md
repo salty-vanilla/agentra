@@ -9,6 +9,34 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Fixed — PA-8.5: Deploy & Chat E2E Smoke — runtime fixes for full chat→router→slide handoff
+
+- **Dockerfile** (`apps/presentation-author-runtime/Dockerfile`):
+  - 3-stage build (build + python + prod): Python venv built in parallel stage, copied into prod
+  - `pnpm deploy --legacy` + `cp -rL` + `npm install --omit=dev` to resolve workspace dep transitive dependencies (pptxgenjs etc.) without hacks
+  - Removed inline `python3-pip`/`python3-venv` apt installs; use pre-built venv from python stage
+  - Docker context moved to monorepo root (`directory: join(__dirname, '../../..')`) with explicit `file:` path
+- **Slide runtime agent** (`apps/presentation-author-runtime/src/agent.ts`):
+  - Added `BedrockAgentCoreApp` runtime wrapper with `RequestSchema` (prompt, language, diagnostics, revision)
+  - Non-streaming `process()` handler that consumes Strands agent stream and returns `{ type: 'text', text }` (router invokes with `accept: application/json`)
+  - Increased `maxTokens` 4096 → 32768 for slide agent model calls
+  - Default model ID `us.anthropic.claude-sonnet-4-6` → `global.anthropic.claude-sonnet-4-6`
+  - Region fallback: `BEDROCK_REGION` → `AWS_REGION`
+- **Router agent** (`apps/agentcore-runtime-ts/src/agent.ts`):
+  - maxTokens per-call limits increased: short 512→1024, normal 2048→4096, detailed 4096→8192
+- **Backend** (`apps/backend/src/lib/bedrock-agent.ts`):
+  - Model IDs `us.anthropic.claude-*` → `global.anthropic.claude-*`
+- **LLM adapter** (`apps/presentation-author-runtime/src/llm-adapter.ts`):
+  - Default model ID → `global.anthropic.claude-sonnet-4-6`, region fallback `BEDROCK_REGION` → `AWS_REGION`
+- **CDK — AgentCoreRuntime** (`infra/cdk/lib/agentra-agentcore-runtime-stack.ts`):
+  - Replace `CfnParameter` for Tavily API key with direct context/props lookup (avoids CloudFormation parameter prompt)
+  - `SecretValue.cfnParameter()` → `SecretValue.unsafePlainText()` for Secrets Manager
+- **CDK — SlideRuntime** (`infra/cdk/lib/agentra-slide-runtime-stack.ts`):
+  - Add `BEDROCK_MODEL_ID` and `PRESENTATION_AUTHOR_MODEL_ID` env vars (`global.anthropic.claude-sonnet-4-6`)
+- **CDK — Bedrock** (`infra/cdk/lib/agentra-bedrock-stack.ts`):
+  - `BEDROCK_MODELS` map: `us.anthropic.*` → `global.anthropic.*`
+- **Runtime package.json**: Added `bedrock-agentcore` dependency
+
 ### Added — presentation-author: PA-5 AgentCore-ready tool wrapper
 
 - **`tool-types.ts`**: `CreatePresentationToolInput`, `CreatePresentationToolOutput`, `CreatePresentationArtifact` — stable tool-boundary types

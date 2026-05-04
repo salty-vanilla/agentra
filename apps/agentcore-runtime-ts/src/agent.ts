@@ -55,9 +55,9 @@ const PRESETS: Record<ResponsePreset, GenerationConfig> = {
 };
 
 const LENGTH_CONFIG: Record<LengthKey, { maxTokens: number }> = {
-  short: { maxTokens: 512 },
-  normal: { maxTokens: 2048 },
-  detailed: { maxTokens: 4096 },
+  short: { maxTokens: 1024 },
+  normal: { maxTokens: 4096 },
+  detailed: { maxTokens: 8192 },
 };
 
 const TONE_INSTRUCTIONS: Record<ToneKey, string> = {

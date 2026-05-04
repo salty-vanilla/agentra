@@ -216,7 +216,7 @@ Env overrides:
 
 | Variable | Default | Description |
 |---|---|---|
-| `BEDROCK_MODEL_ID` | `us.anthropic.claude-sonnet-4-6` | Bedrock model ID |
+| `BEDROCK_MODEL_ID` | `global.anthropic.claude-sonnet-4-6` | Bedrock model ID |
 | `AWS_REGION` | `us-east-1` | AWS region |
 
 ### Inspecting results

@@ -24,6 +24,24 @@ COPY apps/presentation-author-runtime/ apps/presentation-author-runtime/
 RUN pnpm --filter @agentra/presentation-author exec tsc -b --force && \
     pnpm --filter @agentra/presentation-author-runtime build
 
+# Deploy: creates a self-contained directory with all deps
+RUN pnpm --filter @agentra/presentation-author-runtime deploy --legacy /deploy
+
+# pnpm deploy --legacy leaves workspace deps (@agentra/*) as dangling symlinks.
+# Replace with real copy, then let npm resolve transitive deps (pptxgenjs etc.).
+RUN rm -rf /deploy/node_modules/@agentra/presentation-author && \
+    cp -rL packages/presentation-author /deploy/node_modules/@agentra/presentation-author && \
+    cd /deploy/node_modules/@agentra/presentation-author && \
+    npm install --omit=dev --ignore-scripts
+
+# --- Python venv stage (runs in parallel with build) ---
+FROM python:3.11-slim-bookworm AS python
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+COPY packages/presentation-author/python/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
 # --- Production stage ---
 FROM node:24-slim
 
@@ -33,38 +51,28 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     poppler-utils \
     fontconfig \
     fonts-noto-cjk \
-    python3 \
-    python3-pip \
-    python3-venv \
   && fc-cache -fv \
   && rm -rf /var/lib/apt/lists/*
 
-# Python venv for presentation-author scripts
+# Copy Python runtime + venv from python stage (no apt python3 needed)
+COPY --from=python /usr/local/bin/python3* /usr/local/bin/
+COPY --from=python /usr/local/lib/python3.11 /usr/local/lib/python3.11
+COPY --from=python /usr/local/lib/libpython3* /usr/local/lib/
+COPY --from=python /opt/venv /opt/venv
+RUN ldconfig
 ENV VIRTUAL_ENV=/opt/venv
-RUN python3 -m venv $VIRTUAL_ENV
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-
-COPY packages/presentation-author/python/requirements.txt /tmp/presentation-author-requirements.txt
-RUN pip install --no-cache-dir -r /tmp/presentation-author-requirements.txt
 
 WORKDIR /app
 
 # Ensure HOME is writable for LibreOffice profile
 ENV HOME=/tmp
 
-# Copy the workspace structure from build (preserves pnpm symlinks)
-COPY --from=build /app/node_modules ./node_modules
-COPY --from=build /app/packages/presentation-author/dist ./packages/presentation-author/dist
-COPY --from=build /app/packages/presentation-author/package.json ./packages/presentation-author/package.json
-COPY --from=build /app/packages/presentation-author/node_modules ./packages/presentation-author/node_modules
-COPY --from=build /app/apps/presentation-author-runtime/dist ./apps/presentation-author-runtime/dist
-COPY --from=build /app/apps/presentation-author-runtime/package.json ./apps/presentation-author-runtime/package.json
-COPY --from=build /app/apps/presentation-author-runtime/node_modules ./apps/presentation-author-runtime/node_modules
+# Copy the self-contained deploy output (includes node_modules + dist)
+COPY --from=build /deploy ./
 
-# Copy vendored helpers and scripts (needed at runtime)
-COPY packages/presentation-author/vendor/ ./packages/presentation-author/vendor/
-
-WORKDIR /app/apps/presentation-author-runtime
+# Copy vendored helpers and scripts (needed at runtime by @agentra/presentation-author)
+COPY packages/presentation-author/vendor/ ./node_modules/@agentra/presentation-author/vendor/
 
 EXPOSE 8080
 
