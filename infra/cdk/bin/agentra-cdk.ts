@@ -73,20 +73,28 @@ const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
   },
 );
 
-new AgentraSlideRuntimeStack(app, `AgentraSlideRuntimeStack-${stageLabel}`, {
-  description: `Agentra ${stageLabel} slide generation runtime stack.`,
-  stage: stageLabel,
-});
+const slideRuntimeStack = new AgentraSlideRuntimeStack(
+  app,
+  `AgentraSlideRuntimeStack-${stageLabel}`,
+  {
+    description: `Agentra ${stageLabel} slide generation runtime stack.`,
+    stage: stageLabel,
+  },
+);
 
 const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
   description: `Agentra ${stageLabel} backend application stack (Lambda and HTTP API).`,
   dataAuthStack,
   agentCoreRuntimeArn: agentCoreRuntimeStack.runtimeArn,
   agentCoreRuntimeQualifier: 'prod',
+  slideRuntimeArn: slideRuntimeStack.runtimeArn,
+  slideRuntimeQualifier: 'prod',
+  presentationArtifactsBucketName: slideRuntimeStack.artifactsBucketName,
   allowedCorsOrigins: resolvedCorsOrigins,
 });
 appStack.addDependency(dataAuthStack);
 appStack.addDependency(agentCoreRuntimeStack);
+appStack.addDependency(slideRuntimeStack);
 
 const webHostingStack = new AgentraWebHostingStack(
   app,

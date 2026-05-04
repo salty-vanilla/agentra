@@ -15,6 +15,9 @@ export interface AgentraAppStackProps extends StackProps {
   dataAuthStack: AgentraDataAuthStack;
   agentCoreRuntimeArn?: string;
   agentCoreRuntimeQualifier?: string;
+  slideRuntimeArn?: string;
+  slideRuntimeQualifier?: string;
+  presentationArtifactsBucketName?: string;
   allowedCorsOrigins?: string[];
 }
 
@@ -43,6 +46,9 @@ export class AgentraAppStack extends Stack {
         BEDROCK_REGION: Stack.of(this).region,
         AGENTCORE_RUNTIME_ARN: props.agentCoreRuntimeArn ?? '',
         AGENTCORE_RUNTIME_QUALIFIER: props.agentCoreRuntimeQualifier ?? '',
+        SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
+        SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
+        PRESENTATION_ARTIFACT_BUCKET_NAME: props.presentationArtifactsBucketName ?? '',
       },
     });
 
@@ -53,6 +59,17 @@ export class AgentraAppStack extends Stack {
           effect: Effect.ALLOW,
           actions: ['bedrock-agentcore:InvokeAgentRuntime'],
           resources: [props.agentCoreRuntimeArn, runtimeEndpointArnPrefix],
+        }),
+      );
+    }
+
+    if (props.slideRuntimeArn) {
+      const slideRuntimeEndpointArnPrefix = `${props.slideRuntimeArn}/runtime-endpoint/*`;
+      apiHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [props.slideRuntimeArn, slideRuntimeEndpointArnPrefix],
         }),
       );
     }

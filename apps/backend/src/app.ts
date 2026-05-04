@@ -15,6 +15,7 @@ import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
 import { uuidv7 } from 'uuidv7';
 import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
+import { invokeSlideRuntime } from './lib/bedrock-slide-agent.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { authMiddleware } from './middleware/auth.js';
 import {
@@ -389,6 +390,68 @@ app.delete('/threads/:threadId', async (context) => {
     thread: deleted,
   });
   return jsonWithValidation(context, 'deleteThread', 200, response);
+});
+
+// --- Presentation generation ---
+
+app.post('/api/presentations', authMiddleware, async (context) => {
+  const body = await context.req.json().catch(() => null);
+  if (!body || typeof body !== 'object') {
+    return context.json({ error: 'Invalid JSON body.' }, 400);
+  }
+
+  const { prompt, language, diagnostics, revision } = body as {
+    prompt?: unknown;
+    language?: unknown;
+    diagnostics?: unknown;
+    revision?: unknown;
+  };
+
+  if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
+    return context.json(
+      { error: 'prompt is required and must be a non-empty string.' },
+      400,
+    );
+  }
+
+  const traceId = uuidv7();
+
+  try {
+    const result = await invokeSlideRuntime({
+      prompt: prompt.trim(),
+      language: language === 'ja' || language === 'en' ? language : undefined,
+      diagnostics: typeof diagnostics === 'boolean' ? diagnostics : true,
+      revision: typeof revision === 'boolean' ? revision : true,
+      traceId,
+    });
+
+    if (result.success) {
+      return context.json({
+        ...result,
+        traceId,
+        warning:
+          'Artifact paths are local to the Slide Runtime container. Download URLs require a future artifact upload phase.',
+      });
+    }
+
+    return context.json(
+      {
+        ...result,
+        traceId,
+      },
+      502,
+    );
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return context.json(
+      {
+        success: false,
+        traceId,
+        error: { message, phase: 'invocation' },
+      },
+      500,
+    );
+  }
 });
 
 app.onError((error, context) => {
