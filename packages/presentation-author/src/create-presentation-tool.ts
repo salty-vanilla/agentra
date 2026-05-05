@@ -150,6 +150,7 @@ export async function createPresentation(
         timeoutMs: input.timeoutMs,
         diagnostics: input.diagnostics ?? true,
         revision: input.revision ?? true,
+        brandFrameId: input.brandFrameId,
       },
       deps,
     );
@@ -188,6 +189,8 @@ export async function createPresentation(
       revisionReason: result.revision?.reason,
       artifacts,
       warnings: result.warnings,
+      brandFrameId: result.brandFrameId,
+      brandFrameName: result.brandFrameName,
     };
   } catch (err) {
     const toolError = mapErrorToToolError(err);

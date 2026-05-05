@@ -11,6 +11,7 @@ export interface InvokeSlideRuntimeInput {
   language?: 'ja' | 'en' | undefined;
   traceId?: string | undefined;
   sessionId?: string | undefined;
+  brandFrameId?: string | undefined;
 }
 
 export interface InvokeSlideRuntimeResult {
@@ -81,6 +82,7 @@ export async function invokeSlideRuntime(
     prompt: input.prompt,
     ...(input.language ? { language: input.language } : {}),
     ...(input.traceId ? { traceId: input.traceId } : {}),
+    ...(input.brandFrameId ? { brandFrameId: input.brandFrameId } : {}),
   };
 
   const command = new InvokeAgentRuntimeCommand({

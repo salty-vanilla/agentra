@@ -4,6 +4,8 @@ import {
   validateAuthoringScript,
   writeAuthoringScript,
 } from './authoring-script.js';
+import type { BrandFrame } from './brand-frame/types.js';
+import { copyBrandFrameToWorkspace } from './brand-frame/workspace.js';
 import type { PresentationDiagnosticsInput } from './diagnostics.js';
 import { runPresentationDiagnostics } from './diagnostics.js';
 import { executeAuthoringScript } from './executor.js';
@@ -43,7 +45,19 @@ export async function runPresentationAuthor(
     runId,
   });
 
-  const authoringPrompt = buildAuthoringPrompt(input);
+  // --- BrandFrame setup ---
+  const brandFrameWarnings: string[] = [];
+  let brandFrame: BrandFrame | undefined;
+  if (input.brandFrameId !== undefined) {
+    const brandFrameResult = await copyBrandFrameToWorkspace({
+      brandFrameId: input.brandFrameId,
+      workDir: workspace.workDir,
+    });
+    brandFrame = brandFrameResult.brandFrame;
+    brandFrameWarnings.push(...brandFrameResult.warnings);
+  }
+
+  const authoringPrompt = buildAuthoringPrompt(input, { brandFrame });
 
   const llmResponse = await deps.llm.generateText({
     prompt: authoringPrompt,
@@ -51,7 +65,7 @@ export async function runPresentationAuthor(
 
   const { code, warnings: extractWarnings } = extractJavaScriptFromLlmOutput(llmResponse);
   const { valid, warnings: valWarnings, errors } = validateAuthoringScript(code);
-  const warnings = [...extractWarnings, ...valWarnings];
+  const warnings = [...brandFrameWarnings, ...extractWarnings, ...valWarnings];
 
   if (!valid) {
     throw new Error(`Authoring script validation failed:\n${errors.join('\n')}`);
@@ -129,6 +143,7 @@ export async function runPresentationAuthor(
         deps,
         timeoutMs: input.timeoutMs,
         diagnosticsOptions: input.diagnostics,
+        brandFrame,
       });
       warnings.push(...revisionResult.warnings);
 
@@ -150,5 +165,7 @@ export async function runPresentationAuthor(
     execution,
     diagnostics: diagnosticsResult,
     revision: revisionResult,
+    brandFrameId: brandFrame?.id,
+    brandFrameName: brandFrame?.name,
   };
 }

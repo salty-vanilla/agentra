@@ -16,6 +16,7 @@ export interface PresentationAuthorInput {
   timeoutMs?: number | undefined;
   diagnostics?: boolean | DiagnosticsOptions | undefined;
   revision?: boolean | RevisionOptions | undefined;
+  brandFrameId?: string | undefined;
 }
 
 import type {
@@ -56,6 +57,8 @@ export interface PresentationAuthorResult {
   execution: AuthoringScriptExecutionResult;
   diagnostics?: PresentationDiagnosticsResult | undefined;
   revision?: RevisionAttemptResult | undefined;
+  brandFrameId?: string | undefined;
+  brandFrameName?: string | undefined;
 }
 
 export interface AuthoringWorkspace {

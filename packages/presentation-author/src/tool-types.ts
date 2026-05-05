@@ -39,6 +39,12 @@ export interface CreatePresentationToolInput {
    * Default uses existing package default.
    */
   timeoutMs?: number | undefined;
+
+  /**
+   * Optional BrandFrame ID for company template.
+   * If omitted and brand frame is enabled, uses the default frame.
+   */
+  brandFrameId?: string | undefined;
 }
 
 export interface CreatePresentationArtifact {
@@ -77,6 +83,9 @@ export interface CreatePresentationToolOutput {
 
   artifacts: CreatePresentationArtifact[];
   warnings: string[];
+
+  brandFrameId?: string | undefined;
+  brandFrameName?: string | undefined;
 
   /**
    * Error summary suitable for agent consumption.

@@ -1,3 +1,5 @@
+import { buildBrandFramePromptSection } from './brand-frame/prompts.js';
+import type { BrandFrame } from './brand-frame/types.js';
 import type { PresentationDiagnosticsResult } from './diagnostics.js';
 import type { PresentationLanguage } from './types.js';
 
@@ -6,6 +8,7 @@ export interface BuildSingleRevisionPromptInput {
   language?: PresentationLanguage | undefined;
   previousCode: string;
   diagnostics?: PresentationDiagnosticsResult | undefined;
+  brandFrame?: BrandFrame | undefined;
 }
 
 export function buildSingleRevisionPrompt(input: BuildSingleRevisionPromptInput): string {
@@ -107,11 +110,20 @@ export function buildSingleRevisionPrompt(input: BuildSingleRevisionPromptInput)
     '- Do not use network access (no fetch, http, https).',
     '- Do not use child_process, exec, spawn.',
     '- Do not use destructive file operations (fs.rm, fs.unlink, fs.rmdir).',
-    '- Do not import modules other than pptxgenjs and the helpers.',
+    '- Do not import modules other than pptxgenjs, the pptxgenjs_helpers, and the brand-frame helper.',
     `- ${langInstruction}`,
     '',
     'Return the COMPLETE revised file, not a patch or diff.',
   );
+
+  if (input.brandFrame) {
+    parts.push(
+      '',
+      '## Brand Frame (must be preserved)',
+      '',
+      buildBrandFramePromptSection(input.brandFrame),
+    );
+  }
 
   return parts.join('\n');
 }

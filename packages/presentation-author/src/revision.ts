@@ -4,6 +4,7 @@ import {
   extractJavaScriptFromLlmOutput,
   validateAuthoringScript,
 } from './authoring-script.js';
+import type { BrandFrame } from './brand-frame/types.js';
 import type {
   PresentationDiagnosticsInput,
   PresentationDiagnosticsResult,
@@ -32,6 +33,7 @@ export interface ReviseAuthoringScriptInput {
   previousCode: string;
   diagnostics?: PresentationDiagnosticsResult | undefined;
   deps: PresentationAuthorDeps;
+  brandFrame?: BrandFrame | undefined;
 }
 
 export interface ReviseAuthoringScriptResult {
@@ -48,6 +50,7 @@ export async function reviseAuthoringScript(
     language: input.language,
     previousCode: input.previousCode,
     diagnostics: input.diagnostics,
+    brandFrame: input.brandFrame,
   });
 
   const rawText = await input.deps.llm.generateText({ prompt });
@@ -75,6 +78,7 @@ export interface RunSingleRevisionAttemptInput {
   deps: PresentationAuthorDeps;
   timeoutMs?: number | undefined;
   diagnosticsOptions?: boolean | DiagnosticsOptions | undefined;
+  brandFrame?: BrandFrame | undefined;
 }
 
 export async function runSingleRevisionAttempt(
@@ -115,6 +119,7 @@ export async function runSingleRevisionAttempt(
       previousCode,
       diagnostics: input.initialDiagnostics,
       deps: input.deps,
+      brandFrame: input.brandFrame,
     });
     revisedCode = result.code;
     reviseWarnings = result.warnings;
@@ -166,6 +171,22 @@ export async function runSingleRevisionAttempt(
     await cp(srcScripts, revScriptsDir, { recursive: true });
   } catch {
     warnings.push('Failed to copy scripts into revision workspace');
+  }
+
+  // Copy brand frame assets and helper from initial workspace
+  const srcBrandFrameAssets = join(input.workDir, 'assets', 'brand-frame');
+  const srcBrandFrameHelper = join(input.workDir, 'helpers', 'brand-frame.js');
+  const revBrandFrameAssets = join(revDir, 'assets', 'brand-frame');
+  const revBrandFrameHelper = join(revDir, 'helpers', 'brand-frame.js');
+  try {
+    await cp(srcBrandFrameAssets, revBrandFrameAssets, { recursive: true });
+  } catch {
+    // Brand frame assets may not exist if not enabled
+  }
+  try {
+    await cp(srcBrandFrameHelper, revBrandFrameHelper);
+  } catch {
+    // Brand frame helper may not exist if not enabled
   }
 
   // Execute revised script

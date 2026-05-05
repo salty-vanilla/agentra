@@ -77,6 +77,9 @@ COPY apps/presentation-author-runtime/skills/ ./skills/
 # Copy vendored helpers and scripts (needed at runtime by @agentra/presentation-author)
 COPY packages/presentation-author/vendor/ ./node_modules/@agentra/presentation-author/vendor/
 
+# Copy template assets (BrandFrame header/footer images, manifests)
+COPY packages/presentation-author/templates/ ./node_modules/@agentra/presentation-author/templates/
+
 EXPOSE 8080
 
 CMD ["node", "dist/agent.js"]

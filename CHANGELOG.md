@@ -9,6 +9,15 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — PA-11: Corporate Brand Frame Template
+
+- **Brand frame module** (`packages/presentation-author/src/brand-frame/`): registry, workspace copier, prompt builder, and types for reusable corporate slide frames
+- **Template: company-basic-v1** (`packages/presentation-author/templates/company-basic-v1/`): dark-blue-to-teal gradient header bar, white footer with "Example Corp Co., Ltd" logo, manifest.json with safe area definitions
+- **Page numbers**: `applyBrandFrame(slide, { pageNumber: N })` renders white page number on the right end of the header bar
+- **Prompt integration**: `buildBrandFramePromptSection()` generates detailed LLM instructions for header/footer usage, safe area boundaries, and per-slide rules (title/cover skip both, section divider skips header)
+- **Brand frame helper**: Runtime-generated CommonJS module (`brand-frame.js`) with base64 data URI image embedding for reliable PPTX output
+- **Tests**: brand-frame registry, prompt section, helper source generation, and integration with `buildAuthoringPrompt`
+
 ### Added — PA-10: Session Memory Integration
 
 - **Session manager factory** (`apps/agentcore-runtime-ts/src/memory/`): `createRuntimeSessionManager()` with S3-backed `SessionManager` from `@strands-agents/sdk`, noop fallback when disabled

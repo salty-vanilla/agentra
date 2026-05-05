@@ -1,6 +1,11 @@
+import { buildBrandFramePromptSection } from './brand-frame/prompts.js';
+import type { BrandFrame } from './brand-frame/types.js';
 import type { PresentationAuthorInput } from './types.js';
 
-export function buildAuthoringPrompt(input: PresentationAuthorInput): string {
+export function buildAuthoringPrompt(
+  input: PresentationAuthorInput,
+  options?: { brandFrame?: BrandFrame | undefined },
+): string {
   const lang = input.language ?? 'ja';
   const langInstruction =
     lang === 'ja'
@@ -42,6 +47,10 @@ export function buildAuthoringPrompt(input: PresentationAuthorInput): string {
 
   if (input.templatePath) {
     parts.push('', `Template file available at: ${input.templatePath}`);
+  }
+
+  if (options?.brandFrame) {
+    parts.push('', buildBrandFramePromptSection(options.brandFrame));
   }
 
   parts.push('', '---', '', `User request: ${input.prompt}`);

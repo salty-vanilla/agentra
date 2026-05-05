@@ -14,6 +14,10 @@ const createSlidePresentationTool = tool({
       .enum(['ja', 'en'])
       .optional()
       .describe('Output language. Inferred from prompt if omitted.'),
+    brandFrameId: z
+      .string()
+      .optional()
+      .describe('Optional BrandFrame template ID for company branding.'),
   }),
   callback: async (input) => {
     const traceId = process.env.TRACE_ID ?? undefined;
@@ -33,6 +37,7 @@ const createSlidePresentationTool = tool({
         prompt: input.prompt,
         language: input.language ?? undefined,
         traceId,
+        brandFrameId: input.brandFrameId ?? undefined,
       });
 
       const durationMs = Date.now() - startTime;

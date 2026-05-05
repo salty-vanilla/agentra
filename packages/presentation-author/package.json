@@ -12,7 +12,8 @@
   },
   "files": [
     "dist",
-    "vendor"
+    "vendor",
+    "templates"
   ],
   "scripts": {
     "build": "tsc -b",

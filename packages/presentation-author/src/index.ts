@@ -1,5 +1,6 @@
 export * from './artifacts.js';
 export * from './authoring-script.js';
+export * from './brand-frame/index.js';
 export * from './contact-sheet.js';
 export * from './create-presentation-tool.js';
 export * from './diagnostics.js';

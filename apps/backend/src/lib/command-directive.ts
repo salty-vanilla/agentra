@@ -22,6 +22,9 @@ export function buildRouterCommandDirective(command: ChatCommand): string {
     command.language ? `- language: ${command.language}` : null,
     command.tone ? `- tone: ${command.tone}` : null,
     `- outputFormat: ${command.outputFormat ?? 'pptx'}`,
+    command.template?.brandFrameId
+      ? `- brandFrameId: ${command.template.brandFrameId}`
+      : null,
   ]
     .filter(Boolean)
     .join('\n');

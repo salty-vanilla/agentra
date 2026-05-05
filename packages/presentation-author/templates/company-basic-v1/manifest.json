@@ -1,0 +1,38 @@
+{
+  "id": "company-basic-v1",
+  "name": "Company Basic v1",
+  "description": "Company frame with dark-blue-to-teal gradient header bar (for slide title) and subtle white footer with company logo.",
+  "slideSize": {
+    "width": 13.334,
+    "height": 7.5,
+    "layout": "LAYOUT_WIDE"
+  },
+  "header": {
+    "imagePath": "header.png",
+    "x": 0,
+    "y": 0,
+    "width": 13.334,
+    "height": 0.5
+  },
+  "footer": {
+    "imagePath": "footer.png",
+    "x": 0,
+    "y": 7.0,
+    "width": 13.334,
+    "height": 0.5
+  },
+  "safeArea": {
+    "x": 0.5,
+    "y": 0.55,
+    "width": 12.33,
+    "height": 6.35
+  },
+  "guidance": [
+    "The header bar is a dark-blue-to-teal gradient band at the top. Render the slide title as WHITE text on top of the header image.",
+    "The footer is a clean white bar with the company logo (Example Corp Co., Ltd) on the right. It is decorative — do not place text on it.",
+    "Title/cover slides should skip both header and footer: call applyBrandFrame(slide, { header: false, footer: false }).",
+    "Section divider slides may skip the header: call applyBrandFrame(slide, { header: false }).",
+    "For normal content slides, call applyBrandFrame(slide) to apply both header and footer.",
+    "Body content (text, charts, tables) must stay inside the safe area. The title text goes on the header bar, not inside the safe area."
+  ]
+}

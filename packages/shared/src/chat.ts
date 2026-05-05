@@ -43,6 +43,11 @@ export const chatCommandSchema = z.discriminatedUnion('type', [
       .or(z.string().min(1))
       .optional(),
     outputFormat: z.literal('pptx').optional(),
+    template: z
+      .object({
+        brandFrameId: z.string().min(1).optional(),
+      })
+      .optional(),
   }),
 ]);
 
