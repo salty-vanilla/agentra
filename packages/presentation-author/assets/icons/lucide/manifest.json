@@ -122,14 +122,7 @@
       "id": "image",
       "label": "Image",
       "path": "svg/image.svg",
-      "keywords": [
-        "image",
-        "photo",
-        "picture",
-        "visual",
-        "画像",
-        "写真"
-      ]
+      "keywords": ["image", "photo", "picture", "visual", "画像", "写真"]
     },
     {
       "id": "lightbulb",
@@ -151,42 +144,19 @@
       "id": "line-chart",
       "label": "Line Chart",
       "path": "svg/line-chart.svg",
-      "keywords": [
-        "trend",
-        "chart",
-        "graph",
-        "analytics",
-        "トレンド",
-        "推移",
-        "分析"
-      ]
+      "keywords": ["trend", "chart", "graph", "analytics", "トレンド", "推移", "分析"]
     },
     {
       "id": "presentation",
       "label": "Presentation",
       "path": "svg/presentation.svg",
-      "keywords": [
-        "presentation",
-        "slide",
-        "deck",
-        "meeting",
-        "プレゼン",
-        "資料",
-        "会議"
-      ]
+      "keywords": ["presentation", "slide", "deck", "meeting", "プレゼン", "資料", "会議"]
     },
     {
       "id": "settings",
       "label": "Settings",
       "path": "svg/settings.svg",
-      "keywords": [
-        "settings",
-        "config",
-        "gear",
-        "setup",
-        "設定",
-        "構成"
-      ]
+      "keywords": ["settings", "config", "gear", "setup", "設定", "構成"]
     },
     {
       "id": "shield-check",
