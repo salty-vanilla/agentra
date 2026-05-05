@@ -58,7 +58,7 @@ main().catch((err) => { console.error(err); process.exit(1); });
 
 function fakeLlm(response: string): LlmClient {
   return {
-    generateText: async () => response,
+    converse: async () => response,
   };
 }
 

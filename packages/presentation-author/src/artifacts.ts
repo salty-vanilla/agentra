@@ -30,6 +30,7 @@ export async function collectPresentationArtifacts(input: {
   pptxPath?: string | undefined;
   sourceJsPath?: string | undefined;
   diagnostics?: PresentationDiagnosticsResult | undefined;
+  imageAssetPaths?: string[] | undefined;
 }): Promise<CreatePresentationArtifact[]> {
   const artifacts: CreatePresentationArtifact[] = [];
 
@@ -89,6 +90,18 @@ export async function collectPresentationArtifacts(input: {
         path: slidePath,
         label: `Rendered slide`,
         exists: await fileExists(slidePath),
+      });
+    }
+  }
+
+  // image-asset (retrieved / generated images)
+  if (input.imageAssetPaths) {
+    for (const imgPath of input.imageAssetPaths) {
+      artifacts.push({
+        kind: 'image-asset',
+        path: imgPath,
+        label: 'Image asset',
+        exists: await fileExists(imgPath),
       });
     }
   }

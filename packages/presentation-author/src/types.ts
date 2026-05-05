@@ -1,4 +1,10 @@
 import type { IconConfig, IconProvider, IconResultMetadata } from './icons/types.js';
+import type {
+  ImageGenerationProvider,
+  ImageResultMetadata,
+  ImageRetrievalProvider,
+  PresentationImagesInput,
+} from './images/types.js';
 
 export type PresentationLanguage = 'ja' | 'en';
 
@@ -20,6 +26,7 @@ export interface PresentationAuthorInput {
   revision?: boolean | RevisionOptions | undefined;
   brandFrameId?: string | undefined;
   icons?: IconConfig | undefined;
+  images?: PresentationImagesInput | undefined;
 }
 
 import type {
@@ -63,6 +70,8 @@ export interface PresentationAuthorResult {
   brandFrameId?: string | undefined;
   brandFrameName?: string | undefined;
   icons?: IconResultMetadata | undefined;
+  images?: ImageResultMetadata | undefined;
+  imageAssetPaths?: string[] | undefined;
 }
 
 export interface AuthoringWorkspace {
@@ -76,13 +85,35 @@ export interface AuthoringWorkspace {
   packageJsonPath: string;
 }
 
+// ---------------------------------------------------------------------------
+// LLM Client — supports optional tool_use loop
+// ---------------------------------------------------------------------------
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  inputSchema: Record<string, unknown>;
+}
+
+export type ToolHandler = (input: unknown) => Promise<unknown>;
+
+export interface LlmConverseInput {
+  system?: string | undefined;
+  prompt: string;
+  tools?: ToolDefinition[] | undefined;
+  toolHandlers?: Record<string, ToolHandler> | undefined;
+  maxToolIterations?: number | undefined;
+}
+
 export interface LlmClient {
-  generateText(input: { system?: string | undefined; prompt: string }): Promise<string>;
+  converse(input: LlmConverseInput): Promise<string>;
 }
 
 export interface PresentationAuthorDeps {
   llm: LlmClient;
   iconProvider?: IconProvider | undefined;
+  imageRetrievalProvider?: ImageRetrievalProvider | undefined;
+  imageGenerationProvider?: ImageGenerationProvider | undefined;
   now?: (() => Date) | undefined;
   randomId?: (() => string) | undefined;
   runDiagnostics?: (

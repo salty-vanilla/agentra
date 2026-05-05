@@ -1,4 +1,5 @@
 import type { IconConfig, IconResultMetadata } from './icons/types.js';
+import type { ImageResultMetadata, PresentationImagesInput } from './images/types.js';
 
 export type CreatePresentationLanguage = 'ja' | 'en';
 
@@ -53,6 +54,12 @@ export interface CreatePresentationToolInput {
    * If omitted, icons are enabled by default.
    */
   icons?: IconConfig | undefined;
+
+  /**
+   * Optional image asset configuration.
+   * If omitted, images are disabled by default.
+   */
+  images?: PresentationImagesInput | undefined;
 }
 
 export interface CreatePresentationArtifact {
@@ -63,7 +70,8 @@ export interface CreatePresentationArtifact {
     | 'rendered-slide'
     | 'render-dir'
     | 'work-dir'
-    | 'diagnostics-json';
+    | 'diagnostics-json'
+    | 'image-asset';
 
   path: string;
   label: string;
@@ -96,6 +104,8 @@ export interface CreatePresentationToolOutput {
   brandFrameName?: string | undefined;
 
   icons?: IconResultMetadata | undefined;
+
+  images?: ImageResultMetadata | undefined;
 
   /**
    * Error summary suitable for agent consumption.

@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto';
 import type { CreatePresentationToolInput } from '@agentra/presentation-author';
 import { createPresentation } from '@agentra/presentation-author';
 import { S3Client } from '@aws-sdk/client-s3';
 import { tool } from '@strands-agents/sdk';
+import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import type { UploadedPresentationArtifact } from '../artifacts/artifact-upload-types.js';
 import { uploadPresentationArtifacts } from '../artifacts/s3-artifact-uploader.js';
@@ -25,6 +25,10 @@ const envDefaultBrandFrameId =
   process.env.PRESENTATION_DEFAULT_BRAND_FRAME_ID ?? 'company-basic-v1';
 const envIconsEnabled = process.env.PRESENTATION_ICONS_ENABLED !== 'false';
 const envIconProvider = process.env.PRESENTATION_ICON_PROVIDER ?? 'lucide-local';
+const envImageRetrievalEnabled =
+  process.env.PRESENTATION_IMAGE_RETRIEVAL_ENABLED === 'true';
+const envImageGenerationEnabled =
+  process.env.PRESENTATION_IMAGE_GENERATION_ENABLED === 'true';
 
 const llmClient = createPresentationAuthorLlmClient();
 const s3Client = envBucketName ? new S3Client({}) : undefined;
@@ -64,7 +68,7 @@ const createPresentationTool = tool({
       ),
   }),
   callback: async (input) => {
-    const runId = randomUUID();
+    const runId = uuidv7();
     const startTime = Date.now();
 
     logger.info({
@@ -95,6 +99,10 @@ const createPresentationTool = tool({
         enabled: envIconsEnabled,
         providerId: envIconProvider as 'lucide-local',
       },
+      images: {
+        retrievalEnabled: envImageRetrievalEnabled,
+        generationEnabled: envImageGenerationEnabled,
+      },
     };
 
     const result = await createPresentation(toolInput, { llm: llmClient });
@@ -115,6 +123,11 @@ const createPresentationTool = tool({
         pptxPath: result.pptxPath,
         contactSheetPath: result.contactSheetPath,
         warningCount: result.warnings?.length ?? 0,
+        imageRetrievedCount: result.images?.retrievedCount ?? 0,
+        imageGeneratedCount: result.images?.generatedCount ?? 0,
+        imageAssetCount:
+          result.artifacts?.filter((a) => a.kind === 'image-asset').length ?? 0,
+        imageWarnings: result.images?.warnings,
       });
 
       // --- Artifact upload ---

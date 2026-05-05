@@ -20,6 +20,7 @@ const UPLOADABLE_KINDS = new Set([
   'contact-sheet',
   'rendered-slide',
   'diagnostics-json',
+  'image-asset',
 ]);
 
 export interface UploadPresentationArtifactsInput {

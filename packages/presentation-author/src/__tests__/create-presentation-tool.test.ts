@@ -34,7 +34,7 @@ main().catch((err) => {
 `;
 
 function fakeLlm(response: string): LlmClient {
-  return { generateText: async () => response };
+  return { converse: async () => response };
 }
 
 function fakeDiagnosticsPass(): PresentationDiagnosticsResult {

@@ -5,6 +5,7 @@ export interface UploadedPresentationArtifact {
     | 'contact-sheet'
     | 'rendered-slide'
     | 'diagnostics-json'
+    | 'image-asset'
     | 'other';
 
   label: string;

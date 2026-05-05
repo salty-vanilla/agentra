@@ -2,6 +2,7 @@ import { buildBrandFramePromptSection } from './brand-frame/prompts.js';
 import type { BrandFrame } from './brand-frame/types.js';
 import { buildIconPromptSection } from './icons/prompts.js';
 import type { IconManifest } from './icons/types.js';
+import { buildImageToolGuidance } from './images/prompts.js';
 import type { PresentationAuthorInput } from './types.js';
 
 export function buildAuthoringPrompt(
@@ -9,6 +10,8 @@ export function buildAuthoringPrompt(
   options?: {
     brandFrame?: BrandFrame | undefined;
     iconManifest?: IconManifest | undefined;
+    imagesEnabled?: boolean | undefined;
+    imageGenerationEnabled?: boolean | undefined;
   },
 ): string {
   const lang = input.language ?? 'ja';
@@ -37,6 +40,11 @@ export function buildAuthoringPrompt(
     '- Save output exactly as `deck.pptx` in the current working directory: `await pptx.writeFile({ fileName: "deck.pptx" });`',
     '- Wrap execution in an async main() and call `main().catch(err => { console.error(err); process.exit(1); });`',
     '',
+    'PptxGenJS API notes:',
+    '- Shape types: use `pptx.ShapeType.rect`, `pptx.ShapeType.ellipse`, `pptx.ShapeType.roundRect`, etc. Do NOT use `pptx.shapes.RECTANGLE` (does not exist).',
+    '- Shadow: always use `safeOuterShadow(color, opacity)` helper. The `color` argument must be a hex string like "333333". Never pass a number or object.',
+    '- addShape returns void. Chain like: `slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:13.33, h:7.5, fill:{ color:"003366" } });`',
+    '',
     'Forbidden:',
     '- Do not use child_process, exec, spawn.',
     '- Do not use fs.rm, fs.unlink, fs.rmdir, or any destructive file operations.',
@@ -60,6 +68,13 @@ export function buildAuthoringPrompt(
 
   if (options?.iconManifest) {
     parts.push('', buildIconPromptSection(options.iconManifest));
+  }
+
+  if (options?.imagesEnabled) {
+    parts.push(
+      '',
+      buildImageToolGuidance(options.imageGenerationEnabled ? 'auto' : 'retrieve'),
+    );
   }
 
   parts.push('', '---', '', `User request: ${input.prompt}`);

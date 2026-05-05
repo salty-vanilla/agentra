@@ -9,6 +9,26 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — PA-14: LLM-driven Image Curation & S3 Upload
+
+- **Image tool-use system** (`packages/presentation-author/src/images/`): LLM calls `search_image` / `generate_image` tools during authoring to find or create images
+- **Pexels retrieval provider**: `PexelsImageRetrievalProvider` searches and downloads stock photos; throws on API key missing or HTTP errors (no more silent failures)
+- **Bedrock generation provider**: `BedrockImageProvider` generates images via Titan v2 (`amazon.titan-image-generator-v2:0`); Nova Canvas removed (Legacy/EOL)
+- **Image tool handlers**: `createImageSearchHandler` / `createImageGenerateHandler` with `ImageToolAccumulator` for collecting results; validates `localPath` after download; catches and records all errors in `accumulator.warnings`
+- **Image prompt guidance**: `buildImageToolGuidance()` generates mode-aware instructions (retrieve / generate / auto); emphasizes EXACT path usage
+- **Image artifact pipeline**: `image-asset` kind in `CreatePresentationArtifact`; runner collects image paths from accumulator; `collectPresentationArtifacts()` includes them; `UPLOADABLE_KINDS` includes `image-asset` for S3 upload
+- **Environment variables**: `PRESENTATION_IMAGE_RETRIEVAL_ENABLED` (opt-in retrieval), `PRESENTATION_IMAGE_GENERATION_ENABLED` (opt-in generation)
+- **Diagnostic logging**: `create_presentation_done` log includes `imageRetrievedCount`, `imageGeneratedCount`, `imageAssetCount`, `imageWarnings`
+- **Run ID**: Switched from UUID v4 (`randomUUID`) to UUID v7 (`uuidv7`) for time-sortable S3 keys
+- **Tests**: 29 image provider tests — search/download, generation, DI injection, prompt guidance, error handling
+
+### Changed — PA-14
+
+- Renamed `PresentationImagesInput.enabled` → `retrievalEnabled` and `ImageResultMetadata.enabled` → `retrievalEnabled` for clarity
+- Renamed env var `PRESENTATION_IMAGES_ENABLED` → `PRESENTATION_IMAGE_RETRIEVAL_ENABLED`
+- Replaced coarse `mode` concept (`retrieve`/`generate`/`auto`/`none`) with two independent booleans: `retrievalEnabled` + `generationEnabled`
+- CDK: Removed legacy `PRESENTATION_IMAGE_MODE`, `PRESENTATION_IMAGE_RETRIEVAL_PROVIDER`, `PRESENTATION_IMAGE_GENERATION_PROVIDER`, `PRESENTATION_IMAGE_GENERATION_MODEL_ID` env vars
+
 ### Added — PA-12: Icon Provider System
 
 - **Icon provider module** (`packages/presentation-author/src/icons/`): `LocalIconProvider` with DI-based `IconProvider` interface, keyword-based search/scoring, manifest-driven icon registry

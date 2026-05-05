@@ -152,6 +152,7 @@ export async function createPresentation(
         revision: input.revision ?? true,
         brandFrameId: input.brandFrameId,
         icons: input.icons,
+        images: input.images,
       },
       deps,
     );
@@ -163,6 +164,7 @@ export async function createPresentation(
       pptxPath: result.pptxPath,
       sourceJsPath: result.sourceJsPath,
       diagnostics: result.diagnostics,
+      imageAssetPaths: result.imageAssetPaths,
     });
 
     const summary = buildCreatePresentationSummary({
@@ -193,6 +195,7 @@ export async function createPresentation(
       brandFrameId: result.brandFrameId,
       brandFrameName: result.brandFrameName,
       icons: result.icons,
+      images: result.images,
     };
   } catch (err) {
     const toolError = mapErrorToToolError(err);

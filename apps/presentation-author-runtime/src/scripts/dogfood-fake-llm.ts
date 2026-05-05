@@ -60,7 +60,7 @@ pres.writeFile({ fileName: outputPath })
 
 function createFakeLlmClient(): LlmClient {
   return {
-    generateText: async (_input) => {
+    converse: async (_input) => {
       // Return the fake script wrapped as the LLM would
       return FAKE_PPTXGENJS_SCRIPT;
     },

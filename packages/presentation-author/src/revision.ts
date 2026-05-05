@@ -53,7 +53,7 @@ export async function reviseAuthoringScript(
     brandFrame: input.brandFrame,
   });
 
-  const rawText = await input.deps.llm.generateText({ prompt });
+  const rawText = await input.deps.llm.converse({ prompt });
 
   const { code, warnings: extractWarnings } = extractJavaScriptFromLlmOutput(rawText);
   const { valid, warnings: valWarnings, errors } = validateAuthoringScript(code);

@@ -84,7 +84,7 @@ function makeDeps(
 
   const deps: PresentationAuthorDeps & { callCount: () => number } = {
     llm: {
-      generateText: async () => {
+      converse: async () => {
         const resp = responses[llmCallCount] ?? responses[responses.length - 1]!;
         llmCallCount++;
         return resp;

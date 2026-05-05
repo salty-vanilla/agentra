@@ -49,7 +49,7 @@ function createBedrockLlm(): LlmClient {
   const client = new BedrockRuntimeClient({ region: REGION });
 
   return {
-    async generateText({ prompt, system }) {
+    async converse({ prompt, system }) {
       const messages: { role: string; content: string }[] = [
         { role: 'user', content: prompt },
       ];
