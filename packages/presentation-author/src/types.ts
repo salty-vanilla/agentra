@@ -1,3 +1,5 @@
+import type { IconConfig, IconProvider, IconResultMetadata } from './icons/types.js';
+
 export type PresentationLanguage = 'ja' | 'en';
 
 export interface DiagnosticsOptions {
@@ -17,6 +19,7 @@ export interface PresentationAuthorInput {
   diagnostics?: boolean | DiagnosticsOptions | undefined;
   revision?: boolean | RevisionOptions | undefined;
   brandFrameId?: string | undefined;
+  icons?: IconConfig | undefined;
 }
 
 import type {
@@ -59,6 +62,7 @@ export interface PresentationAuthorResult {
   revision?: RevisionAttemptResult | undefined;
   brandFrameId?: string | undefined;
   brandFrameName?: string | undefined;
+  icons?: IconResultMetadata | undefined;
 }
 
 export interface AuthoringWorkspace {
@@ -78,6 +82,7 @@ export interface LlmClient {
 
 export interface PresentationAuthorDeps {
   llm: LlmClient;
+  iconProvider?: IconProvider | undefined;
   now?: (() => Date) | undefined;
   randomId?: (() => string) | undefined;
   runDiagnostics?: (

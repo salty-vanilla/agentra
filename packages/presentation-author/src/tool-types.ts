@@ -1,3 +1,5 @@
+import type { IconConfig, IconResultMetadata } from './icons/types.js';
+
 export type CreatePresentationLanguage = 'ja' | 'en';
 
 export interface CreatePresentationToolInput {
@@ -45,6 +47,12 @@ export interface CreatePresentationToolInput {
    * If omitted and brand frame is enabled, uses the default frame.
    */
   brandFrameId?: string | undefined;
+
+  /**
+   * Optional icon configuration.
+   * If omitted, icons are enabled by default.
+   */
+  icons?: IconConfig | undefined;
 }
 
 export interface CreatePresentationArtifact {
@@ -86,6 +94,8 @@ export interface CreatePresentationToolOutput {
 
   brandFrameId?: string | undefined;
   brandFrameName?: string | undefined;
+
+  icons?: IconResultMetadata | undefined;
 
   /**
    * Error summary suitable for agent consumption.

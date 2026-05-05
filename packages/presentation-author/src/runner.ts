@@ -9,6 +9,9 @@ import { copyBrandFrameToWorkspace } from './brand-frame/workspace.js';
 import type { PresentationDiagnosticsInput } from './diagnostics.js';
 import { runPresentationDiagnostics } from './diagnostics.js';
 import { executeAuthoringScript } from './executor.js';
+import { createDefaultLocalIconProvider } from './icons/icon-provider.js';
+import type { IconManifest, IconProvider, IconResultMetadata } from './icons/types.js';
+import { copyIconsToWorkspace } from './icons/workspace.js';
 import { buildAuthoringPrompt } from './prompts.js';
 import { runSingleRevisionAttempt } from './revision.js';
 import type {
@@ -57,7 +60,42 @@ export async function runPresentationAuthor(
     brandFrameWarnings.push(...brandFrameResult.warnings);
   }
 
-  const authoringPrompt = buildAuthoringPrompt(input, { brandFrame });
+  // --- Icon setup ---
+  const iconsEnabled = input.icons?.enabled !== false;
+  let iconManifest: IconManifest | undefined;
+  let iconMeta: IconResultMetadata | undefined;
+  const iconProvider: IconProvider =
+    deps.iconProvider ?? createDefaultLocalIconProvider(input.icons?.providerId);
+
+  if (iconsEnabled) {
+    const iconResult = await copyIconsToWorkspace({
+      workDir: workspace.workDir,
+      iconIds: input.icons?.preferredIconIds,
+      provider: iconProvider,
+    });
+    iconManifest = {
+      provider: 'lucide',
+      version: 'local-curated-v1',
+      style: 'line',
+      icons: iconResult.copiedIcons.map((icon) => ({
+        id: icon.id,
+        label: icon.label,
+        path: icon.workspacePath ?? icon.path,
+        keywords: [],
+      })),
+    };
+    iconMeta = {
+      enabled: true,
+      providerId: input.icons?.providerId ?? 'lucide-local',
+      copiedIconIds: iconResult.copiedIcons.map((i) => i.id),
+      warnings: iconResult.warnings.length > 0 ? iconResult.warnings : undefined,
+    };
+    brandFrameWarnings.push(...iconResult.warnings);
+  } else {
+    iconMeta = { enabled: false };
+  }
+
+  const authoringPrompt = buildAuthoringPrompt(input, { brandFrame, iconManifest });
 
   const llmResponse = await deps.llm.generateText({
     prompt: authoringPrompt,
@@ -167,5 +205,6 @@ export async function runPresentationAuthor(
     revision: revisionResult,
     brandFrameId: brandFrame?.id,
     brandFrameName: brandFrame?.name,
+    icons: iconMeta,
   };
 }

@@ -5,6 +5,7 @@ export * from './contact-sheet.js';
 export * from './create-presentation-tool.js';
 export * from './diagnostics.js';
 export * from './executor.js';
+export * from './icons/index.js';
 export * from './prompts.js';
 export * from './python-runner.js';
 export * from './render.js';

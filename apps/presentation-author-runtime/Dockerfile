@@ -1,5 +1,7 @@
 FROM node:24-slim AS build
 
+# PA-12: icon provider with runtime SVG→PNG rendering via @resvg/resvg-js
+
 WORKDIR /app
 
 # Install pnpm
@@ -79,6 +81,9 @@ COPY packages/presentation-author/vendor/ ./node_modules/@agentra/presentation-a
 
 # Copy template assets (BrandFrame header/footer images, manifests)
 COPY packages/presentation-author/templates/ ./node_modules/@agentra/presentation-author/templates/
+
+# Copy icon assets (SVG icons for runtime SVG→PNG rendering)
+COPY packages/presentation-author/assets/ ./node_modules/@agentra/presentation-author/assets/
 
 EXPOSE 8080
 

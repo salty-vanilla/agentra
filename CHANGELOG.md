@@ -9,6 +9,22 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Added — PA-12: Icon Provider System
+
+- **Icon provider module** (`packages/presentation-author/src/icons/`): `LocalIconProvider` with DI-based `IconProvider` interface, keyword-based search/scoring, manifest-driven icon registry
+- **Lucide icon assets** (`packages/presentation-author/assets/icons/lucide/`): 17 curated SVG icons (24×24, `stroke="currentColor"`) with `manifest.json` — factory, chart-bar, users, lightbulb, target, rocket, shield, etc.
+- **Runtime SVG→PNG rendering**: Workspace helper uses `@resvg/resvg-js` to convert SVG icons to PNG at runtime with `strokeColor` support for theme-adaptive icons
+- **Prompt integration**: `buildIconPromptSection()` generates LLM instructions for `addIcon(slide, id, { x, y, w, h, strokeColor })` usage with size/placement guidance
+- **Workspace copier**: `copyIconsToWorkspace()` copies SVG files + generates CJS helper with Resvg-based `addIcon()` function
+- **Dockerfile**: Added `COPY packages/presentation-author/assets/` for production icon delivery
+- **Tests**: 17 tests — icon search/scoring, workspace copy with SVG + helper validation
+
+### Fixed — PA-12: BrandFrame header/footer hidden by background shapes
+
+- **BrandFrame prompt**: Added explicit rules prohibiting full-slide background rectangles (`x=0, y=0, w=13.33, h=7.50`) that cover header/footer images
+- Use `slide.background = { color: "..." }` for slide background colors instead
+- Added z-order guidance: call `applyBrandFrame()` as the first drawing operation on each slide
+
 ### Added — PA-11: Corporate Brand Frame Template
 
 - **Brand frame module** (`packages/presentation-author/src/brand-frame/`): registry, workspace copier, prompt builder, and types for reusable corporate slide frames

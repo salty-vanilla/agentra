@@ -151,6 +151,7 @@ export async function createPresentation(
         diagnostics: input.diagnostics ?? true,
         revision: input.revision ?? true,
         brandFrameId: input.brandFrameId,
+        icons: input.icons,
       },
       deps,
     );
@@ -191,6 +192,7 @@ export async function createPresentation(
       warnings: result.warnings,
       brandFrameId: result.brandFrameId,
       brandFrameName: result.brandFrameName,
+      icons: result.icons,
     };
   } catch (err) {
     const toolError = mapErrorToToolError(err);

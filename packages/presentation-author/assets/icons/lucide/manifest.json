@@ -1,0 +1,270 @@
+{
+  "provider": "lucide",
+  "version": "local-curated-v1",
+  "style": "line",
+  "license": "ISC",
+  "icons": [
+    {
+      "id": "alert-triangle",
+      "label": "Alert Triangle",
+      "path": "svg/alert-triangle.svg",
+      "keywords": [
+        "risk",
+        "warning",
+        "alert",
+        "issue",
+        "problem",
+        "danger",
+        "注意",
+        "警告",
+        "リスク",
+        "問題"
+      ]
+    },
+    {
+      "id": "bar-chart-3",
+      "label": "Bar Chart",
+      "path": "svg/bar-chart-3.svg",
+      "keywords": [
+        "kpi",
+        "metric",
+        "chart",
+        "bar",
+        "performance",
+        "data",
+        "指標",
+        "実績",
+        "グラフ"
+      ]
+    },
+    {
+      "id": "calendar",
+      "label": "Calendar",
+      "path": "svg/calendar.svg",
+      "keywords": [
+        "schedule",
+        "date",
+        "timeline",
+        "plan",
+        "deadline",
+        "スケジュール",
+        "日程",
+        "計画",
+        "期限"
+      ]
+    },
+    {
+      "id": "check-circle",
+      "label": "Check Circle",
+      "path": "svg/check-circle.svg",
+      "keywords": [
+        "quality",
+        "success",
+        "pass",
+        "done",
+        "complete",
+        "approve",
+        "改善",
+        "品質",
+        "完了",
+        "合格"
+      ]
+    },
+    {
+      "id": "clipboard-list",
+      "label": "Clipboard List",
+      "path": "svg/clipboard-list.svg",
+      "keywords": [
+        "action",
+        "task",
+        "checklist",
+        "todo",
+        "plan",
+        "アクション",
+        "タスク",
+        "チェックリスト",
+        "施策"
+      ]
+    },
+    {
+      "id": "factory",
+      "label": "Factory",
+      "path": "svg/factory.svg",
+      "keywords": [
+        "factory",
+        "manufacturing",
+        "line",
+        "plant",
+        "production",
+        "工場",
+        "製造",
+        "ライン",
+        "生産"
+      ]
+    },
+    {
+      "id": "gauge",
+      "label": "Gauge",
+      "path": "svg/gauge.svg",
+      "keywords": [
+        "gauge",
+        "meter",
+        "speed",
+        "performance",
+        "measure",
+        "ゲージ",
+        "速度",
+        "パフォーマンス",
+        "計測"
+      ]
+    },
+    {
+      "id": "image",
+      "label": "Image",
+      "path": "svg/image.svg",
+      "keywords": [
+        "image",
+        "photo",
+        "picture",
+        "visual",
+        "画像",
+        "写真"
+      ]
+    },
+    {
+      "id": "lightbulb",
+      "label": "Lightbulb",
+      "path": "svg/lightbulb.svg",
+      "keywords": [
+        "idea",
+        "insight",
+        "innovation",
+        "suggestion",
+        "tip",
+        "アイデア",
+        "提案",
+        "気づき",
+        "ヒント"
+      ]
+    },
+    {
+      "id": "line-chart",
+      "label": "Line Chart",
+      "path": "svg/line-chart.svg",
+      "keywords": [
+        "trend",
+        "chart",
+        "graph",
+        "analytics",
+        "トレンド",
+        "推移",
+        "分析"
+      ]
+    },
+    {
+      "id": "presentation",
+      "label": "Presentation",
+      "path": "svg/presentation.svg",
+      "keywords": [
+        "presentation",
+        "slide",
+        "deck",
+        "meeting",
+        "プレゼン",
+        "資料",
+        "会議"
+      ]
+    },
+    {
+      "id": "settings",
+      "label": "Settings",
+      "path": "svg/settings.svg",
+      "keywords": [
+        "settings",
+        "config",
+        "gear",
+        "setup",
+        "設定",
+        "構成"
+      ]
+    },
+    {
+      "id": "shield-check",
+      "label": "Shield Check",
+      "path": "svg/shield-check.svg",
+      "keywords": [
+        "security",
+        "safety",
+        "protection",
+        "quality",
+        "compliance",
+        "安全",
+        "保護",
+        "品質保証",
+        "コンプライアンス"
+      ]
+    },
+    {
+      "id": "target",
+      "label": "Target",
+      "path": "svg/target.svg",
+      "keywords": [
+        "goal",
+        "target",
+        "objective",
+        "aim",
+        "focus",
+        "目標",
+        "ターゲット",
+        "狙い"
+      ]
+    },
+    {
+      "id": "trending-up",
+      "label": "Trending Up",
+      "path": "svg/trending-up.svg",
+      "keywords": [
+        "improvement",
+        "trend",
+        "growth",
+        "increase",
+        "up",
+        "改善",
+        "向上",
+        "傾向",
+        "成長"
+      ]
+    },
+    {
+      "id": "users",
+      "label": "Users",
+      "path": "svg/users.svg",
+      "keywords": [
+        "team",
+        "people",
+        "group",
+        "audience",
+        "stakeholder",
+        "チーム",
+        "メンバー",
+        "関係者"
+      ]
+    },
+    {
+      "id": "wrench",
+      "label": "Wrench",
+      "path": "svg/wrench.svg",
+      "keywords": [
+        "tool",
+        "repair",
+        "fix",
+        "maintenance",
+        "support",
+        "ツール",
+        "修理",
+        "保守",
+        "メンテナンス"
+      ]
+    }
+  ]
+}

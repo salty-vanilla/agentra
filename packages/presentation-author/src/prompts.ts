@@ -1,10 +1,15 @@
 import { buildBrandFramePromptSection } from './brand-frame/prompts.js';
 import type { BrandFrame } from './brand-frame/types.js';
+import { buildIconPromptSection } from './icons/prompts.js';
+import type { IconManifest } from './icons/types.js';
 import type { PresentationAuthorInput } from './types.js';
 
 export function buildAuthoringPrompt(
   input: PresentationAuthorInput,
-  options?: { brandFrame?: BrandFrame | undefined },
+  options?: {
+    brandFrame?: BrandFrame | undefined;
+    iconManifest?: IconManifest | undefined;
+  },
 ): string {
   const lang = input.language ?? 'ja';
   const langInstruction =
@@ -51,6 +56,10 @@ export function buildAuthoringPrompt(
 
   if (options?.brandFrame) {
     parts.push('', buildBrandFramePromptSection(options.brandFrame));
+  }
+
+  if (options?.iconManifest) {
+    parts.push('', buildIconPromptSection(options.iconManifest));
   }
 
   parts.push('', '---', '', `User request: ${input.prompt}`);

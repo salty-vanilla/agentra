@@ -48,6 +48,13 @@ export const chatCommandSchema = z.discriminatedUnion('type', [
         brandFrameId: z.string().min(1).optional(),
       })
       .optional(),
+    icons: z
+      .object({
+        enabled: z.boolean().optional(),
+        providerId: z.literal('lucide-local').optional(),
+        preferredIconIds: z.array(z.string().min(1)).optional(),
+      })
+      .optional(),
   }),
 ]);
 

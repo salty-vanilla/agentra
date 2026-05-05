@@ -20,10 +20,11 @@ const envUrlExpires = Number.parseInt(
   process.env.PRESENTATION_ARTIFACT_URL_EXPIRES_SECONDS ?? '3600',
   10,
 );
-const envBrandFrameEnabled =
-  process.env.PRESENTATION_BRAND_FRAME_ENABLED !== 'false';
+const envBrandFrameEnabled = process.env.PRESENTATION_BRAND_FRAME_ENABLED !== 'false';
 const envDefaultBrandFrameId =
   process.env.PRESENTATION_DEFAULT_BRAND_FRAME_ID ?? 'company-basic-v1';
+const envIconsEnabled = process.env.PRESENTATION_ICONS_ENABLED !== 'false';
+const envIconProvider = process.env.PRESENTATION_ICON_PROVIDER ?? 'lucide-local';
 
 const llmClient = createPresentationAuthorLlmClient();
 const s3Client = envBucketName ? new S3Client({}) : undefined;
@@ -58,7 +59,9 @@ const createPresentationTool = tool({
     brandFrameId: z
       .string()
       .optional()
-      .describe('Optional BrandFrame template ID. Defaults to company-basic-v1 when enabled.'),
+      .describe(
+        'Optional BrandFrame template ID. Defaults to company-basic-v1 when enabled.',
+      ),
   }),
   callback: async (input) => {
     const runId = randomUUID();
@@ -88,6 +91,10 @@ const createPresentationTool = tool({
       brandFrameId: envBrandFrameEnabled
         ? (input.brandFrameId ?? envDefaultBrandFrameId)
         : undefined,
+      icons: {
+        enabled: envIconsEnabled,
+        providerId: envIconProvider as 'lucide-local',
+      },
     };
 
     const result = await createPresentation(toolInput, { llm: llmClient });
