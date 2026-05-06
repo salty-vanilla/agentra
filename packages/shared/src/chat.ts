@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import {
+  PostChatBody,
   CreateThreadBody,
   GetHealthResponse,
   GetThreadResponse,
   ListThreadMessagesResponse,
   ListThreadsResponse,
-  PostChatBody,
   UpdateThreadBody,
 } from './generated/openapi-zod.js';
 
@@ -15,10 +15,14 @@ const threadSummarySchemaInternal = GetThreadResponse.shape.thread;
 const persistedChatMessageSchemaInternal =
   ListThreadMessagesResponse.shape.messages.element;
 
-export const chatRoleSchema = postChatMessageSchema.shape.role;
-export const chatMessageSchema = postChatMessageSchema;
-export const threadSummarySchema = threadSummarySchemaInternal;
-export const persistedChatMessageSchema = persistedChatMessageSchemaInternal;
+export {
+  CreateThreadBody as createThreadRequestSchema,
+  GetHealthResponse as healthResponseSchema,
+  GetThreadResponse as threadResponseSchema,
+  ListThreadMessagesResponse as threadMessagesResponseSchema,
+  ListThreadsResponse as threadsResponseSchema,
+  UpdateThreadBody as updateThreadRequestSchema,
+};
 
 // ---------------------------------------------------------------------------
 // ChatCommand — structured command payload for explicit UI actions
@@ -87,15 +91,15 @@ export const progressSummaryEventSchema = z.object({
   details: z.array(z.string()).optional(),
   timestamp: z.string(),
 });
-export const chatStreamProgressSummaryEventSchema = z.object({
+const chatStreamProgressSummaryEventSchema = z.object({
   type: z.literal('progress_summary'),
   event: progressSummaryEventSchema,
 });
-export const chatStreamTextEventSchema = z.object({
+const chatStreamTextEventSchema = z.object({
   type: z.literal('text'),
   text: z.string(),
 });
-export const chatObservationToolCallSchema = z.object({
+const chatObservationToolCallSchema = z.object({
   toolName: z.string().min(1),
   startedAt: z.string().datetime(),
   completedAt: z.string().datetime().optional(),
@@ -103,7 +107,7 @@ export const chatObservationToolCallSchema = z.object({
   status: z.enum(['success', 'error', 'cancelled']),
   error: z.string().min(1).optional(),
 });
-export const chatObservationSummarySchema = z.object({
+const chatObservationSummarySchema = z.object({
   traceId: z.string().min(1),
   startedAt: z.string().datetime(),
   completedAt: z.string().datetime(),
@@ -126,18 +130,18 @@ export const chatObservationSummarySchema = z.object({
   toolCallCount: z.number().int().min(0),
   toolFailureCount: z.number().int().min(0),
 });
-export const chatStreamObservationEventSchema = z.object({
+const chatStreamObservationEventSchema = z.object({
   type: z.literal('observation'),
   observation: chatObservationSummarySchema,
 });
-export const chatStreamDoneEventSchema = z.object({
+const chatStreamDoneEventSchema = z.object({
   type: z.literal('done'),
   threadId: z.string().min(1),
   model: z.string().min(1),
   createdAt: z.string().datetime(),
   observabilitySummary: chatObservationSummarySchema.optional(),
 });
-export const chatStreamErrorEventSchema = z.object({
+const chatStreamErrorEventSchema = z.object({
   type: z.literal('error'),
   error: z.string().min(1),
   observabilitySummary: chatObservationSummarySchema.optional(),
@@ -149,34 +153,15 @@ export const chatStreamEventSchema = z.union([
   chatStreamDoneEventSchema,
   chatStreamErrorEventSchema,
 ]);
-export const healthResponseSchema = GetHealthResponse;
-export const threadsResponseSchema = ListThreadsResponse;
-export const threadResponseSchema = GetThreadResponse;
-export const createThreadRequestSchema = CreateThreadBody;
-export const threadMessagesResponseSchema = ListThreadMessagesResponse;
-export const updateThreadRequestSchema = UpdateThreadBody;
 
-export type ChatRole = z.infer<typeof chatRoleSchema>;
-export type ChatMessage = z.infer<typeof chatMessageSchema>;
-export type ThreadSummary = z.infer<typeof threadSummarySchema>;
-export type PersistedChatMessage = z.infer<typeof persistedChatMessageSchema>;
+export type ChatRole = z.infer<typeof postChatMessageSchema.shape.role>;
+export type ChatMessage = z.infer<typeof postChatMessageSchema>;
+export type ThreadSummary = z.infer<typeof threadSummarySchemaInternal>;
+export type PersistedChatMessage = z.infer<typeof persistedChatMessageSchemaInternal>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;
 export type ChatCommand = z.infer<typeof chatCommandSchema>;
 export type ProgressPhase = z.infer<typeof progressPhaseSchema>;
 export type ProgressSummaryEvent = z.infer<typeof progressSummaryEventSchema>;
-export type ChatStreamProgressSummaryEvent = z.infer<
-  typeof chatStreamProgressSummaryEventSchema
->;
-export type ChatStreamTextEvent = z.infer<typeof chatStreamTextEventSchema>;
 export type ChatObservationToolCall = z.infer<typeof chatObservationToolCallSchema>;
 export type ChatObservationSummary = z.infer<typeof chatObservationSummarySchema>;
-export type ChatStreamObservationEvent = z.infer<typeof chatStreamObservationEventSchema>;
-export type ChatStreamDoneEvent = z.infer<typeof chatStreamDoneEventSchema>;
-export type ChatStreamErrorEvent = z.infer<typeof chatStreamErrorEventSchema>;
 export type ChatStreamEvent = z.infer<typeof chatStreamEventSchema>;
-export type HealthResponse = z.infer<typeof healthResponseSchema>;
-export type ThreadsResponse = z.infer<typeof threadsResponseSchema>;
-export type ThreadResponse = z.infer<typeof threadResponseSchema>;
-export type CreateThreadRequest = z.infer<typeof createThreadRequestSchema>;
-export type ThreadMessagesResponse = z.infer<typeof threadMessagesResponseSchema>;
-export type UpdateThreadRequest = z.infer<typeof updateThreadRequestSchema>;
