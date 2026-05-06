@@ -1,4 +1,4 @@
-import type { ChatObservationSummary, ChatStreamEvent } from '@agentra/shared';
+import type { ChatStreamEvent } from '@agentra/shared';
 import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
 import {
   createThread as createThreadRequest,

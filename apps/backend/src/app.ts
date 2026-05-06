@@ -4,13 +4,13 @@ import {
   type ChatCommand,
   type ChatObservationSummary,
   chatCommandSchema,
-  healthResponseSchema,
+  GetHealthResponse,
+  GetThreadResponse,
+  ListThreadMessagesResponse,
+  ListThreadsResponse,
   type ProgressSummaryEvent,
   type ThreadSummary,
-  threadMessagesResponseSchema,
-  threadResponseSchema,
-  threadsResponseSchema,
-  updateThreadRequestSchema,
+  UpdateThreadBody,
 } from '@agentra/shared';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
@@ -116,7 +116,7 @@ app.get('/', (context) => {
 });
 
 app.get('/health', (context) => {
-  const response = healthResponseSchema.parse({
+  const response = GetHealthResponse.parse({
     status: 'ok',
     service: 'backend',
     version: APP_VERSION,
@@ -313,7 +313,7 @@ app.post('/chat', async (context) => {
 });
 
 app.get('/threads', async (context) => {
-  const response = threadsResponseSchema.parse({
+  const response = ListThreadsResponse.parse({
     threads: await listThreads(context.get('userId')),
   });
 
@@ -337,7 +337,7 @@ app.post('/threads', async (context) => {
       : { userId: context.get('userId') },
   );
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread,
   });
 
@@ -359,7 +359,7 @@ app.get('/threads/:threadId', async (context) => {
     });
   }
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread,
   });
 
@@ -381,7 +381,7 @@ app.get('/threads/:threadId/messages', async (context) => {
     });
   }
 
-  const response = threadMessagesResponseSchema.parse({
+  const response = ListThreadMessagesResponse.parse({
     thread,
     messages: await getThreadMessages(threadId),
   });
@@ -396,7 +396,7 @@ app.patch('/threads/:threadId', async (context) => {
   }
 
   const payload = await readJsonBody(context);
-  const parsed = updateThreadRequestSchema.parse(payload ?? {});
+  const parsed = UpdateThreadBody.parse(payload ?? {});
   const normalizedTitle = parsed.title.trim();
   if (normalizedTitle.length === 0) {
     return jsonWithValidation(context, 'updateThread', 400, {
@@ -416,7 +416,7 @@ app.patch('/threads/:threadId', async (context) => {
     });
   }
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread,
   });
   return jsonWithValidation(context, 'updateThread', 200, response);
@@ -439,7 +439,7 @@ app.delete('/threads/:threadId', async (context) => {
     });
   }
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread: deleted,
   });
   return jsonWithValidation(context, 'deleteThread', 200, response);

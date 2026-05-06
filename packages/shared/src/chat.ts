@@ -1,12 +1,8 @@
 import { z } from 'zod';
 import {
-  PostChatBody,
-  CreateThreadBody,
-  GetHealthResponse,
   GetThreadResponse,
   ListThreadMessagesResponse,
-  ListThreadsResponse,
-  UpdateThreadBody,
+  PostChatBody,
 } from './generated/openapi-zod.js';
 
 const postChatHistorySchema = PostChatBody.shape.history.unwrap();
@@ -14,15 +10,6 @@ const postChatMessageSchema = postChatHistorySchema.element;
 const threadSummarySchemaInternal = GetThreadResponse.shape.thread;
 const persistedChatMessageSchemaInternal =
   ListThreadMessagesResponse.shape.messages.element;
-
-export {
-  CreateThreadBody as createThreadRequestSchema,
-  GetHealthResponse as healthResponseSchema,
-  GetThreadResponse as threadResponseSchema,
-  ListThreadMessagesResponse as threadMessagesResponseSchema,
-  ListThreadsResponse as threadsResponseSchema,
-  UpdateThreadBody as updateThreadRequestSchema,
-};
 
 // ---------------------------------------------------------------------------
 // ChatCommand — structured command payload for explicit UI actions
@@ -155,7 +142,6 @@ export const chatStreamEventSchema = z.union([
 ]);
 
 export type ChatRole = z.infer<typeof postChatMessageSchema.shape.role>;
-export type ChatMessage = z.infer<typeof postChatMessageSchema>;
 export type ThreadSummary = z.infer<typeof threadSummarySchemaInternal>;
 export type PersistedChatMessage = z.infer<typeof persistedChatMessageSchemaInternal>;
 export type ChatRequest = z.infer<typeof chatRequestSchema>;

@@ -1,6 +1,4 @@
-import {
-  chatStreamEventSchema,
-} from '@agentra/shared';
+import { chatStreamEventSchema } from '@agentra/shared';
 import { describe, expect, it } from 'vitest';
 
 describe('chat stream contract', () => {

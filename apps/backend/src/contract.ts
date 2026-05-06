@@ -1,11 +1,11 @@
 import {
+  CreateThreadBody,
   chatStreamEventSchema,
-  createThreadRequestSchema,
-  healthResponseSchema,
-  threadMessagesResponseSchema,
-  threadResponseSchema,
-  threadsResponseSchema,
-  updateThreadRequestSchema,
+  GetHealthResponse,
+  GetThreadResponse,
+  ListThreadMessagesResponse,
+  ListThreadsResponse,
+  UpdateThreadBody,
 } from '@agentra/shared';
 import { app } from './app.js';
 
@@ -79,28 +79,28 @@ async function main() {
     'GET /health',
     await app.request('/health'),
     200,
-    healthResponseSchema.parse,
+    GetHealthResponse.parse,
   );
 
   await assertJsonResponse(
     'GET /threads',
     await app.request('/threads'),
     200,
-    threadsResponseSchema.parse,
+    ListThreadsResponse.parse,
   );
 
   await assertJsonResponse(
     'GET /threads/:threadId',
     await app.request('/threads/thread-demo-001'),
     200,
-    threadResponseSchema.parse,
+    GetThreadResponse.parse,
   );
 
   await assertJsonResponse(
     'GET /threads/:threadId/messages',
     await app.request('/threads/thread-demo-001/messages'),
     200,
-    threadMessagesResponseSchema.parse,
+    ListThreadMessagesResponse.parse,
   );
 
   await assertChatStreamResponse(
@@ -124,16 +124,14 @@ async function main() {
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify(
-      createThreadRequestSchema.parse({ title: 'contract created thread' }),
-    ),
+    body: JSON.stringify(CreateThreadBody.parse({ title: 'contract created thread' })),
   });
   if (createdThreadResponse.status !== 201) {
     throw new Error(
       `POST /threads: expected status 201, received ${createdThreadResponse.status}`,
     );
   }
-  const createdPayload = threadResponseSchema.parse(await createdThreadResponse.json());
+  const createdPayload = GetThreadResponse.parse(await createdThreadResponse.json());
   const createdThreadId = createdPayload.thread.threadId as string;
 
   await assertJsonResponse(
@@ -143,12 +141,10 @@ async function main() {
       headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(
-        updateThreadRequestSchema.parse({ title: 'updated thread title' }),
-      ),
+      body: JSON.stringify(UpdateThreadBody.parse({ title: 'updated thread title' })),
     }),
     200,
-    threadResponseSchema.parse,
+    GetThreadResponse.parse,
   );
 
   const deleteResponse = await app.request(`/threads/${createdThreadId}`, {
@@ -158,7 +154,7 @@ async function main() {
     'DELETE /threads/:threadId',
     deleteResponse,
     200,
-    threadResponseSchema.parse,
+    GetThreadResponse.parse,
   );
 
   const deletedMessageResponse = await app.request(
