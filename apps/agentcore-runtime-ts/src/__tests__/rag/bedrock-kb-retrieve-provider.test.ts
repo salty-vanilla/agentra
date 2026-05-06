@@ -1,15 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { RetrieveCommand } from '@aws-sdk/client-bedrock-agent-runtime';
+import { describe, expect, it, vi } from 'vitest';
 
-describe('kb retrieve tool', () => {
-  beforeEach(() => {
-    vi.resetModules();
-    vi.unstubAllEnvs();
-  });
+describe('bedrock kb retrieve provider', () => {
+  it('builds sources, citations, and a brief from retrieve results', async () => {
+    const { buildBedrockKbRetrieveOutput } = await import(
+      '../../rag/bedrock-kb-retrieve-provider.js'
+    );
 
-  it('builds sources, citations, and a brief from Bedrock KB retrieve results', async () => {
-    const { buildKbRetrieveOutput } = await import('../../tools/kb-retrieve.tool.js');
-
-    const output = buildKbRetrieveOutput(
+    const output = buildBedrockKbRetrieveOutput(
       {
         query: 'agentra runtime policy',
         knowledgeBaseId: 'kb-123',
@@ -33,6 +31,8 @@ describe('kb retrieve tool', () => {
             metadata: {
               title: 'Policy document',
               department: 'engineering',
+              provider: 'kb-metadata-provider',
+              knowledgeBaseId: 'kb-metadata-id',
             },
             score: 0.93,
           },
@@ -40,8 +40,8 @@ describe('kb retrieve tool', () => {
       },
     );
 
+    expect(output.provider).toBe('bedrock_kb_retrieve');
     expect(output.query).toBe('agentra runtime policy');
-    expect(output.knowledgeBaseId).toBe('kb-123');
     expect(output.sources).toHaveLength(1);
     expect(output.sources[0]).toMatchObject({
       type: 'document',
@@ -77,12 +77,19 @@ describe('kb retrieve tool', () => {
     });
     expect(output.brief?.keyFacts).toEqual(['First internal policy chunk.']);
     expect(output.rawResultSummary).toEqual({ resultCount: 1 });
+    expect(output.metadata).toEqual({
+      provider: 'bedrock-kb',
+      knowledgeBaseId: 'kb-123',
+      query: 'agentra runtime policy',
+    });
   });
 
   it('omits the brief when createBrief is false', async () => {
-    const { buildKbRetrieveOutput } = await import('../../tools/kb-retrieve.tool.js');
+    const { buildBedrockKbRetrieveOutput } = await import(
+      '../../rag/bedrock-kb-retrieve-provider.js'
+    );
 
-    const output = buildKbRetrieveOutput(
+    const output = buildBedrockKbRetrieveOutput(
       {
         query: 'deployment notes',
         knowledgeBaseId: 'kb-123',
@@ -110,39 +117,38 @@ describe('kb retrieve tool', () => {
     expect(output.rawResultSummary).toEqual({ resultCount: 1 });
   });
 
-  it('resolves input from env defaults', async () => {
-    vi.stubEnv('BEDROCK_KB_ID', 'kb-from-env');
-    vi.stubEnv('BEDROCK_KB_DEFAULT_TOP_K', '7');
-
-    const { resolveKbRetrieveInput } = await import('../../tools/kb-retrieve.tool.js');
-
-    expect(
-      resolveKbRetrieveInput({
-        query: '  runtime policy  ',
-        briefTopic: '  topic  ',
-        briefGoal: '  goal  ',
-      }),
-    ).toMatchObject({
-      query: 'runtime policy',
-      knowledgeBaseId: 'kb-from-env',
-      topK: 7,
-      createBrief: true,
-      briefTopic: 'topic',
-      briefGoal: 'goal',
-      language: 'unknown',
-    });
-  });
-
-  it('returns an error when the knowledge base id is missing', async () => {
-    const { executeKbRetrieveTool } = await import('../../tools/kb-retrieve.tool.js');
-
-    const response = await executeKbRetrieveTool({
-      query: 'runtime policy',
+  it('uses the injected client and builds a RetrieveCommand', async () => {
+    const send = vi.fn().mockResolvedValue({
+      retrievalResults: [],
     });
 
-    expect(response.status).toBe('error');
-    expect(response.content[0]?.text).toContain(
-      'knowledgeBaseId must be provided or BEDROCK_KB_ID must be set',
+    const { BedrockKbRetrieveProvider } = await import(
+      '../../rag/bedrock-kb-retrieve-provider.js'
     );
+
+    const provider = new BedrockKbRetrieveProvider({
+      knowledgeBaseId: 'kb-123',
+      client: { send },
+    });
+
+    const output = await provider.search({
+      query: 'hello world',
+    });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    const command = send.mock.calls[0]?.[0];
+    expect(command).toBeInstanceOf(RetrieveCommand);
+    expect(command.input).toMatchObject({
+      knowledgeBaseId: 'kb-123',
+      retrievalQuery: {
+        text: 'hello world',
+      },
+      retrievalConfiguration: {
+        vectorSearchConfiguration: {
+          numberOfResults: 5,
+        },
+      },
+    });
+    expect(output.rawResultSummary).toEqual({ resultCount: 0 });
   });
 });
