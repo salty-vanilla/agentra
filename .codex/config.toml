@@ -1,0 +1,8 @@
+[features]
+codex_hooks = true
+
+[[hooks.Stop]]
+[[hooks.Stop.hooks]]
+type = "command"
+command = '/usr/bin/env python3 "$(git rev-parse --show-toplevel)/.codex/hooks/stop_quality_gate.py"'
+timeout = 1800
