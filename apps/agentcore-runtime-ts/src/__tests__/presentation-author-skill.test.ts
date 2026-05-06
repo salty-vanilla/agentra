@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 const SKILLS_ROOT = join(import.meta.dirname, '../../skills');
 const HANDOFF_SKILL = join(SKILLS_ROOT, 'presentation-author-handoff');
+const WEB_RESEARCH_SKILL = join(SKILLS_ROOT, 'web-research');
 
 // The presentation-author skill lives in its own runtime
 const PA_RUNTIME_SKILLS = join(
@@ -37,6 +38,10 @@ describe('Skill file existence', () => {
 
   it('presentation-author-handoff/SKILL.md exists', () => {
     expect(existsSync(join(HANDOFF_SKILL, 'SKILL.md'))).toBe(true);
+  });
+
+  it('web-research/SKILL.md exists', () => {
+    expect(existsSync(join(WEB_RESEARCH_SKILL, 'SKILL.md'))).toBe(true);
   });
 });
 
@@ -121,6 +126,7 @@ describe('Router Agent prompt integration', () => {
     const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
     expect(agentSource).toContain('AgentSkills');
     expect(agentSource).toContain('presentation-author-handoff');
+    expect(agentSource).toContain('web-research');
     expect(agentSource).toContain('plugins:');
     // Should NOT have inline slide instructions
     expect(agentSource).not.toContain("'# スライド生成'");

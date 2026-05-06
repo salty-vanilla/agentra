@@ -105,8 +105,11 @@ const BRIEF_TOOL_INSTRUCTIONS = [
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '../skills');
 
-const presentationAuthorHandoffPlugin = new AgentSkills({
-  skills: [join(SKILLS_DIR, 'presentation-author-handoff')],
+const agentSkillsPlugin = new AgentSkills({
+  skills: [
+    join(SKILLS_DIR, 'presentation-author-handoff'),
+    join(SKILLS_DIR, 'web-research'),
+  ],
 });
 
 const RequestSchema = z.object({
@@ -198,7 +201,7 @@ function createAgent(config: {
     temperature: config.temperature,
   });
 
-  const plugins: Plugin[] = [presentationAuthorHandoffPlugin];
+  const plugins: Plugin[] = [agentSkillsPlugin];
   if (config.sessionManager) {
     plugins.push(config.sessionManager);
   }
