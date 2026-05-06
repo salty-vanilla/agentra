@@ -5,6 +5,7 @@ import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
+import { kbRetrieveTool } from './kb-retrieve.tool.js';
 import { tableSummaryTool } from './table-summary.tool.js';
 import {
   tavilyCrawlTool,
@@ -22,6 +23,7 @@ export type ToolCategory =
   | 'evidence'
   | 'artifact'
   | 'brief'
+  | 'rag'
   | 'research'
   | 'presentation'
   | 'demo'
@@ -49,6 +51,7 @@ export type ToolRegistryConfig = {
   enableEvidence?: boolean;
   enableArtifact?: boolean;
   enableBrief?: boolean;
+  enableKbRetrieve?: boolean;
   enableWebResearch?: boolean;
 };
 
@@ -61,6 +64,7 @@ const TOOL_ORDER = [
   'create_artifact_manifest',
   'create_brief',
   'merge_briefs',
+  'kb_retrieve',
   'web_research',
   'tavily_search',
   'tavily_extract',
@@ -101,6 +105,10 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
     enableEvidence: resolveEnvFlag('ENABLE_EVIDENCE_TOOLS', true),
     enableArtifact: resolveEnvFlag('ENABLE_ARTIFACT_TOOLS', true),
     enableBrief: resolveEnvFlag('ENABLE_BRIEF_TOOLS', true),
+    enableKbRetrieve: resolveEnvFlag(
+      'ENABLE_KB_RETRIEVE_TOOL',
+      Boolean(process.env.BEDROCK_KB_ID?.trim()),
+    ),
     enableWebResearch: resolveEnvFlag('ENABLE_WEB_RESEARCH_TOOL', true),
   };
 }
@@ -124,6 +132,7 @@ export function getRegisteredTools(
   const enableEvidence = resolveToolEnabled(config, 'enableEvidence', true);
   const enableArtifact = resolveToolEnabled(config, 'enableArtifact', true);
   const enableBrief = resolveToolEnabled(config, 'enableBrief', true);
+  const enableKbRetrieve = resolveToolEnabled(config, 'enableKbRetrieve', false);
   const enableWebResearch = resolveToolEnabled(config, 'enableWebResearch', true);
 
   const tools: RegisteredTool[] = [
@@ -182,6 +191,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableBrief,
       tool: mergeBriefsTool,
+    },
+    {
+      name: 'kb_retrieve',
+      category: 'rag',
+      riskLevel: 'medium',
+      enabled: enableKbRetrieve,
+      tool: kbRetrieveTool,
     },
     {
       name: 'web_research',

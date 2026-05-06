@@ -92,6 +92,11 @@ const EVIDENCE_TOOL_INSTRUCTIONS = [
   '回答・レポート・スライド用briefでは、重要な主張に対して source / citation を対応づけることを優先してください。',
 ].join('\n');
 
+const RAG_TOOL_INSTRUCTIONS = [
+  '社内ナレッジ、プロジェクト固有情報、ドキュメント根拠が必要な場合は、設定済みのKnowledge Baseがあれば kb_retrieve で根拠を取得してください。',
+  'kb_retrieve は回答生成ではなく根拠取得専用です。回答では取得した sources / citations を優先してください。',
+].join('\n');
+
 const ARTIFACT_TOOL_INSTRUCTIONS = [
   'PPTX、PDF、HTML、PNG、JSON、テキストなどの生成物や中間成果物を整理する場合は、create_artifact_manifest で成果物メタデータを標準化してください。',
   'create_artifact_manifest はメタデータ整理のみを行い、ファイルの読み書き・存在確認・アップロードは行いません。',
@@ -108,6 +113,7 @@ const SKILLS_DIR = join(__dirname, '../skills');
 const agentSkillsPlugin = new AgentSkills({
   skills: [
     join(SKILLS_DIR, 'presentation-author-handoff'),
+    join(SKILLS_DIR, 'rag-research'),
     join(SKILLS_DIR, 'web-research'),
   ],
 });
@@ -170,6 +176,8 @@ function buildPrompt(input: {
     CALCULATION_TOOL_INSTRUCTIONS,
     '',
     EVIDENCE_TOOL_INSTRUCTIONS,
+    '',
+    RAG_TOOL_INSTRUCTIONS,
     '',
     ARTIFACT_TOOL_INSTRUCTIONS,
     '',

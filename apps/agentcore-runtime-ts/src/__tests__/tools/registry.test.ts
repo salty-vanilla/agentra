@@ -4,10 +4,12 @@ describe('tool registry', () => {
   const originalEnv = {
     ENABLE_ARTIFACT_TOOLS: process.env.ENABLE_ARTIFACT_TOOLS,
     ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
+    ENABLE_KB_RETRIEVE_TOOL: process.env.ENABLE_KB_RETRIEVE_TOOL,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_WEB_RESEARCH_TOOL: process.env.ENABLE_WEB_RESEARCH_TOOL,
     ENABLE_WEATHER_TOOL: process.env.ENABLE_WEATHER_TOOL,
+    BEDROCK_KB_ID: process.env.BEDROCK_KB_ID,
   };
 
   beforeEach(() => {
@@ -15,10 +17,12 @@ describe('tool registry', () => {
     vi.unstubAllEnvs();
     process.env.ENABLE_ARTIFACT_TOOLS = originalEnv.ENABLE_ARTIFACT_TOOLS;
     process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
+    process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
     process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
+    process.env.BEDROCK_KB_ID = originalEnv.BEDROCK_KB_ID;
   });
 
   afterEach(() => {
@@ -32,6 +36,12 @@ describe('tool registry', () => {
       delete process.env.ENABLE_BRIEF_TOOLS;
     } else {
       process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
+    }
+
+    if (originalEnv.ENABLE_KB_RETRIEVE_TOOL === undefined) {
+      delete process.env.ENABLE_KB_RETRIEVE_TOOL;
+    } else {
+      process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
     }
 
     if (originalEnv.ENABLE_EVIDENCE_TOOLS === undefined) {
@@ -57,9 +67,18 @@ describe('tool registry', () => {
     } else {
       process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
     }
+
+    if (originalEnv.BEDROCK_KB_ID === undefined) {
+      delete process.env.BEDROCK_KB_ID;
+    } else {
+      process.env.BEDROCK_KB_ID = originalEnv.BEDROCK_KB_ID;
+    }
   });
 
   it('uses defaults with weather disabled', async () => {
+    vi.stubEnv('BEDROCK_KB_ID', '');
+    vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', '');
+
     const mod = await import('../../tools/registry.js');
     const config = mod.resolveToolRegistryConfigFromEnv();
 
@@ -72,6 +91,7 @@ describe('tool registry', () => {
       enableEvidence: true,
       enableArtifact: true,
       enableBrief: true,
+      enableKbRetrieve: false,
       enableWebResearch: true,
     });
 
@@ -89,6 +109,7 @@ describe('tool registry', () => {
       { name: 'create_artifact_manifest', enabled: true },
       { name: 'create_brief', enabled: true },
       { name: 'merge_briefs', enabled: true },
+      { name: 'kb_retrieve', enabled: false },
       { name: 'web_research', enabled: true },
       { name: 'tavily_search', enabled: true },
       { name: 'tavily_extract', enabled: true },
@@ -102,6 +123,7 @@ describe('tool registry', () => {
   it('honors env flags and preserves tool order', async () => {
     vi.stubEnv('ENABLE_ARTIFACT_TOOLS', 'false');
     vi.stubEnv('ENABLE_BRIEF_TOOLS', 'false');
+    vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', 'false');
     vi.stubEnv('ENABLE_EVIDENCE_TOOLS', 'false');
     vi.stubEnv('ENABLE_TAVILY_TOOLS', 'false');
     vi.stubEnv('ENABLE_WEB_RESEARCH_TOOL', 'true');
@@ -133,6 +155,7 @@ describe('tool registry', () => {
     expect(registered.find((entry) => entry.name === 'merge_briefs')?.enabled).toBe(
       false,
     );
+    expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
     expect(enabledTools).toHaveLength(5);
     expect(enabledNames).toEqual([
@@ -151,6 +174,7 @@ describe('tool registry', () => {
       'create_artifact_manifest',
       'create_brief',
       'merge_briefs',
+      'kb_retrieve',
       'web_research',
       'tavily_search',
       'tavily_extract',
@@ -174,5 +198,29 @@ describe('tool registry', () => {
     expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
       true,
     );
+  });
+
+  it('enables kb retrieve by default when BEDROCK_KB_ID is set', async () => {
+    vi.stubEnv('BEDROCK_KB_ID', 'kb-123');
+    vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', '');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(true);
+    expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(true);
+    expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
+  });
+
+  it('disables kb retrieve when the feature flag is false even with BEDROCK_KB_ID', async () => {
+    vi.stubEnv('BEDROCK_KB_ID', 'kb-123');
+    vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', 'false');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(false);
+    expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
+    expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
   });
 });
