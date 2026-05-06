@@ -1,7 +1,7 @@
 ---
 name: web-research
 description: Guide web research workflows that turn public web results into evidence, citations, and briefs.
-allowed-tools: tavily_search, tavily_extract, tavily_crawl, tavily_map, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: web_research, tavily_search, tavily_extract, tavily_crawl, tavily_map, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # Web Research Skill
@@ -14,6 +14,7 @@ Use this skill when the user asks for up-to-date public information, external fa
 - `tavily_extract`: extract clean content from selected URLs.
 - `tavily_crawl`: crawl a website when multiple pages are needed.
 - `tavily_map`: discover website structure or relevant URLs.
+- `web_research`: preferred lightweight workflow for simple public web research that needs evidence, citations, and an optional brief.
 - `normalize_evidence_source`: convert raw web/document/tool results into EvidenceSource objects.
 - `build_citations`: create stable citation labels from EvidenceSource objects.
 - `create_brief`: create a normalized research brief from explicit facts, constraints, source IDs, and output requirements.
@@ -22,8 +23,8 @@ Use this skill when the user asks for up-to-date public information, external fa
 ## Research workflow
 
 1. Clarify whether the user needs current or public information.
-2. Use `tavily_search` for broad discovery.
-3. Use `tavily_extract` for the most relevant URLs before relying on details.
+2. Prefer `web_research` for simple source-grounded public web research that should return evidence, citations, and an optional brief in one step.
+3. Use `tavily_search` + `tavily_extract` manually when detailed verification is needed or when you need to inspect multiple specific URLs.
 4. Use `tavily_crawl` only when a site-level investigation is needed.
 5. Use `tavily_map` when the relevant page is unknown but likely within a specific domain.
 6. Normalize important sources with `normalize_evidence_source`.
@@ -44,6 +45,7 @@ Use this skill when the user asks for up-to-date public information, external fa
 - Use extract for verification.
 - Use crawl sparingly because it can be expensive.
 - Use map when navigating docs or websites.
+- Use `web_research` as the default orchestration path unless you need manual control over search or extraction.
 - Do not call citation tools for trivial answers that do not require sources.
 - Do not overuse tools when the answer can be given from stable general knowledge.
 

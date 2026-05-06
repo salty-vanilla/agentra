@@ -6,6 +6,7 @@ describe('tool registry', () => {
     ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
+    ENABLE_WEB_RESEARCH_TOOL: process.env.ENABLE_WEB_RESEARCH_TOOL,
     ENABLE_WEATHER_TOOL: process.env.ENABLE_WEATHER_TOOL,
   };
 
@@ -16,6 +17,7 @@ describe('tool registry', () => {
     process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
+    process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
     process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
   });
 
@@ -44,6 +46,12 @@ describe('tool registry', () => {
       process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     }
 
+    if (originalEnv.ENABLE_WEB_RESEARCH_TOOL === undefined) {
+      delete process.env.ENABLE_WEB_RESEARCH_TOOL;
+    } else {
+      process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
+    }
+
     if (originalEnv.ENABLE_WEATHER_TOOL === undefined) {
       delete process.env.ENABLE_WEATHER_TOOL;
     } else {
@@ -64,6 +72,7 @@ describe('tool registry', () => {
       enableEvidence: true,
       enableArtifact: true,
       enableBrief: true,
+      enableWebResearch: true,
     });
 
     const names = mod.getRegisteredTools().map((entry) => ({
@@ -80,6 +89,7 @@ describe('tool registry', () => {
       { name: 'create_artifact_manifest', enabled: true },
       { name: 'create_brief', enabled: true },
       { name: 'merge_briefs', enabled: true },
+      { name: 'web_research', enabled: true },
       { name: 'tavily_search', enabled: true },
       { name: 'tavily_extract', enabled: true },
       { name: 'tavily_crawl', enabled: true },
@@ -94,6 +104,7 @@ describe('tool registry', () => {
     vi.stubEnv('ENABLE_BRIEF_TOOLS', 'false');
     vi.stubEnv('ENABLE_EVIDENCE_TOOLS', 'false');
     vi.stubEnv('ENABLE_TAVILY_TOOLS', 'false');
+    vi.stubEnv('ENABLE_WEB_RESEARCH_TOOL', 'true');
     vi.stubEnv('ENABLE_WEATHER_TOOL', 'true');
 
     const mod = await import('../../tools/registry.js');
@@ -102,6 +113,9 @@ describe('tool registry', () => {
     const enabledNames = enabledTools.map((entry) => entry.name);
 
     expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
+      false,
+    );
+    expect(registered.find((entry) => entry.name === 'web_research')?.enabled).toBe(
       false,
     );
     expect(
@@ -137,6 +151,7 @@ describe('tool registry', () => {
       'create_artifact_manifest',
       'create_brief',
       'merge_briefs',
+      'web_research',
       'tavily_search',
       'tavily_extract',
       'tavily_crawl',
@@ -144,5 +159,20 @@ describe('tool registry', () => {
       'create_slide_presentation',
       'getWeather',
     ]);
+  });
+
+  it('disables web research independently when the feature flag is off', async () => {
+    vi.stubEnv('ENABLE_WEB_RESEARCH_TOOL', 'false');
+    vi.stubEnv('ENABLE_TAVILY_TOOLS', 'true');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(registered.find((entry) => entry.name === 'web_research')?.enabled).toBe(
+      false,
+    );
+    expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
+      true,
+    );
   });
 });

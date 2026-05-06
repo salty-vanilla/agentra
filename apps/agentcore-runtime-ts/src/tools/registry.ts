@@ -13,6 +13,7 @@ import {
   tavilySearchTool,
 } from './tavily.js';
 import { weatherTool } from './weather.js';
+import { webResearchTool } from './web-research.tool.js';
 
 export type ToolCategory =
   | 'time'
@@ -21,6 +22,7 @@ export type ToolCategory =
   | 'evidence'
   | 'artifact'
   | 'brief'
+  | 'research'
   | 'presentation'
   | 'demo'
   | 'unknown';
@@ -47,6 +49,7 @@ export type ToolRegistryConfig = {
   enableEvidence?: boolean;
   enableArtifact?: boolean;
   enableBrief?: boolean;
+  enableWebResearch?: boolean;
 };
 
 const TOOL_ORDER = [
@@ -58,6 +61,7 @@ const TOOL_ORDER = [
   'create_artifact_manifest',
   'create_brief',
   'merge_briefs',
+  'web_research',
   'tavily_search',
   'tavily_extract',
   'tavily_crawl',
@@ -97,6 +101,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
     enableEvidence: resolveEnvFlag('ENABLE_EVIDENCE_TOOLS', true),
     enableArtifact: resolveEnvFlag('ENABLE_ARTIFACT_TOOLS', true),
     enableBrief: resolveEnvFlag('ENABLE_BRIEF_TOOLS', true),
+    enableWebResearch: resolveEnvFlag('ENABLE_WEB_RESEARCH_TOOL', true),
   };
 }
 
@@ -119,6 +124,7 @@ export function getRegisteredTools(
   const enableEvidence = resolveToolEnabled(config, 'enableEvidence', true);
   const enableArtifact = resolveToolEnabled(config, 'enableArtifact', true);
   const enableBrief = resolveToolEnabled(config, 'enableBrief', true);
+  const enableWebResearch = resolveToolEnabled(config, 'enableWebResearch', true);
 
   const tools: RegisteredTool[] = [
     {
@@ -176,6 +182,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableBrief,
       tool: mergeBriefsTool,
+    },
+    {
+      name: 'web_research',
+      category: 'research',
+      riskLevel: 'medium',
+      enabled: enableWebResearch && enableTavily,
+      tool: webResearchTool,
     },
     {
       name: 'tavily_search',

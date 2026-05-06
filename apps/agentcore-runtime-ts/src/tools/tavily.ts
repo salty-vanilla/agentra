@@ -13,6 +13,22 @@ type ToolResponse = {
   content: Array<{ text: string }>;
 };
 
+export type TavilySearchInput = {
+  query: string;
+  search_depth?: 'basic' | 'advanced';
+  topic?: 'general' | 'news';
+  max_results?: number;
+  time_range?: 'day' | 'week' | 'month' | 'year' | 'd' | 'w' | 'm' | 'y';
+  days?: number;
+  start_date?: string;
+  end_date?: string;
+  include_answer?: boolean | 'basic' | 'advanced';
+  include_raw_content?: boolean | 'markdown' | 'text';
+  include_domains?: string[];
+  exclude_domains?: string[];
+  country?: string;
+};
+
 const TavilyCategorySchema = z.enum([
   'Careers',
   'Blog',
@@ -210,6 +226,33 @@ async function postTavily(
   }
 
   return { data };
+}
+
+export async function searchTavily(input: TavilySearchInput): Promise<unknown> {
+  const response = await postTavily(
+    '/search',
+    compactPayload({
+      query: input.query,
+      search_depth: input.search_depth,
+      topic: input.topic,
+      max_results: input.max_results,
+      time_range: input.time_range,
+      days: input.days,
+      start_date: input.start_date,
+      end_date: input.end_date,
+      include_answer: input.include_answer,
+      include_raw_content: input.include_raw_content,
+      include_domains: input.include_domains,
+      exclude_domains: input.exclude_domains,
+      country: input.country,
+    }),
+  );
+
+  if (response.error) {
+    throw new Error(response.error);
+  }
+
+  return response.data;
 }
 
 const tavilySearchTool = tool({
