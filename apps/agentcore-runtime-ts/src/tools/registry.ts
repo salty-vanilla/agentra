@@ -1,4 +1,5 @@
 import type { Tool } from '@strands-agents/sdk';
+import { createArtifactManifestTool } from './artifact.tool.js';
 import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
@@ -17,6 +18,7 @@ export type ToolCategory =
   | 'web'
   | 'calculation'
   | 'evidence'
+  | 'artifact'
   | 'presentation'
   | 'demo'
   | 'unknown';
@@ -41,6 +43,7 @@ export type ToolRegistryConfig = {
   enableCalculator?: boolean;
   enableTableSummary?: boolean;
   enableEvidence?: boolean;
+  enableArtifact?: boolean;
 };
 
 const TOOL_ORDER = [
@@ -49,6 +52,7 @@ const TOOL_ORDER = [
   'table_summary',
   'normalize_evidence_source',
   'build_citations',
+  'create_artifact_manifest',
   'tavily_search',
   'tavily_extract',
   'tavily_crawl',
@@ -86,6 +90,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
     enableCalculator: resolveEnvFlag('ENABLE_CALCULATOR_TOOL', true),
     enableTableSummary: resolveEnvFlag('ENABLE_TABLE_SUMMARY_TOOL', true),
     enableEvidence: resolveEnvFlag('ENABLE_EVIDENCE_TOOLS', true),
+    enableArtifact: resolveEnvFlag('ENABLE_ARTIFACT_TOOLS', true),
   };
 }
 
@@ -106,6 +111,7 @@ export function getRegisteredTools(
   const enableCalculator = resolveToolEnabled(config, 'enableCalculator', true);
   const enableTableSummary = resolveToolEnabled(config, 'enableTableSummary', true);
   const enableEvidence = resolveToolEnabled(config, 'enableEvidence', true);
+  const enableArtifact = resolveToolEnabled(config, 'enableArtifact', true);
 
   const tools: RegisteredTool[] = [
     {
@@ -142,6 +148,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableEvidence,
       tool: buildCitationsTool,
+    },
+    {
+      name: 'create_artifact_manifest',
+      category: 'artifact',
+      riskLevel: 'low',
+      enabled: enableArtifact,
+      tool: createArtifactManifestTool,
     },
     {
       name: 'tavily_search',

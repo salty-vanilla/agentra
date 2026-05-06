@@ -92,6 +92,11 @@ const EVIDENCE_TOOL_INSTRUCTIONS = [
   '回答・レポート・スライド用briefでは、重要な主張に対して source / citation を対応づけることを優先してください。',
 ].join('\n');
 
+const ARTIFACT_TOOL_INSTRUCTIONS = [
+  'PPTX、PDF、HTML、PNG、JSON、テキストなどの生成物や中間成果物を整理する場合は、create_artifact_manifest で成果物メタデータを標準化してください。',
+  'create_artifact_manifest はメタデータ整理のみを行い、ファイルの読み書き・存在確認・アップロードは行いません。',
+].join('\n');
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '../skills');
 
@@ -157,6 +162,8 @@ function buildPrompt(input: {
     CALCULATION_TOOL_INSTRUCTIONS,
     '',
     EVIDENCE_TOOL_INSTRUCTIONS,
+    '',
+    ARTIFACT_TOOL_INSTRUCTIONS,
     '',
     MEMORY_INSTRUCTIONS,
   ];
