@@ -25,7 +25,20 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "style": {
+        "noRestrictedImports": {
+          "level": "error",
+          "options": {
+            "patterns": [
+              {
+                "group": ["**/apps/**", "**/packages/**", "**/infra/**"],
+                "message": "Use a workspace package dependency instead of a cross-package relative import."
+              }
+            ]
+          }
+        }
+      }
     }
   },
   "assist": {

@@ -13,16 +13,7 @@ import { z } from 'zod';
 import { buildLoggerOptions } from './logging.js';
 import { createRuntimeSessionManager } from './memory/session-manager-factory.js';
 import { ObservationCollector } from './observability.js';
-import { createSlidePresentationTool } from './tools/create-slide-presentation.js';
-import { dateResolverTool } from './tools/date-resolver.js';
-
-import {
-  tavilyCrawlTool,
-  tavilyExtractTool,
-  tavilyMapTool,
-  tavilySearchTool,
-} from './tools/tavily.js';
-import { weatherTool } from './tools/weather.js';
+import { buildGeneralTools } from './tools/registry.js';
 
 type ModelKey = 'opus' | 'sonnet' | 'haiku';
 type ResponsePreset = 'fast' | 'balanced' | 'deep';
@@ -91,6 +82,11 @@ const DATE_TOOL_INSTRUCTIONS = [
   '回答時は、可能な限り YYYY-MM-DD などの具体的な絶対日付を明示してください。',
 ].join('\n');
 
+const CALCULATION_TOOL_INSTRUCTIONS = [
+  '数値計算、割合、増減率、平均、KPI集計が必要な場合は、暗算せず calculator または table_summary ツールを使ってください。',
+  'スライドや報告書に使う数値は、可能な限りツール結果に基づいてください。',
+].join('\n');
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '../skills');
 
@@ -153,6 +149,8 @@ function buildPrompt(input: {
     '',
     DATE_TOOL_INSTRUCTIONS,
     '',
+    CALCULATION_TOOL_INSTRUCTIONS,
+    '',
     MEMORY_INSTRUCTIONS,
   ];
 
@@ -187,15 +185,7 @@ function createAgent(config: {
   return new Agent({
     model,
     plugins,
-    tools: [
-      dateResolverTool,
-      weatherTool,
-      tavilySearchTool,
-      tavilyExtractTool,
-      tavilyCrawlTool,
-      tavilyMapTool,
-      createSlidePresentationTool,
-    ],
+    tools: buildGeneralTools(),
   });
 }
 
