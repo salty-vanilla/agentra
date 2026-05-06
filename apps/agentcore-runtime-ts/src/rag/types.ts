@@ -7,6 +7,30 @@ export type RagProviderKind =
   | 'agentic'
   | 'unknown';
 
+export type RagMetadataFilterOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'greater_than'
+  | 'greater_than_or_equals'
+  | 'less_than'
+  | 'less_than_or_equals'
+  | 'in'
+  | 'not_in'
+  | 'starts_with'
+  | 'list_contains'
+  | 'string_contains';
+
+export type RagMetadataFilterCondition = {
+  key: string;
+  operator: RagMetadataFilterOperator;
+  value: string | number | boolean | Array<string | number | boolean>;
+};
+
+export type RagMetadataFilter = {
+  andAll?: RagMetadataFilterCondition[];
+  orAll?: RagMetadataFilterCondition[];
+};
+
 export type RagSearchInput = {
   query: string;
   topK?: number;
@@ -14,6 +38,9 @@ export type RagSearchInput = {
   briefTopic?: string | undefined;
   briefGoal?: string | undefined;
   language?: 'ja' | 'en' | 'unknown';
+  metadataFilter?: RagMetadataFilter | undefined;
+  scoreThreshold?: number | undefined;
+  queryRewriteHint?: string | undefined;
   metadata?: Record<string, unknown> | undefined;
 };
 
@@ -25,6 +52,9 @@ export type RagSearchOutput = {
   brief?: Brief;
   rawResultSummary: {
     resultCount: number;
+    originalResultCount?: number | undefined;
+    filteredByScoreCount?: number | undefined;
+    noResults?: boolean | undefined;
   };
   metadata?: Record<string, unknown> | undefined;
 };

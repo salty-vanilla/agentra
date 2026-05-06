@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   BedrockKbRetrieveProvider,
   buildBedrockKbRetrieveOutput,
+  type RagMetadataFilter,
   RagService,
   type ResolvedBedrockKbRetrieveInput,
   resolveBedrockKbRetrieveInput,
@@ -12,6 +13,47 @@ import { errorMessage, toolFailure, toolSuccess } from './tool-response.js';
 
 const DEFAULT_TOP_K = 5;
 const MAX_QUERY_LENGTH = 2000;
+const MAX_QUERY_REWRITE_HINT_LENGTH = 1000;
+const MAX_FILTER_CONDITIONS = 20;
+
+const metadataFilterValueSchema = z.union([
+  z.string().max(1000),
+  z.number(),
+  z.boolean(),
+]);
+
+const metadataFilterConditionSchema = z.object({
+  key: z.string().min(1).max(200),
+  operator: z.enum([
+    'equals',
+    'not_equals',
+    'greater_than',
+    'greater_than_or_equals',
+    'less_than',
+    'less_than_or_equals',
+    'in',
+    'not_in',
+    'starts_with',
+    'list_contains',
+    'string_contains',
+  ]),
+  value: z.union([metadataFilterValueSchema, z.array(metadataFilterValueSchema).max(50)]),
+});
+
+const metadataFilterSchema = z
+  .object({
+    andAll: z.array(metadataFilterConditionSchema).optional(),
+    orAll: z.array(metadataFilterConditionSchema).optional(),
+  })
+  .superRefine((filter, ctx) => {
+    const totalConditions = (filter.andAll?.length ?? 0) + (filter.orAll?.length ?? 0);
+    if (totalConditions > MAX_FILTER_CONDITIONS) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `metadataFilter must not exceed ${MAX_FILTER_CONDITIONS} total conditions`,
+      });
+    }
+  });
 
 const kbRetrieveInputSchema = z.object({
   query: z.string().describe('Natural language query to retrieve relevant KB chunks.'),
@@ -21,6 +63,9 @@ const kbRetrieveInputSchema = z.object({
   briefTopic: z.string().optional(),
   briefGoal: z.string().optional(),
   language: z.enum(['ja', 'en', 'unknown']).optional(),
+  metadataFilter: metadataFilterSchema.optional(),
+  scoreThreshold: z.number().min(0).max(1).optional(),
+  queryRewriteHint: z.string().max(MAX_QUERY_REWRITE_HINT_LENGTH).optional(),
 });
 
 export type KbRetrieveToolInput = z.infer<typeof kbRetrieveInputSchema>;
@@ -35,6 +80,9 @@ export type KbRetrieveToolOutput = {
   brief?: Brief;
   rawResultSummary: {
     resultCount: number;
+    originalResultCount?: number | undefined;
+    filteredByScoreCount?: number | undefined;
+    noResults?: boolean | undefined;
   };
 };
 
@@ -92,6 +140,12 @@ export function resolveKbRetrieveInput(
     topK: input.topK ?? parseDefaultTopK(),
     createBrief: input.createBrief ?? true,
     language: input.language ?? 'unknown',
+    ...definedProperty(
+      'metadataFilter',
+      input.metadataFilter as RagMetadataFilter | undefined,
+    ),
+    ...definedProperty('scoreThreshold', input.scoreThreshold),
+    ...definedProperty('queryRewriteHint', trimText(input.queryRewriteHint)),
     ...definedProperty('briefTopic', trimText(input.briefTopic)),
     ...definedProperty('briefGoal', trimText(input.briefGoal)),
   });

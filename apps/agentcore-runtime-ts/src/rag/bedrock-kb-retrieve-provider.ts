@@ -8,7 +8,14 @@ import {
   BedrockAgentRuntimeClient,
   RetrieveCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime';
-import type { RagProvider, RagSearchInput, RagSearchOutput } from './types.js';
+import type {
+  RagMetadataFilter,
+  RagMetadataFilterCondition,
+  RagMetadataFilterOperator,
+  RagProvider,
+  RagSearchInput,
+  RagSearchOutput,
+} from './types.js';
 
 const DEFAULT_TOP_K = 5;
 const MAX_QUERY_LENGTH = 2000;
@@ -16,6 +23,11 @@ const MAX_TEXT_LENGTH = 4000;
 const MAX_SNIPPET_LENGTH = 3000;
 const MAX_KEY_FACT_LENGTH = 300;
 const MAX_KEY_FACTS = 5;
+const MAX_QUERY_REWRITE_HINT_LENGTH = 1000;
+const MAX_FILTER_CONDITIONS = 20;
+const MAX_FILTER_KEY_LENGTH = 200;
+const MAX_FILTER_STRING_LENGTH = 1000;
+const MAX_FILTER_ARRAY_LENGTH = 50;
 
 type RetrieveClient = {
   send(command: RetrieveCommand): Promise<unknown>;
@@ -40,6 +52,9 @@ export type ResolvedBedrockKbRetrieveInput = {
   briefTopic?: string | undefined;
   briefGoal?: string | undefined;
   language: 'ja' | 'en' | 'unknown';
+  metadataFilter?: RagMetadataFilter | undefined;
+  scoreThreshold?: number | undefined;
+  queryRewriteHint?: string | undefined;
 };
 
 type ParsedKbResult = {
@@ -99,6 +114,63 @@ function validateOptionalText(
   if (value !== undefined && value.length > maxLength) {
     throw new Error(`${fieldName} must not exceed ${maxLength} characters`);
   }
+}
+
+function validateMetadataFilterCondition(
+  condition: RagMetadataFilterCondition,
+  index: number,
+): void {
+  const key = condition.key.trim();
+  if (!key) {
+    throw new Error(`metadataFilter condition[${index}].key must not be empty`);
+  }
+
+  if (key.length > MAX_FILTER_KEY_LENGTH) {
+    throw new Error(
+      `metadataFilter condition[${index}].key must not exceed ${MAX_FILTER_KEY_LENGTH} characters`,
+    );
+  }
+
+  const value = condition.value;
+  if (Array.isArray(value)) {
+    if (value.length > MAX_FILTER_ARRAY_LENGTH) {
+      throw new Error(
+        `metadataFilter condition[${index}].value array must not exceed ${MAX_FILTER_ARRAY_LENGTH} items`,
+      );
+    }
+
+    value.forEach((item, itemIndex) => {
+      if (typeof item === 'string' && item.length > MAX_FILTER_STRING_LENGTH) {
+        throw new Error(
+          `metadataFilter condition[${index}].value[${itemIndex}] must not exceed ${MAX_FILTER_STRING_LENGTH} characters`,
+        );
+      }
+    });
+    return;
+  }
+
+  if (typeof value === 'string' && value.length > MAX_FILTER_STRING_LENGTH) {
+    throw new Error(
+      `metadataFilter condition[${index}].value must not exceed ${MAX_FILTER_STRING_LENGTH} characters`,
+    );
+  }
+}
+
+function validateMetadataFilter(filter: RagMetadataFilter | undefined): void {
+  if (filter === undefined) {
+    return;
+  }
+
+  const conditions = [...(filter.andAll ?? []), ...(filter.orAll ?? [])];
+  if (conditions.length > MAX_FILTER_CONDITIONS) {
+    throw new Error(
+      `metadataFilter must not exceed ${MAX_FILTER_CONDITIONS} total conditions`,
+    );
+  }
+
+  conditions.forEach((condition, index) => {
+    validateMetadataFilterCondition(condition, index);
+  });
 }
 
 function normalizeTopK(value: number | undefined): number {
@@ -240,6 +312,21 @@ function resolveBedrockKbRetrieveInput(
 
   validateOptionalText(input.briefTopic, 'briefTopic', MAX_TEXT_LENGTH);
   validateOptionalText(input.briefGoal, 'briefGoal', MAX_TEXT_LENGTH);
+  validateOptionalText(
+    input.queryRewriteHint,
+    'queryRewriteHint',
+    MAX_QUERY_REWRITE_HINT_LENGTH,
+  );
+  validateMetadataFilter(input.metadataFilter);
+
+  if (
+    input.scoreThreshold !== undefined &&
+    (!Number.isFinite(input.scoreThreshold) ||
+      input.scoreThreshold < 0 ||
+      input.scoreThreshold > 1)
+  ) {
+    throw new Error('scoreThreshold must be between 0 and 1');
+  }
 
   const knowledgeBaseId =
     trimText(input.knowledgeBaseId) ?? trimText(config.knowledgeBaseId);
@@ -253,9 +340,100 @@ function resolveBedrockKbRetrieveInput(
     topK: normalizeTopK(input.topK ?? config.defaultTopK),
     createBrief: input.createBrief ?? true,
     language: input.language ?? 'unknown',
+    ...definedProperty('metadataFilter', input.metadataFilter),
+    ...definedProperty('scoreThreshold', input.scoreThreshold),
+    ...definedProperty('queryRewriteHint', trimText(input.queryRewriteHint)),
     ...definedProperty('briefTopic', trimText(input.briefTopic)),
     ...definedProperty('briefGoal', trimText(input.briefGoal)),
   };
+}
+
+type BedrockRetrievalFilterCondition = {
+  equals?: { key: string; value: unknown };
+  notEquals?: { key: string; value: unknown };
+  greaterThan?: { key: string; value: unknown };
+  greaterThanOrEquals?: { key: string; value: unknown };
+  lessThan?: { key: string; value: unknown };
+  lessThanOrEquals?: { key: string; value: unknown };
+  in?: { key: string; value: unknown };
+  notIn?: { key: string; value: unknown };
+  startsWith?: { key: string; value: unknown };
+  listContains?: { key: string; value: unknown };
+  stringContains?: { key: string; value: unknown };
+  andAll?: BedrockRetrievalFilterCondition[];
+  orAll?: BedrockRetrievalFilterCondition[];
+};
+
+function mapFilterCondition(
+  operator: RagMetadataFilterOperator,
+  condition: RagMetadataFilterCondition,
+): BedrockRetrievalFilterCondition {
+  const payload = {
+    key: condition.key.trim(),
+    value: condition.value,
+  };
+
+  switch (operator) {
+    case 'equals':
+      return { equals: payload };
+    case 'not_equals':
+      return { notEquals: payload };
+    case 'greater_than':
+      return { greaterThan: payload };
+    case 'greater_than_or_equals':
+      return { greaterThanOrEquals: payload };
+    case 'less_than':
+      return { lessThan: payload };
+    case 'less_than_or_equals':
+      return { lessThanOrEquals: payload };
+    case 'in':
+      return { in: payload };
+    case 'not_in':
+      return { notIn: payload };
+    case 'starts_with':
+      return { startsWith: payload };
+    case 'list_contains':
+      return { listContains: payload };
+    case 'string_contains':
+      return { stringContains: payload };
+  }
+}
+
+function mapConditions(
+  conditions: RagMetadataFilterCondition[] | undefined,
+): BedrockRetrievalFilterCondition[] | undefined {
+  if (!conditions || conditions.length === 0) {
+    return undefined;
+  }
+
+  return conditions.map((condition) => mapFilterCondition(condition.operator, condition));
+}
+
+export function toBedrockRetrievalFilter(
+  filter: RagMetadataFilter | undefined,
+): unknown | undefined {
+  if (filter === undefined) {
+    return undefined;
+  }
+
+  const andAll = mapConditions(filter.andAll);
+  const orAll = mapConditions(filter.orAll);
+
+  if (andAll && orAll) {
+    return {
+      andAll: [{ andAll }, { orAll }],
+    };
+  }
+
+  if (andAll) {
+    return { andAll };
+  }
+
+  if (orAll) {
+    return { orAll };
+  }
+
+  return undefined;
 }
 
 function createBedrockAgentRuntimeClient(region = resolveRegion()): RetrieveClient {
@@ -266,6 +444,7 @@ async function retrieveKnowledgeBase(
   client: RetrieveClient,
   input: ResolvedBedrockKbRetrieveInput,
 ): Promise<unknown> {
+  const bedrockFilter = toBedrockRetrievalFilter(input.metadataFilter);
   const command = new RetrieveCommand({
     knowledgeBaseId: input.knowledgeBaseId,
     retrievalQuery: {
@@ -274,6 +453,7 @@ async function retrieveKnowledgeBase(
     retrievalConfiguration: {
       vectorSearchConfiguration: {
         numberOfResults: input.topK,
+        ...(bedrockFilter ? { filter: bedrockFilter as never } : {}),
       },
     },
   });
@@ -287,7 +467,16 @@ export function buildBedrockKbRetrieveOutput(
 ): RagSearchOutput {
   const retrievedAt = new Date().toISOString();
   const parsedResults = parseKbRetrieveResults(response);
-  const sources = parsedResults.map((result) =>
+  const originalResultCount = parsedResults.length;
+  const scoreThreshold = input.scoreThreshold;
+  const filteredResults =
+    scoreThreshold === undefined
+      ? parsedResults
+      : parsedResults.filter(
+          (result) => result.score === undefined || result.score >= scoreThreshold,
+        );
+  const filteredByScoreCount = originalResultCount - filteredResults.length;
+  const sources = filteredResults.map((result) =>
     normalizeEvidenceSource({
       type: 'document',
       retrievedAt,
@@ -303,22 +492,36 @@ export function buildBedrockKbRetrieveOutput(
     }),
   );
   const citations = buildCitations(sources);
+  const noResults = sources.length === 0;
   const brief = input.createBrief
-    ? createBrief({
-        language: input.language,
-        outputFormat: 'report',
-        topic: input.briefTopic ?? input.query,
-        goal:
-          input.briefGoal ??
-          'Summarize retrieved knowledge base evidence with citations.',
-        sourceIds: sources.map((source) => source.id),
-        metadata: {
-          provider: 'bedrock-kb',
-          knowledgeBaseId: input.knowledgeBaseId,
-          query: input.query,
-        },
-        ...definedProperty('keyFacts', buildKeyFacts(sources)),
-      })
+    ? (() => {
+        const created = createBrief({
+          language: input.language,
+          outputFormat: 'report',
+          topic: input.briefTopic ?? input.query,
+          goal:
+            input.briefGoal ??
+            'Summarize retrieved knowledge base evidence with citations.',
+          sourceIds: sources.map((source) => source.id),
+          metadata: {
+            provider: 'bedrock-kb',
+            knowledgeBaseId: input.knowledgeBaseId,
+            query: input.query,
+            ...definedProperty('queryRewriteHint', input.queryRewriteHint),
+            ...definedProperty('noResults', noResults ? true : undefined),
+          },
+          ...(noResults
+            ? {
+                openQuestions: [
+                  'No relevant knowledge base chunks were retrieved for this query.',
+                ],
+              }
+            : {}),
+          ...definedProperty('keyFacts', buildKeyFacts(sources)),
+        });
+
+        return noResults ? { ...created, sourceIds: [] } : created;
+      })()
     : undefined;
 
   return {
@@ -329,11 +532,19 @@ export function buildBedrockKbRetrieveOutput(
     ...definedProperty('brief', brief),
     rawResultSummary: {
       resultCount: sources.length,
+      originalResultCount,
+      ...definedProperty(
+        'filteredByScoreCount',
+        input.scoreThreshold === undefined ? undefined : filteredByScoreCount,
+      ),
+      ...definedProperty('noResults', noResults ? true : undefined),
     },
     metadata: {
       provider: 'bedrock-kb',
       knowledgeBaseId: input.knowledgeBaseId,
       query: input.query,
+      ...definedProperty('queryRewriteHint', input.queryRewriteHint),
+      ...definedProperty('noResults', noResults ? true : undefined),
     },
   };
 }

@@ -76,7 +76,10 @@ describe('kb retrieve tool', () => {
       },
     });
     expect(output.brief?.keyFacts).toEqual(['First internal policy chunk.']);
-    expect(output.rawResultSummary).toEqual({ resultCount: 1 });
+    expect(output.rawResultSummary).toEqual({
+      resultCount: 1,
+      originalResultCount: 1,
+    });
   });
 
   it('omits the brief when createBrief is false', async () => {
@@ -107,7 +110,10 @@ describe('kb retrieve tool', () => {
     expect(output.brief).toBeUndefined();
     expect(output.sources).toHaveLength(1);
     expect(output.citations).toHaveLength(1);
-    expect(output.rawResultSummary).toEqual({ resultCount: 1 });
+    expect(output.rawResultSummary).toEqual({
+      resultCount: 1,
+      originalResultCount: 1,
+    });
   });
 
   it('resolves input from env defaults', async () => {
@@ -131,6 +137,76 @@ describe('kb retrieve tool', () => {
       briefGoal: 'goal',
       language: 'unknown',
     });
+  });
+
+  it('accepts valid metadata filters and query rewrite hints', async () => {
+    const { resolveKbRetrieveInput } = await import('../../tools/kb-retrieve.tool.js');
+
+    expect(
+      resolveKbRetrieveInput({
+        query: 'runtime policy',
+        knowledgeBaseId: 'kb-123',
+        metadataFilter: {
+          andAll: [
+            {
+              key: 'project',
+              operator: 'equals',
+              value: 'agentra',
+            },
+          ],
+        },
+        scoreThreshold: 0.5,
+        queryRewriteHint: 'expand with deployment terms',
+      }),
+    ).toMatchObject({
+      query: 'runtime policy',
+      knowledgeBaseId: 'kb-123',
+      metadataFilter: {
+        andAll: [
+          {
+            key: 'project',
+            operator: 'equals',
+            value: 'agentra',
+          },
+        ],
+      },
+      scoreThreshold: 0.5,
+      queryRewriteHint: 'expand with deployment terms',
+    });
+  });
+
+  it('rejects invalid metadata filter sizes and query rewrite hints', async () => {
+    const { resolveKbRetrieveInput } = await import('../../tools/kb-retrieve.tool.js');
+
+    expect(() =>
+      resolveKbRetrieveInput({
+        query: 'runtime policy',
+        knowledgeBaseId: 'kb-123',
+        metadataFilter: {
+          andAll: Array.from({ length: 21 }, (_, index) => ({
+            key: `k${index}`,
+            operator: 'equals',
+            value: 'v',
+          })),
+        },
+      }),
+    ).toThrow(/metadataFilter must not exceed 20 total conditions/);
+
+    expect(() =>
+      resolveKbRetrieveInput({
+        query: 'runtime policy',
+        knowledgeBaseId: 'kb-123',
+        scoreThreshold: 1.5,
+      }),
+    ).toThrow(/scoreThreshold must be between 0 and 1/);
+
+    expect(() =>
+      resolveKbRetrieveInput({
+        query: 'runtime policy',
+        knowledgeBaseId: 'kb-123',
+        queryRewriteHint: 'x'.repeat(1001),
+      }),
+    ).toThrow(/queryRewriteHint must not exceed 1000 characters/);
   });
 
   it('returns an error when the knowledge base id is missing', async () => {
