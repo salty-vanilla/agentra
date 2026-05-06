@@ -1,5 +1,6 @@
 import type { Tool } from '@strands-agents/sdk';
 import { createArtifactManifestTool } from './artifact.tool.js';
+import { createBriefTool, mergeBriefsTool } from './brief.tool.js';
 import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
@@ -19,6 +20,7 @@ export type ToolCategory =
   | 'calculation'
   | 'evidence'
   | 'artifact'
+  | 'brief'
   | 'presentation'
   | 'demo'
   | 'unknown';
@@ -44,6 +46,7 @@ export type ToolRegistryConfig = {
   enableTableSummary?: boolean;
   enableEvidence?: boolean;
   enableArtifact?: boolean;
+  enableBrief?: boolean;
 };
 
 const TOOL_ORDER = [
@@ -53,6 +56,8 @@ const TOOL_ORDER = [
   'normalize_evidence_source',
   'build_citations',
   'create_artifact_manifest',
+  'create_brief',
+  'merge_briefs',
   'tavily_search',
   'tavily_extract',
   'tavily_crawl',
@@ -91,6 +96,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
     enableTableSummary: resolveEnvFlag('ENABLE_TABLE_SUMMARY_TOOL', true),
     enableEvidence: resolveEnvFlag('ENABLE_EVIDENCE_TOOLS', true),
     enableArtifact: resolveEnvFlag('ENABLE_ARTIFACT_TOOLS', true),
+    enableBrief: resolveEnvFlag('ENABLE_BRIEF_TOOLS', true),
   };
 }
 
@@ -112,6 +118,7 @@ export function getRegisteredTools(
   const enableTableSummary = resolveToolEnabled(config, 'enableTableSummary', true);
   const enableEvidence = resolveToolEnabled(config, 'enableEvidence', true);
   const enableArtifact = resolveToolEnabled(config, 'enableArtifact', true);
+  const enableBrief = resolveToolEnabled(config, 'enableBrief', true);
 
   const tools: RegisteredTool[] = [
     {
@@ -155,6 +162,20 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableArtifact,
       tool: createArtifactManifestTool,
+    },
+    {
+      name: 'create_brief',
+      category: 'brief',
+      riskLevel: 'low',
+      enabled: enableBrief,
+      tool: createBriefTool,
+    },
+    {
+      name: 'merge_briefs',
+      category: 'brief',
+      riskLevel: 'low',
+      enabled: enableBrief,
+      tool: mergeBriefsTool,
     },
     {
       name: 'tavily_search',

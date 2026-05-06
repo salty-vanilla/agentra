@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 describe('tool registry', () => {
   const originalEnv = {
     ENABLE_ARTIFACT_TOOLS: process.env.ENABLE_ARTIFACT_TOOLS,
+    ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_WEATHER_TOOL: process.env.ENABLE_WEATHER_TOOL,
@@ -12,6 +13,7 @@ describe('tool registry', () => {
     vi.resetModules();
     vi.unstubAllEnvs();
     process.env.ENABLE_ARTIFACT_TOOLS = originalEnv.ENABLE_ARTIFACT_TOOLS;
+    process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
@@ -22,6 +24,12 @@ describe('tool registry', () => {
       delete process.env.ENABLE_ARTIFACT_TOOLS;
     } else {
       process.env.ENABLE_ARTIFACT_TOOLS = originalEnv.ENABLE_ARTIFACT_TOOLS;
+    }
+
+    if (originalEnv.ENABLE_BRIEF_TOOLS === undefined) {
+      delete process.env.ENABLE_BRIEF_TOOLS;
+    } else {
+      process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
     }
 
     if (originalEnv.ENABLE_EVIDENCE_TOOLS === undefined) {
@@ -55,6 +63,7 @@ describe('tool registry', () => {
       enableTableSummary: true,
       enableEvidence: true,
       enableArtifact: true,
+      enableBrief: true,
     });
 
     const names = mod.getRegisteredTools().map((entry) => ({
@@ -69,6 +78,8 @@ describe('tool registry', () => {
       { name: 'normalize_evidence_source', enabled: true },
       { name: 'build_citations', enabled: true },
       { name: 'create_artifact_manifest', enabled: true },
+      { name: 'create_brief', enabled: true },
+      { name: 'merge_briefs', enabled: true },
       { name: 'tavily_search', enabled: true },
       { name: 'tavily_extract', enabled: true },
       { name: 'tavily_crawl', enabled: true },
@@ -80,6 +91,7 @@ describe('tool registry', () => {
 
   it('honors env flags and preserves tool order', async () => {
     vi.stubEnv('ENABLE_ARTIFACT_TOOLS', 'false');
+    vi.stubEnv('ENABLE_BRIEF_TOOLS', 'false');
     vi.stubEnv('ENABLE_EVIDENCE_TOOLS', 'false');
     vi.stubEnv('ENABLE_TAVILY_TOOLS', 'false');
     vi.stubEnv('ENABLE_WEATHER_TOOL', 'true');
@@ -101,6 +113,12 @@ describe('tool registry', () => {
     expect(
       registered.find((entry) => entry.name === 'create_artifact_manifest')?.enabled,
     ).toBe(false);
+    expect(registered.find((entry) => entry.name === 'create_brief')?.enabled).toBe(
+      false,
+    );
+    expect(registered.find((entry) => entry.name === 'merge_briefs')?.enabled).toBe(
+      false,
+    );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
     expect(enabledTools).toHaveLength(5);
     expect(enabledNames).toEqual([
@@ -117,6 +135,8 @@ describe('tool registry', () => {
       'normalize_evidence_source',
       'build_citations',
       'create_artifact_manifest',
+      'create_brief',
+      'merge_briefs',
       'tavily_search',
       'tavily_extract',
       'tavily_crawl',

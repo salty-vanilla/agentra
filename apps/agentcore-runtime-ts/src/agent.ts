@@ -97,6 +97,11 @@ const ARTIFACT_TOOL_INSTRUCTIONS = [
   'create_artifact_manifest はメタデータ整理のみを行い、ファイルの読み書き・存在確認・アップロードは行いません。',
 ].join('\n');
 
+const BRIEF_TOOL_INSTRUCTIONS = [
+  'ユーザー依頼、出典、成果物、制約、重要事実を後続処理に渡す必要がある場合は、create_brief または merge_briefs でbriefを整理してください。',
+  'create_brief は明示的に与えられた情報を正規化するだけで、欠けている情報を推測しません。',
+].join('\n');
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '../skills');
 
@@ -164,6 +169,8 @@ function buildPrompt(input: {
     EVIDENCE_TOOL_INSTRUCTIONS,
     '',
     ARTIFACT_TOOL_INSTRUCTIONS,
+    '',
+    BRIEF_TOOL_INSTRUCTIONS,
     '',
     MEMORY_INSTRUCTIONS,
   ];
