@@ -12,7 +12,7 @@ describe('table summary tool', () => {
       { name: 'b', value: 3, count: 4 },
     ];
 
-    const response = executeTableSummaryTool(rows);
+    const response = executeTableSummaryTool({ rows });
 
     expect(response.status).toBe('success');
     expect(response.content[0]?.text).toBe(
@@ -34,9 +34,23 @@ describe('table summary tool', () => {
     const { executeTableSummaryTool } = await import('../../tools/table-summary.tool.js');
     const rows = Array.from({ length: 1001 }, (_, index) => ({ value: index }));
 
-    const response = executeTableSummaryTool(rows);
+    const response = executeTableSummaryTool({ rows });
 
     expect(response.status).toBe('error');
     expect(response.content[0]?.text).toContain('rows must not exceed 1000');
+  });
+
+  it('rejects rows with too many columns', async () => {
+    const { executeTableSummaryTool } = await import('../../tools/table-summary.tool.js');
+    const rows = [
+      Object.fromEntries(
+        Array.from({ length: 101 }, (_, index) => [`col_${index}`, index]),
+      ),
+    ];
+
+    const response = executeTableSummaryTool({ rows });
+
+    expect(response.status).toBe('error');
+    expect(response.content[0]?.text).toContain('must not exceed 100 columns');
   });
 });

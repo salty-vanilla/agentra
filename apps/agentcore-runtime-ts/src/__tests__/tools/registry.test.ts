@@ -1,9 +1,30 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('tool registry', () => {
+  const originalEnv = {
+    ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
+    ENABLE_WEATHER_TOOL: process.env.ENABLE_WEATHER_TOOL,
+  };
+
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
+    process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
+    process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
+  });
+
+  afterEach(() => {
+    if (originalEnv.ENABLE_TAVILY_TOOLS === undefined) {
+      delete process.env.ENABLE_TAVILY_TOOLS;
+    } else {
+      process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
+    }
+
+    if (originalEnv.ENABLE_WEATHER_TOOL === undefined) {
+      delete process.env.ENABLE_WEATHER_TOOL;
+    } else {
+      process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
+    }
   });
 
   it('uses defaults with weather disabled', async () => {
@@ -43,12 +64,20 @@ describe('tool registry', () => {
     const mod = await import('../../tools/registry.js');
     const registered = mod.getRegisteredTools();
     const enabledTools = mod.buildGeneralTools();
+    const enabledNames = enabledTools.map((entry) => entry.name);
 
     expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
       false,
     );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
     expect(enabledTools).toHaveLength(5);
+    expect(enabledNames).toEqual([
+      'date_resolver',
+      'calculator',
+      'table_summary',
+      'create_slide_presentation',
+      'getWeather',
+    ]);
     expect(registered.map((entry) => entry.name)).toEqual([
       'date_resolver',
       'calculator',

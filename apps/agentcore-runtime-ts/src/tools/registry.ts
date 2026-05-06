@@ -1,4 +1,4 @@
-import type { tool } from '@strands-agents/sdk';
+import type { Tool } from '@strands-agents/sdk';
 import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
@@ -21,7 +21,7 @@ export type ToolCategory =
 
 export type ToolRiskLevel = 'low' | 'medium' | 'high';
 
-type StrandsTool = ReturnType<typeof tool>;
+type StrandsTool = Tool;
 
 export type RegisteredTool = {
   name: string;

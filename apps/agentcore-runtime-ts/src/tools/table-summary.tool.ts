@@ -18,6 +18,9 @@ const tableSummaryInputSchema = z.object({
 });
 
 type TableSummaryRow = Record<string, string | number | boolean | null | undefined>;
+type TableSummaryToolInput = {
+  rows: TableSummaryRow[];
+};
 
 function validateTableBounds(rows: TableSummaryRow[]): void {
   if (rows.length > MAX_TABLE_ROWS) {
@@ -31,10 +34,10 @@ function validateTableBounds(rows: TableSummaryRow[]): void {
   }
 }
 
-export function executeTableSummaryTool(rows: TableSummaryRow[]) {
+export function executeTableSummaryTool(input: TableSummaryToolInput) {
   try {
-    validateTableBounds(rows);
-    return toolSuccess(summarizeTable(rows));
+    validateTableBounds(input.rows);
+    return toolSuccess(summarizeTable(input.rows));
   } catch (error) {
     return toolFailure(errorMessage(error));
   }
@@ -45,7 +48,7 @@ const tableSummaryTool = tool({
   description:
     'Summarize numeric columns in a small table. Use this for deterministic row counts, sums, averages, min, and max values.',
   inputSchema: tableSummaryInputSchema,
-  callback: (input) => executeTableSummaryTool(input.rows),
+  callback: executeTableSummaryTool,
 });
 
 export { tableSummaryTool };
