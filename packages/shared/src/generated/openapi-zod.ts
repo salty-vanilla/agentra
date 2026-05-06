@@ -33,6 +33,9 @@ export const GetHealthResponse = zod.object({
 export const postChatBodyHistoryDefault = [];
 export const postChatBodyModelDefault = `sonnet`;
 
+
+
+
 export const PostChatBody = zod.object({
   "threadId": zod.string().min(1).optional(),
   "message": zod.string().min(1),
@@ -40,7 +43,18 @@ export const PostChatBody = zod.object({
   "role": zod.enum(['system', 'user', 'assistant']),
   "content": zod.string().min(1)
 })).default(postChatBodyHistoryDefault),
-  "model": zod.enum(['opus', 'sonnet', 'haiku']).default(postChatBodyModelDefault)
+  "model": zod.enum(['opus', 'sonnet', 'haiku']).default(postChatBodyModelDefault),
+  "command": zod.object({
+  "type": zod.enum(['create_slide_presentation']),
+  "topic": zod.string().min(1),
+  "audience": zod.string().optional(),
+  "purpose": zod.string().optional(),
+  "slideCount": zod.union([zod.number().min(1),zod.enum(['auto'])]).optional(),
+  "durationMinutes": zod.union([zod.number().min(1),zod.enum(['auto'])]).optional(),
+  "language": zod.enum(['ja', 'en']).optional(),
+  "tone": zod.string().optional(),
+  "outputFormat": zod.enum(['pptx']).optional()
+}).optional()
 })
 
 

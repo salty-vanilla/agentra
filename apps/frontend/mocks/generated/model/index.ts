@@ -8,6 +8,10 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 
+export * from './chatCommand';
+export * from './chatCommandLanguage';
+export * from './chatCommandOutputFormat';
+export * from './chatCommandType';
 export * from './chatMessage';
 export * from './chatObservationSummary';
 export * from './chatObservationSummaryReasoning';
