@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('tool registry', () => {
   const originalEnv = {
+    ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_WEATHER_TOOL: process.env.ENABLE_WEATHER_TOOL,
   };
@@ -9,11 +10,18 @@ describe('tool registry', () => {
   beforeEach(() => {
     vi.resetModules();
     vi.unstubAllEnvs();
+    process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
   });
 
   afterEach(() => {
+    if (originalEnv.ENABLE_EVIDENCE_TOOLS === undefined) {
+      delete process.env.ENABLE_EVIDENCE_TOOLS;
+    } else {
+      process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
+    }
+
     if (originalEnv.ENABLE_TAVILY_TOOLS === undefined) {
       delete process.env.ENABLE_TAVILY_TOOLS;
     } else {
@@ -37,6 +45,7 @@ describe('tool registry', () => {
       enablePresentation: true,
       enableCalculator: true,
       enableTableSummary: true,
+      enableEvidence: true,
     });
 
     const names = mod.getRegisteredTools().map((entry) => ({
@@ -48,6 +57,8 @@ describe('tool registry', () => {
       { name: 'date_resolver', enabled: true },
       { name: 'calculator', enabled: true },
       { name: 'table_summary', enabled: true },
+      { name: 'normalize_evidence_source', enabled: true },
+      { name: 'build_citations', enabled: true },
       { name: 'tavily_search', enabled: true },
       { name: 'tavily_extract', enabled: true },
       { name: 'tavily_crawl', enabled: true },
@@ -58,6 +69,7 @@ describe('tool registry', () => {
   });
 
   it('honors env flags and preserves tool order', async () => {
+    vi.stubEnv('ENABLE_EVIDENCE_TOOLS', 'false');
     vi.stubEnv('ENABLE_TAVILY_TOOLS', 'false');
     vi.stubEnv('ENABLE_WEATHER_TOOL', 'true');
 
@@ -67,6 +79,12 @@ describe('tool registry', () => {
     const enabledNames = enabledTools.map((entry) => entry.name);
 
     expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
+      false,
+    );
+    expect(
+      registered.find((entry) => entry.name === 'normalize_evidence_source')?.enabled,
+    ).toBe(false);
+    expect(registered.find((entry) => entry.name === 'build_citations')?.enabled).toBe(
       false,
     );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
@@ -82,6 +100,8 @@ describe('tool registry', () => {
       'date_resolver',
       'calculator',
       'table_summary',
+      'normalize_evidence_source',
+      'build_citations',
       'tavily_search',
       'tavily_extract',
       'tavily_crawl',

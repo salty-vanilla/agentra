@@ -2,6 +2,7 @@ import type { Tool } from '@strands-agents/sdk';
 import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
+import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { tableSummaryTool } from './table-summary.tool.js';
 import {
   tavilyCrawlTool,
@@ -15,6 +16,7 @@ export type ToolCategory =
   | 'time'
   | 'web'
   | 'calculation'
+  | 'evidence'
   | 'presentation'
   | 'demo'
   | 'unknown';
@@ -38,12 +40,15 @@ export type ToolRegistryConfig = {
   enablePresentation?: boolean;
   enableCalculator?: boolean;
   enableTableSummary?: boolean;
+  enableEvidence?: boolean;
 };
 
 const TOOL_ORDER = [
   'date_resolver',
   'calculator',
   'table_summary',
+  'normalize_evidence_source',
+  'build_citations',
   'tavily_search',
   'tavily_extract',
   'tavily_crawl',
@@ -80,6 +85,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
     enablePresentation: resolveEnvFlag('ENABLE_PRESENTATION_TOOL', true),
     enableCalculator: resolveEnvFlag('ENABLE_CALCULATOR_TOOL', true),
     enableTableSummary: resolveEnvFlag('ENABLE_TABLE_SUMMARY_TOOL', true),
+    enableEvidence: resolveEnvFlag('ENABLE_EVIDENCE_TOOLS', true),
   };
 }
 
@@ -99,6 +105,7 @@ export function getRegisteredTools(
   const enablePresentation = resolveToolEnabled(config, 'enablePresentation', true);
   const enableCalculator = resolveToolEnabled(config, 'enableCalculator', true);
   const enableTableSummary = resolveToolEnabled(config, 'enableTableSummary', true);
+  const enableEvidence = resolveToolEnabled(config, 'enableEvidence', true);
 
   const tools: RegisteredTool[] = [
     {
@@ -121,6 +128,20 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableTableSummary,
       tool: tableSummaryTool,
+    },
+    {
+      name: 'normalize_evidence_source',
+      category: 'evidence',
+      riskLevel: 'low',
+      enabled: enableEvidence,
+      tool: normalizeEvidenceSourceTool,
+    },
+    {
+      name: 'build_citations',
+      category: 'evidence',
+      riskLevel: 'low',
+      enabled: enableEvidence,
+      tool: buildCitationsTool,
     },
     {
       name: 'tavily_search',

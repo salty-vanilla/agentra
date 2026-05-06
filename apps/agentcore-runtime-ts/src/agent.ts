@@ -87,6 +87,11 @@ const CALCULATION_TOOL_INSTRUCTIONS = [
   'スライドや報告書に使う数値は、可能な限りツール結果に基づいてください。',
 ].join('\n');
 
+const EVIDENCE_TOOL_INSTRUCTIONS = [
+  '外部情報、Web検索結果、ドキュメント検索結果、ツール実行結果を根拠として使う場合は、可能な限り normalize_evidence_source と build_citations で出典を整理してください。',
+  '回答・レポート・スライド用briefでは、重要な主張に対して source / citation を対応づけることを優先してください。',
+].join('\n');
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '../skills');
 
@@ -150,6 +155,8 @@ function buildPrompt(input: {
     DATE_TOOL_INSTRUCTIONS,
     '',
     CALCULATION_TOOL_INSTRUCTIONS,
+    '',
+    EVIDENCE_TOOL_INSTRUCTIONS,
     '',
     MEMORY_INSTRUCTIONS,
   ];
