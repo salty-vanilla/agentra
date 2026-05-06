@@ -30,6 +30,10 @@ import {
   updateThreadTitle,
 } from '@/lib/api';
 import { isMockApiMode } from '@/lib/api-config';
+import type {
+  ChatCommand as FrontendChatCommand,
+  ChatRequest as FrontendChatRequest,
+} from '@/lib/generated/model';
 import {
   agentraQueryKeys,
   healthQueryOptions,
@@ -45,6 +49,26 @@ import {
 import { cn } from '@/lib/utils';
 
 type HealthState = 'checking' | 'online' | 'offline';
+
+function normalizeSlidePresentationCommand(
+  command: ChatCommand & { type: 'create_slide_presentation' },
+): FrontendChatCommand {
+  const normalized: FrontendChatCommand = {
+    type: command.type,
+    topic: command.topic,
+  };
+
+  if (command.audience) normalized.audience = command.audience;
+  if (command.purpose) normalized.purpose = command.purpose;
+  if (command.slideCount !== undefined) normalized.slideCount = command.slideCount;
+  if (command.durationMinutes !== undefined)
+    normalized.durationMinutes = command.durationMinutes;
+  if (command.language) normalized.language = command.language;
+  if (command.tone) normalized.tone = command.tone;
+  if (command.outputFormat) normalized.outputFormat = command.outputFormat;
+
+  return normalized;
+}
 
 export function AgentraWorkspace() {
   const [selectedThreadId, setSelectedThreadId] = useQueryState(
@@ -277,20 +301,28 @@ export function AgentraWorkspace() {
             resolvedMessage = resolvedCommand.topic;
           }
           // Update topic to match message if user typed something
-          resolvedCommand = { ...resolvedCommand, topic: resolvedMessage };
+          resolvedCommand = normalizeSlidePresentationCommand({
+            ...resolvedCommand,
+            topic: resolvedMessage,
+          });
         }
 
-        const finalRequest = {
+        const normalizedCommand =
+          resolvedCommand?.type === 'create_slide_presentation'
+            ? normalizeSlidePresentationCommand(resolvedCommand)
+            : null;
+
+        const finalRequest: FrontendChatRequest = {
           ...chatRequest,
           message: resolvedMessage,
-          ...(resolvedCommand ? { command: resolvedCommand } : {}),
+          ...(normalizedCommand ? { command: normalizedCommand } : {}),
         };
 
         // Start progress tracking for slide commands
-        if (resolvedCommand?.type === 'create_slide_presentation') {
+        if (normalizedCommand?.type === 'create_slide_presentation') {
           if (isMockApiMode) {
             // Mock mode: simulate progress since there's no SSE stream
-            startProgressSimulation(resolvedCommand);
+            startProgressSimulation(normalizedCommand);
           } else {
             // Real mode: reset progress state; real events arrive via SSE
             clearProgressTimer();

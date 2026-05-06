@@ -21,7 +21,7 @@ export interface RunPythonScriptInput {
 const DEFAULT_TIMEOUT_MS = 120_000;
 
 function getPythonBin(): string {
-  return process.env['PRESENTATION_AUTHOR_PYTHON_BIN'] ?? 'python3';
+  return process.env.PRESENTATION_AUTHOR_PYTHON_BIN ?? 'python3';
 }
 
 export async function runPythonScript(

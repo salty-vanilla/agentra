@@ -38,20 +38,26 @@ describe('LocalIconProvider', () => {
   it('search exact ID', () => {
     const results = provider.search({ query: 'factory' });
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0]!.id).toBe('factory');
-    expect(results[0]!.score).toBeGreaterThanOrEqual(100);
+    const first = results[0];
+    expect(first).toBeDefined();
+    expect(first?.id).toBe('factory');
+    expect(first?.score).toBeGreaterThanOrEqual(100);
   });
 
   it('search English keyword', () => {
     const results = provider.search({ query: 'risk' });
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0]!.id).toBe('alert-triangle');
+    const first = results[0];
+    expect(first).toBeDefined();
+    expect(first?.id).toBe('alert-triangle');
   });
 
   it('search Japanese keyword', () => {
     const results = provider.search({ query: '工場' });
     expect(results.length).toBeGreaterThan(0);
-    expect(results[0]!.id).toBe('factory');
+    const first = results[0];
+    expect(first).toBeDefined();
+    expect(first?.id).toBe('factory');
   });
 
   it('search Japanese keyword — 改善', () => {
@@ -74,8 +80,8 @@ describe('LocalIconProvider', () => {
   it('resolve returns icon by id', () => {
     const icon = provider.resolve('trending-up');
     expect(icon).not.toBeNull();
-    expect(icon!.id).toBe('trending-up');
-    expect(icon!.provider).toBe('lucide-local');
+    expect(icon?.id).toBe('trending-up');
+    expect(icon?.provider).toBe('lucide-local');
   });
 
   it('resolve returns null for unknown id', () => {
@@ -117,9 +123,10 @@ describe('copyIconsToWorkspace', () => {
     expect(existsSync(helperPath)).toBe(true);
 
     // Check SVG was copied
-    const firstIcon = result.copiedIcons[0]!;
-    expect(firstIcon.workspacePath).toBeDefined();
-    const svgFile = join(workDir, 'assets', 'icons', firstIcon.workspacePath!);
+    const firstIcon = result.copiedIcons[0];
+    if (!firstIcon) throw new Error('Expected at least one copied icon.');
+    if (!firstIcon.workspacePath) throw new Error('Expected copied icon path.');
+    const svgFile = join(workDir, 'assets', 'icons', firstIcon.workspacePath);
     expect(existsSync(svgFile)).toBe(true);
 
     // Check helper includes resvg runtime rendering

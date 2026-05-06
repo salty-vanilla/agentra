@@ -153,8 +153,8 @@ export async function detectPresentationFonts(
 
   try {
     const parsed = JSON.parse(result.stdout) as Record<string, unknown>;
-    const missingFonts = extractFontList(parsed['font_missing_overall']);
-    const substitutedFonts = extractFontList(parsed['font_substituted_overall']);
+    const missingFonts = extractFontList(parsed.font_missing_overall);
+    const substitutedFonts = extractFontList(parsed.font_substituted_overall);
     return {
       success: true,
       missingFonts,

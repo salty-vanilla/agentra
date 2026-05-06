@@ -37,7 +37,7 @@ export async function executeAuthoringScript(input: {
     );
   }
 
-  const existingNodePath = process.env['NODE_PATH'] ?? '';
+  const existingNodePath = process.env.NODE_PATH ?? '';
   const combinedNodePath = existingNodePath
     ? `${nodePathUsed}:${existingNodePath}`
     : nodePathUsed;

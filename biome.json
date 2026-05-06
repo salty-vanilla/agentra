@@ -2,6 +2,7 @@
   "files": {
     "includes": [
       "**",
+      "!**/.tmp",
       "!**/.next",
       "!**/dist",
       "!**/cdk.out",

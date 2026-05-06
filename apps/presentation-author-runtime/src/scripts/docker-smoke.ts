@@ -20,7 +20,7 @@ function check(name: string, cmd: string, optional = false): void {
     const msg = e instanceof Error ? (e.message.split('\n')[0] ?? '') : String(e);
     results.push({
       name,
-      ok: optional ? true : false,
+      ok: !!optional,
       output: optional ? `SKIP: ${msg}` : `FAIL: ${msg}`,
     });
   }
@@ -37,7 +37,7 @@ function checkImport(name: string, mod: string, optional = false): void {
     const msg = e instanceof Error ? (e.message.split('\n')[0] ?? '') : String(e);
     results.push({
       name,
-      ok: optional ? true : false,
+      ok: !!optional,
       output: optional ? `SKIP: ${msg}` : `FAIL: ${msg}`,
     });
   }

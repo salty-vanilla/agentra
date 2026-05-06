@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { PresentationDiagnosticsResult } from '../diagnostics.js';
 import { buildSingleRevisionPrompt } from '../revision-prompts.js';
 import { runPresentationAuthor } from '../runner.js';
-import type { LlmClient, PresentationAuthorDeps } from '../types.js';
+import type { PresentationAuthorDeps } from '../types.js';
 
 const INITIAL_SCRIPT = `
 const pptxgen = require("pptxgenjs");
@@ -85,7 +85,8 @@ function makeDeps(
   const deps: PresentationAuthorDeps & { callCount: () => number } = {
     llm: {
       converse: async () => {
-        const resp = responses[llmCallCount] ?? responses[responses.length - 1]!;
+        const resp = responses[llmCallCount] ?? responses.at(-1);
+        if (!resp) throw new Error('No LLM responses configured.');
         llmCallCount++;
         return resp;
       },
@@ -96,7 +97,8 @@ function makeDeps(
 
   if (diagResults) {
     deps.runDiagnostics = async () => {
-      const result = diagResults[diagCallCount] ?? diagResults[diagResults.length - 1]!;
+      const result = diagResults[diagCallCount] ?? diagResults.at(-1);
+      if (!result) throw new Error('No diagnostics results configured.');
       diagCallCount++;
       return result;
     };
@@ -140,8 +142,10 @@ describe('revision skipped when diagnostics pass', () => {
     );
 
     expect(result.revision).toBeDefined();
-    expect(result.revision!.attempted).toBe(false);
-    expect(result.revision!.reason).toBe('diagnostics-pass');
+    const revision = result.revision;
+    if (!revision) throw new Error('Expected revision result.');
+    expect(revision.attempted).toBe(false);
+    expect(revision.reason).toBe('diagnostics-pass');
     expect(deps.callCount()).toBe(1);
   }, 30_000);
 });
@@ -160,9 +164,11 @@ describe('revision runs when diagnostics warn', () => {
 
     expect(deps.callCount()).toBe(2);
     expect(result.revision).toBeDefined();
-    expect(result.revision!.attempted).toBe(true);
-    expect(result.revision!.succeeded).toBe(true);
-    expect(result.revision!.reason).toBe('revision-succeeded');
+    const revision = result.revision;
+    if (!revision) throw new Error('Expected revision result.');
+    expect(revision.attempted).toBe(true);
+    expect(revision.succeeded).toBe(true);
+    expect(revision.reason).toBe('revision-succeeded');
     expect(existsSync(result.pptxPath)).toBe(true);
 
     // Root presentation.js should contain revised content
@@ -184,9 +190,11 @@ describe('revision validation failure keeps initial', () => {
     );
 
     expect(result.revision).toBeDefined();
-    expect(result.revision!.attempted).toBe(true);
-    expect(result.revision!.succeeded).toBe(false);
-    expect(result.revision!.reason).toBe('revision-validation-failed');
+    const revision = result.revision;
+    if (!revision) throw new Error('Expected revision result.');
+    expect(revision.attempted).toBe(true);
+    expect(revision.succeeded).toBe(false);
+    expect(revision.reason).toBe('revision-validation-failed');
 
     // Initial deck preserved
     expect(existsSync(result.pptxPath)).toBe(true);
@@ -208,9 +216,11 @@ describe('revision execution failure keeps initial', () => {
     );
 
     expect(result.revision).toBeDefined();
-    expect(result.revision!.attempted).toBe(true);
-    expect(result.revision!.succeeded).toBe(false);
-    expect(result.revision!.reason).toBe('revision-execution-failed');
+    const revision = result.revision;
+    if (!revision) throw new Error('Expected revision result.');
+    expect(revision.attempted).toBe(true);
+    expect(revision.succeeded).toBe(false);
+    expect(revision.reason).toBe('revision-execution-failed');
 
     // Initial deck preserved
     expect(existsSync(result.pptxPath)).toBe(true);
@@ -232,9 +242,11 @@ describe('revision output missing keeps initial', () => {
     );
 
     expect(result.revision).toBeDefined();
-    expect(result.revision!.attempted).toBe(true);
-    expect(result.revision!.succeeded).toBe(false);
-    expect(result.revision!.reason).toBe('revision-output-missing');
+    const revision = result.revision;
+    if (!revision) throw new Error('Expected revision result.');
+    expect(revision.attempted).toBe(true);
+    expect(revision.succeeded).toBe(false);
+    expect(revision.reason).toBe('revision-output-missing');
 
     // Initial deck preserved
     expect(existsSync(result.pptxPath)).toBe(true);

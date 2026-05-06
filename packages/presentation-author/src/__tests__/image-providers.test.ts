@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -192,7 +192,9 @@ describe('prepareImageAssetsForWorkspace', () => {
     });
 
     expect(result.retrievedImages.length).toBe(2);
-    expect(result.retrievedImages[0]!.localPath).toContain('retrieved');
+    const firstRetrieved = result.retrievedImages[0];
+    if (!firstRetrieved) throw new Error('Expected retrieved image.');
+    expect(firstRetrieved.localPath).toContain('retrieved');
     expect(provider.search).toHaveBeenCalledOnce();
     expect(provider.download).toHaveBeenCalledTimes(2);
   });
@@ -209,7 +211,9 @@ describe('prepareImageAssetsForWorkspace', () => {
     });
 
     expect(result.generatedImages.length).toBe(1);
-    expect(result.generatedImages[0]!.localPath).toContain('generated');
+    const firstGenerated = result.generatedImages[0];
+    if (!firstGenerated) throw new Error('Expected generated image.');
+    expect(firstGenerated.localPath).toContain('generated');
     expect(provider.generate).toHaveBeenCalledOnce();
   });
 
@@ -383,7 +387,8 @@ describe('prepareImageAssetsForWorkspace', () => {
 
     for (const img of result.retrievedImages) {
       expect(img.localPath).toBeTruthy();
-      const fullPath = join(workDir, img.localPath!);
+      if (!img.localPath) throw new Error('Expected retrieved image path.');
+      const fullPath = join(workDir, img.localPath);
       expect(existsSync(fullPath)).toBe(true);
     }
   });
@@ -402,7 +407,8 @@ describe('prepareImageAssetsForWorkspace', () => {
       imageRetrievalProvider: provider,
     });
 
-    const searchCall = (provider.search as ReturnType<typeof vi.fn>).mock.calls[0]![0];
+    const searchCall = (provider.search as ReturnType<typeof vi.fn>).mock.calls[0]?.[0];
+    if (!searchCall) throw new Error('Expected search call.');
     expect(searchCall.maxResults).toBe(10);
   });
 });
@@ -492,7 +498,9 @@ describe('DI: custom providers', () => {
 
     expect(customProvider.generate).toHaveBeenCalledOnce();
     expect(result.generatedImages.length).toBe(1);
-    expect(result.generatedImages[0]!.provider).toBe('stability');
+    const firstGenerated = result.generatedImages[0];
+    if (!firstGenerated) throw new Error('Expected generated image.');
+    expect(firstGenerated.provider).toBe('stability');
   });
 });
 

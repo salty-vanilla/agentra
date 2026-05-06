@@ -3,14 +3,12 @@ import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { createContactSheet } from '../contact-sheet.js';
-import { runPresentationDiagnostics } from '../diagnostics.js';
 import { renderPresentation } from '../render.js';
 import { detectPresentationFonts, validatePresentationOverflow } from '../validation.js';
 
 const RUN_INTEGRATION =
-  process.env['PRESENTATION_AUTHOR_RUN_PYTHON_INTEGRATION_TESTS'] === '1';
-const RUN_RENDER = process.env['PRESENTATION_AUTHOR_RUN_RENDER_TESTS'] === '1';
+  process.env.PRESENTATION_AUTHOR_RUN_PYTHON_INTEGRATION_TESTS === '1';
+const RUN_RENDER = process.env.PRESENTATION_AUTHOR_RUN_RENDER_TESTS === '1';
 
 const VENDOR_SCRIPTS = join(__dirname, '..', '..', 'vendor', 'openai-slides', 'scripts');
 
