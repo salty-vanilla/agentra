@@ -1,4 +1,3 @@
-import type { ChatStreamEvent } from '@agentra/shared';
 import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
 import {
   createThread as createThreadRequest,
@@ -11,6 +10,11 @@ import {
 } from '@/lib/generated/agentra';
 import type {
   ChatRequest,
+  ChatStreamDoneEvent,
+  ChatStreamErrorEvent,
+  ChatStreamObservationEvent,
+  ChatStreamProgressSummaryEvent,
+  ChatStreamTextEvent,
   CreateThreadRequest,
   ErrorResponse,
   HealthResponse,
@@ -19,6 +23,13 @@ import type {
   ThreadsResponse,
   UpdateThreadRequest,
 } from '@/lib/generated/model';
+
+export type ChatStreamEvent =
+  | ChatStreamTextEvent
+  | ChatStreamProgressSummaryEvent
+  | ChatStreamObservationEvent
+  | ChatStreamDoneEvent
+  | ChatStreamErrorEvent;
 
 export type MockChatResponse = {
   threadId: string;

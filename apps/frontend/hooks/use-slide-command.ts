@@ -1,5 +1,5 @@
-import type { ChatCommand } from '@agentra/shared';
 import { useCallback, useState } from 'react';
+import type { ChatCommand } from '@/lib/generated/model';
 
 export type SlideCommandState = {
   active: boolean;
@@ -51,19 +51,28 @@ export function useSlideCommand() {
     (
       params?: Partial<Omit<ChatCommand & { type: 'create_slide_presentation' }, 'type'>>,
     ) => {
+      const command: ChatCommand = {
+        type: 'create_slide_presentation',
+        topic: params?.topic ?? '',
+        language: params?.language ?? 'ja',
+        slideCount: params?.slideCount ?? 'auto',
+        durationMinutes: params?.durationMinutes ?? 'auto',
+        outputFormat: 'pptx',
+      };
+
+      if (params?.audience) {
+        command.audience = params.audience;
+      }
+      if (params?.purpose) {
+        command.purpose = params.purpose;
+      }
+      if (params?.tone) {
+        command.tone = params.tone;
+      }
+
       setCommandState({
         active: true,
-        command: {
-          type: 'create_slide_presentation',
-          topic: params?.topic ?? '',
-          language: params?.language ?? 'ja',
-          audience: params?.audience,
-          purpose: params?.purpose,
-          slideCount: params?.slideCount ?? 'auto',
-          durationMinutes: params?.durationMinutes ?? 'auto',
-          outputFormat: 'pptx',
-          tone: params?.tone,
-        },
+        command,
       });
     },
     [],

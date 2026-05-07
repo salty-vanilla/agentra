@@ -1,8 +1,8 @@
 'use client';
 
-import type { ProgressSummaryEvent } from '@agentra/shared';
 import { CheckIcon, Loader2Icon, PresentationIcon, XCircleIcon } from 'lucide-react';
 import type { FC } from 'react';
+import type { ProgressSummaryEvent } from '@/lib/generated/model';
 
 export const ProgressSummaryCard: FC<{
   events: ProgressSummaryEvent[];

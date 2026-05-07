@@ -1,14 +1,11 @@
 import {
   APP_NAME,
   APP_VERSION,
-  type ChatCommand,
   type ChatObservationSummary,
-  chatCommandSchema,
   GetHealthResponse,
   GetThreadResponse,
   ListThreadMessagesResponse,
   ListThreadsResponse,
-  type ProgressSummaryEvent,
   type ThreadSummary,
   UpdateThreadBody,
 } from '@agentra/shared';
@@ -18,6 +15,8 @@ import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
 import { uuidv7 } from 'uuidv7';
 import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
+import { type ChatCommand, chatCommandSchema } from './lib/chat-command.js';
+import type { ProgressSummaryEvent } from './lib/chat-stream.js';
 import { buildRouterCommandDirective } from './lib/command-directive.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -85,7 +84,9 @@ function logObservabilityDebug(
     outputTokens: summary.tokenUsage?.outputTokens,
     toolCallCount: summary.toolCallCount,
     toolFailureCount: summary.toolFailureCount,
-    toolNames: summary.toolCalls.map((tool) => tool.toolName),
+    toolNames: summary.toolCalls.map(
+      (tool: ChatObservationSummary['toolCalls'][number]) => tool.toolName,
+    ),
     ...extra,
   };
 
@@ -152,7 +153,7 @@ app.post('/chat', async (context) => {
     const commandResult = chatCommandSchema.safeParse(command);
     if (!commandResult.success) {
       return jsonWithValidation(context, 'postChat', 400, {
-        error: `Invalid command: ${commandResult.error.issues.map((i) => i.message).join(', ')}`,
+        error: `Invalid command: ${commandResult.error.issues.map((issue) => issue.message).join(', ')}`,
       });
     }
   }

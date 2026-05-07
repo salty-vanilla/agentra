@@ -1,5 +1,5 @@
-import { chatStreamEventSchema } from '@agentra/shared';
 import { describe, expect, it } from 'vitest';
+import { chatStreamEventSchema } from '../lib/chat-stream.js';
 
 describe('chat stream contract', () => {
   const observabilitySummary = {

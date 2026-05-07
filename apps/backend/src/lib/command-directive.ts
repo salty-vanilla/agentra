@@ -1,4 +1,4 @@
-import type { ChatCommand } from '@agentra/shared';
+import type { ChatCommand } from './chat-command.js';
 
 /**
  * Build a Router directive string from a structured UI command.

@@ -1,10 +1,6 @@
 'use client';
 
-import type {
-  ChatCommand,
-  ChatObservationSummary,
-  ProgressSummaryEvent,
-} from '@agentra/shared';
+import type { ChatObservationSummary } from '@agentra/shared';
 import {
   ActionBarMorePrimitive,
   ActionBarPrimitive,
@@ -49,6 +45,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { isMockApiMode } from '@/lib/api-config';
+import type { ChatCommand, ProgressSummaryEvent } from '@/lib/generated/model';
 import { cn } from '@/lib/utils';
 
 const threadMessageRootVariants = cva(

@@ -1,11 +1,12 @@
 import type {
   ChatObservationSummary,
-  ChatRole,
   PersistedChatMessage,
   ThreadSummary,
 } from '@agentra/shared';
 import { DynamoStore } from './dynamo-store.js';
 import { MemoryStore } from './memory-store.js';
+
+type ChatRole = PersistedChatMessage['role'];
 
 export type CreateThreadInput = {
   title?: string;

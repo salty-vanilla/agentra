@@ -1,4 +1,4 @@
-import type { ChatCommand, ProgressSummaryEvent } from '@agentra/shared';
+import type { ChatCommand, ProgressSummaryEvent } from '@/lib/generated/model';
 
 const AUDIENCE_LABELS: Record<string, string> = {
   executive: '経営層',

@@ -1,6 +1,5 @@
 import {
   CreateThreadBody,
-  chatStreamEventSchema,
   GetHealthResponse,
   GetThreadResponse,
   ListThreadMessagesResponse,
@@ -8,6 +7,7 @@ import {
   UpdateThreadBody,
 } from '@agentra/shared';
 import { app } from './app.js';
+import { chatStreamEventSchema } from './lib/chat-stream.js';
 
 async function assertJsonResponse<T>(
   label: string,
