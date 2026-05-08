@@ -14,6 +14,7 @@
     "validate:openapi": "node ./scripts/contract/validate-openapi.mjs",
     "contract:backend": "pnpm --filter @agentra/backend exec node --import tsx ./src/contract.ts",
     "build:shared": "pnpm --filter @agentra/shared build",
+    "test": "pnpm prepare:workspace && pnpm -r --if-present test",
     "typecheck": "pnpm prepare:workspace && pnpm -r --if-present typecheck",
     "lint": "biome check .",
     "format": "biome format --write .",

@@ -22,7 +22,7 @@ async function assertJsonResponse<T>(
   }
 
   const payload = await response.json();
-  parser(payload);
+  return parser(payload);
 }
 
 async function assertChatStreamResponse(
@@ -70,6 +70,8 @@ async function assertChatStreamResponse(
   if (!sawDone && !sawError) {
     throw new Error(`${label}: stream completed without done or error event`);
   }
+
+  return events;
 }
 
 async function main() {
@@ -82,23 +84,27 @@ async function main() {
     GetHealthResponse.parse,
   );
 
-  await assertJsonResponse(
+  const threadsPayload = await assertJsonResponse(
     'GET /threads',
     await app.request('/threads'),
     200,
     ListThreadsResponse.parse,
   );
+  const seededThreadId = threadsPayload.threads[0]?.threadId;
+  if (!seededThreadId) {
+    throw new Error('GET /threads: expected at least one seeded thread');
+  }
 
   await assertJsonResponse(
     'GET /threads/:threadId',
-    await app.request('/threads/thread-demo-001'),
+    await app.request(`/threads/${seededThreadId}`),
     200,
     GetThreadResponse.parse,
   );
 
   await assertJsonResponse(
     'GET /threads/:threadId/messages',
-    await app.request('/threads/thread-demo-001/messages'),
+    await app.request(`/threads/${seededThreadId}/messages`),
     200,
     ListThreadMessagesResponse.parse,
   );
@@ -118,6 +124,44 @@ async function main() {
     }),
     200,
   );
+
+  const slideCommandEvents = await assertChatStreamResponse(
+    'POST /chat slide command',
+    await app.request('/chat', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'text/event-stream',
+      },
+      body: JSON.stringify({
+        message: 'please create a slide deck',
+        history: [],
+        command: {
+          type: 'create_slide_presentation',
+          topic: 'Contract smoke slide deck',
+          audience: 'general',
+          purpose: 'report',
+          slideCount: 5,
+          language: 'ja',
+          outputFormat: 'pptx',
+        },
+      }),
+    }),
+    200,
+  );
+
+  const sawSlideProgress = slideCommandEvents.some((raw) => {
+    const parsed = chatStreamEventSchema.parse(JSON.parse(raw) as unknown);
+    return (
+      parsed.type === 'progress_summary' &&
+      parsed.event.phase === 'router_handoff'
+    );
+  });
+  if (!sawSlideProgress) {
+    throw new Error(
+      'POST /chat slide command: expected a router_handoff progress_summary event',
+    );
+  }
 
   const createdThreadResponse = await app.request('/threads', {
     method: 'POST',
@@ -205,7 +249,7 @@ async function main() {
     );
   }
 
-  const invalidPatchResponse = await app.request('/threads/thread-demo-001', {
+  const invalidPatchResponse = await app.request(`/threads/${seededThreadId}`, {
     method: 'PATCH',
     headers: {
       'content-type': 'application/json',
