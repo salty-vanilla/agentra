@@ -97,6 +97,11 @@ const RAG_TOOL_INSTRUCTIONS = [
   'kb_retrieve は回答生成ではなく根拠取得専用です。回答では取得した sources / citations を優先してください。',
 ].join('\n');
 
+const STRUCTURED_RAG_TOOL_INSTRUCTIONS = [
+  '構造化データに対する問い合わせ、集計、ランキング、履歴確認、エラーコード逆引き、温度異常分析が必要な場合は、structured_query_plan で問い合わせ意図と不足情報を整理してください。',
+  'structured_query_plan はSQL生成や実行を行わず、後続処理のための計画を作るだけです。',
+].join('\n');
+
 const ARTIFACT_TOOL_INSTRUCTIONS = [
   'PPTX、PDF、HTML、PNG、JSON、テキストなどの生成物や中間成果物を整理する場合は、create_artifact_manifest で成果物メタデータを標準化してください。',
   'create_artifact_manifest はメタデータ整理のみを行い、ファイルの読み書き・存在確認・アップロードは行いません。',
@@ -178,6 +183,8 @@ function buildPrompt(input: {
     EVIDENCE_TOOL_INSTRUCTIONS,
     '',
     RAG_TOOL_INSTRUCTIONS,
+    '',
+    STRUCTURED_RAG_TOOL_INSTRUCTIONS,
     '',
     ARTIFACT_TOOL_INSTRUCTIONS,
     '',

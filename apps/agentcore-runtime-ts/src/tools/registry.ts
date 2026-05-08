@@ -6,6 +6,7 @@ import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
+import { structuredQueryPlanTool } from './structured-query-plan.tool.js';
 import { tableSummaryTool } from './table-summary.tool.js';
 import {
   tavilyCrawlTool,
@@ -24,6 +25,7 @@ export type ToolCategory =
   | 'artifact'
   | 'brief'
   | 'rag'
+  | 'structured_rag'
   | 'research'
   | 'presentation'
   | 'demo'
@@ -52,6 +54,7 @@ export type ToolRegistryConfig = {
   enableArtifact?: boolean;
   enableBrief?: boolean;
   enableKbRetrieve?: boolean;
+  enableStructuredQueryPlan?: boolean;
   enableWebResearch?: boolean;
 };
 
@@ -65,6 +68,7 @@ const TOOL_ORDER = [
   'create_brief',
   'merge_briefs',
   'kb_retrieve',
+  'structured_query_plan',
   'web_research',
   'tavily_search',
   'tavily_extract',
@@ -109,6 +113,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       'ENABLE_KB_RETRIEVE_TOOL',
       Boolean(process.env.BEDROCK_KB_ID?.trim()),
     ),
+    enableStructuredQueryPlan: resolveEnvFlag('ENABLE_STRUCTURED_QUERY_PLAN_TOOL', true),
     enableWebResearch: resolveEnvFlag('ENABLE_WEB_RESEARCH_TOOL', true),
   };
 }
@@ -133,6 +138,11 @@ export function getRegisteredTools(
   const enableArtifact = resolveToolEnabled(config, 'enableArtifact', true);
   const enableBrief = resolveToolEnabled(config, 'enableBrief', true);
   const enableKbRetrieve = resolveToolEnabled(config, 'enableKbRetrieve', false);
+  const enableStructuredQueryPlan = resolveToolEnabled(
+    config,
+    'enableStructuredQueryPlan',
+    true,
+  );
   const enableWebResearch = resolveToolEnabled(config, 'enableWebResearch', true);
 
   const tools: RegisteredTool[] = [
@@ -198,6 +208,13 @@ export function getRegisteredTools(
       riskLevel: 'medium',
       enabled: enableKbRetrieve,
       tool: kbRetrieveTool,
+    },
+    {
+      name: 'structured_query_plan',
+      category: 'structured_rag',
+      riskLevel: 'low',
+      enabled: enableStructuredQueryPlan,
+      tool: structuredQueryPlanTool,
     },
     {
       name: 'web_research',
