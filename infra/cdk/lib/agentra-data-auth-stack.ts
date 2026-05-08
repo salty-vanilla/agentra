@@ -14,6 +14,7 @@ import {
 import type { Construct } from 'constructs';
 
 export interface AgentraDataAuthStackProps extends StackProps {
+  stage: string;
   cognitoDomainPrefix?: string;
   callbackUrls?: string[];
   logoutUrls?: string[];
@@ -30,13 +31,14 @@ export class AgentraDataAuthStack extends Stack {
   constructor(scope: Construct, id: string, props?: AgentraDataAuthStackProps) {
     super(scope, id, props);
 
+    const isDev = props?.stage === 'dev';
     const cognitoDomainPrefix = props?.cognitoDomainPrefix ?? 'agentra-auth';
     const callbackUrls = props?.callbackUrls ?? ['http://localhost:3000/'];
     const logoutUrls = props?.logoutUrls ?? ['http://localhost:3000/'];
 
     this.userPool = new UserPool(this, 'UserPool', {
       selfSignUpEnabled: false,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
     });
 
     this.userPool.addDomain('UserPoolDomain', {
@@ -62,13 +64,13 @@ export class AgentraDataAuthStack extends Stack {
     this.usersTable = new Table(this, 'UsersTable', {
       partitionKey: { name: 'sub', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
     });
 
     this.threadsTable = new Table(this, 'ThreadsTable', {
       partitionKey: { name: 'threadId', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
     });
 
     this.threadsTable.addGlobalSecondaryIndex({
@@ -82,7 +84,7 @@ export class AgentraDataAuthStack extends Stack {
       partitionKey: { name: 'threadId', type: AttributeType.STRING },
       sortKey: { name: 'sk', type: AttributeType.STRING },
       billingMode: BillingMode.PAY_PER_REQUEST,
-      removalPolicy: RemovalPolicy.DESTROY,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
     });
 
     this.cognitoDomain = `${cognitoDomainPrefix}.auth.${Stack.of(this).region}.amazoncognito.com`;

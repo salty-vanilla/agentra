@@ -59,6 +59,7 @@ const dataAuthStack = new AgentraDataAuthStack(
   `AgentraDataAuthStack-${stageLabel}`,
   {
     description: `Agentra ${stageLabel} data/auth stack (Cognito and DynamoDB).`,
+    stage: stageLabel,
     cognitoDomainPrefix: `agentra-${stageLabel}-auth`,
     callbackUrls: resolvedCallbackUrls,
     logoutUrls: resolvedLogoutUrls,
