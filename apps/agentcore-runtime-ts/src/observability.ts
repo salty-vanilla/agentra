@@ -1,7 +1,7 @@
 type ObservationStatus = 'success' | 'error' | 'cancelled';
 
 export type ObservationToolCall = {
-  toolCallId?: string;
+  toolCallId: string;
   toolName: string;
   startedAt: string;
   completedAt?: string;
@@ -69,6 +69,10 @@ function toMillis(iso: string): number {
 
 function clampDurationMs(startedAt: string, completedAt: string): number {
   return Math.max(0, toMillis(completedAt) - toMillis(startedAt));
+}
+
+function buildSyntheticToolCallId(prefix: string, value: string): string {
+  return `${prefix}:${value}`;
 }
 
 function summarizeReasoning(stepCount: number): string | undefined {
@@ -248,6 +252,7 @@ export class ObservationCollector {
 
       if (this.toolCalls.length === 0 && (metric.callCount ?? 0) > 0) {
         this.toolCalls.push({
+          toolCallId: buildSyntheticToolCallId('metrics', toolName),
           toolName,
           startedAt: this.startedAt,
           completedAt: nowIso(),
@@ -264,6 +269,10 @@ export class ObservationCollector {
     if (this.toolCalls.length === 0 && this.modelToolStartCount > 0) {
       const completedAt = nowIso();
       this.toolCalls.push({
+        toolCallId: buildSyntheticToolCallId(
+          'fallback',
+          `${this.traceId}:tool_call`,
+        ),
         toolName: 'tool_call',
         startedAt: this.startedAt,
         completedAt,
