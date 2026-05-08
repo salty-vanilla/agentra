@@ -8,6 +8,7 @@
     "start": "node --import tsx src/dev.ts",
     "chat:direct": "node --import tsx src/tools/direct-chat.ts",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run && pnpm contract",
     "contract": "pnpm --filter @agentra/shared build && node --import tsx src/contract.ts"
   },
   "dependencies": {

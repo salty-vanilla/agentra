@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "dogfood:presentation": "tsx scripts/dogfood-create-presentation.ts",
     "dogfood:fake": "tsx src/scripts/dogfood-fake-llm.ts",
-    "docker:smoke": "node dist/scripts/docker-smoke.js"
+    "docker:smoke": "node dist/scripts/docker-smoke.js",
+    "test": "vitest run"
   },
   "dependencies": {
     "@agentra/presentation-author": "workspace:*",
