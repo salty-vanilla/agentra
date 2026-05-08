@@ -1,6 +1,7 @@
 type ObservationStatus = 'success' | 'error' | 'cancelled';
 
 export type ObservationToolCall = {
+  toolCallId?: string;
   toolName: string;
   startedAt: string;
   completedAt?: string;
@@ -142,7 +143,7 @@ export class ObservationCollector {
   private readonly toolCalls: ObservationToolCall[] = [];
   private readonly inFlightToolStarts = new Map<
     string,
-    { toolName: string; startedAt: string }
+    { toolCallId: string; toolName: string; startedAt: string }
   >();
   private readonly completedToolUseIds = new Set<string>();
   private modelToolStartCount = 0;
@@ -176,6 +177,7 @@ export class ObservationCollector {
   onModelToolUseStart(toolUseId: string, name: string) {
     this.modelToolStartCount += 1;
     this.inFlightToolStarts.set(toolUseId, {
+      toolCallId: toolUseId,
       toolName: name,
       startedAt: nowIso(),
     });
@@ -188,6 +190,7 @@ export class ObservationCollector {
 
   onContentToolUseBlock(toolUseId: string, name: string) {
     this.inFlightToolStarts.set(toolUseId, {
+      toolCallId: toolUseId,
       toolName: name,
       startedAt: nowIso(),
     });
@@ -202,6 +205,7 @@ export class ObservationCollector {
     this.inFlightToolStarts.delete(toolUseId);
     const completedAt = nowIso();
     const toolCall: ObservationToolCall = {
+      toolCallId: start?.toolCallId ?? toolUseId,
       toolName: start?.toolName ?? 'unknown_tool',
       startedAt: start?.startedAt ?? completedAt,
       completedAt,

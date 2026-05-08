@@ -9,6 +9,7 @@ const persistedChatMessageSchemaInternal =
   ListThreadMessagesResponse.shape.messages.element;
 
 const chatObservationToolCallSchema = z.object({
+  toolCallId: z.string().min(1).optional(),
   toolName: z.string().min(1),
   startedAt: z.string().datetime(),
   completedAt: z.string().datetime().optional(),

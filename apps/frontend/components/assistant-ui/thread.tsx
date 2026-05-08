@@ -374,6 +374,10 @@ const AssistantObservabilityDetails: FC = () => {
     return <p className="text-muted-foreground">Observability data not available.</p>;
   }
 
+  const toolCallIds = summary.toolCalls
+    .map((tool) => tool.toolCallId)
+    .filter((toolCallId): toolCallId is string => typeof toolCallId === 'string');
+
   return (
     <div className="space-y-2.5">
       <div className="flex items-start justify-between gap-3">
@@ -398,6 +402,9 @@ const AssistantObservabilityDetails: FC = () => {
           <WrenchIcon className="size-3.5 text-muted-foreground" />
           tools: {summary.toolCallCount} (failed: {summary.toolFailureCount})
         </p>
+        {toolCallIds.length > 0 ? (
+          <p className="break-all text-muted-foreground">tool ids: {toolCallIds.join(', ')}</p>
+        ) : null}
       </div>
     </div>
   );
