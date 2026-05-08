@@ -1,11 +1,12 @@
 import type {
   ChatObservationSummary,
-  ChatRole,
   PersistedChatMessage,
   ThreadSummary,
 } from '@agentra/shared';
 import { uuidv7 } from 'uuidv7';
 import type { CreateThreadInput, Store } from './index.js';
+
+type ChatRole = PersistedChatMessage['role'];
 
 const now = () => new Date().toISOString();
 

@@ -45,8 +45,8 @@ paths:
                 type: string
                 description: |
                   Server-Sent Events stream. Each line is `data: <json>`.
-                  JSON payload is one of ChatStreamTextEvent, ChatStreamObservationEvent,
-                  ChatStreamDoneEvent, ChatStreamErrorEvent.
+                  JSON payload is one of ChatStreamTextEvent, ChatStreamProgressSummaryEvent,
+                  ChatStreamObservationEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:
@@ -368,6 +368,58 @@ components:
             - text
         text:
           type: string
+    ProgressSummaryEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - phase
+        - title
+        - summary
+        - timestamp
+      properties:
+        type:
+          type: string
+          enum:
+            - progress_summary
+        phase:
+          type: string
+          enum:
+            - request_understanding
+            - router_handoff
+            - outline
+            - authoring
+            - pptx_generation
+            - rendering
+            - diagnostics
+            - revision
+            - upload
+            - done
+            - error
+        title:
+          type: string
+        summary:
+          type: string
+        details:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+    ChatStreamProgressSummaryEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - event
+      properties:
+        type:
+          type: string
+          enum:
+            - progress_summary
+        event:
+          $ref: '#/components/schemas/ProgressSummaryEvent'
     ChatObservationToolCall:
       type: object
       additionalProperties: false
@@ -518,6 +570,8 @@ components:
         error:
           type: string
           minLength: 1
+        observabilitySummary:
+          $ref: '#/components/schemas/ChatObservationSummary'
     HealthResponse:
       type: object
       additionalProperties: false

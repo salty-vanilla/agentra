@@ -1,4 +1,3 @@
-import type { ChatObservationSummary, ProgressSummaryEvent } from '@agentra/shared';
 import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
 import {
   createThread as createThreadRequest,
@@ -11,6 +10,11 @@ import {
 } from '@/lib/generated/agentra';
 import type {
   ChatRequest,
+  ChatStreamDoneEvent,
+  ChatStreamErrorEvent,
+  ChatStreamObservationEvent,
+  ChatStreamProgressSummaryEvent,
+  ChatStreamTextEvent,
   CreateThreadRequest,
   ErrorResponse,
   HealthResponse,
@@ -19,6 +23,13 @@ import type {
   ThreadsResponse,
   UpdateThreadRequest,
 } from '@/lib/generated/model';
+
+export type ChatStreamEvent =
+  | ChatStreamTextEvent
+  | ChatStreamProgressSummaryEvent
+  | ChatStreamObservationEvent
+  | ChatStreamDoneEvent
+  | ChatStreamErrorEvent;
 
 export type MockChatResponse = {
   threadId: string;
@@ -78,19 +89,6 @@ export async function sendChat(
 
   throw new Error('Mock chat response is invalid.');
 }
-
-export type ChatStreamEvent =
-  | { type: 'text'; text: string }
-  | { type: 'progress_summary'; event: ProgressSummaryEvent }
-  | { type: 'observation'; observation: ChatObservationSummary }
-  | {
-      type: 'done';
-      threadId: string;
-      model: string;
-      createdAt: string;
-      observabilitySummary?: ChatObservationSummary;
-    }
-  | { type: 'error'; error: string; observabilitySummary?: ChatObservationSummary };
 
 /**
  * Streams a chat response from the real backend via SSE.

@@ -1,16 +1,13 @@
 import {
   APP_NAME,
   APP_VERSION,
-  type ChatCommand,
   type ChatObservationSummary,
-  chatCommandSchema,
-  healthResponseSchema,
-  type ProgressSummaryEvent,
+  GetHealthResponse,
+  GetThreadResponse,
+  ListThreadMessagesResponse,
+  ListThreadsResponse,
   type ThreadSummary,
-  threadMessagesResponseSchema,
-  threadResponseSchema,
-  threadsResponseSchema,
-  updateThreadRequestSchema,
+  UpdateThreadBody,
 } from '@agentra/shared';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
@@ -18,6 +15,8 @@ import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
 import { uuidv7 } from 'uuidv7';
 import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
+import { type ChatCommand, chatCommandSchema } from './lib/chat-command.js';
+import type { ProgressSummaryEvent } from './lib/chat-stream.js';
 import { buildRouterCommandDirective } from './lib/command-directive.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { authMiddleware } from './middleware/auth.js';
@@ -85,7 +84,9 @@ function logObservabilityDebug(
     outputTokens: summary.tokenUsage?.outputTokens,
     toolCallCount: summary.toolCallCount,
     toolFailureCount: summary.toolFailureCount,
-    toolNames: summary.toolCalls.map((tool) => tool.toolName),
+    toolNames: summary.toolCalls.map(
+      (tool: ChatObservationSummary['toolCalls'][number]) => tool.toolName,
+    ),
     ...extra,
   };
 
@@ -116,7 +117,7 @@ app.get('/', (context) => {
 });
 
 app.get('/health', (context) => {
-  const response = healthResponseSchema.parse({
+  const response = GetHealthResponse.parse({
     status: 'ok',
     service: 'backend',
     version: APP_VERSION,
@@ -152,7 +153,7 @@ app.post('/chat', async (context) => {
     const commandResult = chatCommandSchema.safeParse(command);
     if (!commandResult.success) {
       return jsonWithValidation(context, 'postChat', 400, {
-        error: `Invalid command: ${commandResult.error.issues.map((i) => i.message).join(', ')}`,
+        error: `Invalid command: ${commandResult.error.issues.map((issue) => issue.message).join(', ')}`,
       });
     }
   }
@@ -313,7 +314,7 @@ app.post('/chat', async (context) => {
 });
 
 app.get('/threads', async (context) => {
-  const response = threadsResponseSchema.parse({
+  const response = ListThreadsResponse.parse({
     threads: await listThreads(context.get('userId')),
   });
 
@@ -337,7 +338,7 @@ app.post('/threads', async (context) => {
       : { userId: context.get('userId') },
   );
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread,
   });
 
@@ -359,7 +360,7 @@ app.get('/threads/:threadId', async (context) => {
     });
   }
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread,
   });
 
@@ -381,7 +382,7 @@ app.get('/threads/:threadId/messages', async (context) => {
     });
   }
 
-  const response = threadMessagesResponseSchema.parse({
+  const response = ListThreadMessagesResponse.parse({
     thread,
     messages: await getThreadMessages(threadId),
   });
@@ -396,7 +397,7 @@ app.patch('/threads/:threadId', async (context) => {
   }
 
   const payload = await readJsonBody(context);
-  const parsed = updateThreadRequestSchema.parse(payload ?? {});
+  const parsed = UpdateThreadBody.parse(payload ?? {});
   const normalizedTitle = parsed.title.trim();
   if (normalizedTitle.length === 0) {
     return jsonWithValidation(context, 'updateThread', 400, {
@@ -416,7 +417,7 @@ app.patch('/threads/:threadId', async (context) => {
     });
   }
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread,
   });
   return jsonWithValidation(context, 'updateThread', 200, response);
@@ -439,7 +440,7 @@ app.delete('/threads/:threadId', async (context) => {
     });
   }
 
-  const response = threadResponseSchema.parse({
+  const response = GetThreadResponse.parse({
     thread: deleted,
   });
   return jsonWithValidation(context, 'deleteThread', 200, response);

@@ -1,11 +1,6 @@
 'use client';
 
-import type {
-  ChatCommand,
-  ChatObservationSummary,
-  PersistedChatMessage,
-  ProgressSummaryEvent,
-} from '@agentra/shared';
+import type { ChatObservationSummary, PersistedChatMessage } from '@agentra/shared';
 import { APP_NAME } from '@agentra/shared';
 import { AssistantRuntimeProvider as AssistantRuntimeProviderCore } from '@assistant-ui/core/react';
 import {
@@ -31,8 +26,9 @@ import {
 } from '@/lib/api';
 import { isMockApiMode } from '@/lib/api-config';
 import type {
-  ChatCommand as FrontendChatCommand,
+  ChatCommand,
   ChatRequest as FrontendChatRequest,
+  ProgressSummaryEvent,
 } from '@/lib/generated/model';
 import {
   agentraQueryKeys,
@@ -52,20 +48,30 @@ type HealthState = 'checking' | 'online' | 'offline';
 
 function normalizeSlidePresentationCommand(
   command: ChatCommand & { type: 'create_slide_presentation' },
-): FrontendChatCommand {
-  const normalized: FrontendChatCommand = {
+): ChatCommand {
+  const normalized: ChatCommand = {
     type: command.type,
     topic: command.topic,
   };
 
-  if (command.audience) normalized.audience = command.audience;
-  if (command.purpose) normalized.purpose = command.purpose;
+  if (command.audience) {
+    normalized.audience = command.audience;
+  }
+  if (command.purpose) {
+    normalized.purpose = command.purpose;
+  }
   if (command.slideCount !== undefined) normalized.slideCount = command.slideCount;
   if (command.durationMinutes !== undefined)
     normalized.durationMinutes = command.durationMinutes;
-  if (command.language) normalized.language = command.language;
-  if (command.tone) normalized.tone = command.tone;
-  if (command.outputFormat) normalized.outputFormat = command.outputFormat;
+  if (command.language) {
+    normalized.language = command.language;
+  }
+  if (command.tone) {
+    normalized.tone = command.tone;
+  }
+  if (command.outputFormat) {
+    normalized.outputFormat = command.outputFormat;
+  }
 
   return normalized;
 }
@@ -571,13 +577,21 @@ export function AgentraWorkspace() {
       type: 'create_slide_presentation',
       topic: '', // will be filled from chat message on send
       language: (params?.language as 'ja' | 'en') ?? 'ja',
-      audience: params?.audience as string | undefined,
-      purpose: params?.purpose as string | undefined,
       slideCount: (params?.slideCount as number | 'auto') ?? 'auto',
       durationMinutes: (params?.durationMinutes as number | 'auto') ?? 'auto',
       outputFormat: 'pptx',
-      tone: params?.tone as string | undefined,
     };
+
+    if (typeof params?.audience === 'string' && params.audience.length > 0) {
+      cmd.audience = params.audience;
+    }
+    if (typeof params?.purpose === 'string' && params.purpose.length > 0) {
+      cmd.purpose = params.purpose;
+    }
+    if (typeof params?.tone === 'string' && params.tone.length > 0) {
+      cmd.tone = params.tone;
+    }
+
     setPendingSlideCommand(cmd);
 
     // If topic is provided from dialog, auto-submit by setting topic in command

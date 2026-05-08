@@ -1,5 +1,5 @@
-import { chatCommandSchema } from '@agentra/shared';
 import { describe, expect, it } from 'vitest';
+import { chatCommandSchema } from '../lib/chat-command.js';
 import { buildRouterCommandDirective } from '../lib/command-directive.js';
 
 describe('buildRouterCommandDirective', () => {
