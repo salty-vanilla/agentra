@@ -9,6 +9,69 @@ describe('parseSlideRuntimeResponse', () => {
     expect(result.text).toBe(raw);
   });
 
+  it('preserves structured presentation results', () => {
+    const structured = {
+      success: true,
+      summary: 'Presentation created successfully. Diagnostics: pass.',
+      workDir: '/tmp/slide-run',
+      pptxPath: '/tmp/slide-run/deck.pptx',
+      sourceJsPath: '/tmp/slide-run/presentation.js',
+      contactSheetPath: '/tmp/slide-run/contact-sheet.png',
+      diagnosticsStatus: 'pass' as const,
+      revisionAttempted: false,
+      revisionSucceeded: false,
+      revisionReason: 'diagnostics-pass',
+      artifacts: [
+        { kind: 'pptx', path: '/tmp/slide-run/deck.pptx', label: 'PPTX', exists: true },
+      ],
+      warnings: ['Artifact upload completed with presigned URLs.'],
+      uploadedArtifacts: [
+        {
+          kind: 'pptx',
+          label: 'PPTX',
+          localPath: '/tmp/slide-run/deck.pptx',
+          bucket: 'agentra-artifacts',
+          key: 'runs/run-123/deck.pptx',
+          s3Uri: 's3://agentra-artifacts/runs/run-123/deck.pptx',
+          downloadUrl: 'https://example.com/deck.pptx',
+          uploaded: true,
+        },
+      ],
+      pptxDownloadUrl: 'https://example.com/deck.pptx',
+      contactSheetDownloadUrl: 'https://example.com/contact-sheet.png',
+    };
+
+    const result = parseSlideRuntimeResponse(JSON.stringify(structured));
+    expect(result.success).toBe(true);
+    expect(result.text).toBe(structured.summary);
+    expect(result.result).toEqual(structured);
+    expect(result.result?.pptxDownloadUrl).toBe('https://example.com/deck.pptx');
+    expect(result.result?.warnings).toContain(
+      'Artifact upload completed with presigned URLs.',
+    );
+  });
+
+  it('preserves structured failure payloads', () => {
+    const structured = {
+      success: false,
+      summary:
+        'Presentation creation failed during script-execution. No PPTX artifact was produced.',
+      workDir: '',
+      artifacts: [],
+      warnings: ['Execution stderr truncated.'],
+      error: {
+        message: 'Authoring script execution failed (exit 1)',
+        phase: 'script-execution' as const,
+      },
+    };
+
+    const result = parseSlideRuntimeResponse(JSON.stringify(structured));
+    expect(result.success).toBe(false);
+    expect(result.text).toContain('Presentation creation failed');
+    expect(result.result).toEqual(structured);
+    expect(result.result?.error?.phase).toBe('script-execution');
+  });
+
   it('unwraps Strands content wrapper', () => {
     const innerText = 'Generated a 5-slide presentation.';
     const raw = JSON.stringify({ status: 'success', content: [{ text: innerText }] });

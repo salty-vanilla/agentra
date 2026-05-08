@@ -52,9 +52,17 @@ const createSlidePresentationTool = tool({
         }),
       );
 
+      const payload =
+        result.result ??
+        ({
+          success: result.success,
+          summary: result.text,
+          ...(result.error ? { error: result.error } : {}),
+        } as const);
+
       return {
         status: result.success ? ('success' as const) : ('error' as const),
-        content: [{ text: result.text }],
+        content: [{ text: JSON.stringify(payload) }],
       };
     } catch (err) {
       const durationMs = Date.now() - startTime;

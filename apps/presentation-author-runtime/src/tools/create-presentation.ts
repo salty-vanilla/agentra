@@ -1,5 +1,8 @@
-import type { CreatePresentationToolInput } from '@agentra/presentation-author';
-import { createPresentation } from '@agentra/presentation-author';
+import {
+  type CreatePresentationToolInput,
+  type CreatePresentationToolOutput,
+  createPresentation,
+} from '@agentra/presentation-author';
 import { S3Client } from '@aws-sdk/client-s3';
 import { tool } from '@strands-agents/sdk';
 import { uuidv7 } from 'uuidv7';
@@ -33,78 +36,53 @@ const envImageGenerationEnabled =
 const llmClient = createPresentationAuthorLlmClient();
 const s3Client = envBucketName ? new S3Client({}) : undefined;
 
-const createPresentationTool = tool({
-  name: 'create_presentation',
-  description:
-    'Create an editable PowerPoint presentation from a user request using a PptxGenJS authoring workflow. Returns artifact paths for the PPTX, source JS, rendered slides, and contact sheet when available.',
-  inputSchema: z.object({
-    prompt: z.string().describe('What to create in the presentation.'),
-    language: z
-      .enum(['ja', 'en'])
-      .optional()
-      .describe('Output language. Inferred from prompt if omitted.'),
-    styleGuide: z
-      .string()
-      .optional()
-      .describe('Optional style guide text (plain text or markdown).'),
-    outputDir: z
-      .string()
-      .optional()
-      .describe('Optional output directory for generated artifacts.'),
-    diagnostics: z.boolean().optional().describe('Enable diagnostics. Default: true.'),
-    revision: z
-      .boolean()
-      .optional()
-      .describe('Enable one revision attempt. Default: true.'),
-    timeoutMs: z
-      .number()
-      .optional()
-      .describe('Script execution timeout in milliseconds.'),
-    brandFrameId: z
-      .string()
-      .optional()
-      .describe(
-        'Optional BrandFrame template ID. Defaults to company-basic-v1 when enabled.',
-      ),
-  }),
-  callback: async (input) => {
-    const runId = uuidv7();
-    const startTime = Date.now();
+export interface SlideRuntimePresentationResult extends CreatePresentationToolOutput {
+  uploadedArtifacts?: UploadedPresentationArtifact[] | undefined;
+  pptxDownloadUrl?: string | undefined;
+  contactSheetDownloadUrl?: string | undefined;
+}
 
-    logger.info({
-      component: 'create-presentation-tool',
-      runId,
-      step: 'create_presentation_start',
-      language: input.language,
-      diagnostics: input.diagnostics ?? envDiagnostics,
-      revision: input.revision ?? envRevision,
-    });
+export async function executeCreatePresentationTool(
+  input: CreatePresentationToolInput,
+): Promise<SlideRuntimePresentationResult> {
+  const runId = uuidv7();
+  const startTime = Date.now();
 
-    const styleGuide = input.styleGuide
-      ? `${input.styleGuide}\n\n${FONT_POLICY_STYLE_GUIDE}`
-      : FONT_POLICY_STYLE_GUIDE;
+  logger.info({
+    component: 'create-presentation-tool',
+    runId,
+    step: 'create_presentation_start',
+    language: input.language,
+    diagnostics: input.diagnostics ?? envDiagnostics,
+    revision: input.revision ?? envRevision,
+  });
 
-    const toolInput: CreatePresentationToolInput = {
-      prompt: input.prompt,
-      language: input.language,
-      styleGuide,
-      outputDir: input.outputDir ?? envOutputDir,
-      diagnostics: input.diagnostics ?? envDiagnostics,
-      revision: input.revision ?? envRevision,
-      timeoutMs: input.timeoutMs,
-      brandFrameId: envBrandFrameEnabled
-        ? (input.brandFrameId ?? envDefaultBrandFrameId)
-        : undefined,
-      icons: {
-        enabled: envIconsEnabled,
-        providerId: envIconProvider as 'lucide-local',
-      },
-      images: {
-        retrievalEnabled: envImageRetrievalEnabled,
-        generationEnabled: envImageGenerationEnabled,
-      },
-    };
+  const styleGuide = input.styleGuide
+    ? `${input.styleGuide}\n\n${FONT_POLICY_STYLE_GUIDE}`
+    : FONT_POLICY_STYLE_GUIDE;
 
+  const toolInput: CreatePresentationToolInput = {
+    prompt: input.prompt,
+    language: input.language,
+    styleGuide,
+    outputDir: input.outputDir ?? envOutputDir,
+    diagnostics: input.diagnostics ?? envDiagnostics,
+    revision: input.revision ?? envRevision,
+    timeoutMs: input.timeoutMs,
+    brandFrameId: envBrandFrameEnabled
+      ? (input.brandFrameId ?? envDefaultBrandFrameId)
+      : undefined,
+    icons: {
+      enabled: envIconsEnabled,
+      providerId: envIconProvider as 'lucide-local',
+    },
+    images: {
+      retrievalEnabled: envImageRetrievalEnabled,
+      generationEnabled: envImageGenerationEnabled,
+    },
+  };
+
+  try {
     const result = await createPresentation(toolInput, { llm: llmClient });
     const durationMs = Date.now() - startTime;
 
@@ -175,29 +153,90 @@ const createPresentationTool = tool({
         );
       }
 
-      const extendedResult = {
+      return {
         ...result,
         warnings: [...result.warnings, ...uploadWarnings],
         uploadedArtifacts,
         pptxDownloadUrl,
         contactSheetDownloadUrl,
       };
-
-      return {
-        status: 'success' as const,
-        content: [{ text: JSON.stringify(extendedResult) }],
-      };
-    } else {
-      logger.error({
-        component: 'create-presentation-tool',
-        runId,
-        step: 'create_presentation_failed',
-        success: false,
-        durationMs,
-        phase: result.error?.phase,
-        message: result.error?.message,
-      });
     }
+
+    logger.error({
+      component: 'create-presentation-tool',
+      runId,
+      step: 'create_presentation_failed',
+      success: false,
+      durationMs,
+      phase: result.error?.phase,
+      message: result.error?.message,
+    });
+
+    return result;
+  } catch (err) {
+    const durationMs = Date.now() - startTime;
+    const message = err instanceof Error ? err.message : String(err);
+
+    logger.error({
+      component: 'create-presentation-tool',
+      runId,
+      step: 'create_presentation_unhandled_error',
+      success: false,
+      durationMs,
+      error: message,
+    });
+
+    return {
+      success: false,
+      summary:
+        'Presentation creation failed during an unknown error. No PPTX artifact was produced.',
+      workDir: '',
+      artifacts: [],
+      warnings: [],
+      error: {
+        message,
+        phase: 'unknown',
+      },
+    };
+  }
+}
+
+const createPresentationTool = tool({
+  name: 'create_presentation',
+  description:
+    'Create an editable PowerPoint presentation from a user request using a PptxGenJS authoring workflow. Returns artifact paths for the PPTX, source JS, rendered slides, and contact sheet when available.',
+  inputSchema: z.object({
+    prompt: z.string().describe('What to create in the presentation.'),
+    language: z
+      .enum(['ja', 'en'])
+      .optional()
+      .describe('Output language. Inferred from prompt if omitted.'),
+    styleGuide: z
+      .string()
+      .optional()
+      .describe('Optional style guide text (plain text or markdown).'),
+    outputDir: z
+      .string()
+      .optional()
+      .describe('Optional output directory for generated artifacts.'),
+    diagnostics: z.boolean().optional().describe('Enable diagnostics. Default: true.'),
+    revision: z
+      .boolean()
+      .optional()
+      .describe('Enable one revision attempt. Default: true.'),
+    timeoutMs: z
+      .number()
+      .optional()
+      .describe('Script execution timeout in milliseconds.'),
+    brandFrameId: z
+      .string()
+      .optional()
+      .describe(
+        'Optional BrandFrame template ID. Defaults to company-basic-v1 when enabled.',
+      ),
+  }),
+  callback: async (input) => {
+    const result = await executeCreatePresentationTool(input);
 
     return {
       status: result.success ? ('success' as const) : ('error' as const),

@@ -1,10 +1,13 @@
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
-import { createPresentationTool } from './tools/create-presentation.js';
+import {
+  createPresentationTool,
+  executeCreatePresentationTool,
+} from './tools/create-presentation.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const SKILLS_DIR = join(__dirname, '../skills');
@@ -58,41 +61,38 @@ const app = new BedrockAgentCoreApp({
     // Non-streaming handler — the router calls with accept: application/json,
     // so we must NOT return an async generator (which requires SSE / text/event-stream).
     process: async (request) => {
-      console.log(
-        '[slide-runtime] process() called with prompt length:',
-        request.prompt?.length,
-      );
       try {
-        const agent = createSlideAgent();
+        const result = await executeCreatePresentationTool({
+          prompt: request.prompt,
+          language: request.language,
+          diagnostics: request.diagnostics,
+          revision: request.revision,
+        });
 
-        // Consume the stream fully, collecting text output
-        const textParts: string[] = [];
-        const stream = agent.stream(request.prompt);
-        while (true) {
-          const { value, done } = await stream.next();
-          if (done) break;
-
-          const event = value;
-          if (
-            event.type === 'modelStreamUpdateEvent' &&
-            event.event.type === 'modelContentBlockDeltaEvent' &&
-            event.event.delta.type === 'textDelta'
-          ) {
-            textParts.push(event.event.delta.text);
-          }
-        }
-
-        console.log(
-          '[slide-runtime] process() completed, text length:',
-          textParts.join('').length,
-        );
-        return { type: 'text', text: textParts.join('') };
+        return result;
       } catch (error: unknown) {
         console.error('[slide-runtime] process() error:', error);
-        throw error;
+        return {
+          success: false,
+          summary:
+            'Presentation creation failed during an unknown error. No PPTX artifact was produced.',
+          workDir: '',
+          artifacts: [],
+          warnings: [],
+          error: {
+            message: error instanceof Error ? error.message : String(error),
+            phase: 'unknown' as const,
+          },
+        };
       }
     },
   },
 });
 
-app.run();
+const isDirectExecution =
+  process.argv[1] !== undefined &&
+  fileURLToPath(import.meta.url) === resolve(process.argv[1]);
+
+if (isDirectExecution) {
+  app.run();
+}
