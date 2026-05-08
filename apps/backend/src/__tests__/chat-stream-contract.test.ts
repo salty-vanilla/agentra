@@ -32,7 +32,20 @@ describe('chat stream contract', () => {
       chatStreamEventSchema.safeParse({
         type: 'error',
         error: 'Agent invocation failed. traceId=trace_123',
-        observabilitySummary,
+        observabilitySummary: {
+          ...observabilitySummary,
+          toolCalls: [
+            {
+              toolCallId: 'tool-use-123',
+              toolName: 'search_web',
+              startedAt: '2026-05-07T00:00:01.000Z',
+              completedAt: '2026-05-07T00:00:03.000Z',
+              durationMs: 2000,
+              status: 'success',
+            },
+          ],
+          toolCallCount: 1,
+        },
       }).success,
     ).toBe(true);
   });

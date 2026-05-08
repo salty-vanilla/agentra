@@ -1,0 +1,27 @@
+import { describe, expect, it } from 'vitest';
+import { ObservationCollector } from '../observability.js';
+
+describe('observability collector', () => {
+  it('preserves tool call ids from the stream into the final summary', () => {
+    const collector = new ObservationCollector(
+      'trace-123',
+      '2026-05-07T00:00:00.000Z',
+      false,
+    );
+
+    collector.onContentToolUseBlock('tool-use-123', 'search_web');
+    collector.onToolResult('tool-use-123', 'success', { ok: true });
+
+    const snapshot = collector.createSnapshot(
+      'success',
+      '2026-05-07T00:00:05.000Z',
+    );
+
+    expect(snapshot.toolCalls).toHaveLength(1);
+    expect(snapshot.toolCalls[0]).toMatchObject({
+      toolCallId: 'tool-use-123',
+      toolName: 'search_web',
+      status: 'success',
+    });
+  });
+});

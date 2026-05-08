@@ -184,6 +184,7 @@ export class MemoryStore implements Store {
           },
           toolCalls: [
             {
+              toolCallId: 'date_resolver:demo-001',
               toolName: 'date_resolver',
               startedAt: '2026-04-18T00:05:29.000Z',
               completedAt: '2026-04-18T00:05:29.100Z',

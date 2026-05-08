@@ -1,6 +1,7 @@
 type ObservationStatus = 'success' | 'error' | 'cancelled';
 
 export type ObservationToolCall = {
+  toolCallId: string;
   toolName: string;
   startedAt: string;
   completedAt?: string;
@@ -68,6 +69,10 @@ function toMillis(iso: string): number {
 
 function clampDurationMs(startedAt: string, completedAt: string): number {
   return Math.max(0, toMillis(completedAt) - toMillis(startedAt));
+}
+
+function buildSyntheticToolCallId(prefix: string, value: string): string {
+  return `${prefix}:${value}`;
 }
 
 function summarizeReasoning(stepCount: number): string | undefined {
@@ -142,7 +147,7 @@ export class ObservationCollector {
   private readonly toolCalls: ObservationToolCall[] = [];
   private readonly inFlightToolStarts = new Map<
     string,
-    { toolName: string; startedAt: string }
+    { toolCallId: string; toolName: string; startedAt: string }
   >();
   private readonly completedToolUseIds = new Set<string>();
   private modelToolStartCount = 0;
@@ -176,6 +181,7 @@ export class ObservationCollector {
   onModelToolUseStart(toolUseId: string, name: string) {
     this.modelToolStartCount += 1;
     this.inFlightToolStarts.set(toolUseId, {
+      toolCallId: toolUseId,
       toolName: name,
       startedAt: nowIso(),
     });
@@ -188,6 +194,7 @@ export class ObservationCollector {
 
   onContentToolUseBlock(toolUseId: string, name: string) {
     this.inFlightToolStarts.set(toolUseId, {
+      toolCallId: toolUseId,
       toolName: name,
       startedAt: nowIso(),
     });
@@ -202,6 +209,7 @@ export class ObservationCollector {
     this.inFlightToolStarts.delete(toolUseId);
     const completedAt = nowIso();
     const toolCall: ObservationToolCall = {
+      toolCallId: start?.toolCallId ?? toolUseId,
       toolName: start?.toolName ?? 'unknown_tool',
       startedAt: start?.startedAt ?? completedAt,
       completedAt,
@@ -244,6 +252,7 @@ export class ObservationCollector {
 
       if (this.toolCalls.length === 0 && (metric.callCount ?? 0) > 0) {
         this.toolCalls.push({
+          toolCallId: buildSyntheticToolCallId('metrics', toolName),
           toolName,
           startedAt: this.startedAt,
           completedAt: nowIso(),
@@ -260,6 +269,10 @@ export class ObservationCollector {
     if (this.toolCalls.length === 0 && this.modelToolStartCount > 0) {
       const completedAt = nowIso();
       this.toolCalls.push({
+        toolCallId: buildSyntheticToolCallId(
+          'fallback',
+          `${this.traceId}:tool_call`,
+        ),
         toolName: 'tool_call',
         startedAt: this.startedAt,
         completedAt,

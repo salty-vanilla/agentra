@@ -84,6 +84,9 @@ function logObservabilityDebug(
     outputTokens: summary.tokenUsage?.outputTokens,
     toolCallCount: summary.toolCallCount,
     toolFailureCount: summary.toolFailureCount,
+    toolCallIds: summary.toolCalls
+      .map((tool: ChatObservationSummary['toolCalls'][number]) => tool.toolCallId)
+      .filter((toolCallId): toolCallId is string => typeof toolCallId === 'string'),
     toolNames: summary.toolCalls.map(
       (tool: ChatObservationSummary['toolCalls'][number]) => tool.toolName,
     ),
