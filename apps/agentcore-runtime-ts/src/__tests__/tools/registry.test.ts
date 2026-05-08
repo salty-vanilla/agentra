@@ -5,6 +5,7 @@ describe('tool registry', () => {
     ENABLE_ARTIFACT_TOOLS: process.env.ENABLE_ARTIFACT_TOOLS,
     ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
     ENABLE_KB_RETRIEVE_TOOL: process.env.ENABLE_KB_RETRIEVE_TOOL,
+    ENABLE_STRUCTURED_QUERY_PLAN_TOOL: process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_WEB_RESEARCH_TOOL: process.env.ENABLE_WEB_RESEARCH_TOOL,
@@ -18,6 +19,8 @@ describe('tool registry', () => {
     process.env.ENABLE_ARTIFACT_TOOLS = originalEnv.ENABLE_ARTIFACT_TOOLS;
     process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
     process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
+    process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL =
+      originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
@@ -42,6 +45,13 @@ describe('tool registry', () => {
       delete process.env.ENABLE_KB_RETRIEVE_TOOL;
     } else {
       process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
+    }
+
+    if (originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL === undefined) {
+      delete process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
+    } else {
+      process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL =
+        originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
     }
 
     if (originalEnv.ENABLE_EVIDENCE_TOOLS === undefined) {
@@ -92,6 +102,7 @@ describe('tool registry', () => {
       enableArtifact: true,
       enableBrief: true,
       enableKbRetrieve: false,
+      enableStructuredQueryPlan: true,
       enableWebResearch: true,
     });
 
@@ -110,6 +121,7 @@ describe('tool registry', () => {
       { name: 'create_brief', enabled: true },
       { name: 'merge_briefs', enabled: true },
       { name: 'kb_retrieve', enabled: false },
+      { name: 'structured_query_plan', enabled: true },
       { name: 'web_research', enabled: true },
       { name: 'tavily_search', enabled: true },
       { name: 'tavily_extract', enabled: true },
@@ -157,11 +169,12 @@ describe('tool registry', () => {
     );
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(5);
+    expect(enabledTools).toHaveLength(6);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
+      'structured_query_plan',
       'create_slide_presentation',
       'getWeather',
     ]);
@@ -175,6 +188,7 @@ describe('tool registry', () => {
       'create_brief',
       'merge_briefs',
       'kb_retrieve',
+      'structured_query_plan',
       'web_research',
       'tavily_search',
       'tavily_extract',
@@ -209,6 +223,9 @@ describe('tool registry', () => {
 
     expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(true);
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(true);
+    expect(
+      registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
+    ).toBe(true);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
   });
 
@@ -221,6 +238,21 @@ describe('tool registry', () => {
 
     expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(false);
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
+    expect(
+      registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
+    ).toBe(true);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
+  });
+
+  it('disables structured query plan when the feature flag is false', async () => {
+    vi.stubEnv('ENABLE_STRUCTURED_QUERY_PLAN_TOOL', 'false');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableStructuredQueryPlan).toBe(false);
+    expect(
+      registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
+    ).toBe(false);
   });
 });
