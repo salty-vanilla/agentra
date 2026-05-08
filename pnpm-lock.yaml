@@ -328,6 +328,9 @@ importers:
 
   packages/presentation-author:
     dependencies:
+      '@aws-sdk/client-secrets-manager':
+        specifier: ^3.1032.0
+        version: 3.1037.0
       '@resvg/resvg-js':
         specifier: ^2.6.2
         version: 2.6.2
