@@ -42,6 +42,7 @@ export class AgentraAppStack extends Stack {
         MESSAGES_TABLE_NAME: props.dataAuthStack.messagesTable.tableName,
         USERS_TABLE_NAME: props.dataAuthStack.usersTable.tableName,
         COGNITO_USER_POOL_ID: props.dataAuthStack.userPool.userPoolId,
+        COGNITO_USER_POOL_CLIENT_ID: props.dataAuthStack.userPoolClient.userPoolClientId,
         COGNITO_REGION: Stack.of(this).region,
         BEDROCK_REGION: Stack.of(this).region,
         AGENTCORE_RUNTIME_ARN: props.agentCoreRuntimeArn ?? '',
