@@ -28,7 +28,8 @@
     "mathjax-full": "^3.2.2",
     "pptxgenjs": "^3.12.0",
     "prismjs": "^1.29.0",
-    "skia-canvas": "^2.0.2"
+    "skia-canvas": "^2.0.2",
+    "uuidv7": "^1.2.1"
   },
   "devDependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1038.0",

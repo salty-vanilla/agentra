@@ -1,5 +1,6 @@
 import { APP_VERSION } from '@agentra/shared';
 import { HttpResponse } from 'msw';
+import { uuidv7 } from 'uuidv7';
 import {
   getCreateThreadMockHandler,
   getDeleteThreadMockHandler,
@@ -225,7 +226,7 @@ function getThreadMessages(threadId: string) {
 
 function createThread(input: CreateThreadInput = {}) {
   const timestamp = now();
-  const threadId = crypto.randomUUID();
+  const threadId = uuidv7();
   const thread: ThreadSummary = {
     threadId,
     title: buildThreadTitle(input.title, input.initialMessage),
@@ -243,7 +244,7 @@ function createThread(input: CreateThreadInput = {}) {
 function appendMessage(input: { threadId: string; role: MessageRole; content: string }) {
   const timestamp = now();
   const message: PersistedChatMessage = {
-    messageId: crypto.randomUUID(),
+    messageId: uuidv7(),
     threadId: input.threadId,
     role: input.role,
     content: input.content,

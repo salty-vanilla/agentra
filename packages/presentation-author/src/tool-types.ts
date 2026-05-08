@@ -6,6 +6,7 @@ export type CreatePresentationLanguage = 'ja' | 'en';
 export interface CreatePresentationToolInput {
   prompt: string;
   language?: CreatePresentationLanguage | undefined;
+  traceId?: string | undefined;
 
   /**
    * Optional style guide text.

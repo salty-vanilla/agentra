@@ -18,6 +18,7 @@ export interface DiagnosticsOptions {
 export interface PresentationAuthorInput {
   prompt: string;
   language?: PresentationLanguage | undefined;
+  traceId?: string | undefined;
   templatePath?: string | undefined;
   styleGuide?: string | undefined;
   outputDir?: string | undefined;

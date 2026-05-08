@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto';
 import { cp, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { uuidv7 } from 'uuidv7';
 import type { AuthoringWorkspace } from './types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -28,7 +28,7 @@ export async function createPresentationWorkspace(input: {
   outputDir?: string | undefined;
   runId?: string | undefined;
 }): Promise<AuthoringWorkspace> {
-  const runId = input.runId ?? randomUUID().slice(0, 8);
+  const runId = input.runId ?? uuidv7();
   const baseDir = input.outputDir ?? join(tmpdir(), 'presentation-author');
   const workDir = join(baseDir, runId);
 

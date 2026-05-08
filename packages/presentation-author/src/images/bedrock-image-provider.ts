@@ -1,6 +1,6 @@
-import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { uuidv7 } from 'uuidv7';
 import type {
   GeneratedImage,
   ImageGenerationProvider,
@@ -157,7 +157,7 @@ export class BedrockImageGenerationProvider implements ImageGenerationProvider {
       throw new Error(`Bedrock image generation (${profile.label}) returned no images`);
     }
 
-    const imageId = randomUUID();
+    const imageId = uuidv7();
     const baseDir = request.workDir ?? process.cwd();
     const dir = join(baseDir, 'assets', 'images', 'generated');
     await mkdir(dir, { recursive: true });

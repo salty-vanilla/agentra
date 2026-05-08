@@ -54,7 +54,7 @@ export async function runPresentationAuthor(
   input: PresentationAuthorInput,
   deps: PresentationAuthorDeps,
 ): Promise<PresentationAuthorResult> {
-  const runId = deps.randomId?.() ?? undefined;
+  const runId = input.traceId ?? deps.randomId?.() ?? undefined;
   const workspace = await createPresentationWorkspace({
     outputDir: input.outputDir,
     runId,
