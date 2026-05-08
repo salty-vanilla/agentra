@@ -50,6 +50,7 @@ export { SLIDE_AGENT_SYSTEM_PROMPT };
 const RequestSchema = z.object({
   prompt: z.string(),
   language: z.enum(['ja', 'en']).optional(),
+  traceId: z.string().optional(),
   diagnostics: z.boolean().optional(),
   revision: z.boolean().optional(),
 });
@@ -65,6 +66,7 @@ const app = new BedrockAgentCoreApp({
         const result = await executeCreatePresentationTool({
           prompt: request.prompt,
           language: request.language,
+          traceId: request.traceId,
           diagnostics: request.diagnostics,
           revision: request.revision,
         });

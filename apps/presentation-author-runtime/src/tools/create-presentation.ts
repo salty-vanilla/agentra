@@ -64,6 +64,7 @@ export async function executeCreatePresentationTool(
   const toolInput: CreatePresentationToolInput = {
     prompt: input.prompt,
     language: input.language,
+    traceId: input.traceId,
     styleGuide,
     outputDir: input.outputDir ?? envOutputDir,
     diagnostics: input.diagnostics ?? envDiagnostics,
