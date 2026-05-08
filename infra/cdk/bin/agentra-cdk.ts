@@ -10,6 +10,12 @@ import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
 const app = new cdk.App();
 const stage = (app.node.tryGetContext('stage') as string | undefined)?.trim() || 'dev';
 const stageLabel = stage.toLowerCase();
+const tavilyApiKeySecretArn = (
+  app.node.tryGetContext('tavilyApiKeySecretArn') as string | undefined
+)?.trim();
+const pexelsApiKeySecretArn = (
+  app.node.tryGetContext('pexelsApiKeySecretArn') as string | undefined
+)?.trim();
 
 function parseCsvContext(key: string): string[] {
   const value = app.node.tryGetContext(key);
@@ -70,6 +76,7 @@ const slideRuntimeStack = new AgentraSlideRuntimeStack(
   {
     description: `Agentra ${stageLabel} slide generation runtime stack.`,
     stage: stageLabel,
+    ...(pexelsApiKeySecretArn ? { pexelsApiKeySecretArn } : {}),
   },
 );
 
@@ -81,6 +88,7 @@ const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
     stage: stageLabel,
     slideRuntimeArn: slideRuntimeStack.runtimeArn,
     slideRuntimeQualifier: 'prod',
+    ...(tavilyApiKeySecretArn ? { tavilyApiKeySecretArn } : {}),
     memoryEnabled: true,
   },
 );

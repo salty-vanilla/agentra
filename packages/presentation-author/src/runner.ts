@@ -122,7 +122,7 @@ export async function runPresentationAuthor(
 
   if (imagesEnabled) {
     const imageRetrievalProvider =
-      deps.imageRetrievalProvider ?? createDefaultPexelsProvider();
+      deps.imageRetrievalProvider ?? (await createDefaultPexelsProvider());
 
     imageTools = [IMAGE_SEARCH_TOOL];
     imageToolHandlers = {
@@ -162,7 +162,7 @@ export async function runPresentationAuthor(
   // Collect image metadata after LLM has finished (tools were called during generation)
   if (imagesEnabled) {
     const imageRetrievalProvider =
-      deps.imageRetrievalProvider ?? createDefaultPexelsProvider();
+      deps.imageRetrievalProvider ?? (await createDefaultPexelsProvider());
     const imageGenerationProvider =
       deps.imageGenerationProvider ?? createDefaultBedrockImageProvider();
 

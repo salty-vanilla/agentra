@@ -2,6 +2,10 @@ import { createWriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
+import {
+  GetSecretValueCommand,
+  SecretsManagerClient,
+} from '@aws-sdk/client-secrets-manager';
 import type {
   ImageRetrievalProvider,
   ImageSearchRequest,
@@ -12,9 +16,8 @@ const PEXELS_API_BASE = 'https://api.pexels.com/v1';
 
 export function createDefaultPexelsProvider(
   apiKey?: string,
-): PexelsImageRetrievalProvider {
-  const key = apiKey ?? process.env.PEXELS_API_KEY ?? '';
-  return new PexelsImageRetrievalProvider(key);
+): Promise<PexelsImageRetrievalProvider> {
+  return resolvePexelsApiKey(apiKey).then((key) => new PexelsImageRetrievalProvider(key));
 }
 
 export class PexelsImageRetrievalProvider implements ImageRetrievalProvider {
@@ -118,6 +121,48 @@ function guessExtension(url: string): string {
 
 function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
+}
+
+async function resolvePexelsApiKey(apiKey?: string): Promise<string> {
+  const trimmedApiKey = apiKey?.trim();
+  if (trimmedApiKey) {
+    return trimmedApiKey;
+  }
+
+  const secretId = process.env.PEXELS_API_KEY_SECRET_ID?.trim();
+  if (secretId) {
+    return getApiKeyFromSecretsManager(secretId);
+  }
+
+  return '';
+}
+
+function resolveAwsRegion(): string {
+  return process.env.AWS_REGION ?? process.env.AWS_DEFAULT_REGION ?? 'us-east-1';
+}
+
+async function getApiKeyFromSecretsManager(secretId: string): Promise<string> {
+  const client = new SecretsManagerClient({ region: resolveAwsRegion() });
+  const response = await client.send(new GetSecretValueCommand({ SecretId: secretId }));
+
+  const secretString = response.SecretString?.trim();
+  if (!secretString) {
+    throw new Error('Pexels secret value is empty');
+  }
+
+  try {
+    const parsed = JSON.parse(secretString) as unknown;
+    if (parsed && typeof parsed === 'object') {
+      const value = (parsed as Record<string, unknown>).PEXELS_API_KEY;
+      if (typeof value === 'string' && value.trim().length > 0) {
+        return value.trim();
+      }
+    }
+  } catch {
+    // Fall through to treat the secret as a plain API key.
+  }
+
+  return secretString;
 }
 
 // ---------------------------------------------------------------------------

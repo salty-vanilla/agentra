@@ -154,11 +154,6 @@ async function getApiKeyFromSsm(parameterName: string): Promise<string> {
 }
 
 async function loadApiKey(): Promise<string> {
-  const envApiKey = process.env.TAVILY_API_KEY?.trim();
-  if (envApiKey) {
-    return envApiKey;
-  }
-
   const secretId = process.env.TAVILY_API_KEY_SECRET_ID?.trim();
   if (secretId) {
     return getApiKeyFromSecretsManager(secretId);
@@ -170,7 +165,7 @@ async function loadApiKey(): Promise<string> {
   }
 
   throw new Error(
-    'TAVILY_API_KEY is not set. Set TAVILY_API_KEY for local runs, or configure TAVILY_API_KEY_SECRET_ID / TAVILY_API_KEY_SSM_NAME for AWS.',
+    'TAVILY_API_KEY_SECRET_ID or TAVILY_API_KEY_SSM_NAME is not set. Configure one of those secret references for AWS.',
   );
 }
 

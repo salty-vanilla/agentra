@@ -5,7 +5,6 @@ import {
   CfnResource,
   Duration,
   RemovalPolicy,
-  SecretValue,
   Stack,
   type StackProps,
 } from 'aws-cdk-lib';
@@ -22,7 +21,7 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   stage: string;
   slideRuntimeArn?: string;
   slideRuntimeQualifier?: string;
-  tavilyApiKey?: string;
+  tavilyApiKeySecretArn?: string;
   memoryEnabled?: boolean;
   sessionS3Prefix?: string;
 }
@@ -40,20 +39,19 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       normalizedStage.length > 0
         ? normalizedStage.charAt(0).toUpperCase() + normalizedStage.slice(1)
         : 'Default';
-    const tavilyApiKey = props.tavilyApiKey ?? this.node.tryGetContext('tavilyApiKey');
-    if (!tavilyApiKey) {
+    const tavilyApiKeySecretArn =
+      props.tavilyApiKeySecretArn ?? this.node.tryGetContext('tavilyApiKeySecretArn');
+    if (!tavilyApiKeySecretArn) {
       throw new Error(
-        'tavilyApiKey must be provided via props or context (-c tavilyApiKey=...)',
+        'tavilyApiKeySecretArn must be provided via props or context (-c tavilyApiKeySecretArn=...)',
       );
     }
 
-    const tavilyApiKeySecret = new Secret(this, 'TavilyApiKeySecret', {
-      secretName: `agentra/${props.stage}/tavily-api-key`,
-      description: `Tavily API key for Agentra ${props.stage} runtime.`,
-      secretObjectValue: {
-        TAVILY_API_KEY: SecretValue.unsafePlainText(tavilyApiKey),
-      },
-    });
+    const tavilyApiKeySecret = Secret.fromSecretCompleteArn(
+      this,
+      'TavilyApiKeySecret',
+      tavilyApiKeySecretArn,
+    );
 
     const runtimeRole = new Role(this, 'AgentCoreRuntimeExecutionRole', {
       assumedBy: new ServicePrincipal('bedrock-agentcore.amazonaws.com'),

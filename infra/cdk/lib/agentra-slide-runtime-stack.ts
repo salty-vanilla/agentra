@@ -5,7 +5,6 @@ import {
   CfnResource,
   Duration,
   RemovalPolicy,
-  SecretValue,
   Stack,
   type StackProps,
 } from 'aws-cdk-lib';
@@ -13,14 +12,14 @@ import { CfnRuntime, CfnRuntimeEndpoint } from 'aws-cdk-lib/aws-bedrockagentcore
 import { DockerImageAsset } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
-import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { type ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface AgentraSlideRuntimeStackProps extends StackProps {
   stage: string;
-  pexelsApiKey?: string;
+  pexelsApiKeySecretArn?: string;
 }
 
 export class AgentraSlideRuntimeStack extends Stack {
@@ -30,7 +29,7 @@ export class AgentraSlideRuntimeStack extends Stack {
   readonly endpointArn: string;
   readonly artifactsBucketName: string;
   readonly artifactsBucketArn: string;
-  readonly pexelsApiKeySecret?: Secret | undefined;
+  readonly pexelsApiKeySecret?: ISecret | undefined;
 
   constructor(scope: Construct, id: string, props: AgentraSlideRuntimeStackProps) {
     super(scope, id, props);
@@ -87,21 +86,19 @@ export class AgentraSlideRuntimeStack extends Stack {
     artifactsBucket.grantReadWrite(runtimeRole);
 
     // --- Pexels API Key (optional) ---
-    const pexelsApiKey = props.pexelsApiKey ?? this.node.tryGetContext('pexelsApiKey');
-    let pexelsApiKeySecret: Secret | undefined;
+    const pexelsApiKeySecretArn =
+      props.pexelsApiKeySecretArn ?? this.node.tryGetContext('pexelsApiKeySecretArn');
+    let pexelsApiKeySecret: ISecret | undefined;
     let pexelsEnvVars: Record<string, string> = {};
 
-    if (pexelsApiKey) {
-      pexelsApiKeySecret = new Secret(this, 'PexelsApiKeySecret', {
-        secretName: `agentra/${props.stage}/pexels-api-key`,
-        description: `Pexels API key for Agentra ${props.stage} slide runtime.`,
-        secretObjectValue: {
-          PEXELS_API_KEY: SecretValue.unsafePlainText(pexelsApiKey),
-        },
-      });
+    if (pexelsApiKeySecretArn) {
+      pexelsApiKeySecret = Secret.fromSecretCompleteArn(
+        this,
+        'PexelsApiKeySecret',
+        pexelsApiKeySecretArn,
+      );
       pexelsApiKeySecret.grantRead(runtimeRole);
       pexelsEnvVars = {
-        PEXELS_API_KEY: pexelsApiKey,
         PEXELS_API_KEY_SECRET_ID: pexelsApiKeySecret.secretArn,
       };
       this.pexelsApiKeySecret = pexelsApiKeySecret;
@@ -178,7 +175,7 @@ export class AgentraSlideRuntimeStack extends Stack {
         PRESENTATION_ARTIFACT_PREFIX: 'runs',
         PRESENTATION_ARTIFACT_PRESIGNED_URLS: 'true',
         PRESENTATION_ARTIFACT_URL_EXPIRES_SECONDS: '3600',
-        PRESENTATION_IMAGE_RETRIEVAL_ENABLED: 'true',
+        PRESENTATION_IMAGE_RETRIEVAL_ENABLED: pexelsApiKeySecret ? 'true' : 'false',
         PRESENTATION_IMAGE_GENERATION_ENABLED: 'false',
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentra-slide-${props.stage}`,
         LOG_LEVEL: 'info',
