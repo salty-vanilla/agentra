@@ -6,6 +6,7 @@ import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
+import { structuredPlanReadinessTool } from './structured-plan-readiness.tool.js';
 import { structuredQueryExecuteBedrockStubTool } from './structured-query-execute-bedrock-stub.tool.js';
 import { structuredQueryExecuteMockTool } from './structured-query-execute-mock.tool.js';
 import { structuredQueryPlanTool } from './structured-query-plan.tool.js';
@@ -57,6 +58,7 @@ export type ToolRegistryConfig = {
   enableBrief?: boolean;
   enableKbRetrieve?: boolean;
   enableStructuredQueryPlan?: boolean;
+  enableStructuredPlanReadiness?: boolean;
   enableStructuredQueryExecuteMock?: boolean;
   enableStructuredQueryExecuteBedrockStub?: boolean;
   enableWebResearch?: boolean;
@@ -73,6 +75,7 @@ const TOOL_ORDER = [
   'merge_briefs',
   'kb_retrieve',
   'structured_query_plan',
+  'structured_plan_readiness',
   'structured_query_execute_mock',
   'structured_query_execute_bedrock_stub',
   'web_research',
@@ -120,6 +123,10 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       Boolean(process.env.BEDROCK_KB_ID?.trim()),
     ),
     enableStructuredQueryPlan: resolveEnvFlag('ENABLE_STRUCTURED_QUERY_PLAN_TOOL', true),
+    enableStructuredPlanReadiness: resolveEnvFlag(
+      'ENABLE_STRUCTURED_PLAN_READINESS_TOOL',
+      true,
+    ),
     enableStructuredQueryExecuteMock: resolveEnvFlag(
       'ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL',
       true,
@@ -155,6 +162,11 @@ export function getRegisteredTools(
   const enableStructuredQueryPlan = resolveToolEnabled(
     config,
     'enableStructuredQueryPlan',
+    true,
+  );
+  const enableStructuredPlanReadiness = resolveToolEnabled(
+    config,
+    'enableStructuredPlanReadiness',
     true,
   );
   const enableStructuredQueryExecuteMock = resolveToolEnabled(
@@ -239,6 +251,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableStructuredQueryPlan,
       tool: structuredQueryPlanTool,
+    },
+    {
+      name: 'structured_plan_readiness',
+      category: 'structured_rag',
+      riskLevel: 'low',
+      enabled: enableStructuredPlanReadiness,
+      tool: structuredPlanReadinessTool,
     },
     {
       name: 'structured_query_execute_mock',

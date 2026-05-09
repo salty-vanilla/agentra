@@ -6,6 +6,8 @@ describe('tool registry', () => {
     ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
     ENABLE_KB_RETRIEVE_TOOL: process.env.ENABLE_KB_RETRIEVE_TOOL,
     ENABLE_STRUCTURED_QUERY_PLAN_TOOL: process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL,
+    ENABLE_STRUCTURED_PLAN_READINESS_TOOL:
+      process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL,
     ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL:
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL,
     ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL:
@@ -25,6 +27,8 @@ describe('tool registry', () => {
     process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL =
       originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
+    process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL =
+      originalEnv.ENABLE_STRUCTURED_PLAN_READINESS_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL =
       originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL =
@@ -60,6 +64,13 @@ describe('tool registry', () => {
     } else {
       process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL =
         originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
+    }
+
+    if (originalEnv.ENABLE_STRUCTURED_PLAN_READINESS_TOOL === undefined) {
+      delete process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL;
+    } else {
+      process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL =
+        originalEnv.ENABLE_STRUCTURED_PLAN_READINESS_TOOL;
     }
 
     if (originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL === undefined) {
@@ -125,6 +136,7 @@ describe('tool registry', () => {
       enableBrief: true,
       enableKbRetrieve: false,
       enableStructuredQueryPlan: true,
+      enableStructuredPlanReadiness: true,
       enableStructuredQueryExecuteMock: true,
       enableStructuredQueryExecuteBedrockStub: false,
       enableWebResearch: true,
@@ -146,6 +158,7 @@ describe('tool registry', () => {
       { name: 'merge_briefs', enabled: true },
       { name: 'kb_retrieve', enabled: false },
       { name: 'structured_query_plan', enabled: true },
+      { name: 'structured_plan_readiness', enabled: true },
       { name: 'structured_query_execute_mock', enabled: true },
       { name: 'structured_query_execute_bedrock_stub', enabled: false },
       { name: 'web_research', enabled: true },
@@ -195,12 +208,13 @@ describe('tool registry', () => {
     );
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(7);
+    expect(enabledTools).toHaveLength(8);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
       'structured_query_plan',
+      'structured_plan_readiness',
       'structured_query_execute_mock',
       'create_slide_presentation',
       'getWeather',
@@ -216,6 +230,7 @@ describe('tool registry', () => {
       'merge_briefs',
       'kb_retrieve',
       'structured_query_plan',
+      'structured_plan_readiness',
       'structured_query_execute_mock',
       'structured_query_execute_bedrock_stub',
       'web_research',
@@ -255,6 +270,9 @@ describe('tool registry', () => {
     expect(
       registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
     ).toBe(true);
+    expect(
+      registered.find((entry) => entry.name === 'structured_plan_readiness')?.enabled,
+    ).toBe(true);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
   });
 
@@ -269,6 +287,9 @@ describe('tool registry', () => {
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
     expect(
       registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
+    ).toBe(true);
+    expect(
+      registered.find((entry) => entry.name === 'structured_plan_readiness')?.enabled,
     ).toBe(true);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
   });
@@ -291,9 +312,9 @@ describe('tool registry', () => {
     const mod = await import('../../tools/registry.js');
     const registered = mod.getRegisteredTools();
 
-    expect(
-      mod.resolveToolRegistryConfigFromEnv().enableStructuredQueryExecuteMock,
-    ).toBe(false);
+    expect(mod.resolveToolRegistryConfigFromEnv().enableStructuredQueryExecuteMock).toBe(
+      false,
+    );
     expect(
       registered.find((entry) => entry.name === 'structured_query_execute_mock')?.enabled,
     ).toBe(false);
