@@ -22,6 +22,8 @@ export type {
 } from './agents/manufacturing-line/index.js';
 export { createManufacturingLineAgent } from './agents/manufacturing-line/index.js';
 export type {
+  WebResearchAgentHandoffInput,
+  WebResearchAgentHandoffOutput,
   WebResearchAgentConfig,
   WebResearchAgentResult,
   WebResearchModelConfig,
@@ -110,13 +112,18 @@ const RAG_TOOL_INSTRUCTIONS = [
   'kb_retrieve は回答生成ではなく根拠取得専用です。回答では取得した sources / citations を優先してください。',
   'kb_retrieve の結果をユーザー向けの回答骨子、レポート本文、またはスライドbriefに整える場合は kb_answer_synthesis を使って、安全な回答ペイロードに変換してください。',
   'kb_answer_synthesis では、取得済みの sources / citations 以外の事実や出典を追加しないでください。',
-  '問い合わせがあいまい、十分に具体的でない、または web fallback が必要か判断したい場合は、kb_query_readiness で deterministic な計画と readiness を先に確認してください。',
-  'kb_query_readiness は文書取得や AWS 呼び出しを行いません。結果をもとに kb_retrieve、follow-up 質問、diagnostics、または web fallback を選んでください。',
+  '問い合わせがあいまい、十分に具体的でない、または invoke_web_research_agent への委譲が必要か判断したい場合は、kb_query_readiness で deterministic な計画と readiness を先に確認してください。',
+  'kb_query_readiness は文書取得や AWS 呼び出しを行いません。結果をもとに kb_retrieve、follow-up 質問、diagnostics、または invoke_web_research_agent を選んでください。',
   'Bedrock Knowledge Base の retrieval 設定を安全に点検したい場合は kb_rag_diagnostics を使い、AWS 呼び出しや文書取得とは切り分けてください。',
 ].join('\n');
 
 const DOMAIN_HANDOFF_INSTRUCTIONS = [
   '製造ライン、設備、異常、KPI、エラーコード、生産実績、保全履歴に関する質問は invoke_manufacturing_line_agent に委譲してください。',
+].join('\n');
+
+const WEB_RESEARCH_HANDOFF_INSTRUCTIONS = [
+  '最新情報、公開Web情報、外部ドキュメント、価格、ニュース、リリースノート、比較調査が必要な場合は invoke_web_research_agent に委譲してください。',
+  '公開Web調査は invoke_web_research_agent を通して行い、Router から tavily_search、tavily_extract、tavily_crawl、tavily_map、web_research を直接使わないでください。',
 ].join('\n');
 
 const STRUCTURED_RAG_TOOL_INSTRUCTIONS = [
@@ -213,6 +220,8 @@ function buildPrompt(input: {
     RAG_TOOL_INSTRUCTIONS,
     '',
     DOMAIN_HANDOFF_INSTRUCTIONS,
+    '',
+    WEB_RESEARCH_HANDOFF_INSTRUCTIONS,
     '',
     STRUCTURED_RAG_TOOL_INSTRUCTIONS,
     '',

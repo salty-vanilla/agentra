@@ -4,7 +4,12 @@ import type {
   Plugin,
   SessionManager,
 } from '@strands-agents/sdk';
+import type { z } from 'zod';
 import type { ToolRegistryConfig } from '../../tools/registry.js';
+import {
+  webResearchAgentHandoffInputSchema,
+  webResearchAgentHandoffOutputSchema,
+} from './handoff.js';
 
 export type WebResearchModelConfig = Pick<
   BedrockModelOptions,
@@ -28,3 +33,11 @@ export type WebResearchAgentResult = {
   nextActions?: string[];
   metadata?: Record<string, unknown>;
 };
+
+export type WebResearchAgentHandoffInput = z.infer<
+  typeof webResearchAgentHandoffInputSchema
+>;
+
+export type WebResearchAgentHandoffOutput = z.infer<
+  typeof webResearchAgentHandoffOutputSchema
+>;
