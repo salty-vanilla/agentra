@@ -95,6 +95,8 @@ const EVIDENCE_TOOL_INSTRUCTIONS = [
 const RAG_TOOL_INSTRUCTIONS = [
   '社内ナレッジ、プロジェクト固有情報、ドキュメント根拠が必要な場合は、設定済みのKnowledge Baseがあれば kb_retrieve で根拠を取得してください。',
   'kb_retrieve は回答生成ではなく根拠取得専用です。回答では取得した sources / citations を優先してください。',
+  'kb_retrieve の結果をユーザー向けの回答骨子、レポート本文、またはスライドbriefに整える場合は kb_answer_synthesis を使って、安全な回答ペイロードに変換してください。',
+  'kb_answer_synthesis では、取得済みの sources / citations 以外の事実や出典を追加しないでください。',
   '問い合わせがあいまい、十分に具体的でない、または web fallback が必要か判断したい場合は、kb_query_readiness で deterministic な計画と readiness を先に確認してください。',
   'kb_query_readiness は文書取得や AWS 呼び出しを行いません。結果をもとに kb_retrieve、follow-up 質問、diagnostics、または web fallback を選んでください。',
   'Bedrock Knowledge Base の retrieval 設定を安全に点検したい場合は kb_rag_diagnostics を使い、AWS 呼び出しや文書取得とは切り分けてください。',

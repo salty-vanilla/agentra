@@ -7,6 +7,7 @@ import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { kbQueryReadinessTool } from './kb-query-readiness.tool.js';
+import { kbAnswerSynthesisTool } from './kb-answer-synthesis.tool.js';
 import { kbRagDiagnosticsTool } from './kb-rag-diagnostics.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
 import { structuredAnswerSynthesisTool } from './structured-answer-synthesis.tool.js';
@@ -64,6 +65,7 @@ export type ToolRegistryConfig = {
   enableKbRetrieve?: boolean;
   enableKbQueryReadiness?: boolean;
   enableKbRagDiagnostics?: boolean;
+  enableKbAnswerSynthesis?: boolean;
   enableStructuredQueryPlan?: boolean;
   enableStructuredPlanReadiness?: boolean;
   enableStructuredRagFlow?: boolean;
@@ -86,6 +88,7 @@ const TOOL_ORDER = [
   'kb_retrieve',
   'kb_query_readiness',
   'kb_rag_diagnostics',
+  'kb_answer_synthesis',
   'structured_query_plan',
   'structured_plan_readiness',
   'structured_rag_flow',
@@ -139,6 +142,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
     ),
     enableKbQueryReadiness: resolveEnvFlag('ENABLE_KB_QUERY_READINESS_TOOL', true),
     enableKbRagDiagnostics: resolveEnvFlag('ENABLE_KB_RAG_DIAGNOSTICS_TOOL', true),
+    enableKbAnswerSynthesis: resolveEnvFlag('ENABLE_KB_ANSWER_SYNTHESIS_TOOL', true),
     enableStructuredQueryPlan: resolveEnvFlag('ENABLE_STRUCTURED_QUERY_PLAN_TOOL', true),
     enableStructuredPlanReadiness: resolveEnvFlag(
       'ENABLE_STRUCTURED_PLAN_READINESS_TOOL',
@@ -193,6 +197,11 @@ export function getRegisteredTools(
   const enableKbRagDiagnostics = resolveToolEnabled(
     config,
     'enableKbRagDiagnostics',
+    true,
+  );
+  const enableKbAnswerSynthesis = resolveToolEnabled(
+    config,
+    'enableKbAnswerSynthesis',
     true,
   );
   const enableStructuredQueryPlan = resolveToolEnabled(
@@ -309,6 +318,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableKbRagDiagnostics,
       tool: kbRagDiagnosticsTool,
+    },
+    {
+      name: 'kb_answer_synthesis',
+      category: 'rag',
+      riskLevel: 'low',
+      enabled: enableKbAnswerSynthesis,
+      tool: kbAnswerSynthesisTool,
     },
     {
       name: 'structured_query_plan',
