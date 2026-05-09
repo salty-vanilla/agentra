@@ -122,6 +122,6 @@ describe('Router Agent prompt', () => {
 
     expect(agentSource).toContain('AgentSkills');
     expect(agentSource).toContain('presentation-author-handoff');
-    expect(agentSource).toContain('buildGeneralTools');
+    expect(agentSource).toContain('buildRouterTools');
   });
 });
