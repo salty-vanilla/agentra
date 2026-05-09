@@ -5,6 +5,7 @@ describe('tool registry', () => {
     ENABLE_ARTIFACT_TOOLS: process.env.ENABLE_ARTIFACT_TOOLS,
     ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
     ENABLE_KB_RETRIEVE_TOOL: process.env.ENABLE_KB_RETRIEVE_TOOL,
+    ENABLE_KB_QUERY_READINESS_TOOL: process.env.ENABLE_KB_QUERY_READINESS_TOOL,
     ENABLE_KB_RAG_DIAGNOSTICS_TOOL: process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL,
     ENABLE_STRUCTURED_QUERY_PLAN_TOOL: process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL,
     ENABLE_STRUCTURED_PLAN_READINESS_TOOL:
@@ -31,6 +32,8 @@ describe('tool registry', () => {
     process.env.ENABLE_ARTIFACT_TOOLS = originalEnv.ENABLE_ARTIFACT_TOOLS;
     process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
     process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
+    process.env.ENABLE_KB_QUERY_READINESS_TOOL =
+      originalEnv.ENABLE_KB_QUERY_READINESS_TOOL;
     process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL =
       originalEnv.ENABLE_KB_RAG_DIAGNOSTICS_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL =
@@ -71,6 +74,13 @@ describe('tool registry', () => {
       delete process.env.ENABLE_KB_RETRIEVE_TOOL;
     } else {
       process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
+    }
+
+    if (originalEnv.ENABLE_KB_QUERY_READINESS_TOOL === undefined) {
+      delete process.env.ENABLE_KB_QUERY_READINESS_TOOL;
+    } else {
+      process.env.ENABLE_KB_QUERY_READINESS_TOOL =
+        originalEnv.ENABLE_KB_QUERY_READINESS_TOOL;
     }
 
     if (originalEnv.ENABLE_KB_RAG_DIAGNOSTICS_TOOL === undefined) {
@@ -177,6 +187,7 @@ describe('tool registry', () => {
       enableArtifact: true,
       enableBrief: true,
       enableKbRetrieve: false,
+      enableKbQueryReadiness: true,
       enableKbRagDiagnostics: true,
       enableStructuredQueryPlan: true,
       enableStructuredPlanReadiness: true,
@@ -203,6 +214,7 @@ describe('tool registry', () => {
       { name: 'create_brief', enabled: true },
       { name: 'merge_briefs', enabled: true },
       { name: 'kb_retrieve', enabled: false },
+      { name: 'kb_query_readiness', enabled: true },
       { name: 'kb_rag_diagnostics', enabled: true },
       { name: 'structured_query_plan', enabled: true },
       { name: 'structured_plan_readiness', enabled: true },
@@ -258,14 +270,18 @@ describe('tool registry', () => {
     );
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
     expect(
+      registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled,
+    ).toBe(true);
+    expect(
       registered.find((entry) => entry.name === 'kb_rag_diagnostics')?.enabled,
     ).toBe(true);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(12);
+    expect(enabledTools).toHaveLength(13);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
+      'kb_query_readiness',
       'kb_rag_diagnostics',
       'structured_query_plan',
       'structured_plan_readiness',
@@ -286,6 +302,7 @@ describe('tool registry', () => {
       'create_brief',
       'merge_briefs',
       'kb_retrieve',
+      'kb_query_readiness',
       'kb_rag_diagnostics',
       'structured_query_plan',
       'structured_plan_readiness',
@@ -329,6 +346,9 @@ describe('tool registry', () => {
     expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(true);
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(true);
     expect(
+      registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled,
+    ).toBe(true);
+    expect(
       registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
     ).toBe(true);
     expect(
@@ -356,6 +376,9 @@ describe('tool registry', () => {
 
     expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(false);
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
+    expect(
+      registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled,
+    ).toBe(true);
     expect(
       registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
     ).toBe(true);
