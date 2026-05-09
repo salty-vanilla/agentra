@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { buildMockStructuredQueryOutput } from '../../rag/mock-structured-query-provider.js';
 
-function buildPlan(overrides: Partial<Parameters<typeof buildMockStructuredQueryOutput>[0]['plan']> = {}) {
+function buildPlan(
+  overrides: Partial<Parameters<typeof buildMockStructuredQueryOutput>[0]['plan']> = {},
+) {
   return {
     id: 'plan-1',
     createdAt: '2026-05-07T00:00:00.000Z',
@@ -13,15 +15,18 @@ function buildPlan(overrides: Partial<Parameters<typeof buildMockStructuredQuery
   };
 }
 
-function buildExecutedFlow(overrides: Partial<Parameters<typeof buildMockStructuredQueryOutput>[0]> = {}) {
+function buildExecutedFlow(
+  overrides: Partial<Parameters<typeof buildMockStructuredQueryOutput>[0]> = {},
+) {
   const plan = overrides.plan ?? buildPlan();
-  const execution = overrides.plan === undefined
-    ? buildMockStructuredQueryOutput({ plan, createBrief: true, dryRun: true })
-    : buildMockStructuredQueryOutput({
-        plan,
-        createBrief: true,
-        dryRun: true,
-      });
+  const execution =
+    overrides.plan === undefined
+      ? buildMockStructuredQueryOutput({ plan, createBrief: true, dryRun: true })
+      : buildMockStructuredQueryOutput({
+          plan,
+          createBrief: true,
+          dryRun: true,
+        });
 
   return {
     status: 'executed' as const,
@@ -53,7 +58,9 @@ function buildExecutedFlow(overrides: Partial<Parameters<typeof buildMockStructu
 
 describe('structured answer synthesis', () => {
   it('normalizes a successful execution into an answer-ready payload', async () => {
-    const { synthesizeStructuredAnswer } = await import('../../rag/structured-answer-synthesis.js');
+    const { synthesizeStructuredAnswer } = await import(
+      '../../rag/structured-answer-synthesis.js'
+    );
 
     const flow = buildExecutedFlow();
     const output = synthesizeStructuredAnswer({
@@ -85,7 +92,9 @@ describe('structured answer synthesis', () => {
   });
 
   it('marks empty execution as no_data and keeps citations caveat when none exist', async () => {
-    const { synthesizeStructuredAnswer } = await import('../../rag/structured-answer-synthesis.js');
+    const { synthesizeStructuredAnswer } = await import(
+      '../../rag/structured-answer-synthesis.js'
+    );
 
     const plan = buildPlan({
       question: 'Show KPI aggregation for an empty segment',
@@ -122,12 +131,16 @@ describe('structured answer synthesis', () => {
 
     expect(output.status).toBe('no_data');
     expect(output.keyFindings).toEqual(['No structured rows were returned.']);
-    expect(output.caveats).toContain('No citations were available for this structured result.');
+    expect(output.caveats).toContain(
+      'No citations were available for this structured result.',
+    );
     expect(output.brief).toBeUndefined();
   });
 
   it('surfaces missing slots and blocking issues for clarification', async () => {
-    const { synthesizeStructuredAnswer } = await import('../../rag/structured-answer-synthesis.js');
+    const { synthesizeStructuredAnswer } = await import(
+      '../../rag/structured-answer-synthesis.js'
+    );
 
     const plan = buildPlan({
       question: 'Show KPI aggregation',
@@ -171,7 +184,9 @@ describe('structured answer synthesis', () => {
   });
 
   it('caps the rows preview at 50 entries', async () => {
-    const { synthesizeStructuredAnswer } = await import('../../rag/structured-answer-synthesis.js');
+    const { synthesizeStructuredAnswer } = await import(
+      '../../rag/structured-answer-synthesis.js'
+    );
 
     const plan = buildPlan();
     const rows = Array.from({ length: 60 }, (_, index) => ({

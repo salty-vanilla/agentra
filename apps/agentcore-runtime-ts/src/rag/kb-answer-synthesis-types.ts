@@ -46,20 +46,24 @@ export type KbRagFlowStatus =
 
 export type KbRagFlowOutput = {
   status: KbRagFlowStatus;
-  retrieval?: {
-    query?: string | undefined;
-    provider?: string | undefined;
-    sources: KbRagEvidenceSource[];
-    citations: KbRagCitation[];
-    brief?: KbRagBrief | undefined;
-    rawResultSummary?: {
-      resultCount: number;
-      originalResultCount?: number | undefined;
-      filteredByScoreCount?: number | undefined;
-      noResults?: boolean | undefined;
-    } | undefined;
-    metadata?: Record<string, unknown> | undefined;
-  } | undefined;
+  retrieval?:
+    | {
+        query?: string | undefined;
+        provider?: string | undefined;
+        sources: KbRagEvidenceSource[];
+        citations: KbRagCitation[];
+        brief?: KbRagBrief | undefined;
+        rawResultSummary?:
+          | {
+              resultCount: number;
+              originalResultCount?: number | undefined;
+              filteredByScoreCount?: number | undefined;
+              noResults?: boolean | undefined;
+            }
+          | undefined;
+        metadata?: Record<string, unknown> | undefined;
+      }
+    | undefined;
   nextAction?: string | undefined;
   messages?: string[] | undefined;
   metadata?: Record<string, unknown> | undefined;
@@ -92,10 +96,12 @@ export type KbAnswerSynthesisOutput = {
   sources: EvidenceSource[];
   citations: Citation[];
   brief?: Brief | undefined;
-  sourcePreview?: Array<{
-    title?: string;
-    snippet?: string;
-    score?: number;
-  }> | undefined;
+  sourcePreview?:
+    | Array<{
+        title?: string;
+        snippet?: string;
+        score?: number;
+      }>
+    | undefined;
   metadata?: Record<string, unknown> | undefined;
 };

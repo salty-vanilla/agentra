@@ -11,6 +11,8 @@ import type { ChatObservationToolCallStatus } from './chatObservationToolCallSta
 
 export interface ChatObservationToolCall {
   /** @minLength 1 */
+  toolCallId: string;
+  /** @minLength 1 */
   toolName: string;
   startedAt: string;
   completedAt?: string;

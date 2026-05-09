@@ -214,7 +214,10 @@ const structuredAnswerSynthesisInputSchema = z
       });
     }
 
-    if ((input.flow.metadata && Object.keys(input.flow.metadata).length > MAX_METADATA_KEYS)) {
+    if (
+      input.flow.metadata &&
+      Object.keys(input.flow.metadata).length > MAX_METADATA_KEYS
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: `flow.metadata must not exceed ${MAX_METADATA_KEYS} keys`,
@@ -227,7 +230,9 @@ export type StructuredAnswerSynthesisToolInput = z.infer<
   typeof structuredAnswerSynthesisInputSchema
 >;
 
-function validateStructuredAnswerSynthesisInput(input: StructuredAnswerSynthesisToolInput): void {
+function validateStructuredAnswerSynthesisInput(
+  input: StructuredAnswerSynthesisToolInput,
+): void {
   structuredAnswerSynthesisInputSchema.parse(input);
 }
 
@@ -236,7 +241,9 @@ export function executeStructuredAnswerSynthesisTool(
 ) {
   try {
     validateStructuredAnswerSynthesisInput(input);
-    return toolSuccess(synthesizeStructuredAnswer(input as StructuredAnswerSynthesisInput));
+    return toolSuccess(
+      synthesizeStructuredAnswer(input as StructuredAnswerSynthesisInput),
+    );
   } catch (error) {
     return toolFailure(errorMessage(error));
   }

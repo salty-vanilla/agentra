@@ -120,10 +120,7 @@ describe('mock structured query provider', () => {
       { period: '2026-Q1', productionCount: 10200 },
       { period: '2026-Q2', productionCount: 10850 },
     ]);
-    expect(productionOutput.summary.columnNames).toEqual([
-      'period',
-      'productionCount',
-    ]);
+    expect(productionOutput.summary.columnNames).toEqual(['period', 'productionCount']);
   });
 
   it('returns empty output for unknown intents and can omit the brief', async () => {

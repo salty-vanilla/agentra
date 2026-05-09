@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { buildMockStructuredQueryOutput } from '../../rag/mock-structured-query-provider.js';
 
-function buildFlow(status: 'executed' | 'needs_clarification' | 'not_configured' | 'unsupported' | 'error' = 'executed') {
+function buildFlow(
+  status:
+    | 'executed'
+    | 'needs_clarification'
+    | 'not_configured'
+    | 'unsupported'
+    | 'error' = 'executed',
+) {
   const plan = {
     id: 'plan-1',
     createdAt: '2026-05-07T00:00:00.000Z',
@@ -49,7 +56,10 @@ function buildFlow(status: 'executed' | 'needs_clarification' | 'not_configured'
 }
 
 describe('structured answer synthesis tool', () => {
-  function parseToolResponse(response: { status: string; content: Array<{ text: string }> }) {
+  function parseToolResponse(response: {
+    status: string;
+    content: Array<{ text: string }>;
+  }) {
     return JSON.parse(response.content[0]?.text ?? '{}');
   }
 

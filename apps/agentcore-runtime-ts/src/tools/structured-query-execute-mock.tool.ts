@@ -1,11 +1,11 @@
-import {
-  StructuredQueryExecutor,
-  MockStructuredQueryProvider,
-  buildMockStructuredQueryOutput,
-  type StructuredQueryPlan,
-} from '../rag/index.js';
 import { tool } from '@strands-agents/sdk';
 import { z } from 'zod';
+import {
+  type buildMockStructuredQueryOutput,
+  MockStructuredQueryProvider,
+  StructuredQueryExecutor,
+  type StructuredQueryPlan,
+} from '../rag/index.js';
 import { errorMessage, toolFailure, toolSuccess } from './tool-response.js';
 
 const MAX_QUESTION_LENGTH = 2000;

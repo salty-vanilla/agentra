@@ -44,10 +44,7 @@ describe('structured query planner', () => {
       intent: 'error_code_lookup',
     });
 
-    expect(plan.missingSlots).toEqual([
-      'error code or equipment',
-      'error code filter',
-    ]);
+    expect(plan.missingSlots).toEqual(['error code or equipment', 'error code filter']);
   });
 
   it('infers error code lookup from Japanese keywords', async () => {
