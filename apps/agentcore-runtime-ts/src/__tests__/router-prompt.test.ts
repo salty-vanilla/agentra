@@ -4,7 +4,10 @@ import { describe, expect, it } from 'vitest';
 
 describe('Router Agent prompt', () => {
   it('routes public web research through the web research handoff tool', async () => {
-    const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
+    const agentSource = await readFile(
+      join(import.meta.dirname, '../agents/router/prompt.ts'),
+      'utf-8',
+    );
 
     expect(agentSource).toContain('invoke_web_research_agent');
     expect(agentSource).toContain(
