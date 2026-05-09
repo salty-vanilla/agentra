@@ -53,7 +53,7 @@ function buildMockResult(input: StructuredQueryExecutionInput): MockQueryResult 
         ],
         keyFact: 'Found 1 mock error-code row.',
       };
-    case 'temperature_anomaly_summary':
+    case 'anomaly_summary':
       return {
         rows: [
           {

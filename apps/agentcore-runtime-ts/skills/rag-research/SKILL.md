@@ -1,7 +1,7 @@
 ---
 name: rag-research
 description: Retrieve and ground answers using configured internal knowledge sources.
-allowed-tools: kb_retrieve, structured_query_plan, structured_query_execute_mock, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: kb_retrieve, structured_query_plan, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # RAG Research Skill
@@ -18,6 +18,9 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 - `structured_query_execute_mock` does not query real data, generate SQL, or call any database.
 - Prefer `structured_query_plan` before asking follow-up questions when the request is partially specified. Use `missingSlots` to decide whether a follow-up is needed.
 - For anomaly analysis, use the generic `anomaly_summary` intent and represent the target signal through metrics, filters, target entity, or metadata. Do not create one intent per signal such as temperature, pressure, or vibration.
+- `structured_query_execute_bedrock_stub` is disabled by default and is only for validating future Bedrock KB structured provider wiring.
+- It returns `not_implemented` and does not query real Bedrock structured data.
+- Do not present its output as real data.
 - Use retrieved `sources` and `citations` to ground answers.
 - Use `create_brief` or `merge_briefs` when the retrieved evidence will feed a report, slide, or later tool.
 - Use `metadataFilter` when the user specifies document type, project, source, category, date-like metadata, or any other explicit KB metadata constraint.
