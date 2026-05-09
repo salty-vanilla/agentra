@@ -12,7 +12,7 @@ const MAX_METADATA_KEYS = 100;
 
 const structuredQueryIntentSchema = z.enum([
   'error_code_lookup',
-  'temperature_anomaly_summary',
+  'anomaly_summary',
   'kpi_aggregation',
   'equipment_history_lookup',
   'production_trend',

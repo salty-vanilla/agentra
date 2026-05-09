@@ -80,7 +80,7 @@ describe('mock structured query provider', () => {
       plan: {
         id: 'plan-2',
         createdAt: '2026-05-07T00:00:00.000Z',
-        intent: 'temperature_anomaly_summary',
+        intent: 'anomaly_summary',
         dataSourceKind: 'mock',
         question: 'Summarize temperature anomalies for line-7.',
         targetEntity: 'line-7',
