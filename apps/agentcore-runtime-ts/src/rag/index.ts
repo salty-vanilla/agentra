@@ -1,4 +1,6 @@
 export * from './bedrock-kb-retrieve-provider.js';
+export * from './bedrock-kb-structured-config.js';
+export * from './bedrock-kb-structured-live-adapter.js';
 export * from './bedrock-kb-structured-normalizer.js';
 export * from './bedrock-kb-structured-provider.js';
 export * from './bedrock-kb-structured-types.js';

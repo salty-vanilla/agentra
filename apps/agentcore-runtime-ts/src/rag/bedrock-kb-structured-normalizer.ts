@@ -190,6 +190,7 @@ export function buildBedrockKbStructuredRequest(input: {
   knowledgeBaseId?: string | undefined;
   region?: string | undefined;
   dataSourceName?: string | undefined;
+  executionMode?: BedrockKbStructuredRequest['executionMode'] | undefined;
   dryRun?: boolean | undefined;
   metadata?: Record<string, unknown> | undefined;
 }): BedrockKbStructuredRequest {
@@ -198,24 +199,27 @@ export function buildBedrockKbStructuredRequest(input: {
     knowledgeBaseId: input.knowledgeBaseId,
     region: input.region,
     dataSourceName: input.dataSourceName,
-    executionMode: 'stub',
+    executionMode: input.executionMode ?? 'stub',
     dryRun: input.dryRun ?? true,
     metadata: {
       ...input.metadata,
       provider: BEDROCK_PROVIDER_NAME,
       planId: input.plan.id,
-      executionMode: 'stub',
+      executionMode: input.executionMode ?? 'stub',
     },
   };
 }
 
 export function createNotImplementedBedrockKbStructuredRawResult(
   request: BedrockKbStructuredRequest,
+  options: {
+    message?: string | undefined;
+  } = {},
 ): BedrockKbStructuredRawResult {
   return {
     status: 'not_implemented',
     rows: [],
-    message: 'Bedrock KB structured provider is not implemented yet.',
+    message: options.message ?? 'Bedrock KB structured provider is not implemented yet.',
     metadata: {
       provider: BEDROCK_PROVIDER_NAME,
       planId: request.plan.id,
