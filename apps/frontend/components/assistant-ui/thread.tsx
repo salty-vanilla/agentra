@@ -403,7 +403,9 @@ const AssistantObservabilityDetails: FC = () => {
           tools: {summary.toolCallCount} (failed: {summary.toolFailureCount})
         </p>
         {toolCallIds.length > 0 ? (
-          <p className="break-all text-muted-foreground">tool ids: {toolCallIds.join(', ')}</p>
+          <p className="break-all text-muted-foreground">
+            tool ids: {toolCallIds.join(', ')}
+          </p>
         ) : null}
       </div>
     </div>

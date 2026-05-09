@@ -6,7 +6,7 @@ import type {
 } from '@strands-agents/sdk';
 import type { z } from 'zod';
 import type { ToolRegistryConfig } from '../../tools/registry.js';
-import {
+import type {
   webResearchAgentHandoffInputSchema,
   webResearchAgentHandoffOutputSchema,
 } from './handoff.js';

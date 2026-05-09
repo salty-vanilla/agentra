@@ -269,10 +269,7 @@ export class ObservationCollector {
     if (this.toolCalls.length === 0 && this.modelToolStartCount > 0) {
       const completedAt = nowIso();
       this.toolCalls.push({
-        toolCallId: buildSyntheticToolCallId(
-          'fallback',
-          `${this.traceId}:tool_call`,
-        ),
+        toolCallId: buildSyntheticToolCallId('fallback', `${this.traceId}:tool_call`),
         toolName: 'tool_call',
         startedAt: this.startedAt,
         completedAt,

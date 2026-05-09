@@ -1,10 +1,13 @@
-import type { StructuredQueryExecutionOutput } from './structured-query-executor-types.js';
 import type {
   StructuredPlanReadinessResult,
   StructuredProviderPath,
   StructuredQueryPlanValidationResult,
 } from './structured-plan-readiness-types.js';
-import type { StructuredQueryPlan, StructuredQueryPlanInput } from './structured-query-types.js';
+import type { StructuredQueryExecutionOutput } from './structured-query-executor-types.js';
+import type {
+  StructuredQueryPlan,
+  StructuredQueryPlanInput,
+} from './structured-query-types.js';
 
 export type StructuredRagFlowMode =
   | 'plan_only'

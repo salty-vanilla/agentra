@@ -1,9 +1,6 @@
 import { tool } from '@strands-agents/sdk';
 import { z } from 'zod';
-import {
-  createKbQueryPlan,
-  evaluateKbRetrievalReadiness,
-} from '../rag/index.js';
+import { createKbQueryPlan, evaluateKbRetrievalReadiness } from '../rag/index.js';
 import type { KbQueryPlan } from '../rag/kb-query-planning-types.js';
 import { errorMessage, toolFailure, toolSuccess } from './tool-response.js';
 
@@ -31,8 +28,12 @@ const kbQueryPlanSchema = z.object({
   topK: z.number().int().min(1).max(20),
   scoreThreshold: z.number().min(0).max(1).optional(),
   queryRewriteHint: z.string().max(MAX_STRING_LENGTH).optional(),
-  expectedSourceTypes: z.array(z.string().trim().min(1).max(MAX_STRING_LENGTH)).optional(),
-  metadataFilterHints: z.array(z.string().trim().min(1).max(MAX_STRING_LENGTH)).optional(),
+  expectedSourceTypes: z
+    .array(z.string().trim().min(1).max(MAX_STRING_LENGTH))
+    .optional(),
+  metadataFilterHints: z
+    .array(z.string().trim().min(1).max(MAX_STRING_LENGTH))
+    .optional(),
   missingContext: z.array(z.string().trim().min(1).max(MAX_STRING_LENGTH)).optional(),
   confidence: z.number().min(0).max(1),
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -66,7 +67,11 @@ const kbQueryReadinessInputSchema = z
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((input, ctx) => {
-    if (input.plan === undefined && input.planInput === undefined && input.query === undefined) {
+    if (
+      input.plan === undefined &&
+      input.planInput === undefined &&
+      input.query === undefined
+    ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: 'query, plan, or planInput must be provided',

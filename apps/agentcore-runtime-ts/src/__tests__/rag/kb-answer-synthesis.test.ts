@@ -145,7 +145,7 @@ describe('kb answer synthesis', () => {
       flow: {
         status: 'answer_ready',
         retrieval: {
-          ...buildRetrieval({
+          ...(buildRetrieval({
             sources: [],
             citations: [],
             brief: {
@@ -155,7 +155,9 @@ describe('kb answer synthesis', () => {
               outputFormat: 'report' as const,
               topic: 'Runtime policy',
               goal: 'Summarize KB evidence',
-              openQuestions: ['No relevant knowledge base chunks were retrieved for this query.'],
+              openQuestions: [
+                'No relevant knowledge base chunks were retrieved for this query.',
+              ],
               sourceIds: [],
               metadata: {
                 provider: 'bedrock-kb',
@@ -167,7 +169,7 @@ describe('kb answer synthesis', () => {
               originalResultCount: 2,
               noResults: true,
             },
-          }) as never,
+          }) as never),
         },
       },
       createBrief: false,
@@ -207,7 +209,7 @@ describe('kb answer synthesis', () => {
       flow: {
         status: 'answer_ready',
         retrieval: {
-          ...buildRetrieval({
+          ...(buildRetrieval({
             sources: [
               {
                 id: 'source-1',
@@ -231,7 +233,7 @@ describe('kb answer synthesis', () => {
               resultCount: 1,
               originalResultCount: 1,
             },
-          }) as never,
+          }) as never),
         },
       },
       createBrief: false,

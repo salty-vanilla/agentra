@@ -8,7 +8,13 @@ function getResources(template: Template, type: string) {
   return Object.values(resources);
 }
 
-function expectRemovalPolicy(resource: any, policy: 'Delete' | 'Retain') {
+function expectRemovalPolicy(
+  resource: { DeletionPolicy?: string; UpdateReplacePolicy?: string } | undefined,
+  policy: 'Delete' | 'Retain',
+) {
+  if (!resource) {
+    throw new Error('Expected resource to be defined');
+  }
   expect(resource.DeletionPolicy).toBe(policy);
   expect(resource.UpdateReplacePolicy).toBe(policy);
 }

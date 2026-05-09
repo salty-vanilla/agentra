@@ -1,7 +1,7 @@
 import {
-  createBrief,
   type Brief,
   type Citation,
+  createBrief,
   type EvidenceSource,
 } from '@agentra/agent-tools';
 import type {
@@ -79,7 +79,9 @@ function hasWeakEvidence(sources: EvidenceSource[]): boolean {
 
   const definedScores = sources
     .map((source) => source.score)
-    .filter((score): score is number => typeof score === 'number' && Number.isFinite(score));
+    .filter(
+      (score): score is number => typeof score === 'number' && Number.isFinite(score),
+    );
   const allBelowThreshold =
     definedScores.length > 0 &&
     definedScores.every((score) => score < WEAK_EVIDENCE_SCORE_THRESHOLD);
@@ -118,7 +120,9 @@ function resolveTitle(input: {
     case 'answer_ready':
       return `KB answer: ${base}`;
     case 'needs_clarification':
-      return query ? `KB answer needs clarification: ${base}` : 'KB answer needs clarification';
+      return query
+        ? `KB answer needs clarification: ${base}`
+        : 'KB answer needs clarification';
     case 'not_configured':
       return query ? `KB answer not configured: ${base}` : 'KB answer not configured';
     case 'fallback_recommended':
@@ -126,7 +130,9 @@ function resolveTitle(input: {
     case 'no_results':
       return query ? `KB answer not found: ${base}` : 'KB answer not found';
     case 'weak_evidence':
-      return query ? `KB answer needs stronger evidence: ${base}` : 'KB answer needs stronger evidence';
+      return query
+        ? `KB answer needs stronger evidence: ${base}`
+        : 'KB answer needs stronger evidence';
     case 'error':
     default:
       return query ? `KB answer synthesis error: ${base}` : 'KB answer synthesis error';
@@ -216,12 +222,18 @@ function buildNextActions(input: { status: KbAnswerSynthesisStatus }): string[] 
     case 'no_results':
       return ['Refine the query, adjust metadata filters, or fall back to web research.'];
     case 'weak_evidence':
-      return ['Narrow the query, improve evidence quality, or gather additional sources.'];
+      return [
+        'Narrow the query, improve evidence quality, or gather additional sources.',
+      ];
     case 'answer_ready':
-      return ['Use the retrieved sources as grounded evidence for the final response, report, or slide.'];
+      return [
+        'Use the retrieved sources as grounded evidence for the final response, report, or slide.',
+      ];
     case 'error':
     default:
-      return ['Inspect the KB flow output and retry after fixing the retrieval or wiring issue.'];
+      return [
+        'Inspect the KB flow output and retry after fixing the retrieval or wiring issue.',
+      ];
   }
 }
 

@@ -1,11 +1,7 @@
 import type { Brief, Citation, EvidenceSource } from '@agentra/agent-tools';
 import type { StructuredRagFlowOutput } from './structured-rag-flow-types.js';
 
-export type StructuredAnswerTone =
-  | 'concise'
-  | 'detailed'
-  | 'executive'
-  | 'engineering';
+export type StructuredAnswerTone = 'concise' | 'detailed' | 'executive' | 'engineering';
 
 export type StructuredAnswerSynthesisInput = {
   flow: StructuredRagFlowOutput;

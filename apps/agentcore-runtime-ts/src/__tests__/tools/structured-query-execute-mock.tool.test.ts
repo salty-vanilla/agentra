@@ -6,7 +6,10 @@ describe('structured query execute mock tool', () => {
     vi.unstubAllEnvs();
   });
 
-  function parseToolResponse(response: { status: string; content: Array<{ text: string }> }) {
+  function parseToolResponse(response: {
+    status: string;
+    content: Array<{ text: string }>;
+  }) {
     return JSON.parse(response.content[0]?.text ?? '{}');
   }
 

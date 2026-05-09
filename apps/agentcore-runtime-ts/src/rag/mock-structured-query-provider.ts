@@ -149,7 +149,9 @@ function buildMetadata(input: StructuredQueryExecutionInput): Record<string, unk
   return metadata;
 }
 
-function buildSourceMetadata(input: StructuredQueryExecutionInput): Record<string, unknown> {
+function buildSourceMetadata(
+  input: StructuredQueryExecutionInput,
+): Record<string, unknown> {
   const metadata = buildMetadata(input);
   return {
     ...metadata,
@@ -173,7 +175,7 @@ export function buildMockStructuredQueryOutput(
     dataSourceKind: 'mock' as const,
     intent: input.plan.intent,
     dryRun: input.dryRun ?? true,
-    ...((result.message !== undefined) ? { message: result.message } : {}),
+    ...(result.message !== undefined ? { message: result.message } : {}),
   };
   const sources = [
     normalizeEvidenceSource({

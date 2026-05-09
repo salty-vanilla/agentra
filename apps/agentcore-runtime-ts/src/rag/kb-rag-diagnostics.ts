@@ -126,10 +126,7 @@ function resolveConfig(
   };
 }
 
-function addCheck(
-  checks: KbRagDiagnosticsCheck[],
-  input: KbRagDiagnosticsCheck,
-): void {
+function addCheck(checks: KbRagDiagnosticsCheck[], input: KbRagDiagnosticsCheck): void {
   checks.push(input);
 }
 
@@ -275,7 +272,9 @@ export function runKbRagDiagnostics(
   });
 
   if (config.regionSource === 'default') {
-    nextActions.push('Set BEDROCK_KB_REGION or AWS_REGION to avoid the default region fallback.');
+    nextActions.push(
+      'Set BEDROCK_KB_REGION or AWS_REGION to avoid the default region fallback.',
+    );
   }
 
   addCheck(checks, {
@@ -305,11 +304,17 @@ export function runKbRagDiagnostics(
   const status = aggregateStatus(checks);
 
   if (status === 'pass') {
-    nextActions.push('KB retrieval is configured enough for the next safe retrieval step.');
+    nextActions.push(
+      'KB retrieval is configured enough for the next safe retrieval step.',
+    );
   } else if (status === 'warn') {
-    nextActions.push('Address warnings before relying on KB retrieval for production use.');
+    nextActions.push(
+      'Address warnings before relying on KB retrieval for production use.',
+    );
   } else if (status === 'fail') {
-    nextActions.push('Fix the blocking KB retrieve configuration issues before running retrieval.');
+    nextActions.push(
+      'Fix the blocking KB retrieve configuration issues before running retrieval.',
+    );
   }
 
   return {
@@ -329,7 +334,8 @@ export function runKbRagDiagnostics(
               BEDROCK_KB_ID: config.knowledgeBaseId,
               BEDROCK_KB_REGION:
                 config.regionSource === 'BEDROCK_KB_REGION' ? config.region : undefined,
-              AWS_REGION: config.regionSource === 'AWS_REGION' ? config.region : undefined,
+              AWS_REGION:
+                config.regionSource === 'AWS_REGION' ? config.region : undefined,
               AWS_DEFAULT_REGION:
                 config.regionSource === 'AWS_DEFAULT_REGION' ? config.region : undefined,
               ENABLE_KB_RETRIEVE_TOOL: process.env.ENABLE_KB_RETRIEVE_TOOL,
