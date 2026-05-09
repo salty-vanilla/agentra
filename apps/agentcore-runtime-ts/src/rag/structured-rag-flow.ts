@@ -132,6 +132,7 @@ export async function runStructuredRagFlow(
   const readiness = evaluateStructuredPlanReadiness({
     plan: resolved.plan,
     validation,
+    skipCatalogValidation: input.validateAgainstCatalog === false,
     preferredProvider: input.preferredProvider,
     allowMock: input.allowMock,
     bedrockStructuredEnabled: input.bedrockStructuredEnabled,
