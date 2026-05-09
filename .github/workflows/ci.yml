@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build agent tools package
+        run: pnpm --filter @agentra/agent-tools build
+
       - name: Build presentation author package
         run: pnpm --filter @agentra/presentation-author build
 
