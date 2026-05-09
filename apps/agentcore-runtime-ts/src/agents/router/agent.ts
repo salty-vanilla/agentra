@@ -2,8 +2,8 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Agent, BedrockModel, type Plugin } from '@strands-agents/sdk';
 import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
-import { buildRouterTools } from '../../tools/registry.js';
 import { buildRouterPrompt } from './prompt.js';
+import { buildRouterTools } from './tools.js';
 import type { RouterAgentConfig, RouterModelConfig } from './types.js';
 
 const DEFAULT_MODEL_CONFIG: Required<RouterModelConfig> = {

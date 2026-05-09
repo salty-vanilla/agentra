@@ -278,8 +278,8 @@ describe('tool registry', () => {
 
     const mod = await import('../../tools/registry.js');
     const registered = mod.getRegisteredTools();
-    const enabledTools = mod.buildGeneralTools();
-    const enabledNames = enabledTools.map((entry) => entry.name);
+    const { buildRouterTools } = await import('../../agents/router/tools.js');
+    const enabledNames = buildRouterTools().map((entry) => entry.name);
 
     expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
       false,
@@ -309,7 +309,7 @@ describe('tool registry', () => {
     expect(registered.find((entry) => entry.name === 'kb_rag_diagnostics')?.enabled).toBe(
       true,
     );
-    expect(enabledTools).toHaveLength(6);
+    expect(enabledNames).toHaveLength(6);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
@@ -349,8 +349,8 @@ describe('tool registry', () => {
     ]);
   });
 
-  it('builds a slim router tool set and keeps buildGeneralTools as a wrapper', async () => {
-    const mod = await import('../../tools/registry.js');
+  it('builds a slim router tool set from the router-owned tool module', async () => {
+    const { buildRouterTools } = await import('../../agents/router/tools.js');
     const config = {
       enableTavily: true,
       enablePresentation: true,
@@ -373,7 +373,7 @@ describe('tool registry', () => {
       enableWebResearch: true,
     };
 
-    const routerNames = mod.buildRouterTools(config).map((entry) => entry.name);
+    const routerNames = buildRouterTools(config).map((entry) => entry.name);
 
     expect(routerNames).toEqual([
       'date_resolver',
@@ -391,18 +391,17 @@ describe('tool registry', () => {
     expect(routerNames).not.toContain('structured_rag_flow');
     expect(routerNames).not.toContain('web_research');
     expect(routerNames).not.toContain('tavily_search');
-    expect(mod.buildGeneralTools(config).map((entry) => entry.name)).toEqual(routerNames);
   });
 
   it('builds manufacturing line tools with rag and structured rag enabled', async () => {
-    const mod = await import('../../tools/registry.js');
+    const { buildManufacturingLineTools } = await import(
+      '../../agents/manufacturing-line/tools.js'
+    );
 
-    const names = mod
-      .buildManufacturingLineTools({
-        enableKbRetrieve: true,
-        enableStructuredQueryExecuteBedrockStub: true,
-      })
-      .map((entry) => entry.name);
+    const names = buildManufacturingLineTools({
+      enableKbRetrieve: true,
+      enableStructuredQueryExecuteBedrockStub: true,
+    }).map((entry) => entry.name);
 
     expect(names).toEqual([
       'date_resolver',
@@ -427,14 +426,12 @@ describe('tool registry', () => {
   });
 
   it('builds web research tools with web research and direct Tavily tools enabled', async () => {
-    const mod = await import('../../tools/registry.js');
+    const { buildWebResearchTools } = await import('../../agents/web-research/tools.js');
 
-    const names = mod
-      .buildWebResearchTools({
-        enableTavily: true,
-        enableWebResearch: true,
-      })
-      .map((entry) => entry.name);
+    const names = buildWebResearchTools({
+      enableTavily: true,
+      enableWebResearch: true,
+    }).map((entry) => entry.name);
 
     expect(names).toEqual([
       'date_resolver',
@@ -450,13 +447,12 @@ describe('tool registry', () => {
     ]);
   });
 
-  it('builds presentation handoff tools', async () => {
-    const mod = await import('../../tools/registry.js');
+  it('keeps presentation handoff tools in the router-owned tool set', async () => {
+    const { buildRouterTools } = await import('../../agents/router/tools.js');
 
-    expect(mod.buildPresentationHandoffTools().map((entry) => entry.name)).toEqual([
-      'create_artifact_manifest',
+    expect(buildRouterTools().map((entry) => entry.name)).toContain(
       'create_slide_presentation',
-    ]);
+    );
   });
 
   it('keeps per-agent builders deterministic when env flags disable tools', async () => {
@@ -466,19 +462,30 @@ describe('tool registry', () => {
     vi.stubEnv('ENABLE_STRUCTURED_RAG_FLOW_TOOL', 'false');
     vi.stubEnv('ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL', 'false');
 
-    const mod = await import('../../tools/registry.js');
+    const { buildWebResearchTools } = await import('../../agents/web-research/tools.js');
+    const { buildManufacturingLineTools } = await import(
+      '../../agents/manufacturing-line/tools.js'
+    );
+    const { buildRouterTools } = await import('../../agents/router/tools.js');
 
-    expect(mod.buildWebResearchTools().map((entry) => entry.name)).toEqual([
+    expect(buildWebResearchTools().map((entry) => entry.name)).toEqual([
       'date_resolver',
       'normalize_evidence_source',
       'build_citations',
       'create_brief',
       'merge_briefs',
     ]);
-    expect(mod.buildPresentationHandoffTools().map((entry) => entry.name)).toEqual([
+    expect(buildRouterTools().map((entry) => entry.name)).toEqual([
+      'date_resolver',
+      'calculator',
+      'table_summary',
       'create_artifact_manifest',
+      'create_brief',
+      'merge_briefs',
+      'invoke_manufacturing_line_agent',
+      'invoke_web_research_agent',
     ]);
-    expect(mod.buildManufacturingLineTools().map((entry) => entry.name)).toEqual([
+    expect(buildManufacturingLineTools().map((entry) => entry.name)).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
@@ -515,8 +522,9 @@ describe('tool registry', () => {
     vi.stubEnv('ENABLE_WEB_RESEARCH_AGENT_TOOL', 'false');
 
     const mod = await import('../../tools/registry.js');
+    const { buildRouterTools } = await import('../../agents/router/tools.js');
     const registered = mod.getRegisteredTools();
-    const routerNames = mod.buildRouterTools().map((entry) => entry.name);
+    const routerNames = buildRouterTools().map((entry) => entry.name);
 
     expect(mod.resolveToolRegistryConfigFromEnv().enableWebResearchAgentTool).toBe(false);
     expect(
@@ -529,8 +537,9 @@ describe('tool registry', () => {
     vi.stubEnv('ENABLE_MANUFACTURING_LINE_AGENT_TOOL', 'false');
 
     const mod = await import('../../tools/registry.js');
+    const { buildRouterTools } = await import('../../agents/router/tools.js');
     const registered = mod.getRegisteredTools();
-    const routerNames = mod.buildRouterTools().map((entry) => entry.name);
+    const routerNames = buildRouterTools().map((entry) => entry.name);
 
     expect(mod.resolveToolRegistryConfigFromEnv().enableManufacturingLineAgentTool).toBe(
       false,
