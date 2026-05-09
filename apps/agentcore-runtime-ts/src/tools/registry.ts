@@ -6,6 +6,7 @@ import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
+import { kbQueryReadinessTool } from './kb-query-readiness.tool.js';
 import { kbRagDiagnosticsTool } from './kb-rag-diagnostics.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
 import { structuredAnswerSynthesisTool } from './structured-answer-synthesis.tool.js';
@@ -61,6 +62,7 @@ export type ToolRegistryConfig = {
   enableArtifact?: boolean;
   enableBrief?: boolean;
   enableKbRetrieve?: boolean;
+  enableKbQueryReadiness?: boolean;
   enableKbRagDiagnostics?: boolean;
   enableStructuredQueryPlan?: boolean;
   enableStructuredPlanReadiness?: boolean;
@@ -82,6 +84,7 @@ const TOOL_ORDER = [
   'create_brief',
   'merge_briefs',
   'kb_retrieve',
+  'kb_query_readiness',
   'kb_rag_diagnostics',
   'structured_query_plan',
   'structured_plan_readiness',
@@ -134,6 +137,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       'ENABLE_KB_RETRIEVE_TOOL',
       Boolean(process.env.BEDROCK_KB_ID?.trim()),
     ),
+    enableKbQueryReadiness: resolveEnvFlag('ENABLE_KB_QUERY_READINESS_TOOL', true),
     enableKbRagDiagnostics: resolveEnvFlag('ENABLE_KB_RAG_DIAGNOSTICS_TOOL', true),
     enableStructuredQueryPlan: resolveEnvFlag('ENABLE_STRUCTURED_QUERY_PLAN_TOOL', true),
     enableStructuredPlanReadiness: resolveEnvFlag(
@@ -181,6 +185,11 @@ export function getRegisteredTools(
   const enableArtifact = resolveToolEnabled(config, 'enableArtifact', true);
   const enableBrief = resolveToolEnabled(config, 'enableBrief', true);
   const enableKbRetrieve = resolveToolEnabled(config, 'enableKbRetrieve', false);
+  const enableKbQueryReadiness = resolveToolEnabled(
+    config,
+    'enableKbQueryReadiness',
+    true,
+  );
   const enableKbRagDiagnostics = resolveToolEnabled(
     config,
     'enableKbRagDiagnostics',
@@ -286,6 +295,13 @@ export function getRegisteredTools(
       riskLevel: 'medium',
       enabled: enableKbRetrieve,
       tool: kbRetrieveTool,
+    },
+    {
+      name: 'kb_query_readiness',
+      category: 'rag',
+      riskLevel: 'low',
+      enabled: enableKbQueryReadiness,
+      tool: kbQueryReadinessTool,
     },
     {
       name: 'kb_rag_diagnostics',
