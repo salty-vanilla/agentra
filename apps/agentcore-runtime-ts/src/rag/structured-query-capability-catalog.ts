@@ -28,6 +28,32 @@ export type StructuredQueryCapability = {
   readonly exampleSignals?: readonly string[];
 };
 
+export type StructuredTargetSignal =
+  | 'temperature'
+  | 'pressure'
+  | 'current'
+  | 'vibration'
+  | 'humidity'
+  | 'flow_rate'
+  | 'defect_rate'
+  | 'throughput'
+  | 'availability';
+
+export const STRUCTURED_TARGET_SIGNAL_KEYWORDS: Record<
+  StructuredTargetSignal,
+  readonly string[]
+> = {
+  temperature: ['temperature', 'temp', '温度', '温調'],
+  pressure: ['pressure', '圧力'],
+  current: ['current', 'ampere', '電流'],
+  vibration: ['vibration', '振動'],
+  humidity: ['humidity', '湿度'],
+  flow_rate: ['flow rate', 'flow', '流量'],
+  defect_rate: ['defect rate', 'defect', '不良率', '不良'],
+  throughput: ['throughput', 'スループット'],
+  availability: ['availability', '稼働率'],
+};
+
 /**
  * Lightweight query capability catalog.
  *
