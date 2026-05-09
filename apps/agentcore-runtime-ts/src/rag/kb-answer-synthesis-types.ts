@@ -1,4 +1,5 @@
 import type { Brief, Citation, EvidenceSource } from '@agentra/agent-tools';
+import type { RagSearchOutput } from './types.js';
 
 export type KbRagEvidenceSource = {
   id: string;
@@ -37,38 +38,6 @@ export type KbRagBrief = {
   metadata?: Record<string, unknown> | undefined;
 };
 
-export type KbRagFlowStatus =
-  | 'answer_ready'
-  | 'needs_clarification'
-  | 'not_configured'
-  | 'fallback_recommended'
-  | 'error';
-
-export type KbRagFlowOutput = {
-  status: KbRagFlowStatus;
-  retrieval?:
-    | {
-        query?: string | undefined;
-        provider?: string | undefined;
-        sources: KbRagEvidenceSource[];
-        citations: KbRagCitation[];
-        brief?: KbRagBrief | undefined;
-        rawResultSummary?:
-          | {
-              resultCount: number;
-              originalResultCount?: number | undefined;
-              filteredByScoreCount?: number | undefined;
-              noResults?: boolean | undefined;
-            }
-          | undefined;
-        metadata?: Record<string, unknown> | undefined;
-      }
-    | undefined;
-  nextAction?: string | undefined;
-  messages?: string[] | undefined;
-  metadata?: Record<string, unknown> | undefined;
-};
-
 export type KbAnswerSynthesisStatus =
   | 'answer_ready'
   | 'needs_clarification'
@@ -78,8 +47,27 @@ export type KbAnswerSynthesisStatus =
   | 'weak_evidence'
   | 'error';
 
+export type KbAnswerSynthesisFlowStatus =
+  | 'planned'
+  | 'ready'
+  | 'retrieved'
+  | 'answer_ready'
+  | 'needs_clarification'
+  | 'not_configured'
+  | 'fallback_recommended'
+  | 'unsupported'
+  | 'error';
+
+export type KbAnswerSynthesisFlowOutput = {
+  status: KbAnswerSynthesisFlowStatus;
+  retrieval?: RagSearchOutput | undefined;
+  nextAction?: string | undefined;
+  messages?: string[] | undefined;
+  metadata?: Record<string, unknown> | undefined;
+};
+
 export type KbAnswerSynthesisInput = {
-  flow: KbRagFlowOutput;
+  flow: KbAnswerSynthesisFlowOutput;
   includeSourcePreview?: boolean | undefined;
   maxSources?: number | undefined;
   createBrief?: boolean | undefined;

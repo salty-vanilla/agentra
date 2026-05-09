@@ -8,6 +8,7 @@ const MANUFACTURING_LINE_TOOL_NAMES = [
   'kb_retrieve',
   'kb_rag_diagnostics',
   'kb_query_readiness',
+  'kb_rag_flow',
   'kb_answer_synthesis',
   'structured_query_plan',
   'structured_plan_readiness',

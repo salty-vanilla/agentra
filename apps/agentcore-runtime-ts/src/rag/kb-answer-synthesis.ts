@@ -5,10 +5,10 @@ import {
   type EvidenceSource,
 } from '@agentra/agent-tools';
 import type {
+  KbAnswerSynthesisFlowOutput,
   KbAnswerSynthesisInput,
   KbAnswerSynthesisOutput,
   KbAnswerSynthesisStatus,
-  KbRagFlowOutput,
 } from './kb-answer-synthesis-types.js';
 
 const SYNTHESIZER_ID = 'kb-answer-synthesis-v1';
@@ -64,11 +64,11 @@ function definedProperty<K extends string, V>(
   return value === undefined ? {} : ({ [key]: value } as Record<K, V>);
 }
 
-function collectSources(flow: KbRagFlowOutput): EvidenceSource[] {
+function collectSources(flow: KbAnswerSynthesisFlowOutput): EvidenceSource[] {
   return (flow.retrieval?.sources ?? []) as EvidenceSource[];
 }
 
-function collectCitations(flow: KbRagFlowOutput): Citation[] {
+function collectCitations(flow: KbAnswerSynthesisFlowOutput): Citation[] {
   return (flow.retrieval?.citations ?? []) as Citation[];
 }
 
@@ -89,13 +89,9 @@ function hasWeakEvidence(sources: EvidenceSource[]): boolean {
   return sources.length < 2 || allBelowThreshold;
 }
 
-function resolveStatus(flow: KbRagFlowOutput): KbAnswerSynthesisStatus {
+function resolveStatus(flow: KbAnswerSynthesisFlowOutput): KbAnswerSynthesisStatus {
   switch (flow.status) {
-    case 'needs_clarification':
-    case 'not_configured':
-    case 'fallback_recommended':
-    case 'error':
-      return flow.status;
+    case 'retrieved':
     case 'answer_ready': {
       const sources = collectSources(flow);
       if (sources.length === 0) {
@@ -104,13 +100,18 @@ function resolveStatus(flow: KbRagFlowOutput): KbAnswerSynthesisStatus {
 
       return hasWeakEvidence(sources) ? 'weak_evidence' : 'answer_ready';
     }
+    case 'needs_clarification':
+    case 'not_configured':
+    case 'fallback_recommended':
+    case 'error':
+      return flow.status;
     default:
       return 'error';
   }
 }
 
 function resolveTitle(input: {
-  flow: KbRagFlowOutput;
+  flow: KbAnswerSynthesisFlowOutput;
   status: KbAnswerSynthesisStatus;
 }): string {
   const query = trimText(input.flow.retrieval?.query);
@@ -160,7 +161,7 @@ function buildSummary(input: {
   }
 }
 
-function buildKeyFindings(retrieval: KbRagFlowOutput['retrieval']): string[] {
+function buildKeyFindings(retrieval: KbAnswerSynthesisFlowOutput['retrieval']): string[] {
   const findings: string[] = [];
   const briefFacts = retrieval?.brief?.keyFacts ?? [];
   if (briefFacts.length > 0) {
@@ -260,7 +261,7 @@ function buildSourcePreview(input: {
 }
 
 function buildBrief(input: {
-  flow: KbRagFlowOutput;
+  flow: KbAnswerSynthesisFlowOutput;
   status: KbAnswerSynthesisStatus;
   keyFindings: string[];
   sources: EvidenceSource[];
@@ -302,7 +303,7 @@ function buildBrief(input: {
 }
 
 function buildMetadata(input: {
-  flow: KbRagFlowOutput;
+  flow: KbAnswerSynthesisFlowOutput;
   status: KbAnswerSynthesisStatus;
   metadata: Record<string, unknown> | undefined;
   sources: EvidenceSource[];

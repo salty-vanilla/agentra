@@ -1,7 +1,7 @@
 ---
 name: rag-research
 description: Retrieve and ground answers using configured internal knowledge sources.
-allowed-tools: kb_retrieve, kb_answer_synthesis, kb_query_readiness, kb_rag_diagnostics, structured_query_plan, structured_plan_readiness, structured_rag_flow, structured_answer_synthesis, bedrock_structured_poc_diagnostics, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: kb_retrieve, kb_rag_flow, kb_answer_synthesis, kb_query_readiness, kb_rag_diagnostics, structured_query_plan, structured_plan_readiness, structured_rag_flow, structured_answer_synthesis, bedrock_structured_poc_diagnostics, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # RAG Research Skill
@@ -17,12 +17,17 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 
 ## Tool guidance
 
-- Use `kb_retrieve` when the answer should be grounded in the configured Bedrock Knowledge Base.
+- Use `kb_rag_flow` for normal document KB RAG when planning, readiness, and retrieval should be handled together.
+- Use `kb_retrieve` when you only need retrieval evidence.
 - `kb_retrieve` only retrieves evidence. It does not generate the final answer.
-- Use `kb_answer_synthesis` after `kb_retrieve` when the retrieved evidence should become a user-facing answer payload, report section, or slide brief input.
+- Use `kb_answer_synthesis` after `kb_rag_flow` or `kb_retrieve` when the retrieved evidence should become a user-facing answer payload, report section, or slide brief input.
 - `kb_answer_synthesis` is deterministic and does not invent citations or facts beyond the retrieved evidence.
-- Use `kb_query_readiness` before `kb_retrieve` when the query is ambiguous, under-specified, or might need web fallback.
+- Use `kb_query_readiness` before `kb_rag_flow` or `kb_retrieve` when the query is ambiguous, under-specified, or might need web fallback.
 - `kb_query_readiness` creates or accepts a deterministic plan and evaluates readiness. It does not retrieve documents or call AWS.
+- `kb_rag_flow` is deterministic and does not call an LLM. It creates or accepts a plan, evaluates readiness, and retrieves only when KB retrieval is configured and ready.
+- Do not use `kb_rag_flow` as a replacement for structured RAG.
+- Do not treat no-result retrieval as factual absence.
+- Use fallback only when readiness or retrieval output recommends it.
 - Use `kb_rag_diagnostics` to check whether normal Bedrock KB retrieve configuration is safe enough to run.
 - `kb_rag_diagnostics` does not call AWS, retrieve documents, or provide answer evidence.
 - Do not treat diagnostics output as user-facing factual answer content.
