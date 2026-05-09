@@ -4,23 +4,22 @@ import {
 } from '../../tools/registry.js';
 import { buildToolsByName, type RegisteredToolName } from '../../tools/tool-selection.js';
 
-const WEB_RESEARCH_TOOL_NAMES = [
+const ROUTER_TOOL_NAMES = [
   'date_resolver',
-  'web_research',
-  'tavily_search',
-  'tavily_extract',
-  'tavily_crawl',
-  'tavily_map',
-  'normalize_evidence_source',
-  'build_citations',
+  'calculator',
+  'table_summary',
   'create_brief',
   'merge_briefs',
+  'create_artifact_manifest',
+  'invoke_manufacturing_line_agent',
+  'invoke_web_research_agent',
+  'create_slide_presentation',
 ] as const satisfies readonly RegisteredToolName[];
 
-export function buildWebResearchTools(
+export function buildRouterTools(
   config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
 ) {
-  return buildToolsByName(WEB_RESEARCH_TOOL_NAMES, config);
+  return buildToolsByName(ROUTER_TOOL_NAMES, config);
 }
 
 export type { ToolRegistryConfig } from '../../tools/registry.js';
