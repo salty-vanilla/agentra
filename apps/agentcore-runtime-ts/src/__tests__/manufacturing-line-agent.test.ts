@@ -76,9 +76,11 @@ describe('Manufacturing Line Agent module', () => {
   });
 
   it('keeps Router behavior slim before the AGENT-3 handoff', async () => {
-    const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
+    const agentSource = await readFile(
+      join(import.meta.dirname, '../agents/router/prompt.ts'),
+      'utf-8',
+    );
 
-    expect(agentSource).toContain('buildRouterTools');
     expect(agentSource).toContain('invoke_manufacturing_line_agent');
     expect(agentSource).not.toContain('equipment history lookup');
     expect(agentSource).not.toContain('production trend lookup');

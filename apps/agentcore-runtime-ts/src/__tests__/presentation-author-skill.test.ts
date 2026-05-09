@@ -123,7 +123,10 @@ describe('Router handoff SKILL.md content', () => {
 describe('Router Agent prompt integration', () => {
   it('agent.ts uses AgentSkills plugin', async () => {
     const { readFile } = await import('node:fs/promises');
-    const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
+    const agentSource = await readFile(
+      join(import.meta.dirname, '../agents/router/agent.ts'),
+      'utf-8',
+    );
     expect(agentSource).toContain('AgentSkills');
     expect(agentSource).toContain('presentation-author-handoff');
     expect(agentSource).toContain('web-research');
