@@ -5,6 +5,7 @@ describe('tool registry', () => {
     ENABLE_ARTIFACT_TOOLS: process.env.ENABLE_ARTIFACT_TOOLS,
     ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
     ENABLE_KB_RETRIEVE_TOOL: process.env.ENABLE_KB_RETRIEVE_TOOL,
+    ENABLE_KB_RAG_DIAGNOSTICS_TOOL: process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL,
     ENABLE_STRUCTURED_QUERY_PLAN_TOOL: process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL,
     ENABLE_STRUCTURED_PLAN_READINESS_TOOL:
       process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL,
@@ -30,6 +31,8 @@ describe('tool registry', () => {
     process.env.ENABLE_ARTIFACT_TOOLS = originalEnv.ENABLE_ARTIFACT_TOOLS;
     process.env.ENABLE_BRIEF_TOOLS = originalEnv.ENABLE_BRIEF_TOOLS;
     process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
+    process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL =
+      originalEnv.ENABLE_KB_RAG_DIAGNOSTICS_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL =
       originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
     process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL =
@@ -68,6 +71,13 @@ describe('tool registry', () => {
       delete process.env.ENABLE_KB_RETRIEVE_TOOL;
     } else {
       process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
+    }
+
+    if (originalEnv.ENABLE_KB_RAG_DIAGNOSTICS_TOOL === undefined) {
+      delete process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL;
+    } else {
+      process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL =
+        originalEnv.ENABLE_KB_RAG_DIAGNOSTICS_TOOL;
     }
 
     if (originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL === undefined) {
@@ -167,6 +177,7 @@ describe('tool registry', () => {
       enableArtifact: true,
       enableBrief: true,
       enableKbRetrieve: false,
+      enableKbRagDiagnostics: true,
       enableStructuredQueryPlan: true,
       enableStructuredPlanReadiness: true,
       enableStructuredRagFlow: true,
@@ -192,6 +203,7 @@ describe('tool registry', () => {
       { name: 'create_brief', enabled: true },
       { name: 'merge_briefs', enabled: true },
       { name: 'kb_retrieve', enabled: false },
+      { name: 'kb_rag_diagnostics', enabled: true },
       { name: 'structured_query_plan', enabled: true },
       { name: 'structured_plan_readiness', enabled: true },
       { name: 'structured_rag_flow', enabled: true },
@@ -245,12 +257,16 @@ describe('tool registry', () => {
       false,
     );
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
+    expect(
+      registered.find((entry) => entry.name === 'kb_rag_diagnostics')?.enabled,
+    ).toBe(true);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(11);
+    expect(enabledTools).toHaveLength(12);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
+      'kb_rag_diagnostics',
       'structured_query_plan',
       'structured_plan_readiness',
       'structured_rag_flow',
@@ -270,6 +286,7 @@ describe('tool registry', () => {
       'create_brief',
       'merge_briefs',
       'kb_retrieve',
+      'kb_rag_diagnostics',
       'structured_query_plan',
       'structured_plan_readiness',
       'structured_rag_flow',

@@ -6,6 +6,8 @@ export * from './bedrock-kb-structured-provider.js';
 export * from './bedrock-kb-structured-types.js';
 export * from './bedrock-structured-poc-diagnostics.js';
 export * from './bedrock-structured-poc-diagnostics-types.js';
+export * from './kb-rag-diagnostics.js';
+export * from './kb-rag-diagnostics-types.js';
 export * from './mock-structured-query-provider.js';
 export * from './rag-service.js';
 export * from './structured-answer-synthesis.js';

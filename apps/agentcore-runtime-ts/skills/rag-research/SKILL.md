@@ -1,7 +1,7 @@
 ---
 name: rag-research
 description: Retrieve and ground answers using configured internal knowledge sources.
-allowed-tools: kb_retrieve, structured_query_plan, structured_plan_readiness, structured_rag_flow, structured_answer_synthesis, bedrock_structured_poc_diagnostics, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: kb_retrieve, kb_rag_diagnostics, structured_query_plan, structured_plan_readiness, structured_rag_flow, structured_answer_synthesis, bedrock_structured_poc_diagnostics, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # RAG Research Skill
@@ -12,6 +12,9 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 
 - Use `kb_retrieve` when the answer should be grounded in the configured Bedrock Knowledge Base.
 - `kb_retrieve` only retrieves evidence. It does not generate the final answer.
+- Use `kb_rag_diagnostics` to check whether normal Bedrock KB retrieve configuration is safe enough to run.
+- `kb_rag_diagnostics` does not call AWS, retrieve documents, or provide answer evidence.
+- Do not treat diagnostics output as user-facing factual answer content.
 - Use `structured_query_plan` when the user asks about structured data, metrics, aggregations, rankings, time-series trends, equipment history, anomaly summaries, or error-code lookup.
 - `structured_query_plan` only creates a deterministic plan. It does not generate SQL, execute SQL, or call a database.
 - Use `structured_plan_readiness` after `structured_query_plan` when you need to check missing information, provider preference, or the next safe action.
