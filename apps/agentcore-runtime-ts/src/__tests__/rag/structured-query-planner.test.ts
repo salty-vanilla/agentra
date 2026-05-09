@@ -48,19 +48,42 @@ describe('structured query planner', () => {
     expect(plan.limit).toBe(10);
   });
 
-  it('infers temperature anomaly summary and missing slots', async () => {
+  it.each([
+    ['温度 異常 の傾向を見たい', 'target entity'],
+    ['temperature anomaly trend', 'target entity'],
+    ['pressure anomaly trend', 'target entity'],
+    ['振動 異常 の傾向を見たい', 'target entity'],
+  ])('infers anomaly summary from %s', async (question, expectedMissingSlot) => {
     const { createStructuredQueryPlan } = await import(
       '../../rag/structured-query-planner.js'
     );
 
     const plan = createStructuredQueryPlan({
-      question: '温度 異常 の傾向を見たい',
+      question,
     });
 
-    expect(plan.intent).toBe('temperature_anomaly_summary');
+    expect(plan.intent).toBe('anomaly_summary');
+    expect(plan.limit).toBe(20);
     expect(plan.missingSlots).toEqual(
-      expect.arrayContaining(['line or equipment', 'time range']),
+      expect.arrayContaining([expectedMissingSlot, 'signal or metric', 'time range']),
     );
+  });
+
+  it('does not require a signal slot when metrics are present', async () => {
+    const { createStructuredQueryPlan } = await import(
+      '../../rag/structured-query-planner.js'
+    );
+
+    const plan = createStructuredQueryPlan({
+      question: 'temperature anomaly trend for line A',
+      targetEntity: 'line A',
+      metrics: ['average'],
+      timeRange: { start: '2026-05-01', end: '2026-05-07' },
+    });
+
+    expect(plan.intent).toBe('anomaly_summary');
+    expect(plan.missingSlots).toBeUndefined();
+    expect(plan.limit).toBe(20);
   });
 
   it('infers KPI aggregation from keywords', async () => {

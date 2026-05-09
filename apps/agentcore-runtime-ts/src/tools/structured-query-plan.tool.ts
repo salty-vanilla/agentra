@@ -18,7 +18,7 @@ const MAX_METADATA_KEYS = 100;
 
 const structuredQueryIntentSchema = z.enum([
   'error_code_lookup',
-  'temperature_anomaly_summary',
+  'anomaly_summary',
   'kpi_aggregation',
   'equipment_history_lookup',
   'production_trend',
@@ -234,8 +234,9 @@ function validateStructuredQueryPlanInput(input: StructuredQueryPlanToolInput): 
 
 export function executeStructuredQueryPlanTool(input: StructuredQueryPlanToolInput) {
   try {
-    validateStructuredQueryPlanInput(input);
-    return toolSuccess(createStructuredQueryPlan(input));
+    const validatedInput = structuredQueryPlanInputSchema.parse(input);
+    validateStructuredQueryPlanInput(validatedInput);
+    return toolSuccess(createStructuredQueryPlan(validatedInput));
   } catch (error) {
     return toolFailure(errorMessage(error));
   }
@@ -244,7 +245,7 @@ export function executeStructuredQueryPlanTool(input: StructuredQueryPlanToolInp
 const structuredQueryPlanTool = tool({
   name: 'structured_query_plan',
   description:
-    'Create a deterministic structured query plan for structured RAG use cases such as error code lookup, temperature anomaly summaries, KPI aggregation, equipment history lookup, and production trends. This does not generate or execute SQL.',
+    'Create a deterministic structured query plan for structured RAG use cases such as error code lookup, anomaly summaries, KPI aggregation, equipment history lookup, and production trends. This does not generate or execute SQL.',
   inputSchema: structuredQueryPlanInputSchema,
   callback: executeStructuredQueryPlanTool,
 });

@@ -13,15 +13,17 @@ type KeywordIntent = Exclude<StructuredQueryIntent, 'generic_lookup' | 'unknown'
 
 const INTENT_PRIORITY: KeywordIntent[] = [
   'error_code_lookup',
-  'temperature_anomaly_summary',
+  'anomaly_summary',
   'kpi_aggregation',
   'equipment_history_lookup',
   'production_trend',
 ];
 
+const ANOMALY_CONTEXT_KEYWORDS = ['anomaly', 'abnormal', '異常', '外れ値', 'outlier'];
+
 const INTENT_KEYWORDS: Record<KeywordIntent, string[]> = {
   error_code_lookup: ['error code', 'error_code', 'エラーコード', 'アラーム', 'alarm'],
-  temperature_anomaly_summary: ['temperature', 'temp', '温度', '異常', 'anomaly'],
+  anomaly_summary: ANOMALY_CONTEXT_KEYWORDS,
   kpi_aggregation: ['kpi', '平均', '合計', '集計', 'average', 'sum', 'count'],
   equipment_history_lookup: [
     'equipment',
@@ -196,6 +198,16 @@ function inferIntentFromQuestion(question: string): StructuredQueryIntent {
     }
   }
 
+  const hasAnomalyContext =
+    ANOMALY_CONTEXT_KEYWORDS.some((keyword) =>
+      keyword === keyword.toLowerCase()
+        ? normalized.includes(keyword)
+        : question.includes(keyword),
+  );
+  if (hasAnomalyContext) {
+    return 'anomaly_summary';
+  }
+
   if (normalized.includes('lookup') || normalized.includes('search')) {
     return 'generic_lookup';
   }
@@ -241,7 +253,7 @@ function defaultLimitForIntent(intent: StructuredQueryIntent): number {
   }
 
   if (
-    intent === 'temperature_anomaly_summary' ||
+    intent === 'anomaly_summary' ||
     intent === 'kpi_aggregation' ||
     intent === 'equipment_history_lookup' ||
     intent === 'production_trend'
@@ -261,6 +273,16 @@ function buildMissingSlots(
   const timeRange = normalizeTimeRange(input.timeRange);
   const filters = input.filters?.filter((filter) => Boolean(trimText(filter.field)));
   const metrics = input.metrics?.length ? input.metrics : undefined;
+  const metadata = input.metadata as Record<string, unknown> | undefined;
+  const targetSignals = metadata?.targetSignals;
+  const hasSignalMetadata = Array.isArray(targetSignals) && targetSignals.length > 0;
+  const hasSignalFilter = Boolean(
+    filters?.some((filter) => {
+      const field = trimText(filter.field)?.toLowerCase();
+      return field === 'signal' || field === 'metric' || field === 'sensor';
+    }),
+  );
+  const hasSignalHint = Boolean(metrics?.length || hasSignalMetadata || hasSignalFilter);
 
   switch (intent) {
     case 'error_code_lookup':
@@ -271,9 +293,12 @@ function buildMissingSlots(
         missing.add('error code filter');
       }
       break;
-    case 'temperature_anomaly_summary':
+    case 'anomaly_summary':
       if (!targetEntity) {
-        missing.add('line or equipment');
+        missing.add('target entity');
+      }
+      if (!hasSignalHint) {
+        missing.add('signal or metric');
       }
       if (!hasTimeRange(timeRange)) {
         missing.add('time range');
