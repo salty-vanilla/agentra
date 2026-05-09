@@ -7,6 +7,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
+    "prepare": "lefthook install",
     "prepare:workspace": "pnpm generate:api && pnpm build:shared",
     "dev:frontend": "pnpm prepare:workspace && pnpm --filter @agentra/frontend dev",
     "dev:backend": "pnpm build:shared && pnpm --filter @agentra/backend dev",
@@ -17,6 +18,7 @@
     "test": "pnpm prepare:workspace && pnpm -r --if-present test",
     "typecheck": "pnpm prepare:workspace && pnpm -r --if-present typecheck",
     "lint": "biome check .",
+    "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "synth": "pnpm --filter @agentra/infra-cdk synth",
     "seed:dynamo": "node scripts/seed/dynamo-seed.mjs"
@@ -26,6 +28,7 @@
     "@biomejs/biome": "latest",
     "@types/node": "^24.10.1",
     "jszip": "^3.10.1",
+    "lefthook": "latest",
     "orval": "^8.8.0",
     "typescript": "latest",
     "vitest": "^3.2.4"

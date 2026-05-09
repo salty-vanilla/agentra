@@ -35,6 +35,8 @@ pnpm dev:frontend
 
 Frontend は `http://localhost:3000`、backend は `http://localhost:8787` を想定しています。
 
+`pnpm install` の完了時に Lefthook が有効化され、`git commit` 時は `pnpm biome check .`、`git push` 時は `pnpm typecheck` が自動で走ります。失敗した場合は先に修正してください。
+
 ## Available Commands
 
 ```bash
@@ -42,6 +44,7 @@ pnpm dev:frontend
 pnpm dev:backend
 pnpm typecheck
 pnpm lint
+pnpm lint:fix
 pnpm format
 pnpm --filter @agentra/infra-cdk exec cdk synth -c stage=dev
 ```

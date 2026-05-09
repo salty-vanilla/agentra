@@ -85,13 +85,14 @@ AgentCore 上で以下を扱う想定。
 - **Biome**
 - 必要に応じて **Vitest**
 - 必要に応じて **Playwright**
-- 必要に応じて **lefthook** or 同等の git hook ツール
+- **Lefthook**
 
 理由:
 
 - Biome で formatter / linter を一元化したい
 - モノレポ運用時のツール数を抑えたい
 - 将来的に CI に乗せやすい構成にしたい
+- `pre-commit` / `pre-push` をローカルで強制したい
 
 ### 2.6 ID 生成方針
 
