@@ -21,6 +21,12 @@ export type {
   ManufacturingLineModelConfig,
 } from './agents/manufacturing-line/index.js';
 export { createManufacturingLineAgent } from './agents/manufacturing-line/index.js';
+export type {
+  WebResearchAgentConfig,
+  WebResearchAgentResult,
+  WebResearchModelConfig,
+} from './agents/web-research/index.js';
+export { createWebResearchAgent } from './agents/web-research/index.js';
 
 type ModelKey = 'opus' | 'sonnet' | 'haiku';
 type ResponsePreset = 'fast' | 'balanced' | 'deep';

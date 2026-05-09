@@ -436,6 +436,7 @@ describe('tool registry', () => {
       .map((entry) => entry.name);
 
     expect(names).toEqual([
+      'date_resolver',
       'normalize_evidence_source',
       'build_citations',
       'create_brief',
@@ -467,6 +468,7 @@ describe('tool registry', () => {
     const mod = await import('../../tools/registry.js');
 
     expect(mod.buildWebResearchTools().map((entry) => entry.name)).toEqual([
+      'date_resolver',
       'normalize_evidence_source',
       'build_citations',
       'create_brief',

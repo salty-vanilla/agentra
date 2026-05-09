@@ -143,6 +143,7 @@ const MANUFACTURING_LINE_TOOL_NAMES = [
 ] as const satisfies readonly RegisteredToolName[];
 
 const WEB_RESEARCH_TOOL_NAMES = [
+  'date_resolver',
   'web_research',
   'tavily_search',
   'tavily_extract',

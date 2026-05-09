@@ -1,12 +1,13 @@
 ---
 name: web-research
 description: Guide web research workflows that turn public web results into evidence, citations, and briefs.
-allowed-tools: web_research, tavily_search, tavily_extract, tavily_crawl, tavily_map, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: date_resolver, web_research, tavily_search, tavily_extract, tavily_crawl, tavily_map, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # Web Research Skill
 
 Use this skill when the user asks for up-to-date public information, external facts, product/library comparisons, pricing, documentation, release notes, news, or source-grounded investigation.
+It is the guidance for the dedicated Web Research Agent inside the same runtime.
 
 ## Available tools
 
@@ -15,6 +16,7 @@ Use this skill when the user asks for up-to-date public information, external fa
 - `tavily_crawl`: crawl a website when multiple pages are needed.
 - `tavily_map`: discover website structure or relevant URLs.
 - `web_research`: preferred lightweight workflow for simple public web research that needs evidence, citations, and an optional brief.
+- `date_resolver`: normalize relative dates before doing time-sensitive research.
 - `normalize_evidence_source`: convert raw web/document/tool results into EvidenceSource objects.
 - `build_citations`: create stable citation labels from EvidenceSource objects.
 - `create_brief`: create a normalized research brief from explicit facts, constraints, source IDs, and output requirements.
@@ -27,9 +29,10 @@ Use this skill when the user asks for up-to-date public information, external fa
 3. Use `tavily_search` + `tavily_extract` manually when detailed verification is needed or when you need to inspect multiple specific URLs.
 4. Use `tavily_crawl` only when a site-level investigation is needed.
 5. Use `tavily_map` when the relevant page is unknown but likely within a specific domain.
-6. Normalize important sources with `normalize_evidence_source`.
-7. Build citations with `build_citations`.
-8. Create or update a brief with `create_brief` or `merge_briefs` when the result will feed a report, slide, or later tool.
+6. Use `date_resolver` for relative dates, news, deadlines, or other freshness-sensitive requests before you answer.
+7. Normalize important sources with `normalize_evidence_source`.
+8. Build citations with `build_citations`.
+9. Create or update a brief with `create_brief` or `merge_briefs` when the result will feed a report, slide, or later tool.
 
 ## Citation behavior
 
