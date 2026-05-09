@@ -6,6 +6,7 @@ describe('tool registry', () => {
     ENABLE_BRIEF_TOOLS: process.env.ENABLE_BRIEF_TOOLS,
     ENABLE_KB_RETRIEVE_TOOL: process.env.ENABLE_KB_RETRIEVE_TOOL,
     ENABLE_KB_QUERY_READINESS_TOOL: process.env.ENABLE_KB_QUERY_READINESS_TOOL,
+    ENABLE_KB_RAG_FLOW_TOOL: process.env.ENABLE_KB_RAG_FLOW_TOOL,
     ENABLE_KB_RAG_DIAGNOSTICS_TOOL: process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL,
     ENABLE_KB_ANSWER_SYNTHESIS_TOOL: process.env.ENABLE_KB_ANSWER_SYNTHESIS_TOOL,
     ENABLE_STRUCTURED_QUERY_PLAN_TOOL: process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL,
@@ -38,6 +39,7 @@ describe('tool registry', () => {
     process.env.ENABLE_KB_RETRIEVE_TOOL = originalEnv.ENABLE_KB_RETRIEVE_TOOL;
     process.env.ENABLE_KB_QUERY_READINESS_TOOL =
       originalEnv.ENABLE_KB_QUERY_READINESS_TOOL;
+    process.env.ENABLE_KB_RAG_FLOW_TOOL = originalEnv.ENABLE_KB_RAG_FLOW_TOOL;
     process.env.ENABLE_KB_RAG_DIAGNOSTICS_TOOL =
       originalEnv.ENABLE_KB_RAG_DIAGNOSTICS_TOOL;
     process.env.ENABLE_KB_ANSWER_SYNTHESIS_TOOL =
@@ -91,6 +93,12 @@ describe('tool registry', () => {
     } else {
       process.env.ENABLE_KB_QUERY_READINESS_TOOL =
         originalEnv.ENABLE_KB_QUERY_READINESS_TOOL;
+    }
+
+    if (originalEnv.ENABLE_KB_RAG_FLOW_TOOL === undefined) {
+      delete process.env.ENABLE_KB_RAG_FLOW_TOOL;
+    } else {
+      process.env.ENABLE_KB_RAG_FLOW_TOOL = originalEnv.ENABLE_KB_RAG_FLOW_TOOL;
     }
 
     if (originalEnv.ENABLE_KB_RAG_DIAGNOSTICS_TOOL === undefined) {
@@ -218,6 +226,7 @@ describe('tool registry', () => {
       enableBrief: true,
       enableKbRetrieve: false,
       enableKbQueryReadiness: true,
+      enableKbRagFlow: true,
       enableKbRagDiagnostics: true,
       enableKbAnswerSynthesis: true,
       enableStructuredQueryPlan: true,
@@ -250,6 +259,7 @@ describe('tool registry', () => {
       { name: 'invoke_web_research_agent', enabled: true },
       { name: 'kb_retrieve', enabled: false },
       { name: 'kb_query_readiness', enabled: true },
+      { name: 'kb_rag_flow', enabled: true },
       { name: 'kb_rag_diagnostics', enabled: true },
       { name: 'kb_answer_synthesis', enabled: true },
       { name: 'structured_query_plan', enabled: true },
@@ -306,6 +316,7 @@ describe('tool registry', () => {
     expect(registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled).toBe(
       true,
     );
+    expect(registered.find((entry) => entry.name === 'kb_rag_flow')?.enabled).toBe(true);
     expect(registered.find((entry) => entry.name === 'kb_rag_diagnostics')?.enabled).toBe(
       true,
     );
@@ -331,6 +342,7 @@ describe('tool registry', () => {
       'invoke_web_research_agent',
       'kb_retrieve',
       'kb_query_readiness',
+      'kb_rag_flow',
       'kb_rag_diagnostics',
       'kb_answer_synthesis',
       'structured_query_plan',
@@ -413,6 +425,7 @@ describe('tool registry', () => {
       'merge_briefs',
       'kb_retrieve',
       'kb_query_readiness',
+      'kb_rag_flow',
       'kb_rag_diagnostics',
       'kb_answer_synthesis',
       'structured_query_plan',
@@ -494,6 +507,7 @@ describe('tool registry', () => {
       'create_brief',
       'merge_briefs',
       'kb_query_readiness',
+      'kb_rag_flow',
       'kb_rag_diagnostics',
       'kb_answer_synthesis',
       'structured_query_plan',
@@ -619,6 +633,16 @@ describe('tool registry', () => {
       registered.find((entry) => entry.name === 'bedrock_structured_poc_diagnostics')
         ?.enabled,
     ).toBe(true);
+  });
+
+  it('disables kb rag flow when the feature flag is false', async () => {
+    vi.stubEnv('ENABLE_KB_RAG_FLOW_TOOL', 'false');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableKbRagFlow).toBe(false);
+    expect(registered.find((entry) => entry.name === 'kb_rag_flow')?.enabled).toBe(false);
   });
 
   it('disables structured query plan when the feature flag is false', async () => {

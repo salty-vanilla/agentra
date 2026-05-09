@@ -12,6 +12,8 @@ export * from './kb-query-planning.js';
 export * from './kb-query-planning-types.js';
 export * from './kb-rag-diagnostics.js';
 export * from './kb-rag-diagnostics-types.js';
+export * from './kb-rag-flow.js';
+export * from './kb-rag-flow-types.js';
 export * from './kb-retrieval-readiness.js';
 export * from './kb-retrieval-readiness-types.js';
 export * from './mock-structured-query-provider.js';

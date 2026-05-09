@@ -11,6 +11,7 @@ import { invokeWebResearchAgentTool } from './invoke-web-research-agent.tool.js'
 import { kbAnswerSynthesisTool } from './kb-answer-synthesis.tool.js';
 import { kbQueryReadinessTool } from './kb-query-readiness.tool.js';
 import { kbRagDiagnosticsTool } from './kb-rag-diagnostics.tool.js';
+import { kbRagFlowTool } from './kb-rag-flow.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
 import { structuredAnswerSynthesisTool } from './structured-answer-synthesis.tool.js';
 import { structuredPlanReadinessTool } from './structured-plan-readiness.tool.js';
@@ -64,6 +65,7 @@ export type ToolRegistryConfig = {
   enableBrief?: boolean;
   enableKbRetrieve?: boolean;
   enableKbQueryReadiness?: boolean;
+  enableKbRagFlow?: boolean;
   enableKbRagDiagnostics?: boolean;
   enableKbAnswerSynthesis?: boolean;
   enableStructuredQueryPlan?: boolean;
@@ -116,6 +118,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       Boolean(process.env.BEDROCK_KB_ID?.trim()),
     ),
     enableKbQueryReadiness: resolveEnvFlag('ENABLE_KB_QUERY_READINESS_TOOL', true),
+    enableKbRagFlow: resolveEnvFlag('ENABLE_KB_RAG_FLOW_TOOL', true),
     enableKbRagDiagnostics: resolveEnvFlag('ENABLE_KB_RAG_DIAGNOSTICS_TOOL', true),
     enableKbAnswerSynthesis: resolveEnvFlag('ENABLE_KB_ANSWER_SYNTHESIS_TOOL', true),
     enableStructuredQueryPlan: resolveEnvFlag('ENABLE_STRUCTURED_QUERY_PLAN_TOOL', true),
@@ -174,6 +177,7 @@ export function getRegisteredTools(
     'enableKbQueryReadiness',
     true,
   );
+  const enableKbRagFlow = resolveToolEnabled(config, 'enableKbRagFlow', true);
   const enableKbRagDiagnostics = resolveToolEnabled(
     config,
     'enableKbRagDiagnostics',
@@ -310,6 +314,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableKbQueryReadiness,
       tool: kbQueryReadinessTool,
+    },
+    {
+      name: 'kb_rag_flow',
+      category: 'rag',
+      riskLevel: 'medium',
+      enabled: enableKbRagFlow,
+      tool: kbRagFlowTool,
     },
     {
       name: 'kb_rag_diagnostics',

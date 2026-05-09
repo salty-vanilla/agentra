@@ -1,9 +1,19 @@
 import { tool } from '@strands-agents/sdk';
 import { z } from 'zod';
 import { synthesizeKbAnswer } from '../rag/kb-answer-synthesis.js';
+import type { KbAnswerSynthesisInput } from '../rag/kb-answer-synthesis-types.js';
+import type { RagProviderKind } from '../rag/types.js';
 import { errorMessage, toolFailure, toolSuccess } from './tool-response.js';
 
 const MAX_METADATA_KEYS = 100;
+
+const ragProviderKindSchema: z.ZodType<RagProviderKind> = z.enum([
+  'bedrock_kb_retrieve',
+  'bedrock_kb_structured',
+  'web_research',
+  'agentic',
+  'unknown',
+]);
 
 const evidenceSourceTypeSchema = z.enum([
   'web',
@@ -18,7 +28,7 @@ const evidenceSourceSchema = z
   .object({
     id: z.string().trim().min(1),
     type: evidenceSourceTypeSchema,
-    title: z.string().optional(),
+    title: z.string().trim().min(1),
     url: z.string().optional(),
     uri: z.string().optional(),
     snippet: z.string().optional(),
@@ -61,8 +71,8 @@ const briefSchema = z
 
 const retrievalSchema = z
   .object({
-    query: z.string().optional(),
-    provider: z.string().optional(),
+    query: z.string().min(1),
+    provider: ragProviderKindSchema,
     sources: z.array(evidenceSourceSchema),
     citations: z.array(citationSchema),
     brief: briefSchema.optional(),
@@ -83,10 +93,14 @@ const kbAnswerSynthesisInputSchema = z
     flow: z
       .object({
         status: z.enum([
+          'planned',
+          'ready',
+          'retrieved',
           'answer_ready',
           'needs_clarification',
           'not_configured',
           'fallback_recommended',
+          'unsupported',
           'error',
         ]),
         retrieval: retrievalSchema.optional(),
@@ -128,7 +142,7 @@ function validateKbAnswerSynthesisInput(input: KbAnswerSynthesisToolInput): void
 export function executeKbAnswerSynthesisTool(input: KbAnswerSynthesisToolInput) {
   try {
     validateKbAnswerSynthesisInput(input);
-    return toolSuccess(synthesizeKbAnswer(input));
+    return toolSuccess(synthesizeKbAnswer(input as KbAnswerSynthesisInput));
   } catch (error) {
     return toolFailure(errorMessage(error));
   }

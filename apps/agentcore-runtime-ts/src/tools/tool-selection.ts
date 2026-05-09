@@ -17,6 +17,7 @@ const TOOL_ORDER = [
   'invoke_manufacturing_line_agent',
   'kb_retrieve',
   'kb_query_readiness',
+  'kb_rag_flow',
   'kb_rag_diagnostics',
   'kb_answer_synthesis',
   'structured_query_plan',
