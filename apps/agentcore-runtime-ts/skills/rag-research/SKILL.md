@@ -1,7 +1,7 @@
 ---
 name: rag-research
 description: Retrieve and ground answers using configured internal knowledge sources.
-allowed-tools: kb_retrieve, structured_query_plan, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: kb_retrieve, structured_query_plan, structured_plan_readiness, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # RAG Research Skill
@@ -14,6 +14,8 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 - `kb_retrieve` only retrieves evidence. It does not generate the final answer.
 - Use `structured_query_plan` when the user asks about structured data, metrics, aggregations, rankings, time-series trends, equipment history, anomaly summaries, or error-code lookup.
 - `structured_query_plan` only creates a deterministic plan. It does not generate SQL, execute SQL, or call a database.
+- Use `structured_plan_readiness` after `structured_query_plan` when you need to check missing information, provider preference, or the next safe action.
+- Prefer Bedrock structured execution when the plan is ready and the Bedrock structured provider is enabled.
 - Use `structured_query_execute_mock` only to validate the structured RAG pipeline or demonstrate expected result shape.
 - `structured_query_execute_mock` does not query real data, generate SQL, or call any database.
 - Prefer `structured_query_plan` before asking follow-up questions when the request is partially specified. Use `missingSlots` to decide whether a follow-up is needed.

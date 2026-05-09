@@ -19,10 +19,10 @@ type KeywordIntent = StructuredQueryCatalogIntent;
 
 const INTENT_PRIORITY = STRUCTURED_QUERY_INTENT_PRIORITY;
 
-const INTENT_KEYWORDS: Record<KeywordIntent, string[]> = Object.fromEntries(
+const INTENT_KEYWORDS = Object.fromEntries(
   Object.entries(STRUCTURED_QUERY_CAPABILITY_CATALOG).map(([intent, capability]) => [
     intent,
-    capability.keywords,
+    [...capability.keywords],
   ]),
 ) as Record<KeywordIntent, string[]>;
 
@@ -189,7 +189,9 @@ function inferIntentFromQuestion(question: string): StructuredQueryIntent {
   }
 
   const hasAnomalyContext = INTENT_KEYWORDS.anomaly_summary.some((keyword) =>
-    keyword === keyword.toLowerCase() ? normalized.includes(keyword) : question.includes(keyword),
+    keyword === keyword.toLowerCase()
+      ? normalized.includes(keyword)
+      : question.includes(keyword),
   );
   if (hasAnomalyContext) {
     return 'anomaly_summary';
@@ -235,9 +237,7 @@ function hasTimeRange(timeRange: StructuredQueryTimeRange | undefined): boolean 
 }
 
 function defaultLimitForIntent(intent: StructuredQueryIntent): number {
-  return (
-    STRUCTURED_QUERY_CAPABILITY_CATALOG[intent as KeywordIntent]?.defaultLimit ?? 50
-  );
+  return STRUCTURED_QUERY_CAPABILITY_CATALOG[intent as KeywordIntent]?.defaultLimit ?? 50;
 }
 
 function isSignalHintPresent(input: {
@@ -309,30 +309,41 @@ function buildMissingSlots(
       }
       break;
     case 'anomaly_summary':
-      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.anomaly_summary.requiredSlots) {
-        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.anomaly_summary
+        .requiredSlots) {
+        if (
+          !isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })
+        ) {
           missing.add(slot);
         }
       }
       break;
     case 'kpi_aggregation':
-      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.kpi_aggregation.requiredSlots) {
-        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.kpi_aggregation
+        .requiredSlots) {
+        if (
+          !isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })
+        ) {
           missing.add(slot);
         }
       }
       break;
     case 'equipment_history_lookup':
-      for (const slot of
-        STRUCTURED_QUERY_CAPABILITY_CATALOG.equipment_history_lookup.requiredSlots) {
-        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.equipment_history_lookup
+        .requiredSlots) {
+        if (
+          !isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })
+        ) {
           missing.add(slot);
         }
       }
       break;
     case 'production_trend':
-      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.production_trend.requiredSlots) {
-        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.production_trend
+        .requiredSlots) {
+        if (
+          !isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })
+        ) {
           missing.add(slot);
         }
       }
