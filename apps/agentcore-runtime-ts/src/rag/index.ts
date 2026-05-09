@@ -6,6 +6,7 @@ export * from './bedrock-kb-structured-provider.js';
 export * from './bedrock-kb-structured-types.js';
 export * from './mock-structured-query-provider.js';
 export * from './rag-service.js';
+export * from './structured-query-capability-catalog.js';
 export * from './structured-query-executor.js';
 export * from './structured-query-executor-types.js';
 export * from './structured-query-planner.js';
