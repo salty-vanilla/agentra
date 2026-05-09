@@ -79,7 +79,7 @@ describe('Manufacturing Line Agent module', () => {
     const agentSource = await readFile(join(import.meta.dirname, '../agent.ts'), 'utf-8');
 
     expect(agentSource).toContain('buildRouterTools');
-    expect(agentSource).toContain('createManufacturingLineAgent');
+    expect(agentSource).toContain('invoke_manufacturing_line_agent');
     expect(agentSource).not.toContain('equipment history lookup');
     expect(agentSource).not.toContain('production trend lookup');
     expect(agentSource).not.toContain('error-code lookup');

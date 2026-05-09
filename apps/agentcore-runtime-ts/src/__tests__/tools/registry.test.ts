@@ -20,6 +20,8 @@ describe('tool registry', () => {
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL,
     ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL:
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL,
+    ENABLE_MANUFACTURING_LINE_AGENT_TOOL:
+      process.env.ENABLE_MANUFACTURING_LINE_AGENT_TOOL,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_PRESENTATION_TOOL: process.env.ENABLE_PRESENTATION_TOOL,
@@ -54,6 +56,8 @@ describe('tool registry', () => {
       originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL =
       originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL;
+    process.env.ENABLE_MANUFACTURING_LINE_AGENT_TOOL =
+      originalEnv.ENABLE_MANUFACTURING_LINE_AGENT_TOOL;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_PRESENTATION_TOOL = originalEnv.ENABLE_PRESENTATION_TOOL;
@@ -151,6 +155,13 @@ describe('tool registry', () => {
         originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL;
     }
 
+    if (originalEnv.ENABLE_MANUFACTURING_LINE_AGENT_TOOL === undefined) {
+      delete process.env.ENABLE_MANUFACTURING_LINE_AGENT_TOOL;
+    } else {
+      process.env.ENABLE_MANUFACTURING_LINE_AGENT_TOOL =
+        originalEnv.ENABLE_MANUFACTURING_LINE_AGENT_TOOL;
+    }
+
     if (originalEnv.ENABLE_EVIDENCE_TOOLS === undefined) {
       delete process.env.ENABLE_EVIDENCE_TOOLS;
     } else {
@@ -215,6 +226,7 @@ describe('tool registry', () => {
       enableBedrockStructuredPocDiagnostics: true,
       enableStructuredQueryExecuteMock: true,
       enableStructuredQueryExecuteBedrockStub: false,
+      enableManufacturingLineAgentTool: true,
       enableWebResearch: true,
     });
 
@@ -232,6 +244,7 @@ describe('tool registry', () => {
       { name: 'create_artifact_manifest', enabled: true },
       { name: 'create_brief', enabled: true },
       { name: 'merge_briefs', enabled: true },
+      { name: 'invoke_manufacturing_line_agent', enabled: true },
       { name: 'kb_retrieve', enabled: false },
       { name: 'kb_query_readiness', enabled: true },
       { name: 'kb_rag_diagnostics', enabled: true },
@@ -296,11 +309,12 @@ describe('tool registry', () => {
       true,
     );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(4);
+    expect(enabledTools).toHaveLength(5);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
+      'invoke_manufacturing_line_agent',
       'create_slide_presentation',
     ]);
     expect(registered.map((entry) => entry.name)).toEqual([
@@ -312,6 +326,7 @@ describe('tool registry', () => {
       'create_artifact_manifest',
       'create_brief',
       'merge_briefs',
+      'invoke_manufacturing_line_agent',
       'kb_retrieve',
       'kb_query_readiness',
       'kb_rag_diagnostics',
@@ -367,6 +382,7 @@ describe('tool registry', () => {
       'create_artifact_manifest',
       'create_brief',
       'merge_briefs',
+      'invoke_manufacturing_line_agent',
       'create_slide_presentation',
     ]);
     expect(routerNames).not.toContain('kb_retrieve');
@@ -492,6 +508,23 @@ describe('tool registry', () => {
     );
   });
 
+  it('disables the manufacturing line agent handoff independently when the feature flag is off', async () => {
+    vi.stubEnv('ENABLE_MANUFACTURING_LINE_AGENT_TOOL', 'false');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+    const routerNames = mod.buildRouterTools().map((entry) => entry.name);
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableManufacturingLineAgentTool).toBe(
+      false,
+    );
+    expect(
+      registered.find((entry) => entry.name === 'invoke_manufacturing_line_agent')
+        ?.enabled,
+    ).toBe(false);
+    expect(routerNames).not.toContain('invoke_manufacturing_line_agent');
+  });
+
   it('enables kb retrieve by default when BEDROCK_KB_ID is set', async () => {
     vi.stubEnv('BEDROCK_KB_ID', 'kb-123');
     vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', '');
@@ -524,6 +557,10 @@ describe('tool registry', () => {
         ?.enabled,
     ).toBe(true);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
+    expect(
+      registered.find((entry) => entry.name === 'invoke_manufacturing_line_agent')
+        ?.enabled,
+    ).toBe(true);
   });
 
   it('disables kb retrieve when the feature flag is false even with BEDROCK_KB_ID', async () => {

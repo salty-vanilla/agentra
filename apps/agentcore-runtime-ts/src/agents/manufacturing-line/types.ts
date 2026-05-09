@@ -4,6 +4,11 @@ import type {
   Plugin,
   SessionManager,
 } from '@strands-agents/sdk';
+import type { z } from 'zod';
+import {
+  manufacturingLineAgentHandoffInputSchema,
+  manufacturingLineAgentHandoffOutputSchema,
+} from './handoff.js';
 import type { ToolRegistryConfig } from '../../tools/registry.js';
 
 export type ManufacturingLineModelConfig = Pick<
@@ -28,3 +33,11 @@ export type ManufacturingLineAgentResult = {
   nextActions?: string[];
   metadata?: Record<string, unknown>;
 };
+
+export type ManufacturingLineAgentHandoffInput = z.infer<
+  typeof manufacturingLineAgentHandoffInputSchema
+>;
+
+export type ManufacturingLineAgentHandoffOutput = z.infer<
+  typeof manufacturingLineAgentHandoffOutputSchema
+>;
