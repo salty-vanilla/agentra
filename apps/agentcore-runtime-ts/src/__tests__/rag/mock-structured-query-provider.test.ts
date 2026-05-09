@@ -85,23 +85,25 @@ describe('mock structured query provider', () => {
         question: 'Summarize temperature anomalies for line-7.',
         targetEntity: 'line-7',
         confidence: 0.9,
+        metadata: {
+          targetSignals: ['pressure'],
+        },
       },
       dryRun: false,
     });
 
     expect(anomalyOutput.rows[0]).toMatchObject({
       lineId: 'line-7',
+      signal: 'pressure',
       anomalyCount: 3,
-      maxTemperatureC: 87.4,
-      averageTemperatureC: 74.2,
+      peakValue: 87.4,
+      averageValue: 74.2,
     });
     expect(anomalyOutput.summary).toMatchObject({
       rowCount: 1,
       dryRun: false,
     });
-    expect(anomalyOutput.brief?.keyFacts).toEqual([
-      'Found 3 mock temperature anomalies.',
-    ]);
+    expect(anomalyOutput.brief?.keyFacts).toEqual(['Found 3 mock pressure anomalies.']);
 
     const productionOutput = buildMockStructuredQueryOutput({
       plan: {

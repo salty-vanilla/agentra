@@ -20,6 +20,22 @@ type MockQueryResult = {
   keyFact: string;
 };
 
+function resolveTargetSignal(input: StructuredQueryExecutionInput): string {
+  const targetSignals = input.plan.metadata?.targetSignals;
+  if (Array.isArray(targetSignals)) {
+    for (const value of targetSignals) {
+      if (typeof value === 'string') {
+        const trimmed = value.trim();
+        if (trimmed) {
+          return trimmed;
+        }
+      }
+    }
+  }
+
+  return 'temperature';
+}
+
 function stableColumnNames(rows: StructuredQueryRow[]): string[] {
   const columnNames: string[] = [];
   const seen = new Set<string>();
@@ -53,18 +69,21 @@ function buildMockResult(input: StructuredQueryExecutionInput): MockQueryResult 
         ],
         keyFact: 'Found 1 mock error-code row.',
       };
-    case 'anomaly_summary':
+    case 'anomaly_summary': {
+      const signal = resolveTargetSignal(input);
       return {
         rows: [
           {
             lineId: plan.targetEntity ?? 'line-unknown',
+            signal,
             anomalyCount: 3,
-            maxTemperatureC: 87.4,
-            averageTemperatureC: 74.2,
+            peakValue: 87.4,
+            averageValue: 74.2,
           },
         ],
-        keyFact: 'Found 3 mock temperature anomalies.',
+        keyFact: `Found 3 mock ${signal} anomalies.`,
       };
+    }
     case 'kpi_aggregation':
       return {
         rows: [

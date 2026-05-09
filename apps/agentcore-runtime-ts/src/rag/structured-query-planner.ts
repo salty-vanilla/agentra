@@ -1,4 +1,10 @@
 import { uuidv7 } from 'uuidv7';
+import {
+  STRUCTURED_QUERY_CAPABILITY_CATALOG,
+  STRUCTURED_QUERY_INTENT_PRIORITY,
+  type StructuredQueryCapabilitySlot,
+  type StructuredQueryCatalogIntent,
+} from './structured-query-capability-catalog.js';
 import type {
   StructuredQueryDataSourceKind,
   StructuredQueryFilter,
@@ -9,32 +15,16 @@ import type {
   StructuredQueryTimeRange,
 } from './structured-query-types.js';
 
-type KeywordIntent = Exclude<StructuredQueryIntent, 'generic_lookup' | 'unknown'>;
+type KeywordIntent = StructuredQueryCatalogIntent;
 
-const INTENT_PRIORITY: KeywordIntent[] = [
-  'error_code_lookup',
-  'anomaly_summary',
-  'kpi_aggregation',
-  'equipment_history_lookup',
-  'production_trend',
-];
+const INTENT_PRIORITY = STRUCTURED_QUERY_INTENT_PRIORITY;
 
-const ANOMALY_CONTEXT_KEYWORDS = ['anomaly', 'abnormal', '異常', '外れ値', 'outlier'];
-
-const INTENT_KEYWORDS: Record<KeywordIntent, string[]> = {
-  error_code_lookup: ['error code', 'error_code', 'エラーコード', 'アラーム', 'alarm'],
-  anomaly_summary: ANOMALY_CONTEXT_KEYWORDS,
-  kpi_aggregation: ['kpi', '平均', '合計', '集計', 'average', 'sum', 'count'],
-  equipment_history_lookup: [
-    'equipment',
-    '設備',
-    '履歴',
-    'history',
-    'maintenance',
-    '保全',
-  ],
-  production_trend: ['production', '生産', 'trend', '推移', '時系列'],
-};
+const INTENT_KEYWORDS: Record<KeywordIntent, string[]> = Object.fromEntries(
+  Object.entries(STRUCTURED_QUERY_CAPABILITY_CATALOG).map(([intent, capability]) => [
+    intent,
+    capability.keywords,
+  ]),
+) as Record<KeywordIntent, string[]>;
 
 const DEFAULT_DATA_SOURCE_KIND: StructuredQueryDataSourceKind = 'bedrock_kb_structured';
 
@@ -198,11 +188,8 @@ function inferIntentFromQuestion(question: string): StructuredQueryIntent {
     }
   }
 
-  const hasAnomalyContext =
-    ANOMALY_CONTEXT_KEYWORDS.some((keyword) =>
-      keyword === keyword.toLowerCase()
-        ? normalized.includes(keyword)
-        : question.includes(keyword),
+  const hasAnomalyContext = INTENT_KEYWORDS.anomaly_summary.some((keyword) =>
+    keyword === keyword.toLowerCase() ? normalized.includes(keyword) : question.includes(keyword),
   );
   if (hasAnomalyContext) {
     return 'anomaly_summary';
@@ -248,20 +235,57 @@ function hasTimeRange(timeRange: StructuredQueryTimeRange | undefined): boolean 
 }
 
 function defaultLimitForIntent(intent: StructuredQueryIntent): number {
-  if (intent === 'error_code_lookup') {
-    return 10;
-  }
+  return (
+    STRUCTURED_QUERY_CAPABILITY_CATALOG[intent as KeywordIntent]?.defaultLimit ?? 50
+  );
+}
 
-  if (
-    intent === 'anomaly_summary' ||
-    intent === 'kpi_aggregation' ||
-    intent === 'equipment_history_lookup' ||
-    intent === 'production_trend'
-  ) {
-    return 20;
-  }
+function isSignalHintPresent(input: {
+  metrics: StructuredQueryMetric[] | undefined;
+  filters: StructuredQueryFilter[] | undefined;
+  metadata: Record<string, unknown> | undefined;
+}): boolean {
+  const hasSignalMetadata = Array.isArray(input.metadata?.targetSignals)
+    ? input.metadata?.targetSignals.some(
+        (value) => typeof value === 'string' && value.trim().length > 0,
+      )
+    : false;
+  const hasSignalFilter = Boolean(
+    input.filters?.some((filter) => {
+      const field = trimText(filter.field)?.toLowerCase();
+      return field === 'signal' || field === 'metric' || field === 'sensor';
+    }),
+  );
 
-  return 50;
+  return Boolean(input.metrics?.length || hasSignalMetadata || hasSignalFilter);
+}
+
+function isSlotSatisfied(
+  slot: StructuredQueryCapabilitySlot,
+  input: {
+    targetEntity: string | undefined;
+    timeRange: StructuredQueryTimeRange | undefined;
+    filters: StructuredQueryFilter[] | undefined;
+    metrics: StructuredQueryMetric[] | undefined;
+    metadata: Record<string, unknown> | undefined;
+  },
+): boolean {
+  switch (slot) {
+    case 'error code or equipment':
+      return Boolean(input.targetEntity);
+    case 'error code filter':
+      return Boolean(input.filters?.length);
+    case 'target entity':
+    case 'equipment':
+      return Boolean(input.targetEntity);
+    case 'signal or metric':
+      return isSignalHintPresent(input);
+    case 'time range':
+      return hasTimeRange(input.timeRange);
+    case 'metrics':
+    case 'production metric':
+      return Boolean(input.metrics?.length);
+  }
 }
 
 function buildMissingSlots(
@@ -274,15 +298,6 @@ function buildMissingSlots(
   const filters = input.filters?.filter((filter) => Boolean(trimText(filter.field)));
   const metrics = input.metrics?.length ? input.metrics : undefined;
   const metadata = input.metadata as Record<string, unknown> | undefined;
-  const targetSignals = metadata?.targetSignals;
-  const hasSignalMetadata = Array.isArray(targetSignals) && targetSignals.length > 0;
-  const hasSignalFilter = Boolean(
-    filters?.some((filter) => {
-      const field = trimText(filter.field)?.toLowerCase();
-      return field === 'signal' || field === 'metric' || field === 'sensor';
-    }),
-  );
-  const hasSignalHint = Boolean(metrics?.length || hasSignalMetadata || hasSignalFilter);
 
   switch (intent) {
     case 'error_code_lookup':
@@ -294,38 +309,32 @@ function buildMissingSlots(
       }
       break;
     case 'anomaly_summary':
-      if (!targetEntity) {
-        missing.add('target entity');
-      }
-      if (!hasSignalHint) {
-        missing.add('signal or metric');
-      }
-      if (!hasTimeRange(timeRange)) {
-        missing.add('time range');
+      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.anomaly_summary.requiredSlots) {
+        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+          missing.add(slot);
+        }
       }
       break;
     case 'kpi_aggregation':
-      if (!metrics?.length) {
-        missing.add('metrics');
-      }
-      if (!hasTimeRange(timeRange)) {
-        missing.add('time range');
+      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.kpi_aggregation.requiredSlots) {
+        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+          missing.add(slot);
+        }
       }
       break;
     case 'equipment_history_lookup':
-      if (!targetEntity) {
-        missing.add('equipment');
-      }
-      if (!hasTimeRange(timeRange)) {
-        missing.add('time range');
+      for (const slot of
+        STRUCTURED_QUERY_CAPABILITY_CATALOG.equipment_history_lookup.requiredSlots) {
+        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+          missing.add(slot);
+        }
       }
       break;
     case 'production_trend':
-      if (!hasTimeRange(timeRange)) {
-        missing.add('time range');
-      }
-      if (!metrics?.length) {
-        missing.add('production metric');
+      for (const slot of STRUCTURED_QUERY_CAPABILITY_CATALOG.production_trend.requiredSlots) {
+        if (!isSlotSatisfied(slot, { targetEntity, timeRange, filters, metrics, metadata })) {
+          missing.add(slot);
+        }
       }
       break;
     case 'generic_lookup':
@@ -373,7 +382,10 @@ export function createStructuredQueryPlan(
     id: uuidv7(),
     createdAt: new Date().toISOString(),
     intent,
-    dataSourceKind: input.dataSourceKind ?? DEFAULT_DATA_SOURCE_KIND,
+    dataSourceKind:
+      input.dataSourceKind ??
+      STRUCTURED_QUERY_CAPABILITY_CATALOG[intent as KeywordIntent]?.dataSourceKind ??
+      DEFAULT_DATA_SOURCE_KIND,
     question,
     ...(targetEntity ? { targetEntity } : {}),
     ...(timeRange !== undefined ? { timeRange } : {}),

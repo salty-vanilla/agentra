@@ -86,6 +86,25 @@ describe('structured query planner', () => {
     expect(plan.limit).toBe(20);
   });
 
+  it('accepts signal metadata for anomaly summaries', async () => {
+    const { createStructuredQueryPlan } = await import(
+      '../../rag/structured-query-planner.js'
+    );
+
+    const plan = createStructuredQueryPlan({
+      question: 'temperature anomaly trend for line A',
+      targetEntity: 'line A',
+      metadata: {
+        targetSignals: ['pressure'],
+      },
+      timeRange: { start: '2026-05-01', end: '2026-05-07' },
+    });
+
+    expect(plan.intent).toBe('anomaly_summary');
+    expect(plan.missingSlots).toBeUndefined();
+    expect(plan.limit).toBe(20);
+  });
+
   it('infers KPI aggregation from keywords', async () => {
     const { createStructuredQueryPlan } = await import(
       '../../rag/structured-query-planner.js'
