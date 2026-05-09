@@ -104,10 +104,19 @@ describe('Web Research Agent handoff', () => {
     expect(response.status).toBe('success');
     expect(payload).toEqual({
       status: 'success',
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: 'freshness_required',
       answer: 'The latest release added router handoff support.',
       sources: [{ id: 'source-1' }],
       citations: [{ label: '[1]' }],
-      metadata: { confidence: 'high' },
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+        handoffMode: 'freshness_required',
+        confidence: 'high',
+      },
     });
   });
 
@@ -126,9 +135,16 @@ describe('Web Research Agent handoff', () => {
     expect(response.status).toBe('error');
     expect(JSON.parse(response.content[0].text)).toEqual({
       status: 'error',
-      answer: '',
-      error: {
-        message: 'boom',
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: 'standard',
+      answer: 'boom',
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+        handoffMode: 'standard',
+        rawValueType: 'undefined',
       },
     });
   });

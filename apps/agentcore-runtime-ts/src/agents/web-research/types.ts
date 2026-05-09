@@ -6,10 +6,8 @@ import type {
 } from '@strands-agents/sdk';
 import type { z } from 'zod';
 import type { ToolRegistryConfig } from '../../tools/registry.js';
-import type {
-  webResearchAgentHandoffInputSchema,
-  webResearchAgentHandoffOutputSchema,
-} from './handoff.js';
+import type { SubAgentHandoffOutput, SubAgentKind } from '../handoff-types.js';
+import type { webResearchAgentHandoffInputSchema } from './handoff.js';
 
 export type WebResearchModelConfig = Pick<
   BedrockModelOptions,
@@ -34,10 +32,12 @@ export type WebResearchAgentResult = {
   metadata?: Record<string, unknown>;
 };
 
+export type WebResearchAgentKind = Extract<SubAgentKind, 'web_research'>;
+
 export type WebResearchAgentHandoffInput = z.infer<
   typeof webResearchAgentHandoffInputSchema
 >;
 
-export type WebResearchAgentHandoffOutput = z.infer<
-  typeof webResearchAgentHandoffOutputSchema
->;
+export type WebResearchAgentHandoffOutput = SubAgentHandoffOutput & {
+  agentKind: WebResearchAgentKind;
+};

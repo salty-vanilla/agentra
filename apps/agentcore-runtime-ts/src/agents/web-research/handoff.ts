@@ -1,4 +1,8 @@
 import { z } from 'zod';
+import {
+  subAgentHandoffOutputSchema,
+  subAgentHandoffStatusSchema,
+} from '../handoff-types.js';
 
 const MAX_QUESTION_LENGTH = 4000;
 const MAX_CONTEXT_LENGTH = 8000;
@@ -33,14 +37,17 @@ export const webResearchAgentHandoffInputSchema = z
   });
 
 export const webResearchAgentHandoffOutputSchema = z.object({
-  status: z.enum(['success', 'needs_clarification', 'no_results', 'error']),
+  status: subAgentHandoffStatusSchema,
+  agentKind: z.literal('web_research').optional(),
+  agentName: z.string().trim().min(1).optional(),
+  handoffMode: z.string().trim().min(1).optional(),
   answer: z.string(),
   sources: z.array(z.unknown()).optional(),
   citations: z.array(z.unknown()).optional(),
   brief: z.unknown().optional(),
   caveats: z.array(z.string()).optional(),
   nextActions: z.array(z.string()).optional(),
-  metadata: z.record(z.string(), z.unknown()).optional(),
+  metadata: subAgentHandoffOutputSchema.shape.metadata,
 });
 
 export type WebResearchAgentHandoffInput = z.infer<
@@ -87,8 +94,9 @@ export function buildWebResearchAgentHandoffPrompt(
   parts.push(
     '',
     'Requirements:',
-    '- status must be one of success, needs_clarification, no_results, or error',
+    '- status must be one of success, needs_clarification, not_configured, no_results, fallback_recommended, or error',
     '- answer must be a concise natural-language response',
+    '- include agentKind, agentName, and handoffMode when available',
     '- include sources, citations, brief, caveats, nextActions, and metadata when available',
     '- if the question needs clarification, ask the minimum clarifying question in answer and set status to needs_clarification',
     '- if there are no relevant public results, set status to no_results and explain what was checked',

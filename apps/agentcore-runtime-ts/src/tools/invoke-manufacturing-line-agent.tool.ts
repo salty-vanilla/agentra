@@ -1,4 +1,5 @@
 import { type Agent, tool } from '@strands-agents/sdk';
+import { normalizeSubAgentHandoffOutput } from '../agents/handoff-normalizer.js';
 import { createManufacturingLineAgent } from '../agents/manufacturing-line/agent.js';
 import {
   buildManufacturingLineAgentHandoffPrompt,
@@ -21,28 +22,6 @@ function getManufacturingLineAgent(): ManufacturingLineAgentLike {
   return cachedManufacturingLineAgent;
 }
 
-function normalizeHandoffOutput(value: unknown): ManufacturingLineAgentHandoffOutput {
-  const parsed = manufacturingLineAgentHandoffOutputSchema.safeParse(value);
-  if (parsed.success) {
-    return parsed.data;
-  }
-
-  if (typeof value === 'string' && value.trim()) {
-    return {
-      status: 'success',
-      answer: value.trim(),
-    };
-  }
-
-  return {
-    status: 'error',
-    answer: 'Manufacturing Line Agent did not return a usable handoff payload.',
-    metadata: {
-      rawValueType: typeof value,
-    },
-  };
-}
-
 export async function executeInvokeManufacturingLineAgentTool(
   input: ManufacturingLineAgentHandoffInput,
   dependencies: {
@@ -57,7 +36,20 @@ export async function executeInvokeManufacturingLineAgentTool(
     const result = await agent.invoke(prompt, {
       structuredOutputSchema: manufacturingLineAgentHandoffOutputSchema,
     });
-    const output = normalizeHandoffOutput(result.structuredOutput ?? result.toString());
+    const output = normalizeSubAgentHandoffOutput({
+      value: result.structuredOutput ?? result.toString(),
+      agentKind: 'manufacturing_line',
+      agentName: 'Manufacturing Line Agent',
+      handoffMode: input.mode ?? 'auto',
+      fallbackErrorMessage:
+        'Manufacturing Line Agent did not return a usable handoff payload.',
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'manufacturing-line-agent',
+        handoffTool: 'invoke_manufacturing_line_agent',
+        handoffMode: input.mode ?? 'auto',
+      },
+    }) as ManufacturingLineAgentHandoffOutput;
 
     return {
       status: 'success' as const,
@@ -65,19 +57,23 @@ export async function executeInvokeManufacturingLineAgentTool(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    const output = normalizeSubAgentHandoffOutput({
+      value: undefined,
+      agentKind: 'manufacturing_line',
+      agentName: 'Manufacturing Line Agent',
+      handoffMode: input.mode ?? 'auto',
+      fallbackErrorMessage: message,
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'manufacturing-line-agent',
+        handoffTool: 'invoke_manufacturing_line_agent',
+        handoffMode: input.mode ?? 'auto',
+      },
+    }) as ManufacturingLineAgentHandoffOutput;
+
     return {
       status: 'error' as const,
-      content: [
-        {
-          text: JSON.stringify({
-            status: 'error',
-            answer: '',
-            error: {
-              message,
-            },
-          }),
-        },
-      ],
+      content: [{ text: JSON.stringify(output) }],
     };
   }
 }
@@ -90,4 +86,4 @@ const invokeManufacturingLineAgentTool = tool({
   callback: (input) => executeInvokeManufacturingLineAgentTool(input),
 });
 
-export { invokeManufacturingLineAgentTool, normalizeHandoffOutput };
+export { invokeManufacturingLineAgentTool };

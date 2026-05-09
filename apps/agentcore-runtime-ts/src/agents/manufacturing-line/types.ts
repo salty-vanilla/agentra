@@ -6,10 +6,8 @@ import type {
 } from '@strands-agents/sdk';
 import type { z } from 'zod';
 import type { ToolRegistryConfig } from '../../tools/registry.js';
-import type {
-  manufacturingLineAgentHandoffInputSchema,
-  manufacturingLineAgentHandoffOutputSchema,
-} from './handoff.js';
+import type { SubAgentHandoffOutput, SubAgentKind } from '../handoff-types.js';
+import type { manufacturingLineAgentHandoffInputSchema } from './handoff.js';
 
 export type ManufacturingLineModelConfig = Pick<
   BedrockModelOptions,
@@ -34,10 +32,12 @@ export type ManufacturingLineAgentResult = {
   metadata?: Record<string, unknown>;
 };
 
+export type ManufacturingLineAgentKind = Extract<SubAgentKind, 'manufacturing_line'>;
+
 export type ManufacturingLineAgentHandoffInput = z.infer<
   typeof manufacturingLineAgentHandoffInputSchema
 >;
 
-export type ManufacturingLineAgentHandoffOutput = z.infer<
-  typeof manufacturingLineAgentHandoffOutputSchema
->;
+export type ManufacturingLineAgentHandoffOutput = SubAgentHandoffOutput & {
+  agentKind: ManufacturingLineAgentKind;
+};
