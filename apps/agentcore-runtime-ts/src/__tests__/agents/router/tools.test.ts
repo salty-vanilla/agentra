@@ -38,12 +38,21 @@ describe('Router tools', () => {
       'create_slide_presentation',
     ]);
     expect(names).not.toContain('kb_retrieve');
+    expect(names).not.toContain('kb_query_readiness');
+    expect(names).not.toContain('kb_rag_diagnostics');
     expect(names).not.toContain('kb_rag_flow');
+    expect(names).not.toContain('kb_answer_synthesis');
+    expect(names).not.toContain('structured_query_plan');
+    expect(names).not.toContain('structured_plan_readiness');
     expect(names).not.toContain('structured_rag_flow');
+    expect(names).not.toContain('structured_answer_synthesis');
+    expect(names).not.toContain('structured_query_execute_mock');
+    expect(names).not.toContain('structured_query_execute_bedrock_stub');
     expect(names).not.toContain('web_research');
     expect(names).not.toContain('tavily_search');
     expect(names).not.toContain('tavily_extract');
     expect(names).not.toContain('tavily_crawl');
     expect(names).not.toContain('tavily_map');
+    expect(names).not.toContain('getWeather');
   });
 });
