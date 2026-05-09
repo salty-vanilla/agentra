@@ -95,6 +95,7 @@ const EVIDENCE_TOOL_INSTRUCTIONS = [
 const RAG_TOOL_INSTRUCTIONS = [
   '社内ナレッジ、プロジェクト固有情報、ドキュメント根拠が必要な場合は、設定済みのKnowledge Baseがあれば kb_retrieve で根拠を取得してください。',
   'kb_retrieve は回答生成ではなく根拠取得専用です。回答では取得した sources / citations を優先してください。',
+  'Bedrock Knowledge Base の retrieval 設定を安全に点検したい場合は kb_rag_diagnostics を使い、AWS 呼び出しや文書取得とは切り分けてください。',
 ].join('\n');
 
 const STRUCTURED_RAG_TOOL_INSTRUCTIONS = [
