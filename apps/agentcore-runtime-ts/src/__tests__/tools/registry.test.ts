@@ -27,7 +27,6 @@ describe('tool registry', () => {
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_PRESENTATION_TOOL: process.env.ENABLE_PRESENTATION_TOOL,
     ENABLE_WEB_RESEARCH_TOOL: process.env.ENABLE_WEB_RESEARCH_TOOL,
-    ENABLE_WEATHER_TOOL: process.env.ENABLE_WEATHER_TOOL,
     BEDROCK_KB_ID: process.env.BEDROCK_KB_ID,
   };
 
@@ -65,7 +64,6 @@ describe('tool registry', () => {
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_PRESENTATION_TOOL = originalEnv.ENABLE_PRESENTATION_TOOL;
     process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
-    process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
     process.env.BEDROCK_KB_ID = originalEnv.BEDROCK_KB_ID;
   });
 
@@ -196,12 +194,6 @@ describe('tool registry', () => {
       process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
     }
 
-    if (originalEnv.ENABLE_WEATHER_TOOL === undefined) {
-      delete process.env.ENABLE_WEATHER_TOOL;
-    } else {
-      process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
-    }
-
     if (originalEnv.BEDROCK_KB_ID === undefined) {
       delete process.env.BEDROCK_KB_ID;
     } else {
@@ -209,7 +201,7 @@ describe('tool registry', () => {
     }
   });
 
-  it('uses defaults with weather disabled', async () => {
+  it('uses defaults for the tool registry', async () => {
     vi.stubEnv('BEDROCK_KB_ID', '');
     vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', '');
 
@@ -217,7 +209,6 @@ describe('tool registry', () => {
     const config = mod.resolveToolRegistryConfigFromEnv();
 
     expect(config).toEqual({
-      enableWeather: false,
       enableTavily: true,
       enablePresentation: true,
       enableCalculator: true,
@@ -274,7 +265,6 @@ describe('tool registry', () => {
       { name: 'tavily_crawl', enabled: true },
       { name: 'tavily_map', enabled: true },
       { name: 'create_slide_presentation', enabled: true },
-      { name: 'getWeather', enabled: false },
     ]);
   });
 
@@ -285,7 +275,6 @@ describe('tool registry', () => {
     vi.stubEnv('ENABLE_EVIDENCE_TOOLS', 'false');
     vi.stubEnv('ENABLE_TAVILY_TOOLS', 'false');
     vi.stubEnv('ENABLE_WEB_RESEARCH_TOOL', 'true');
-    vi.stubEnv('ENABLE_WEATHER_TOOL', 'true');
 
     const mod = await import('../../tools/registry.js');
     const registered = mod.getRegisteredTools();
@@ -320,7 +309,6 @@ describe('tool registry', () => {
     expect(registered.find((entry) => entry.name === 'kb_rag_diagnostics')?.enabled).toBe(
       true,
     );
-    expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
     expect(enabledTools).toHaveLength(6);
     expect(enabledNames).toEqual([
       'date_resolver',
@@ -358,14 +346,12 @@ describe('tool registry', () => {
       'tavily_crawl',
       'tavily_map',
       'create_slide_presentation',
-      'getWeather',
     ]);
   });
 
   it('builds a slim router tool set and keeps buildGeneralTools as a wrapper', async () => {
     const mod = await import('../../tools/registry.js');
     const config = {
-      enableWeather: true,
       enableTavily: true,
       enablePresentation: true,
       enableCalculator: true,
@@ -405,7 +391,6 @@ describe('tool registry', () => {
     expect(routerNames).not.toContain('structured_rag_flow');
     expect(routerNames).not.toContain('web_research');
     expect(routerNames).not.toContain('tavily_search');
-    expect(routerNames).not.toContain('getWeather');
     expect(mod.buildGeneralTools(config).map((entry) => entry.name)).toEqual(routerNames);
   });
 
@@ -533,9 +518,7 @@ describe('tool registry', () => {
     const registered = mod.getRegisteredTools();
     const routerNames = mod.buildRouterTools().map((entry) => entry.name);
 
-    expect(
-      mod.resolveToolRegistryConfigFromEnv().enableWebResearchAgentTool,
-    ).toBe(false);
+    expect(mod.resolveToolRegistryConfigFromEnv().enableWebResearchAgentTool).toBe(false);
     expect(
       registered.find((entry) => entry.name === 'invoke_web_research_agent')?.enabled,
     ).toBe(false);
@@ -590,7 +573,6 @@ describe('tool registry', () => {
       registered.find((entry) => entry.name === 'bedrock_structured_poc_diagnostics')
         ?.enabled,
     ).toBe(true);
-    expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
     expect(
       registered.find((entry) => entry.name === 'invoke_manufacturing_line_agent')
         ?.enabled,
@@ -628,7 +610,6 @@ describe('tool registry', () => {
       registered.find((entry) => entry.name === 'bedrock_structured_poc_diagnostics')
         ?.enabled,
     ).toBe(true);
-    expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
   });
 
   it('disables structured query plan when the feature flag is false', async () => {
