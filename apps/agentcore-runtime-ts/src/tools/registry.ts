@@ -7,6 +7,7 @@ import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { invokeManufacturingLineAgentTool } from './invoke-manufacturing-line-agent.tool.js';
+import { invokeWebResearchAgentTool } from './invoke-web-research-agent.tool.js';
 import { kbAnswerSynthesisTool } from './kb-answer-synthesis.tool.js';
 import { kbQueryReadinessTool } from './kb-query-readiness.tool.js';
 import { kbRagDiagnosticsTool } from './kb-rag-diagnostics.tool.js';
@@ -75,6 +76,7 @@ export type ToolRegistryConfig = {
   enableBedrockStructuredPocDiagnostics?: boolean;
   enableStructuredQueryExecuteMock?: boolean;
   enableStructuredQueryExecuteBedrockStub?: boolean;
+  enableWebResearchAgentTool?: boolean;
   enableWebResearch?: boolean;
 };
 
@@ -99,6 +101,7 @@ const TOOL_ORDER = [
   'bedrock_structured_poc_diagnostics',
   'structured_query_execute_mock',
   'structured_query_execute_bedrock_stub',
+  'invoke_web_research_agent',
   'web_research',
   'tavily_search',
   'tavily_extract',
@@ -118,6 +121,7 @@ const ROUTER_TOOL_NAMES = [
   'merge_briefs',
   'create_artifact_manifest',
   'invoke_manufacturing_line_agent',
+  'invoke_web_research_agent',
   'create_slide_presentation',
 ] as const satisfies readonly RegisteredToolName[];
 
@@ -224,6 +228,10 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       'ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL',
       false,
     ),
+    enableWebResearchAgentTool: resolveEnvFlag(
+      'ENABLE_WEB_RESEARCH_AGENT_TOOL',
+      true,
+    ),
     enableWebResearch: resolveEnvFlag('ENABLE_WEB_RESEARCH_TOOL', true),
   };
 }
@@ -303,6 +311,11 @@ export function getRegisteredTools(
     'enableStructuredQueryExecuteBedrockStub',
     false,
   );
+  const enableWebResearchAgentTool = resolveToolEnabled(
+    config,
+    'enableWebResearchAgentTool',
+    true,
+  );
   const enableWebResearch = resolveToolEnabled(config, 'enableWebResearch', true);
 
   const tools: RegisteredTool[] = [
@@ -368,6 +381,13 @@ export function getRegisteredTools(
       riskLevel: 'medium',
       enabled: enableManufacturingLineAgentTool,
       tool: invokeManufacturingLineAgentTool,
+    },
+    {
+      name: 'invoke_web_research_agent',
+      category: 'research',
+      riskLevel: 'medium',
+      enabled: enableWebResearchAgentTool,
+      tool: invokeWebResearchAgentTool,
     },
     {
       name: 'kb_retrieve',

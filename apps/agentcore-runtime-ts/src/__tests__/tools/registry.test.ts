@@ -22,6 +22,7 @@ describe('tool registry', () => {
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL,
     ENABLE_MANUFACTURING_LINE_AGENT_TOOL:
       process.env.ENABLE_MANUFACTURING_LINE_AGENT_TOOL,
+    ENABLE_WEB_RESEARCH_AGENT_TOOL: process.env.ENABLE_WEB_RESEARCH_AGENT_TOOL,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_PRESENTATION_TOOL: process.env.ENABLE_PRESENTATION_TOOL,
@@ -58,6 +59,8 @@ describe('tool registry', () => {
       originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL;
     process.env.ENABLE_MANUFACTURING_LINE_AGENT_TOOL =
       originalEnv.ENABLE_MANUFACTURING_LINE_AGENT_TOOL;
+    process.env.ENABLE_WEB_RESEARCH_AGENT_TOOL =
+      originalEnv.ENABLE_WEB_RESEARCH_AGENT_TOOL;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_PRESENTATION_TOOL = originalEnv.ENABLE_PRESENTATION_TOOL;
@@ -162,6 +165,13 @@ describe('tool registry', () => {
         originalEnv.ENABLE_MANUFACTURING_LINE_AGENT_TOOL;
     }
 
+    if (originalEnv.ENABLE_WEB_RESEARCH_AGENT_TOOL === undefined) {
+      delete process.env.ENABLE_WEB_RESEARCH_AGENT_TOOL;
+    } else {
+      process.env.ENABLE_WEB_RESEARCH_AGENT_TOOL =
+        originalEnv.ENABLE_WEB_RESEARCH_AGENT_TOOL;
+    }
+
     if (originalEnv.ENABLE_EVIDENCE_TOOLS === undefined) {
       delete process.env.ENABLE_EVIDENCE_TOOLS;
     } else {
@@ -226,6 +236,7 @@ describe('tool registry', () => {
       enableBedrockStructuredPocDiagnostics: true,
       enableStructuredQueryExecuteMock: true,
       enableStructuredQueryExecuteBedrockStub: false,
+      enableWebResearchAgentTool: true,
       enableManufacturingLineAgentTool: true,
       enableWebResearch: true,
     });
@@ -245,6 +256,7 @@ describe('tool registry', () => {
       { name: 'create_brief', enabled: true },
       { name: 'merge_briefs', enabled: true },
       { name: 'invoke_manufacturing_line_agent', enabled: true },
+      { name: 'invoke_web_research_agent', enabled: true },
       { name: 'kb_retrieve', enabled: false },
       { name: 'kb_query_readiness', enabled: true },
       { name: 'kb_rag_diagnostics', enabled: true },
@@ -309,12 +321,13 @@ describe('tool registry', () => {
       true,
     );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(5);
+    expect(enabledTools).toHaveLength(6);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
       'invoke_manufacturing_line_agent',
+      'invoke_web_research_agent',
       'create_slide_presentation',
     ]);
     expect(registered.map((entry) => entry.name)).toEqual([
@@ -327,6 +340,7 @@ describe('tool registry', () => {
       'create_brief',
       'merge_briefs',
       'invoke_manufacturing_line_agent',
+      'invoke_web_research_agent',
       'kb_retrieve',
       'kb_query_readiness',
       'kb_rag_diagnostics',
@@ -383,11 +397,13 @@ describe('tool registry', () => {
       'create_brief',
       'merge_briefs',
       'invoke_manufacturing_line_agent',
+      'invoke_web_research_agent',
       'create_slide_presentation',
     ]);
     expect(routerNames).not.toContain('kb_retrieve');
     expect(routerNames).not.toContain('kb_rag_flow');
     expect(routerNames).not.toContain('structured_rag_flow');
+    expect(routerNames).not.toContain('web_research');
     expect(routerNames).not.toContain('tavily_search');
     expect(routerNames).not.toContain('getWeather');
     expect(mod.buildGeneralTools(config).map((entry) => entry.name)).toEqual(routerNames);
@@ -508,6 +524,22 @@ describe('tool registry', () => {
     expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
       true,
     );
+  });
+
+  it('disables the web research agent handoff independently when the feature flag is off', async () => {
+    vi.stubEnv('ENABLE_WEB_RESEARCH_AGENT_TOOL', 'false');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+    const routerNames = mod.buildRouterTools().map((entry) => entry.name);
+
+    expect(
+      mod.resolveToolRegistryConfigFromEnv().enableWebResearchAgentTool,
+    ).toBe(false);
+    expect(
+      registered.find((entry) => entry.name === 'invoke_web_research_agent')?.enabled,
+    ).toBe(false);
+    expect(routerNames).not.toContain('invoke_web_research_agent');
   });
 
   it('disables the manufacturing line agent handoff independently when the feature flag is off', async () => {
