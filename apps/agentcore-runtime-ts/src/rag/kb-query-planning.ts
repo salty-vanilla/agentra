@@ -31,7 +31,10 @@ function normalizeStringArray(values: string[] | undefined): string[] | undefine
   return deduped.size > 0 ? [...deduped] : [];
 }
 
-function normalizeNumber(value: number | undefined, fieldName: string): number | undefined {
+function normalizeNumber(
+  value: number | undefined,
+  fieldName: string,
+): number | undefined {
   if (value === undefined) {
     return undefined;
   }
@@ -150,7 +153,8 @@ function resolveIntent(
   const inferred = inferIntentFromQuery(query);
   if (inferred === 'unknown') {
     return {
-      intent: query.length >= MIN_QUERY_LENGTH_FOR_CLARIFICATION ? 'document_lookup' : inferred,
+      intent:
+        query.length >= MIN_QUERY_LENGTH_FOR_CLARIFICATION ? 'document_lookup' : inferred,
       confidence: 0.35,
     };
   }
@@ -165,7 +169,10 @@ function inferMissingContext(query: string): string[] | undefined {
   const missing = new Set<string>();
   const wordCount = countWords(query);
 
-  if (query.length < MIN_QUERY_LENGTH_FOR_CLARIFICATION || wordCount < MIN_WORD_COUNT_FOR_CLARIFICATION) {
+  if (
+    query.length < MIN_QUERY_LENGTH_FOR_CLARIFICATION ||
+    wordCount < MIN_WORD_COUNT_FOR_CLARIFICATION
+  ) {
     missing.add('document topic');
   }
 

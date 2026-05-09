@@ -5,11 +5,11 @@ import type {
   SessionManager,
 } from '@strands-agents/sdk';
 import type { z } from 'zod';
-import {
+import type { ToolRegistryConfig } from '../../tools/registry.js';
+import type {
   manufacturingLineAgentHandoffInputSchema,
   manufacturingLineAgentHandoffOutputSchema,
 } from './handoff.js';
-import type { ToolRegistryConfig } from '../../tools/registry.js';
 
 export type ManufacturingLineModelConfig = Pick<
   BedrockModelOptions,

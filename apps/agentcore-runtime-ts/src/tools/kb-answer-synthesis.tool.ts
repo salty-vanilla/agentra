@@ -45,10 +45,10 @@ const briefSchema = z
     id: z.string().trim().min(1),
     createdAt: z.string().trim().min(1),
     language: z.enum(['ja', 'en', 'unknown']).optional(),
-    audience: z
-      .enum(['executive', 'engineer', 'sales', 'general', 'unknown'])
+    audience: z.enum(['executive', 'engineer', 'sales', 'general', 'unknown']).optional(),
+    outputFormat: z
+      .enum(['chat', 'presentation', 'report', 'json', 'unknown'])
       .optional(),
-    outputFormat: z.enum(['chat', 'presentation', 'report', 'json', 'unknown']).optional(),
     topic: z.string().optional(),
     goal: z.string().optional(),
     constraints: z.array(z.string()).optional(),

@@ -152,10 +152,7 @@ async function main() {
 
   const sawSlideProgress = slideCommandEvents.some((raw) => {
     const parsed = chatStreamEventSchema.parse(JSON.parse(raw) as unknown);
-    return (
-      parsed.type === 'progress_summary' &&
-      parsed.event.phase === 'router_handoff'
-    );
+    return parsed.type === 'progress_summary' && parsed.event.phase === 'router_handoff';
   });
   if (!sawSlideProgress) {
     throw new Error(

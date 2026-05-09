@@ -22,9 +22,9 @@ export type {
 } from './agents/manufacturing-line/index.js';
 export { createManufacturingLineAgent } from './agents/manufacturing-line/index.js';
 export type {
+  WebResearchAgentConfig,
   WebResearchAgentHandoffInput,
   WebResearchAgentHandoffOutput,
-  WebResearchAgentConfig,
   WebResearchAgentResult,
   WebResearchModelConfig,
 } from './agents/web-research/index.js';

@@ -1,11 +1,11 @@
-import { Agent, tool } from '@strands-agents/sdk';
+import { type Agent, tool } from '@strands-agents/sdk';
 import { createWebResearchAgent } from '../agents/web-research/agent.js';
 import {
   buildWebResearchAgentHandoffPrompt,
-  webResearchAgentHandoffInputSchema,
-  webResearchAgentHandoffOutputSchema,
   type WebResearchAgentHandoffInput,
   type WebResearchAgentHandoffOutput,
+  webResearchAgentHandoffInputSchema,
+  webResearchAgentHandoffOutputSchema,
 } from '../agents/web-research/handoff.js';
 import { errorMessage, toolSuccess } from './tool-response.js';
 
@@ -22,9 +22,7 @@ function getWebResearchAgent(): WebResearchAgentLike {
   return cachedWebResearchAgent;
 }
 
-function normalizeHandoffOutput(
-  value: unknown,
-): WebResearchAgentHandoffOutput {
+function normalizeHandoffOutput(value: unknown): WebResearchAgentHandoffOutput {
   const parsed = webResearchAgentHandoffOutputSchema.safeParse(value);
   if (parsed.success) {
     return parsed.data;

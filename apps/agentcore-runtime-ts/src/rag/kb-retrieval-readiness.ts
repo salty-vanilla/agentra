@@ -140,9 +140,11 @@ export function evaluateKbRetrievalReadiness(
 
   if (!queryReady || missingContext.length > 0) {
     status = 'needs_clarification';
-  } else if (input.kbRetrieveEnabled === false || input.knowledgeBaseConfigured === false) {
-    status =
-      input.allowWebFallback === true ? 'fallback_recommended' : 'not_configured';
+  } else if (
+    input.kbRetrieveEnabled === false ||
+    input.knowledgeBaseConfigured === false
+  ) {
+    status = input.allowWebFallback === true ? 'fallback_recommended' : 'not_configured';
   }
 
   const nextAction = determineNextAction(status);

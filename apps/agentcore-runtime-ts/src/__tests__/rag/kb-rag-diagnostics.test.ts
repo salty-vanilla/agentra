@@ -14,9 +14,7 @@ describe('kb rag diagnostics', () => {
     vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', '');
     vi.stubEnv('BEDROCK_KB_DEFAULT_TOP_K', '');
 
-    const { runKbRagDiagnostics } = await import(
-      '../../rag/kb-rag-diagnostics.js'
-    );
+    const { runKbRagDiagnostics } = await import('../../rag/kb-rag-diagnostics.js');
 
     const output = runKbRagDiagnostics();
 
@@ -44,9 +42,7 @@ describe('kb rag diagnostics', () => {
     vi.stubEnv('BEDROCK_KB_REGION', 'us-west-2');
     vi.stubEnv('BEDROCK_KB_DEFAULT_TOP_K', '7');
 
-    const { runKbRagDiagnostics } = await import(
-      '../../rag/kb-rag-diagnostics.js'
-    );
+    const { runKbRagDiagnostics } = await import('../../rag/kb-rag-diagnostics.js');
 
     const output = runKbRagDiagnostics();
 
@@ -64,9 +60,7 @@ describe('kb rag diagnostics', () => {
     vi.stubEnv('BEDROCK_KB_DEFAULT_TOP_K', '9');
     vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', '');
 
-    const { runKbRagDiagnostics } = await import(
-      '../../rag/kb-rag-diagnostics.js'
-    );
+    const { runKbRagDiagnostics } = await import('../../rag/kb-rag-diagnostics.js');
 
     const output = runKbRagDiagnostics({
       includeEnvValues: false,
@@ -88,9 +82,7 @@ describe('kb rag diagnostics', () => {
     expect(output.checks.find((check) => check.id === 'region')).toMatchObject({
       status: 'pass',
     });
-    expect(
-      JSON.stringify(output.checks),
-    ).not.toContain('kb-123');
+    expect(JSON.stringify(output.checks)).not.toContain('kb-123');
   });
 
   it('keeps the diagnostics marker even when caller metadata contains the same key', async () => {
@@ -99,9 +91,7 @@ describe('kb rag diagnostics', () => {
     vi.stubEnv('BEDROCK_KB_DEFAULT_TOP_K', '4');
     vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', 'true');
 
-    const { runKbRagDiagnostics } = await import(
-      '../../rag/kb-rag-diagnostics.js'
-    );
+    const { runKbRagDiagnostics } = await import('../../rag/kb-rag-diagnostics.js');
 
     const output = runKbRagDiagnostics({
       metadata: {

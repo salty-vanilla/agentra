@@ -12,10 +12,7 @@ describe('observability collector', () => {
     collector.onContentToolUseBlock('tool-use-123', 'search_web');
     collector.onToolResult('tool-use-123', 'success', { ok: true });
 
-    const snapshot = collector.createSnapshot(
-      'success',
-      '2026-05-07T00:00:05.000Z',
-    );
+    const snapshot = collector.createSnapshot('success', '2026-05-07T00:00:05.000Z');
 
     expect(snapshot.toolCalls).toHaveLength(1);
     expect(snapshot.toolCalls[0]).toMatchObject({

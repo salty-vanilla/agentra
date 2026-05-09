@@ -1,16 +1,16 @@
 import { BedrockKbStructuredProvider } from './bedrock-kb-structured-provider.js';
 import { MockStructuredQueryProvider } from './mock-structured-query-provider.js';
-import { StructuredQueryExecutor } from './structured-query-executor.js';
-import { createStructuredQueryPlan } from './structured-query-planner.js';
 import {
   evaluateStructuredPlanReadiness,
   validateStructuredQueryPlanAgainstCatalog,
 } from './structured-plan-readiness.js';
+import type { StructuredProviderPath } from './structured-plan-readiness-types.js';
+import { StructuredQueryExecutor } from './structured-query-executor.js';
+import { createStructuredQueryPlan } from './structured-query-planner.js';
 import type {
   StructuredRagFlowInput,
   StructuredRagFlowOutput,
 } from './structured-rag-flow-types.js';
-import type { StructuredProviderPath } from './structured-plan-readiness-types.js';
 
 const FLOW_METADATA_MARKER = 'structured-rag-flow-v1';
 
@@ -28,9 +28,10 @@ function mergeFlowMetadata(
   };
 }
 
-function resolvePlan(
-  input: StructuredRagFlowInput,
-): { plan: StructuredRagFlowOutput['plan']; source: 'plan' | 'planInput' | 'question' } {
+function resolvePlan(input: StructuredRagFlowInput): {
+  plan: StructuredRagFlowOutput['plan'];
+  source: 'plan' | 'planInput' | 'question';
+} {
   if (input.plan !== undefined) {
     return { plan: input.plan, source: 'plan' };
   }
@@ -64,7 +65,10 @@ function resolveValidation(
   return validateStructuredQueryPlanAgainstCatalog(plan);
 }
 
-function canExecuteProvider(provider: StructuredProviderPath, input: StructuredRagFlowInput) {
+function canExecuteProvider(
+  provider: StructuredProviderPath,
+  input: StructuredRagFlowInput,
+) {
   switch (provider) {
     case 'bedrock_kb_structured':
       return input.bedrockStructuredEnabled === true;
@@ -100,7 +104,9 @@ export async function runStructuredRagFlow(
   const resolved = resolvePlan(input);
   const metadata = mergeFlowMetadata(input.metadata);
   const messages: string[] = [
-    resolved.source === 'plan' ? 'Structured query plan accepted.' : 'Structured query plan created.',
+    resolved.source === 'plan'
+      ? 'Structured query plan accepted.'
+      : 'Structured query plan created.',
   ];
 
   if (mode === 'plan_only') {

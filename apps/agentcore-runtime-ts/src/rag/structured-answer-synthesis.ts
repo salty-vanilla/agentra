@@ -1,16 +1,16 @@
 import {
-  buildCitations,
-  createBrief,
   type Brief,
+  buildCitations,
   type Citation,
+  createBrief,
   type EvidenceSource,
 } from '@agentra/agent-tools';
-import type { StructuredQueryExecutionOutput } from './structured-query-executor-types.js';
 import type {
   StructuredAnswerSynthesisInput,
   StructuredAnswerSynthesisOutput,
   StructuredAnswerSynthesisStatus,
 } from './structured-answer-synthesis-types.js';
+import type { StructuredQueryExecutionOutput } from './structured-query-executor-types.js';
 
 const SYNTHESIZER_ID = 'structured-answer-synthesis-v1';
 const DEFAULT_ROWS_PREVIEW_LIMIT = 5;
@@ -39,7 +39,9 @@ function dedupeStrings(values: string[]): string[] {
   return deduped;
 }
 
-function humanizeIntent(intent: StructuredQueryExecutionOutput['summary']['intent']): string {
+function humanizeIntent(
+  intent: StructuredQueryExecutionOutput['summary']['intent'],
+): string {
   switch (intent) {
     case 'anomaly_summary':
       return 'Anomaly summary';
@@ -242,7 +244,9 @@ function buildKeyFindings(input: {
   }
 
   if (input.status === 'not_implemented') {
-    findings.push('Structured provider is not implemented yet or is running in stub mode.');
+    findings.push(
+      'Structured provider is not implemented yet or is running in stub mode.',
+    );
     return findings;
   }
 
@@ -254,19 +258,26 @@ function buildKeyFindings(input: {
   findings.push(...briefFacts);
 
   const rowCount = execution.rows.length;
-  findings.push(`${humanizeIntent(input.flow.plan.intent)} returned ${rowCount} row${rowCount === 1 ? '' : 's'}.`);
+  findings.push(
+    `${humanizeIntent(input.flow.plan.intent)} returned ${rowCount} row${rowCount === 1 ? '' : 's'}.`,
+  );
 
-  const columnNames = execution.summary.columnNames.length > 0
-    ? execution.summary.columnNames
-    : stableColumnNames(execution.rows);
+  const columnNames =
+    execution.summary.columnNames.length > 0
+      ? execution.summary.columnNames
+      : stableColumnNames(execution.rows);
   if (columnNames.length > 0) {
     findings.push(`Columns: ${columnNames.join(', ')}.`);
   }
 
   if (input.flow.plan.intent === 'anomaly_summary') {
-    findings.push('The result is phrased generically so the signal can remain explicit only when metadata provides it.');
+    findings.push(
+      'The result is phrased generically so the signal can remain explicit only when metadata provides it.',
+    );
   } else {
-    findings.push('Use the structured result as grounded input for downstream chat, report, or slide generation.');
+    findings.push(
+      'Use the structured result as grounded input for downstream chat, report, or slide generation.',
+    );
   }
 
   return dedupeStrings(findings).slice(0, MAX_FINDINGS);
@@ -303,8 +314,13 @@ function buildCaveats(input: {
     caveats.push('No citations were available for this structured result.');
   }
 
-  if (input.status === 'needs_clarification' && (input.flow.readiness?.blockingIssues.length ?? 0) > 0) {
-    caveats.push('Structured execution is blocked until the missing information is resolved.');
+  if (
+    input.status === 'needs_clarification' &&
+    (input.flow.readiness?.blockingIssues.length ?? 0) > 0
+  ) {
+    caveats.push(
+      'Structured execution is blocked until the missing information is resolved.',
+    );
   }
 
   return dedupeStrings(caveats);
@@ -316,20 +332,32 @@ function buildNextActions(input: {
 }): string[] {
   switch (input.status) {
     case 'needs_clarification':
-      return ['Ask for the missing slots or blocking details, then rerun structured RAG.'];
+      return [
+        'Ask for the missing slots or blocking details, then rerun structured RAG.',
+      ];
     case 'not_configured':
-      return ['Enable or configure the requested structured provider, or fall back to kb_retrieve.'];
+      return [
+        'Enable or configure the requested structured provider, or fall back to kb_retrieve.',
+      ];
     case 'unsupported':
-      return ['Use a supported provider path or wait for the future provider implementation.'];
+      return [
+        'Use a supported provider path or wait for the future provider implementation.',
+      ];
     case 'no_data':
       return ['Refine the filters, target entity, or time range and try again.'];
     case 'not_implemented':
-      return ['Implement the live adapter or keep this path for mock/demo validation only.'];
+      return [
+        'Implement the live adapter or keep this path for mock/demo validation only.',
+      ];
     case 'answer_ready':
-      return ['Use the structured answer as grounded input for chat, report, or slide generation.'];
+      return [
+        'Use the structured answer as grounded input for chat, report, or slide generation.',
+      ];
     case 'error':
     default:
-      return ['Inspect the structured flow output and retry after fixing validation or provider wiring.'];
+      return [
+        'Inspect the structured flow output and retry after fixing validation or provider wiring.',
+      ];
   }
 }
 
@@ -409,15 +437,11 @@ function buildMetadata(input: {
   return metadata;
 }
 
-function collectSources(
-  flow: StructuredAnswerSynthesisInput['flow'],
-): EvidenceSource[] {
+function collectSources(flow: StructuredAnswerSynthesisInput['flow']): EvidenceSource[] {
   return flow.execution?.sources ?? [];
 }
 
-function collectCitations(
-  flow: StructuredAnswerSynthesisInput['flow'],
-): Citation[] {
+function collectCitations(flow: StructuredAnswerSynthesisInput['flow']): Citation[] {
   return flow.execution?.citations ?? [];
 }
 

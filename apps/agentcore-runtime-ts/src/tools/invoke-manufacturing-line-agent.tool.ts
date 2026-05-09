@@ -1,11 +1,11 @@
-import { Agent, tool } from '@strands-agents/sdk';
+import { type Agent, tool } from '@strands-agents/sdk';
 import { createManufacturingLineAgent } from '../agents/manufacturing-line/agent.js';
 import {
   buildManufacturingLineAgentHandoffPrompt,
-  manufacturingLineAgentHandoffInputSchema,
-  manufacturingLineAgentHandoffOutputSchema,
   type ManufacturingLineAgentHandoffInput,
   type ManufacturingLineAgentHandoffOutput,
+  manufacturingLineAgentHandoffInputSchema,
+  manufacturingLineAgentHandoffOutputSchema,
 } from '../agents/manufacturing-line/handoff.js';
 
 type ManufacturingLineAgentLike = Pick<Agent, 'invoke'>;
@@ -21,9 +21,7 @@ function getManufacturingLineAgent(): ManufacturingLineAgentLike {
   return cachedManufacturingLineAgent;
 }
 
-function normalizeHandoffOutput(
-  value: unknown,
-): ManufacturingLineAgentHandoffOutput {
+function normalizeHandoffOutput(value: unknown): ManufacturingLineAgentHandoffOutput {
   const parsed = manufacturingLineAgentHandoffOutputSchema.safeParse(value);
   if (parsed.success) {
     return parsed.data;

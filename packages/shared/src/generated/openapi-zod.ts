@@ -196,6 +196,7 @@ export const listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsag
 export const listThreadMessagesResponseMessagesItemObservabilitySummaryReasoningStepCountMin = 0;
 
 
+
 export const listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallsItemDurationMsMin = 0;
 
 
@@ -235,6 +236,7 @@ export const ListThreadMessagesResponse = zod.object({
   "summary": zod.string().optional()
 }).optional(),
   "toolCalls": zod.array(zod.object({
+  "toolCallId": zod.string().min(1),
   "toolName": zod.string().min(1),
   "startedAt": zod.string().datetime({}),
   "completedAt": zod.string().datetime({}).optional(),
