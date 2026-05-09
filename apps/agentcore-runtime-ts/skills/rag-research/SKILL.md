@@ -12,9 +12,10 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 
 - Use `kb_retrieve` when the answer should be grounded in the configured Bedrock Knowledge Base.
 - `kb_retrieve` only retrieves evidence. It does not generate the final answer.
-- Use `structured_query_plan` when the user asks about structured data, metrics, aggregations, rankings, time-series trends, equipment history, temperature anomalies, or error-code lookup.
+- Use `structured_query_plan` when the user asks about structured data, metrics, aggregations, rankings, time-series trends, equipment history, anomaly summaries, or error-code lookup.
 - `structured_query_plan` only creates a deterministic plan. It does not generate SQL, execute SQL, or call a database.
 - Prefer `structured_query_plan` before asking follow-up questions when the request is partially specified. Use `missingSlots` to decide whether a follow-up is needed.
+- For anomaly analysis, use the generic `anomaly_summary` intent and represent the target signal through metrics, filters, target entity, or metadata. Do not create one intent per signal such as temperature, pressure, or vibration.
 - Use retrieved `sources` and `citations` to ground answers.
 - Use `create_brief` or `merge_briefs` when the retrieved evidence will feed a report, slide, or later tool.
 - Use `metadataFilter` when the user specifies document type, project, source, category, date-like metadata, or any other explicit KB metadata constraint.

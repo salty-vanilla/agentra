@@ -25,6 +25,41 @@ describe('structured query plan tool', () => {
     expect(payload).not.toHaveProperty('sql');
   });
 
+  it('accepts anomaly summary as the canonical anomaly intent', async () => {
+    const { executeStructuredQueryPlanTool } = await import(
+      '../../tools/structured-query-plan.tool.js'
+    );
+
+    const response = executeStructuredQueryPlanTool({
+      question: 'temperature anomaly trend for line A',
+      intent: 'anomaly_summary',
+      targetEntity: 'line A',
+      metrics: ['average'],
+      timeRange: { start: '2026-05-01', end: '2026-05-07' },
+    });
+
+    expect(response.status).toBe('success');
+
+    const payload = JSON.parse(response.content[0]?.text ?? '{}');
+    expect(payload.intent).toBe('anomaly_summary');
+    expect(payload.limit).toBe(20);
+  });
+
+  it('rejects the removed temperature anomaly intent', async () => {
+    const { executeStructuredQueryPlanTool } = await import(
+      '../../tools/structured-query-plan.tool.js'
+    );
+
+    const response = executeStructuredQueryPlanTool({
+      question: 'temperature anomaly trend for line A',
+      intent: 'temperature_anomaly_summary' as never,
+    });
+
+    expect(response.status).toBe('error');
+    expect(response.content[0]?.text).toContain('Invalid option');
+    expect(response.content[0]?.text).toContain('intent');
+  });
+
   it('rejects an empty question', async () => {
     const { executeStructuredQueryPlanTool } = await import(
       '../../tools/structured-query-plan.tool.js'
