@@ -6,6 +6,7 @@ import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
+import { invokeManufacturingLineAgentTool } from './invoke-manufacturing-line-agent.tool.js';
 import { kbAnswerSynthesisTool } from './kb-answer-synthesis.tool.js';
 import { kbQueryReadinessTool } from './kb-query-readiness.tool.js';
 import { kbRagDiagnosticsTool } from './kb-rag-diagnostics.tool.js';
@@ -55,6 +56,7 @@ export type RegisteredTool = {
 
 export type ToolRegistryConfig = {
   enableWeather?: boolean;
+  enableManufacturingLineAgentTool?: boolean;
   enableTavily?: boolean;
   enablePresentation?: boolean;
   enableCalculator?: boolean;
@@ -85,6 +87,7 @@ const TOOL_ORDER = [
   'create_artifact_manifest',
   'create_brief',
   'merge_briefs',
+  'invoke_manufacturing_line_agent',
   'kb_retrieve',
   'kb_query_readiness',
   'kb_rag_diagnostics',
@@ -114,6 +117,7 @@ const ROUTER_TOOL_NAMES = [
   'create_brief',
   'merge_briefs',
   'create_artifact_manifest',
+  'invoke_manufacturing_line_agent',
   'create_slide_presentation',
 ] as const satisfies readonly RegisteredToolName[];
 
@@ -179,6 +183,10 @@ function resolveEnvFlag(name: string, defaultValue: boolean): boolean {
 export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
   return {
     enableWeather: resolveEnvFlag('ENABLE_WEATHER_TOOL', false),
+    enableManufacturingLineAgentTool: resolveEnvFlag(
+      'ENABLE_MANUFACTURING_LINE_AGENT_TOOL',
+      true,
+    ),
     enableTavily: resolveEnvFlag('ENABLE_TAVILY_TOOLS', true),
     enablePresentation: resolveEnvFlag('ENABLE_PRESENTATION_TOOL', true),
     enableCalculator: resolveEnvFlag('ENABLE_CALCULATOR_TOOL', true),
@@ -231,6 +239,11 @@ export function getRegisteredTools(
   config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
 ): RegisteredTool[] {
   const enableWeather = resolveToolEnabled(config, 'enableWeather', false);
+  const enableManufacturingLineAgentTool = resolveToolEnabled(
+    config,
+    'enableManufacturingLineAgentTool',
+    true,
+  );
   const enableTavily = resolveToolEnabled(config, 'enableTavily', true);
   const enablePresentation = resolveToolEnabled(config, 'enablePresentation', true);
   const enableCalculator = resolveToolEnabled(config, 'enableCalculator', true);
@@ -347,6 +360,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableBrief,
       tool: mergeBriefsTool,
+    },
+    {
+      name: 'invoke_manufacturing_line_agent',
+      category: 'research',
+      riskLevel: 'medium',
+      enabled: enableManufacturingLineAgentTool,
+      tool: invokeManufacturingLineAgentTool,
     },
     {
       name: 'kb_retrieve',

@@ -109,6 +109,10 @@ const RAG_TOOL_INSTRUCTIONS = [
   'Bedrock Knowledge Base の retrieval 設定を安全に点検したい場合は kb_rag_diagnostics を使い、AWS 呼び出しや文書取得とは切り分けてください。',
 ].join('\n');
 
+const DOMAIN_HANDOFF_INSTRUCTIONS = [
+  '製造ライン、設備、異常、KPI、エラーコード、生産実績、保全履歴に関する質問は invoke_manufacturing_line_agent に委譲してください。',
+].join('\n');
+
 const STRUCTURED_RAG_TOOL_INSTRUCTIONS = [
   '構造化データに対する問い合わせ、集計、ランキング、時系列傾向などが必要な場合は、structured_query_plan で問い合わせ意図と不足情報を整理してください。',
   'structured_query_plan はSQL生成や実行を行わず、後続処理のための計画を作るだけです。',
@@ -201,6 +205,8 @@ function buildPrompt(input: {
     EVIDENCE_TOOL_INSTRUCTIONS,
     '',
     RAG_TOOL_INSTRUCTIONS,
+    '',
+    DOMAIN_HANDOFF_INSTRUCTIONS,
     '',
     STRUCTURED_RAG_TOOL_INSTRUCTIONS,
     '',
