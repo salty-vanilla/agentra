@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ci
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build agent tools package
+        run: pnpm --filter @agentra/agent-tools build
+
+      - name: Build presentation author package
+        run: pnpm --filter @agentra/presentation-author build
+
+      - name: Run biome
+        run: pnpm biome check .
+
+      - name: Run typecheck
+        run: pnpm typecheck
+
+      - name: Run test
+        run: pnpm test

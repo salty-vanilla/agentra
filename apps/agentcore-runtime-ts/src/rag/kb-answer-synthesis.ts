@@ -133,7 +133,6 @@ function resolveTitle(input: {
       return query
         ? `KB answer needs stronger evidence: ${base}`
         : 'KB answer needs stronger evidence';
-    case 'error':
     default:
       return query ? `KB answer synthesis error: ${base}` : 'KB answer synthesis error';
   }
@@ -156,7 +155,6 @@ function buildSummary(input: {
       return 'No knowledge base sources were retrieved.';
     case 'weak_evidence':
       return 'KB retrieval returned sources, but the evidence looks weak or sparse.';
-    case 'error':
     default:
       return 'KB answer synthesis could not normalize the flow output.';
   }
@@ -229,7 +227,6 @@ function buildNextActions(input: { status: KbAnswerSynthesisStatus }): string[] 
       return [
         'Use the retrieved sources as grounded evidence for the final response, report, or slide.',
       ];
-    case 'error':
     default:
       return [
         'Inspect the KB flow output and retry after fixing the retrieval or wiring issue.',

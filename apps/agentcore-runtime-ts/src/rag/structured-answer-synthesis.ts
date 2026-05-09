@@ -55,7 +55,6 @@ function humanizeIntent(
       return 'Production trend';
     case 'generic_lookup':
       return 'Structured query';
-    case 'unknown':
     default:
       return 'Structured query';
   }
@@ -72,7 +71,6 @@ function humanizeTone(tone: StructuredAnswerSynthesisInput['tone']): {
       return { audience: 'engineer', outputFormat: 'report' };
     case 'concise':
       return { audience: 'general', outputFormat: 'chat' };
-    case 'detailed':
     default:
       return { audience: 'general', outputFormat: 'report' };
   }
@@ -102,10 +100,6 @@ function resolveStatus(
 
       return 'error';
     }
-    case 'planned':
-    case 'validated':
-    case 'ready':
-    case 'error':
     default:
       return 'error';
   }
@@ -130,7 +124,6 @@ function resolveTitle(input: {
       return `${intent} returned no data`;
     case 'not_implemented':
       return `${intent} not implemented`;
-    case 'error':
     default:
       return `${intent} synthesis error`;
   }
@@ -156,7 +149,6 @@ function buildSummary(input: {
       return 'No structured rows were returned.';
     case 'not_implemented':
       return 'Structured provider is not implemented yet or is running in stub mode.';
-    case 'error':
     default:
       return 'Structured answer synthesis could not normalize the flow output.';
   }
@@ -353,7 +345,6 @@ function buildNextActions(input: {
       return [
         'Use the structured answer as grounded input for chat, report, or slide generation.',
       ];
-    case 'error':
     default:
       return [
         'Inspect the structured flow output and retry after fixing validation or provider wiring.',
