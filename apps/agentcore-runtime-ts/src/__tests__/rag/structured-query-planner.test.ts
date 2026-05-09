@@ -49,11 +49,11 @@ describe('structured query planner', () => {
   });
 
   it.each([
-    ['温度 異常 の傾向を見たい', 'target entity'],
-    ['temperature anomaly trend', 'target entity'],
-    ['pressure anomaly trend', 'target entity'],
-    ['振動 異常 の傾向を見たい', 'target entity'],
-  ])('infers anomaly summary from %s', async (question, expectedMissingSlot) => {
+    ['温度 異常 の傾向を見たい', ['temperature']],
+    ['temperature anomaly trend', ['temperature']],
+    ['pressure anomaly trend', ['pressure']],
+    ['振動 異常 の傾向を見たい', ['vibration']],
+  ])('infers anomaly summary from %s', async (question, expectedSignals) => {
     const { createStructuredQueryPlan } = await import(
       '../../rag/structured-query-planner.js'
     );
@@ -64,9 +64,11 @@ describe('structured query planner', () => {
 
     expect(plan.intent).toBe('anomaly_summary');
     expect(plan.limit).toBe(20);
+    expect(plan.metadata?.targetSignals).toEqual(expectedSignals);
     expect(plan.missingSlots).toEqual(
-      expect.arrayContaining([expectedMissingSlot, 'signal or metric', 'time range']),
+      expect.arrayContaining(['target entity', 'time range']),
     );
+    expect(plan.missingSlots).not.toContain('signal or metric');
   });
 
   it('does not require a signal slot when metrics are present', async () => {
@@ -86,16 +88,16 @@ describe('structured query planner', () => {
     expect(plan.limit).toBe(20);
   });
 
-  it('accepts signal metadata for anomaly summaries', async () => {
+  it('merges inferred and user-provided target signals', async () => {
     const { createStructuredQueryPlan } = await import(
       '../../rag/structured-query-planner.js'
     );
 
     const plan = createStructuredQueryPlan({
-      question: 'temperature anomaly trend for line A',
+      question: 'pressure temperature anomaly trend for line A',
       targetEntity: 'line A',
       metadata: {
-        targetSignals: ['pressure'],
+        targetSignals: ['pressure', 'pressure', 'humidity'],
       },
       timeRange: { start: '2026-05-01', end: '2026-05-07' },
     });
@@ -103,6 +105,35 @@ describe('structured query planner', () => {
     expect(plan.intent).toBe('anomaly_summary');
     expect(plan.missingSlots).toBeUndefined();
     expect(plan.limit).toBe(20);
+    expect(plan.metadata).toEqual({
+      targetSignals: ['temperature', 'pressure', 'humidity'],
+      planner: 'deterministic-structured-query-planner',
+    });
+  });
+
+  it('extracts target signals deterministically from the question text', async () => {
+    const { inferTargetSignalsFromQuestion } = await import(
+      '../../rag/structured-query-planner.js'
+    );
+
+    expect(
+      inferTargetSignalsFromQuestion('pressure and temp anomaly with vibration'),
+    ).toEqual(['temperature', 'pressure', 'vibration']);
+  });
+
+  it('keeps signal missing for generic anomaly questions', async () => {
+    const { createStructuredQueryPlan } = await import(
+      '../../rag/structured-query-planner.js'
+    );
+
+    const plan = createStructuredQueryPlan({
+      question: '異常をまとめて',
+    });
+
+    expect(plan.intent).toBe('anomaly_summary');
+    expect(plan.missingSlots).toEqual(
+      expect.arrayContaining(['target entity', 'signal or metric', 'time range']),
+    );
   });
 
   it('infers KPI aggregation from keywords', async () => {

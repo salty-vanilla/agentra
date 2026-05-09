@@ -43,6 +43,8 @@ describe('structured query plan tool', () => {
     const payload = JSON.parse(response.content[0]?.text ?? '{}');
     expect(payload.intent).toBe('anomaly_summary');
     expect(payload.limit).toBe(20);
+    expect(payload.metadata?.targetSignals).toEqual(['temperature']);
+    expect(payload).not.toHaveProperty('sql');
   });
 
   it('rejects the removed temperature anomaly intent', async () => {

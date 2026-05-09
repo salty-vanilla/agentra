@@ -30,7 +30,7 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 - Use `structured_query_execute_mock` only to validate the structured RAG pipeline or demonstrate expected result shape.
 - `structured_query_execute_mock` does not query real data, generate SQL, or call any database.
 - Prefer `structured_query_plan` before asking follow-up questions when the request is partially specified. Use `missingSlots` to decide whether a follow-up is needed.
-- For anomaly analysis, use the generic `anomaly_summary` intent and represent the target signal through metrics, filters, target entity, or metadata. Do not create one intent per signal such as temperature, pressure, or vibration.
+- For anomaly analysis, use the generic `anomaly_summary` intent and represent the target signal through metrics, filters, target entity, or `metadata.targetSignals`. Deterministic planning may populate `metadata.targetSignals` for common signals such as temperature, pressure, or vibration. Do not create one intent per signal.
 - `structured_query_execute_bedrock_stub` is disabled by default and is only for validating future Bedrock KB structured provider wiring.
 - It returns `not_implemented` and does not query real Bedrock structured data.
 - Do not present its output as real data.

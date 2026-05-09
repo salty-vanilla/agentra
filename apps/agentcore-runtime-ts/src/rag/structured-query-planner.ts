@@ -2,8 +2,10 @@ import { uuidv7 } from 'uuidv7';
 import {
   STRUCTURED_QUERY_CAPABILITY_CATALOG,
   STRUCTURED_QUERY_INTENT_PRIORITY,
+  STRUCTURED_TARGET_SIGNAL_KEYWORDS,
   type StructuredQueryCapabilitySlot,
   type StructuredQueryCatalogIntent,
+  type StructuredTargetSignal,
 } from './structured-query-capability-catalog.js';
 import type {
   StructuredQueryDataSourceKind,
@@ -62,6 +64,26 @@ function normalizeMetricArray(
   }
 
   return [...deduped];
+}
+
+function normalizeTargetSignalArray(values: unknown): string[] | undefined {
+  if (!Array.isArray(values)) {
+    return undefined;
+  }
+
+  const deduped = new Set<string>();
+  for (const value of values) {
+    if (typeof value !== 'string') {
+      continue;
+    }
+
+    const trimmed = trimText(value)?.toLowerCase();
+    if (trimmed) {
+      deduped.add(trimmed);
+    }
+  }
+
+  return deduped.size > 0 ? [...deduped] : [];
 }
 
 function normalizeFilterValue(
@@ -162,15 +184,49 @@ function normalizeOrderBy(
 
 function normalizeMetadata(
   metadata: Record<string, unknown> | undefined,
+  inferredTargetSignals: string[],
 ): Record<string, unknown> | undefined {
-  if (metadata === undefined) {
+  if (metadata === undefined && inferredTargetSignals.length === 0) {
     return undefined;
   }
 
-  return {
-    ...metadata,
+  const normalizedMetadata = {
+    ...(metadata ?? {}),
     planner: 'deterministic-structured-query-planner',
-  };
+  } as Record<string, unknown>;
+
+  const userTargetSignals = normalizeTargetSignalArray(normalizedMetadata.targetSignals);
+  const mergedTargetSignals = [...inferredTargetSignals, ...(userTargetSignals ?? [])];
+  const dedupedTargetSignals = [...new Set(mergedTargetSignals)];
+
+  if (dedupedTargetSignals.length > 0) {
+    normalizedMetadata.targetSignals = dedupedTargetSignals;
+  } else {
+    delete normalizedMetadata.targetSignals;
+  }
+
+  return normalizedMetadata;
+}
+
+export function inferTargetSignalsFromQuestion(question: string): string[] {
+  const normalizedQuestion = question.toLowerCase();
+  const inferred: StructuredTargetSignal[] = [];
+
+  for (const [signal, keywords] of Object.entries(
+    STRUCTURED_TARGET_SIGNAL_KEYWORDS,
+  ) as Array<[StructuredTargetSignal, readonly string[]]>) {
+    const hasKeyword = keywords.some((keyword) =>
+      keyword === keyword.toLowerCase()
+        ? normalizedQuestion.includes(keyword)
+        : question.includes(keyword),
+    );
+
+    if (hasKeyword) {
+      inferred.push(signal);
+    }
+  }
+
+  return inferred;
 }
 
 function inferIntentFromQuestion(question: string): StructuredQueryIntent {
@@ -245,11 +301,7 @@ function isSignalHintPresent(input: {
   filters: StructuredQueryFilter[] | undefined;
   metadata: Record<string, unknown> | undefined;
 }): boolean {
-  const hasSignalMetadata = Array.isArray(input.metadata?.targetSignals)
-    ? input.metadata?.targetSignals.some(
-        (value) => typeof value === 'string' && value.trim().length > 0,
-      )
-    : false;
+  const hasSignalMetadata = normalizeTargetSignalArray(input.metadata?.targetSignals);
   const hasSignalFilter = Boolean(
     input.filters?.some((filter) => {
       const field = trimText(filter.field)?.toLowerCase();
@@ -257,7 +309,7 @@ function isSignalHintPresent(input: {
     }),
   );
 
-  return Boolean(input.metrics?.length || hasSignalMetadata || hasSignalFilter);
+  return Boolean(input.metrics?.length || hasSignalMetadata?.length || hasSignalFilter);
 }
 
 function isSlotSatisfied(
@@ -363,6 +415,7 @@ export function createStructuredQueryPlan(
 ): StructuredQueryPlan {
   const question = input.question.trim();
   const { intent, confidence } = resolveIntent(input.intent, question);
+  const inferredTargetSignals = inferTargetSignalsFromQuestion(question);
   const timeRange = normalizeTimeRange(input.timeRange);
   const targetEntity = trimText(input.targetEntity);
   const filters = normalizeFilters(input.filters);
@@ -371,7 +424,7 @@ export function createStructuredQueryPlan(
   const orderBy = normalizeOrderBy(input.orderBy);
   const assumptions = normalizeStringArray(input.assumptions);
   const notes = normalizeStringArray(input.notes);
-  const normalizedMetadata = normalizeMetadata(input.metadata);
+  const normalizedMetadata = normalizeMetadata(input.metadata, inferredTargetSignals);
   const missingSlots = buildMissingSlots(
     {
       ...input,
