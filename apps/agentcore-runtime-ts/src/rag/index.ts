@@ -8,6 +8,8 @@ export * from './bedrock-structured-poc-diagnostics.js';
 export * from './bedrock-structured-poc-diagnostics-types.js';
 export * from './kb-rag-diagnostics.js';
 export * from './kb-rag-diagnostics-types.js';
+export * from './kb-answer-synthesis.js';
+export * from './kb-answer-synthesis-types.js';
 export * from './kb-query-planning.js';
 export * from './kb-query-planning-types.js';
 export * from './kb-retrieval-readiness.js';
