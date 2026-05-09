@@ -10,7 +10,6 @@ This spec is the source of truth for frontend client generation and API mocks.
 import type { ChatObservationToolCallStatus } from './chatObservationToolCallStatus';
 
 export interface ChatObservationToolCall {
-  toolCallId: string;
   /** @minLength 1 */
   toolName: string;
   startedAt: string;
