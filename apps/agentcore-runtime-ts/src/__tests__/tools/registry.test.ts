@@ -8,6 +8,8 @@ describe('tool registry', () => {
     ENABLE_STRUCTURED_QUERY_PLAN_TOOL: process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL,
     ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL:
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL,
+    ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL:
+      process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
     ENABLE_WEB_RESEARCH_TOOL: process.env.ENABLE_WEB_RESEARCH_TOOL,
@@ -25,6 +27,8 @@ describe('tool registry', () => {
       originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL =
       originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL;
+    process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL =
+      originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
@@ -63,6 +67,13 @@ describe('tool registry', () => {
     } else {
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL =
         originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL;
+    }
+
+    if (originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL === undefined) {
+      delete process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL;
+    } else {
+      process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL =
+        originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL;
     }
 
     if (originalEnv.ENABLE_EVIDENCE_TOOLS === undefined) {
@@ -115,6 +126,7 @@ describe('tool registry', () => {
       enableKbRetrieve: false,
       enableStructuredQueryPlan: true,
       enableStructuredQueryExecuteMock: true,
+      enableStructuredQueryExecuteBedrockStub: false,
       enableWebResearch: true,
     });
 
@@ -135,6 +147,7 @@ describe('tool registry', () => {
       { name: 'kb_retrieve', enabled: false },
       { name: 'structured_query_plan', enabled: true },
       { name: 'structured_query_execute_mock', enabled: true },
+      { name: 'structured_query_execute_bedrock_stub', enabled: false },
       { name: 'web_research', enabled: true },
       { name: 'tavily_search', enabled: true },
       { name: 'tavily_extract', enabled: true },
@@ -204,6 +217,7 @@ describe('tool registry', () => {
       'kb_retrieve',
       'structured_query_plan',
       'structured_query_execute_mock',
+      'structured_query_execute_bedrock_stub',
       'web_research',
       'tavily_search',
       'tavily_extract',
@@ -282,6 +296,10 @@ describe('tool registry', () => {
     ).toBe(false);
     expect(
       registered.find((entry) => entry.name === 'structured_query_execute_mock')?.enabled,
+    ).toBe(false);
+    expect(
+      registered.find((entry) => entry.name === 'structured_query_execute_bedrock_stub')
+        ?.enabled,
     ).toBe(false);
   });
 });

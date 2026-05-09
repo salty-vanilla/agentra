@@ -6,6 +6,7 @@ import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
+import { structuredQueryExecuteBedrockStubTool } from './structured-query-execute-bedrock-stub.tool.js';
 import { structuredQueryExecuteMockTool } from './structured-query-execute-mock.tool.js';
 import { structuredQueryPlanTool } from './structured-query-plan.tool.js';
 import { tableSummaryTool } from './table-summary.tool.js';
@@ -57,6 +58,7 @@ export type ToolRegistryConfig = {
   enableKbRetrieve?: boolean;
   enableStructuredQueryPlan?: boolean;
   enableStructuredQueryExecuteMock?: boolean;
+  enableStructuredQueryExecuteBedrockStub?: boolean;
   enableWebResearch?: boolean;
 };
 
@@ -72,6 +74,7 @@ const TOOL_ORDER = [
   'kb_retrieve',
   'structured_query_plan',
   'structured_query_execute_mock',
+  'structured_query_execute_bedrock_stub',
   'web_research',
   'tavily_search',
   'tavily_extract',
@@ -121,6 +124,10 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       'ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL',
       true,
     ),
+    enableStructuredQueryExecuteBedrockStub: resolveEnvFlag(
+      'ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL',
+      false,
+    ),
     enableWebResearch: resolveEnvFlag('ENABLE_WEB_RESEARCH_TOOL', true),
   };
 }
@@ -154,6 +161,11 @@ export function getRegisteredTools(
     config,
     'enableStructuredQueryExecuteMock',
     true,
+  );
+  const enableStructuredQueryExecuteBedrockStub = resolveToolEnabled(
+    config,
+    'enableStructuredQueryExecuteBedrockStub',
+    false,
   );
   const enableWebResearch = resolveToolEnabled(config, 'enableWebResearch', true);
 
@@ -234,6 +246,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableStructuredQueryExecuteMock,
       tool: structuredQueryExecuteMockTool,
+    },
+    {
+      name: 'structured_query_execute_bedrock_stub',
+      category: 'structured_rag',
+      riskLevel: 'low',
+      enabled: enableStructuredQueryExecuteBedrockStub,
+      tool: structuredQueryExecuteBedrockStubTool,
     },
     {
       name: 'web_research',
