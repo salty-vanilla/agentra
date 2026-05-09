@@ -8,6 +8,13 @@ allowed-tools: kb_retrieve, kb_answer_synthesis, kb_query_readiness, kb_rag_diag
 
 Use this skill when the user asks about project-specific, internal, uploaded, or knowledge-base-backed information.
 
+## Manufacturing Line Agent ownership
+
+- Manufacturing-line questions are owned by the Manufacturing Line Agent inside the same AgentCore Runtime.
+- The Manufacturing Line Agent owns normal manufacturing KB RAG, structured manufacturing RAG, anomaly summaries, error-code lookup, KPI aggregation, equipment history lookup, production trend lookup, manufacturing PoC diagnostics, and manufacturing vocabulary or aliases.
+- Do not create a separate runtime, invoke another runtime, add Redshift or Bedrock KB infrastructure, generate SQL, or query Redshift directly for manufacturing-line requests.
+- Until the Router handoff tool exists, keep Router behavior intact and use the manufacturing guidance here as domain ownership context rather than a cross-runtime handoff.
+
 ## Tool guidance
 
 - Use `kb_retrieve` when the answer should be grounded in the configured Bedrock Knowledge Base.
