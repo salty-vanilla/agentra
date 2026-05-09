@@ -8,6 +8,7 @@ export type ObservationToolCall = {
   durationMs: number;
   status: 'success' | 'error' | 'cancelled';
   error?: string;
+  metadata?: Record<string, unknown>;
 };
 
 export type ObservationSummary = {
@@ -103,6 +104,69 @@ function sanitizeValue(value: unknown, depth = 0): unknown {
     );
   }
   return value;
+}
+
+function parseToolResultContent(content: unknown): unknown {
+  if (typeof content === 'string') {
+    try {
+      return JSON.parse(content);
+    } catch {
+      return undefined;
+    }
+  }
+
+  if (Array.isArray(content)) {
+    const firstText = content.find(
+      (item) =>
+        item &&
+        typeof item === 'object' &&
+        'text' in item &&
+        typeof (item as { text?: unknown }).text === 'string',
+    ) as { text?: string } | undefined;
+
+    if (!firstText?.text) {
+      return undefined;
+    }
+
+    try {
+      return JSON.parse(firstText.text);
+    } catch {
+      return undefined;
+    }
+  }
+
+  return undefined;
+}
+
+function extractToolMetadata(content: unknown): Record<string, unknown> | undefined {
+  const parsed = parseToolResultContent(content);
+  if (!parsed || typeof parsed !== 'object') {
+    return undefined;
+  }
+
+  const value = parsed as Record<string, unknown>;
+  const metadata =
+    value.metadata && typeof value.metadata === 'object'
+      ? (value.metadata as Record<string, unknown>)
+      : undefined;
+
+  const extracted = {
+    ...(typeof value.status === 'string' ? { status: value.status } : {}),
+    ...(typeof value.agentKind === 'string' ? { agentKind: value.agentKind } : {}),
+    ...(typeof value.agentName === 'string' ? { agentName: value.agentName } : {}),
+    ...(typeof value.handoffMode === 'string' ? { handoffMode: value.handoffMode } : {}),
+    ...(metadata?.parentAgent ? { parentAgent: metadata.parentAgent } : {}),
+    ...(metadata?.childAgent ? { childAgent: metadata.childAgent } : {}),
+    ...(metadata?.handoffTool ? { handoffTool: metadata.handoffTool } : {}),
+    ...(metadata?.traceId ? { traceId: metadata.traceId } : {}),
+    ...(metadata?.sessionId ? { sessionId: metadata.sessionId } : {}),
+    ...(metadata?.threadId ? { threadId: metadata.threadId } : {}),
+    ...(metadata?.userId ? { userId: metadata.userId } : {}),
+  };
+
+  return Object.keys(extracted).length > 0
+    ? (sanitizeValue(extracted) as Record<string, unknown>)
+    : undefined;
 }
 
 function buildObservationSummary(input: BuildSummaryInput): ObservationSummary {
@@ -216,6 +280,10 @@ export class ObservationCollector {
       durationMs: clampDurationMs(start?.startedAt ?? completedAt, completedAt),
       status: status === 'error' ? 'error' : 'success',
     };
+    const metadata = extractToolMetadata(content);
+    if (metadata) {
+      toolCall.metadata = metadata;
+    }
     if (status === 'error') {
       this.modelToolFailureCount += 1;
       const firstLine = JSON.stringify(sanitizeValue(content));

@@ -1,4 +1,5 @@
 import { type Agent, tool } from '@strands-agents/sdk';
+import { normalizeSubAgentHandoffOutput } from '../agents/handoff-normalizer.js';
 import { createWebResearchAgent } from '../agents/web-research/agent.js';
 import {
   buildWebResearchAgentHandoffPrompt,
@@ -22,28 +23,6 @@ function getWebResearchAgent(): WebResearchAgentLike {
   return cachedWebResearchAgent;
 }
 
-function normalizeHandoffOutput(value: unknown): WebResearchAgentHandoffOutput {
-  const parsed = webResearchAgentHandoffOutputSchema.safeParse(value);
-  if (parsed.success) {
-    return parsed.data;
-  }
-
-  if (typeof value === 'string' && value.trim()) {
-    return {
-      status: 'success',
-      answer: value.trim(),
-    };
-  }
-
-  return {
-    status: 'error',
-    answer: 'Web Research Agent did not return a usable handoff payload.',
-    metadata: {
-      rawValueType: typeof value,
-    },
-  };
-}
-
 export async function executeInvokeWebResearchAgentTool(
   input: WebResearchAgentHandoffInput,
   dependencies: {
@@ -58,25 +37,40 @@ export async function executeInvokeWebResearchAgentTool(
     const result = await agent.invoke(prompt, {
       structuredOutputSchema: webResearchAgentHandoffOutputSchema,
     });
-    const output = normalizeHandoffOutput(result.structuredOutput ?? result.toString());
+    const output = normalizeSubAgentHandoffOutput({
+      value: result.structuredOutput ?? result.toString(),
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: input.freshnessRequired ? 'freshness_required' : 'standard',
+      fallbackErrorMessage: 'Web Research Agent did not return a usable handoff payload.',
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+        handoffMode: input.freshnessRequired ? 'freshness_required' : 'standard',
+      },
+    }) as WebResearchAgentHandoffOutput;
 
     return toolSuccess(output);
   } catch (error) {
     const message = errorMessage(error);
+    const output = normalizeSubAgentHandoffOutput({
+      value: undefined,
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: input.freshnessRequired ? 'freshness_required' : 'standard',
+      fallbackErrorMessage: message,
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+        handoffMode: input.freshnessRequired ? 'freshness_required' : 'standard',
+      },
+    }) as WebResearchAgentHandoffOutput;
 
     return {
       status: 'error' as const,
-      content: [
-        {
-          text: JSON.stringify({
-            status: 'error',
-            answer: '',
-            error: {
-              message,
-            },
-          }),
-        },
-      ],
+      content: [{ text: JSON.stringify(output) }],
     };
   }
 }
@@ -89,4 +83,4 @@ const invokeWebResearchAgentTool = tool({
   callback: (input) => executeInvokeWebResearchAgentTool(input),
 });
 
-export { invokeWebResearchAgentTool, normalizeHandoffOutput };
+export { invokeWebResearchAgentTool };

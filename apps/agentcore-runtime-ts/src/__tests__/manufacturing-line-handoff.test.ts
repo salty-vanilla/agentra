@@ -91,9 +91,18 @@ describe('Manufacturing Line Agent handoff', () => {
     expect(response.status).toBe('success');
     expect(payload).toEqual({
       status: 'success',
+      agentKind: 'manufacturing_line',
+      agentName: 'Manufacturing Line Agent',
+      handoffMode: 'kb',
       answer: 'The line stopped because the safety gate was open.',
       citations: [{ sourceId: 'doc-1' }],
-      metadata: { confidence: 'high' },
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'manufacturing-line-agent',
+        handoffTool: 'invoke_manufacturing_line_agent',
+        handoffMode: 'kb',
+        confidence: 'high',
+      },
     });
   });
 
@@ -112,9 +121,16 @@ describe('Manufacturing Line Agent handoff', () => {
     expect(response.status).toBe('error');
     expect(JSON.parse(response.content[0].text)).toEqual({
       status: 'error',
-      answer: '',
-      error: {
-        message: 'boom',
+      agentKind: 'manufacturing_line',
+      agentName: 'Manufacturing Line Agent',
+      handoffMode: 'auto',
+      answer: 'boom',
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'manufacturing-line-agent',
+        handoffTool: 'invoke_manufacturing_line_agent',
+        handoffMode: 'auto',
+        rawValueType: 'undefined',
       },
     });
   });
