@@ -35,9 +35,40 @@ pnpm dev:frontend
 
 Frontend は `http://localhost:3000`、backend は `http://localhost:8787` を想定しています。
 
-`pnpm install` の完了時に Lefthook が有効化され、`git commit` 時は `pnpm biome check .`、`git push` 時は `pnpm typecheck` が自動で走ります。失敗した場合は先に修正してください。
+## Development Workflow
 
-GitHub Actions の `CI` が PR / push 時の最終保証です。local hook を bypass しても、`pnpm biome check .`、`pnpm typecheck`、`pnpm test` が全て通らない限り main には入れません。
+`pnpm install` の完了時に Lefthook が有効化されます。Codex / Human 共通の品質ルールは次の通りです。
+
+| Layer | Responsibility |
+|---|---|
+| Codex Hooks | AI 作業中の補助チェック |
+| Lefthook | local quality gate |
+| GitHub Actions CI | final enforcement |
+
+ローカルでは次が自動実行されます。
+
+- `pre-commit`: `pnpm biome check .`
+- `pre-push`: `pnpm typecheck`
+
+推奨 workflow は以下です。
+
+```text
+edit
+↓
+lint
+↓
+typecheck
+↓
+commit
+↓
+push
+↓
+CI green
+↓
+merge
+```
+
+GitHub Actions の `CI` は `pnpm biome check .`、`pnpm typecheck`、`pnpm test` を最終保証として実行します。local hook を bypass しても、これらが全て通らない限り main には入れません。失敗した場合は先に修正してください。
 
 ## Available Commands
 
