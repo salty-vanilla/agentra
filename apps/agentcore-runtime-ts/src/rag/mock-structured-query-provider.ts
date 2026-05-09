@@ -120,8 +120,6 @@ function buildMockResult(input: StructuredQueryExecutionInput): MockQueryResult 
         ],
         keyFact: 'Found 2 mock production trend rows.',
       };
-    case 'generic_lookup':
-    case 'unknown':
     default:
       return {
         rows: [],
