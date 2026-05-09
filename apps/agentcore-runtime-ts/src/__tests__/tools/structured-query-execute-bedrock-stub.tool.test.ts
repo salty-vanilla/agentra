@@ -40,6 +40,7 @@ describe('structured query execute bedrock stub tool', () => {
       dryRun: true,
     });
     expect(payload).not.toHaveProperty('sql');
+    expect(payload).not.toHaveProperty('rawProviderResponse');
   });
 
   it('rejects an empty plan id', async () => {

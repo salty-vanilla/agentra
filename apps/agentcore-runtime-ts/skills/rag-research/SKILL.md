@@ -21,6 +21,9 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 - `structured_query_execute_bedrock_stub` is disabled by default and is only for validating future Bedrock KB structured provider wiring.
 - It returns `not_implemented` and does not query real Bedrock structured data.
 - Do not present its output as real data.
+- Bedrock KB structured execution is still in stub mode until a live provider is implemented.
+- Treat `not_implemented` outputs as wiring validation only.
+- Do not present stub or dry-run results as real production data.
 - Use retrieved `sources` and `citations` to ground answers.
 - Use `create_brief` or `merge_briefs` when the retrieved evidence will feed a report, slide, or later tool.
 - Use `metadataFilter` when the user specifies document type, project, source, category, date-like metadata, or any other explicit KB metadata constraint.

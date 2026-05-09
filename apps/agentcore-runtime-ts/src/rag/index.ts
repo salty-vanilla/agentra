@@ -1,5 +1,7 @@
 export * from './bedrock-kb-retrieve-provider.js';
+export * from './bedrock-kb-structured-normalizer.js';
 export * from './bedrock-kb-structured-provider.js';
+export * from './bedrock-kb-structured-types.js';
 export * from './mock-structured-query-provider.js';
 export * from './rag-service.js';
 export * from './structured-query-executor.js';
