@@ -25,7 +25,6 @@ import {
   tavilyMapTool,
   tavilySearchTool,
 } from './tavily.js';
-import { weatherTool } from './weather.js';
 import { webResearchTool } from './web-research.tool.js';
 
 export type ToolCategory =
@@ -39,7 +38,6 @@ export type ToolCategory =
   | 'structured_rag'
   | 'research'
   | 'presentation'
-  | 'demo'
   | 'unknown';
 
 export type ToolRiskLevel = 'low' | 'medium' | 'high';
@@ -56,7 +54,6 @@ export type RegisteredTool = {
 };
 
 export type ToolRegistryConfig = {
-  enableWeather?: boolean;
   enableManufacturingLineAgentTool?: boolean;
   enableTavily?: boolean;
   enablePresentation?: boolean;
@@ -108,7 +105,6 @@ const TOOL_ORDER = [
   'tavily_crawl',
   'tavily_map',
   'create_slide_presentation',
-  'getWeather',
 ] as const;
 
 type RegisteredToolName = (typeof TOOL_ORDER)[number];
@@ -187,7 +183,6 @@ function resolveEnvFlag(name: string, defaultValue: boolean): boolean {
 
 export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
   return {
-    enableWeather: resolveEnvFlag('ENABLE_WEATHER_TOOL', false),
     enableManufacturingLineAgentTool: resolveEnvFlag(
       'ENABLE_MANUFACTURING_LINE_AGENT_TOOL',
       true,
@@ -228,10 +223,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       'ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL',
       false,
     ),
-    enableWebResearchAgentTool: resolveEnvFlag(
-      'ENABLE_WEB_RESEARCH_AGENT_TOOL',
-      true,
-    ),
+    enableWebResearchAgentTool: resolveEnvFlag('ENABLE_WEB_RESEARCH_AGENT_TOOL', true),
     enableWebResearch: resolveEnvFlag('ENABLE_WEB_RESEARCH_TOOL', true),
   };
 }
@@ -247,7 +239,6 @@ function resolveToolEnabled(
 export function getRegisteredTools(
   config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
 ): RegisteredTool[] {
-  const enableWeather = resolveToolEnabled(config, 'enableWeather', false);
   const enableManufacturingLineAgentTool = resolveToolEnabled(
     config,
     'enableManufacturingLineAgentTool',
@@ -507,13 +498,6 @@ export function getRegisteredTools(
       riskLevel: 'high',
       enabled: enablePresentation,
       tool: createSlidePresentationTool,
-    },
-    {
-      name: 'getWeather',
-      category: 'demo',
-      riskLevel: 'low',
-      enabled: enableWeather,
-      tool: weatherTool,
     },
   ];
 
