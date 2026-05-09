@@ -1,5 +1,6 @@
 import type { Tool } from '@strands-agents/sdk';
 import { createArtifactManifestTool } from './artifact.tool.js';
+import { bedrockStructuredPocDiagnosticsTool } from './bedrock-structured-poc-diagnostics.tool.js';
 import { createBriefTool, mergeBriefsTool } from './brief.tool.js';
 import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
@@ -8,10 +9,10 @@ import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
 import { structuredAnswerSynthesisTool } from './structured-answer-synthesis.tool.js';
 import { structuredPlanReadinessTool } from './structured-plan-readiness.tool.js';
-import { structuredRagFlowTool } from './structured-rag-flow.tool.js';
 import { structuredQueryExecuteBedrockStubTool } from './structured-query-execute-bedrock-stub.tool.js';
 import { structuredQueryExecuteMockTool } from './structured-query-execute-mock.tool.js';
 import { structuredQueryPlanTool } from './structured-query-plan.tool.js';
+import { structuredRagFlowTool } from './structured-rag-flow.tool.js';
 import { tableSummaryTool } from './table-summary.tool.js';
 import {
   tavilyCrawlTool,
@@ -63,6 +64,7 @@ export type ToolRegistryConfig = {
   enableStructuredPlanReadiness?: boolean;
   enableStructuredRagFlow?: boolean;
   enableStructuredAnswerSynthesis?: boolean;
+  enableBedrockStructuredPocDiagnostics?: boolean;
   enableStructuredQueryExecuteMock?: boolean;
   enableStructuredQueryExecuteBedrockStub?: boolean;
   enableWebResearch?: boolean;
@@ -82,6 +84,7 @@ const TOOL_ORDER = [
   'structured_plan_readiness',
   'structured_rag_flow',
   'structured_answer_synthesis',
+  'bedrock_structured_poc_diagnostics',
   'structured_query_execute_mock',
   'structured_query_execute_bedrock_stub',
   'web_research',
@@ -138,6 +141,10 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       'ENABLE_STRUCTURED_ANSWER_SYNTHESIS_TOOL',
       true,
     ),
+    enableBedrockStructuredPocDiagnostics: resolveEnvFlag(
+      'ENABLE_BEDROCK_STRUCTURED_POC_DIAGNOSTICS_TOOL',
+      true,
+    ),
     enableStructuredQueryExecuteMock: resolveEnvFlag(
       'ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL',
       true,
@@ -188,6 +195,11 @@ export function getRegisteredTools(
   const enableStructuredAnswerSynthesis = resolveToolEnabled(
     config,
     'enableStructuredAnswerSynthesis',
+    true,
+  );
+  const enableBedrockStructuredPocDiagnostics = resolveToolEnabled(
+    config,
+    'enableBedrockStructuredPocDiagnostics',
     true,
   );
   const enableStructuredQueryExecuteMock = resolveToolEnabled(
@@ -293,6 +305,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableStructuredAnswerSynthesis,
       tool: structuredAnswerSynthesisTool,
+    },
+    {
+      name: 'bedrock_structured_poc_diagnostics',
+      category: 'structured_rag',
+      riskLevel: 'low',
+      enabled: enableBedrockStructuredPocDiagnostics,
+      tool: bedrockStructuredPocDiagnosticsTool,
     },
     {
       name: 'structured_query_execute_mock',

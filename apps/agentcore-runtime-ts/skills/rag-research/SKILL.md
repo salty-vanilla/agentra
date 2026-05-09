@@ -1,7 +1,7 @@
 ---
 name: rag-research
 description: Retrieve and ground answers using configured internal knowledge sources.
-allowed-tools: kb_retrieve, structured_query_plan, structured_plan_readiness, structured_rag_flow, structured_answer_synthesis, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: kb_retrieve, structured_query_plan, structured_plan_readiness, structured_rag_flow, structured_answer_synthesis, bedrock_structured_poc_diagnostics, structured_query_execute_mock, structured_query_execute_bedrock_stub, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # RAG Research Skill
@@ -23,6 +23,9 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 - Do not invent findings beyond execution rows, brief key facts, sources, and citations.
 - Clearly mark mock, dry-run, stub, no-data, and not-implemented states.
 - Do not present mock or stub data as production data.
+- Use `bedrock_structured_poc_diagnostics` when checking whether the Bedrock structured KB + Redshift Serverless PoC is configured safely.
+- The diagnostics tool must not call AWS or query databases.
+- Do not treat diagnostics output as retrieval results.
 - Prefer Bedrock structured execution when the plan is ready and the Bedrock structured provider is enabled.
 - Use `structured_query_execute_mock` only to validate the structured RAG pipeline or demonstrate expected result shape.
 - `structured_query_execute_mock` does not query real data, generate SQL, or call any database.
