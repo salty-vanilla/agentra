@@ -12,9 +12,8 @@ function expectRemovalPolicy(
   resource: { DeletionPolicy?: string; UpdateReplacePolicy?: string } | undefined,
   policy: 'Delete' | 'Retain',
 ) {
-  expect(resource).toBeDefined();
   if (!resource) {
-    return;
+    throw new Error('Expected resource to be defined');
   }
   expect(resource.DeletionPolicy).toBe(policy);
   expect(resource.UpdateReplacePolicy).toBe(policy);
