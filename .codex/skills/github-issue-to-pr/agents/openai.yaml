@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Issue to PR"
+  short_description: "Turn issue numbers into reviewed PRs"
+  default_prompt: "Use $github-issue-to-pr to take a GitHub issue number through branch creation, implementation, self-review, escalation of blockers, commit, and a ready-for-review PR that links the issue."

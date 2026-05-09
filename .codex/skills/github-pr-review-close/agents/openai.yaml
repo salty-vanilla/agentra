@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub PR Review Close"
+  short_description: "Review PRs, merge them, and close issues"
+  default_prompt: "Use $github-pr-review-close to review a GitHub PR number, escalate blockers, merge when safe, close linked issues, and update local main with gh."
