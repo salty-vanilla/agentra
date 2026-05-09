@@ -1,7 +1,7 @@
 ---
 name: rag-research
 description: Retrieve and ground answers using configured internal knowledge sources.
-allowed-tools: kb_retrieve, structured_query_plan, normalize_evidence_source, build_citations, create_brief, merge_briefs
+allowed-tools: kb_retrieve, structured_query_plan, structured_query_execute_mock, normalize_evidence_source, build_citations, create_brief, merge_briefs
 ---
 
 # RAG Research Skill
@@ -14,6 +14,8 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 - `kb_retrieve` only retrieves evidence. It does not generate the final answer.
 - Use `structured_query_plan` when the user asks about structured data, metrics, aggregations, rankings, time-series trends, equipment history, anomaly summaries, or error-code lookup.
 - `structured_query_plan` only creates a deterministic plan. It does not generate SQL, execute SQL, or call a database.
+- Use `structured_query_execute_mock` only to validate the structured RAG pipeline or demonstrate expected result shape.
+- `structured_query_execute_mock` does not query real data, generate SQL, or call any database.
 - Prefer `structured_query_plan` before asking follow-up questions when the request is partially specified. Use `missingSlots` to decide whether a follow-up is needed.
 - For anomaly analysis, use the generic `anomaly_summary` intent and represent the target signal through metrics, filters, target entity, or metadata. Do not create one intent per signal such as temperature, pressure, or vibration.
 - Use retrieved `sources` and `citations` to ground answers.
@@ -30,6 +32,7 @@ Use this skill when the user asks about project-specific, internal, uploaded, or
 - If no results are returned, clearly state that no relevant chunks were found.
 - If evidence is weak or incomplete, clearly state the limitation.
 - Do not invent missing evidence.
+- Do not present mock rows as real production data.
 
 ## Output expectations
 

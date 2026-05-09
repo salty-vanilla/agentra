@@ -100,6 +100,7 @@ const RAG_TOOL_INSTRUCTIONS = [
 const STRUCTURED_RAG_TOOL_INSTRUCTIONS = [
   '構造化データに対する問い合わせ、集計、ランキング、履歴確認、エラーコード逆引き、異常分析が必要な場合は、structured_query_plan で問い合わせ意図と不足情報を整理してください。',
   'structured_query_plan はSQL生成や実行を行わず、後続処理のための計画を作るだけです。',
+  'structured_query_execute_mock は構造化RAGパイプライン検証用のmock実行であり、SQL生成・DB接続・実データ取得は行いません。',
 ].join('\n');
 
 const ARTIFACT_TOOL_INSTRUCTIONS = [

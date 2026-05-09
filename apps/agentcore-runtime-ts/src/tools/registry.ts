@@ -6,6 +6,7 @@ import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
+import { structuredQueryExecuteMockTool } from './structured-query-execute-mock.tool.js';
 import { structuredQueryPlanTool } from './structured-query-plan.tool.js';
 import { tableSummaryTool } from './table-summary.tool.js';
 import {
@@ -55,6 +56,7 @@ export type ToolRegistryConfig = {
   enableBrief?: boolean;
   enableKbRetrieve?: boolean;
   enableStructuredQueryPlan?: boolean;
+  enableStructuredQueryExecuteMock?: boolean;
   enableWebResearch?: boolean;
 };
 
@@ -69,6 +71,7 @@ const TOOL_ORDER = [
   'merge_briefs',
   'kb_retrieve',
   'structured_query_plan',
+  'structured_query_execute_mock',
   'web_research',
   'tavily_search',
   'tavily_extract',
@@ -114,6 +117,10 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       Boolean(process.env.BEDROCK_KB_ID?.trim()),
     ),
     enableStructuredQueryPlan: resolveEnvFlag('ENABLE_STRUCTURED_QUERY_PLAN_TOOL', true),
+    enableStructuredQueryExecuteMock: resolveEnvFlag(
+      'ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL',
+      true,
+    ),
     enableWebResearch: resolveEnvFlag('ENABLE_WEB_RESEARCH_TOOL', true),
   };
 }
@@ -141,6 +148,11 @@ export function getRegisteredTools(
   const enableStructuredQueryPlan = resolveToolEnabled(
     config,
     'enableStructuredQueryPlan',
+    true,
+  );
+  const enableStructuredQueryExecuteMock = resolveToolEnabled(
+    config,
+    'enableStructuredQueryExecuteMock',
     true,
   );
   const enableWebResearch = resolveToolEnabled(config, 'enableWebResearch', true);
@@ -215,6 +227,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableStructuredQueryPlan,
       tool: structuredQueryPlanTool,
+    },
+    {
+      name: 'structured_query_execute_mock',
+      category: 'structured_rag',
+      riskLevel: 'low',
+      enabled: enableStructuredQueryExecuteMock,
+      tool: structuredQueryExecuteMockTool,
     },
     {
       name: 'web_research',
