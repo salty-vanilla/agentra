@@ -354,7 +354,7 @@ function buildMissingSlots(
   switch (intent) {
     case 'error_code_lookup':
       if (!targetEntity) {
-        missing.add('errorCode or equipment');
+        missing.add('error code or equipment');
       }
       if (!filters?.length) {
         missing.add('error code filter');

@@ -34,6 +34,22 @@ describe('structured query planner', () => {
     });
   });
 
+  it('uses catalog slot names for missing error code lookup inputs', async () => {
+    const { createStructuredQueryPlan } = await import(
+      '../../rag/structured-query-planner.js'
+    );
+
+    const plan = createStructuredQueryPlan({
+      question: 'Show error code history',
+      intent: 'error_code_lookup',
+    });
+
+    expect(plan.missingSlots).toEqual([
+      'error code or equipment',
+      'error code filter',
+    ]);
+  });
+
   it('infers error code lookup from Japanese keywords', async () => {
     const { createStructuredQueryPlan } = await import(
       '../../rag/structured-query-planner.js'
