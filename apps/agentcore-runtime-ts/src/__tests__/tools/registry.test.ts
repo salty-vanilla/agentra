@@ -8,6 +8,7 @@ describe('tool registry', () => {
     ENABLE_STRUCTURED_QUERY_PLAN_TOOL: process.env.ENABLE_STRUCTURED_QUERY_PLAN_TOOL,
     ENABLE_STRUCTURED_PLAN_READINESS_TOOL:
       process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL,
+    ENABLE_STRUCTURED_RAG_FLOW_TOOL: process.env.ENABLE_STRUCTURED_RAG_FLOW_TOOL,
     ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL:
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL,
     ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL:
@@ -29,6 +30,7 @@ describe('tool registry', () => {
       originalEnv.ENABLE_STRUCTURED_QUERY_PLAN_TOOL;
     process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL =
       originalEnv.ENABLE_STRUCTURED_PLAN_READINESS_TOOL;
+    process.env.ENABLE_STRUCTURED_RAG_FLOW_TOOL = originalEnv.ENABLE_STRUCTURED_RAG_FLOW_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL =
       originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL;
     process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL =
@@ -71,6 +73,13 @@ describe('tool registry', () => {
     } else {
       process.env.ENABLE_STRUCTURED_PLAN_READINESS_TOOL =
         originalEnv.ENABLE_STRUCTURED_PLAN_READINESS_TOOL;
+    }
+
+    if (originalEnv.ENABLE_STRUCTURED_RAG_FLOW_TOOL === undefined) {
+      delete process.env.ENABLE_STRUCTURED_RAG_FLOW_TOOL;
+    } else {
+      process.env.ENABLE_STRUCTURED_RAG_FLOW_TOOL =
+        originalEnv.ENABLE_STRUCTURED_RAG_FLOW_TOOL;
     }
 
     if (originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL === undefined) {
@@ -137,6 +146,7 @@ describe('tool registry', () => {
       enableKbRetrieve: false,
       enableStructuredQueryPlan: true,
       enableStructuredPlanReadiness: true,
+      enableStructuredRagFlow: true,
       enableStructuredQueryExecuteMock: true,
       enableStructuredQueryExecuteBedrockStub: false,
       enableWebResearch: true,
@@ -159,6 +169,7 @@ describe('tool registry', () => {
       { name: 'kb_retrieve', enabled: false },
       { name: 'structured_query_plan', enabled: true },
       { name: 'structured_plan_readiness', enabled: true },
+      { name: 'structured_rag_flow', enabled: true },
       { name: 'structured_query_execute_mock', enabled: true },
       { name: 'structured_query_execute_bedrock_stub', enabled: false },
       { name: 'web_research', enabled: true },
@@ -208,13 +219,14 @@ describe('tool registry', () => {
     );
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(8);
+    expect(enabledTools).toHaveLength(9);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
       'structured_query_plan',
       'structured_plan_readiness',
+      'structured_rag_flow',
       'structured_query_execute_mock',
       'create_slide_presentation',
       'getWeather',
@@ -231,6 +243,7 @@ describe('tool registry', () => {
       'kb_retrieve',
       'structured_query_plan',
       'structured_plan_readiness',
+      'structured_rag_flow',
       'structured_query_execute_mock',
       'structured_query_execute_bedrock_stub',
       'web_research',
@@ -273,6 +286,9 @@ describe('tool registry', () => {
     expect(
       registered.find((entry) => entry.name === 'structured_plan_readiness')?.enabled,
     ).toBe(true);
+    expect(registered.find((entry) => entry.name === 'structured_rag_flow')?.enabled).toBe(
+      true,
+    );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
   });
 
@@ -291,6 +307,9 @@ describe('tool registry', () => {
     expect(
       registered.find((entry) => entry.name === 'structured_plan_readiness')?.enabled,
     ).toBe(true);
+    expect(registered.find((entry) => entry.name === 'structured_rag_flow')?.enabled).toBe(
+      true,
+    );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(false);
   });
 
@@ -322,5 +341,17 @@ describe('tool registry', () => {
       registered.find((entry) => entry.name === 'structured_query_execute_bedrock_stub')
         ?.enabled,
     ).toBe(false);
+  });
+
+  it('disables structured rag flow when the feature flag is false', async () => {
+    vi.stubEnv('ENABLE_STRUCTURED_RAG_FLOW_TOOL', 'false');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableStructuredRagFlow).toBe(false);
+    expect(registered.find((entry) => entry.name === 'structured_rag_flow')?.enabled).toBe(
+      false,
+    );
   });
 });

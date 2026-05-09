@@ -139,6 +139,34 @@ describe('structured plan readiness', () => {
     ]);
   });
 
+  it('skips catalog validation when requested and avoids duplicate missing-slot issues', async () => {
+    const { evaluateStructuredPlanReadiness } = await import(
+      '../../rag/structured-plan-readiness.js'
+    );
+
+    const output = evaluateStructuredPlanReadiness({
+      plan: {
+        id: 'plan-4b',
+        createdAt: '2026-05-09T00:00:00.000Z',
+        intent: 'kpi_aggregation',
+        dataSourceKind: 'bedrock_kb_structured',
+        question: 'kpi aggregation for line A',
+        confidence: 0.9,
+        missingSlots: ['time range'],
+      },
+      skipCatalogValidation: true,
+      bedrockStructuredEnabled: true,
+    });
+
+    expect(output.status).toBe('needs_clarification');
+    expect(output.blockingIssues).toHaveLength(1);
+    expect(output.blockingIssues[0]).toMatchObject({
+      severity: 'error',
+      code: 'missing_slot',
+    });
+    expect(output.warnings).toEqual([]);
+  });
+
   it('reports mock readiness when mock execution is allowed', async () => {
     const { evaluateStructuredPlanReadiness } = await import(
       '../../rag/structured-plan-readiness.js'

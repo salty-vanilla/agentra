@@ -38,6 +38,7 @@ export type StructuredQueryPlanValidationResult = {
 export type StructuredPlanReadinessInput = {
   plan: StructuredQueryPlan;
   validation?: StructuredQueryPlanValidationResult | undefined;
+  skipCatalogValidation?: boolean | undefined;
   preferredProvider?: StructuredProviderPath | undefined;
   allowMock?: boolean | undefined;
   bedrockStructuredEnabled?: boolean | undefined;

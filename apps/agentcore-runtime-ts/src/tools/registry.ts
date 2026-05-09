@@ -7,6 +7,7 @@ import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
 import { structuredPlanReadinessTool } from './structured-plan-readiness.tool.js';
+import { structuredRagFlowTool } from './structured-rag-flow.tool.js';
 import { structuredQueryExecuteBedrockStubTool } from './structured-query-execute-bedrock-stub.tool.js';
 import { structuredQueryExecuteMockTool } from './structured-query-execute-mock.tool.js';
 import { structuredQueryPlanTool } from './structured-query-plan.tool.js';
@@ -59,6 +60,7 @@ export type ToolRegistryConfig = {
   enableKbRetrieve?: boolean;
   enableStructuredQueryPlan?: boolean;
   enableStructuredPlanReadiness?: boolean;
+  enableStructuredRagFlow?: boolean;
   enableStructuredQueryExecuteMock?: boolean;
   enableStructuredQueryExecuteBedrockStub?: boolean;
   enableWebResearch?: boolean;
@@ -76,6 +78,7 @@ const TOOL_ORDER = [
   'kb_retrieve',
   'structured_query_plan',
   'structured_plan_readiness',
+  'structured_rag_flow',
   'structured_query_execute_mock',
   'structured_query_execute_bedrock_stub',
   'web_research',
@@ -127,6 +130,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       'ENABLE_STRUCTURED_PLAN_READINESS_TOOL',
       true,
     ),
+    enableStructuredRagFlow: resolveEnvFlag('ENABLE_STRUCTURED_RAG_FLOW_TOOL', true),
     enableStructuredQueryExecuteMock: resolveEnvFlag(
       'ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL',
       true,
@@ -167,6 +171,11 @@ export function getRegisteredTools(
   const enableStructuredPlanReadiness = resolveToolEnabled(
     config,
     'enableStructuredPlanReadiness',
+    true,
+  );
+  const enableStructuredRagFlow = resolveToolEnabled(
+    config,
+    'enableStructuredRagFlow',
     true,
   );
   const enableStructuredQueryExecuteMock = resolveToolEnabled(
@@ -258,6 +267,13 @@ export function getRegisteredTools(
       riskLevel: 'low',
       enabled: enableStructuredPlanReadiness,
       tool: structuredPlanReadinessTool,
+    },
+    {
+      name: 'structured_rag_flow',
+      category: 'structured_rag',
+      riskLevel: 'medium',
+      enabled: enableStructuredRagFlow,
+      tool: structuredRagFlowTool,
     },
     {
       name: 'structured_query_execute_mock',

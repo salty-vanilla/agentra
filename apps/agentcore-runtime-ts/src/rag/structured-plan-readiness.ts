@@ -78,12 +78,24 @@ function resolvePreferredProvider(
 function normalizeValidation(
   plan: StructuredQueryPlan,
   validation: StructuredPlanReadinessInput['validation'],
+  skipCatalogValidation: boolean | undefined,
 ): StructuredQueryPlanValidationResult {
   if (validation !== undefined) {
     return {
       valid: validation.valid,
       issues: validation.issues.map(normalizeValidationIssue),
       ...(validation.metadata !== undefined ? { metadata: validation.metadata } : {}),
+    };
+  }
+
+  if (skipCatalogValidation === true) {
+    return {
+      valid: true,
+      issues: [],
+      metadata: {
+        validator: 'structured-plan-readiness-v1',
+        catalogValidationSkipped: true,
+      },
     };
   }
 
@@ -300,7 +312,11 @@ export function validateStructuredQueryPlanAgainstCatalog(
 export function evaluateStructuredPlanReadiness(
   input: StructuredPlanReadinessInput,
 ): StructuredPlanReadinessResult {
-  const validation = normalizeValidation(input.plan, input.validation);
+  const validation = normalizeValidation(
+    input.plan,
+    input.validation,
+    input.skipCatalogValidation,
+  );
   const { missingSlots, blockingIssues, warnings } = buildValidationIssues(
     input.plan,
     validation,
