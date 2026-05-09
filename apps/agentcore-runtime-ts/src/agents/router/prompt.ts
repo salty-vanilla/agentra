@@ -26,39 +26,13 @@ const CALCULATION_TOOL_INSTRUCTIONS = [
   'スライドや報告書に使う数値は、可能な限りツール結果に基づいてください。',
 ].join('\n');
 
-const EVIDENCE_TOOL_INSTRUCTIONS = [
-  '外部情報、Web検索結果、ドキュメント検索結果、ツール実行結果を根拠として使う場合は、可能な限り normalize_evidence_source と build_citations で出典を整理してください。',
-  '回答・レポート・スライド用briefでは、重要な主張に対して source / citation を対応づけることを優先してください。',
-].join('\n');
-
-const RAG_TOOL_INSTRUCTIONS = [
-  '社内ナレッジ、プロジェクト固有情報、ドキュメント根拠が必要な場合は、設定済みのKnowledge Baseがあれば kb_retrieve で根拠を取得してください。',
-  'kb_retrieve は回答生成ではなく根拠取得専用です。回答では取得した sources / citations を優先してください。',
-  'kb_retrieve の結果をユーザー向けの回答骨子、レポート本文、またはスライドbriefに整える場合は kb_answer_synthesis を使って、安全な回答ペイロードに変換してください。',
-  'kb_answer_synthesis では、取得済みの sources / citations 以外の事実や出典を追加しないでください。',
-  '問い合わせがあいまい、十分に具体的でない、または invoke_web_research_agent への委譲が必要か判断したい場合は、kb_query_readiness で deterministic な計画と readiness を先に確認してください。',
-  'kb_query_readiness は文書取得や AWS 呼び出しを行いません。結果をもとに kb_retrieve、follow-up 質問、diagnostics、または invoke_web_research_agent を選んでください。',
-  'Bedrock Knowledge Base の retrieval 設定を安全に点検したい場合は kb_rag_diagnostics を使い、AWS 呼び出しや文書取得とは切り分けてください。',
-].join('\n');
-
-const DOMAIN_HANDOFF_INSTRUCTIONS = [
+const ROUTER_HANDOFF_INSTRUCTIONS = [
   '製造ライン、設備、異常、KPI、エラーコード、生産実績、保全履歴に関する質問は invoke_manufacturing_line_agent に委譲してください。',
-].join('\n');
-
-const WEB_RESEARCH_HANDOFF_INSTRUCTIONS = [
   '最新情報、公開Web情報、外部ドキュメント、価格、ニュース、リリースノート、比較調査が必要な場合は invoke_web_research_agent に委譲してください。',
-  '公開Web調査は invoke_web_research_agent を通して行い、Router から tavily_search、tavily_extract、tavily_crawl、tavily_map、web_research を直接使わないでください。',
-].join('\n');
-
-const STRUCTURED_RAG_TOOL_INSTRUCTIONS = [
-  '構造化データに対する問い合わせ、集計、ランキング、時系列傾向などが必要な場合は、structured_query_plan で問い合わせ意図と不足情報を整理してください。',
-  'structured_query_plan はSQL生成や実行を行わず、後続処理のための計画を作るだけです。',
-  '構造化問い合わせを実行する前に、structured_plan_readiness で不足情報・推奨provider・次アクションを確認してください。',
-  '構造化RAGを一連の流れで扱う場合は structured_rag_flow を使い、plan/validation/readiness/execution を安全にまとめてください。',
-  'structured_rag_flow の結果をユーザー回答・レポート・スライドbriefに整える場合は structured_answer_synthesis を使って、根拠・注意点・次アクションを整理してください。',
-  'Bedrock structured KB provider の設定確認が必要な場合は bedrock_structured_poc_diagnostics を使い、実データ取得とは区別してください。',
-  'structured_query_execute_mock は構造化RAGパイプライン検証用のmock実行であり、SQL生成・DB接続・実データ取得は行いません。',
-  'structured_query_execute_bedrock_stub は将来のBedrock KB structured provider向けの接続確認用stubであり、実データは取得しません。',
+  'スライド、PPTX、プレゼンテーション生成は create_slide_presentation に委譲してください。',
+  'Router は通常KB RAG、構造化RAG、Tavily系ツールを直接使わず、必要な専門Agentへ委譲してください。',
+  'kb_retrieve、kb_query_readiness、kb_rag_diagnostics、kb_answer_synthesis、kb_rag_flow、structured_query_plan、structured_plan_readiness、structured_rag_flow、structured_answer_synthesis、bedrock_structured_poc_diagnostics、web_research、tavily_search、tavily_extract、tavily_crawl、tavily_map は Router から直接呼び出さないでください。',
+  '必要に応じて複数ツールや専門Agentの結果を統合し、最終回答をまとめてください。',
 ].join('\n');
 
 const ARTIFACT_TOOL_INSTRUCTIONS = [
@@ -86,15 +60,7 @@ export function buildRouterPrompt(input: RouterPromptInput): string {
     '',
     CALCULATION_TOOL_INSTRUCTIONS,
     '',
-    EVIDENCE_TOOL_INSTRUCTIONS,
-    '',
-    RAG_TOOL_INSTRUCTIONS,
-    '',
-    DOMAIN_HANDOFF_INSTRUCTIONS,
-    '',
-    WEB_RESEARCH_HANDOFF_INSTRUCTIONS,
-    '',
-    STRUCTURED_RAG_TOOL_INSTRUCTIONS,
+    ROUTER_HANDOFF_INSTRUCTIONS,
     '',
     ARTIFACT_TOOL_INSTRUCTIONS,
     '',
