@@ -69,4 +69,26 @@ describe('bedrock kb structured config', () => {
       'BEDROCK_KB_STRUCTURED_ID',
     );
   });
+
+  it('keeps live execution disabled unless the explicit flag is true', async () => {
+    vi.stubEnv('BEDROCK_KB_STRUCTURED_MODE', 'live');
+    vi.stubEnv('ENABLE_BEDROCK_KB_STRUCTURED_LIVE', 'false');
+    vi.stubEnv('BEDROCK_KB_STRUCTURED_ID', 'kb-123');
+    vi.stubEnv('REDSHIFT_SERVERLESS_WORKGROUP_NAME', 'workgroup-a');
+    vi.stubEnv('REDSHIFT_DATABASE_NAME', 'warehouse');
+
+    const {
+      describeBedrockKbStructuredLiveBlocker,
+      isBedrockKbStructuredLiveReady,
+      resolveBedrockKbStructuredRuntimeConfig,
+    } = await import('../../rag/bedrock-kb-structured-config.js');
+
+    const config = resolveBedrockKbStructuredRuntimeConfig();
+
+    expect(config.liveEnabled).toBe(false);
+    expect(isBedrockKbStructuredLiveReady(config)).toBe(false);
+    expect(describeBedrockKbStructuredLiveBlocker(config)).toBe(
+      'Bedrock KB structured live execution is disabled.',
+    );
+  });
 });

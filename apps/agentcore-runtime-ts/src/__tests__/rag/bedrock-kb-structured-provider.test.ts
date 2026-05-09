@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 describe('bedrock kb structured provider', () => {
   it('returns a normalized not implemented output with configured metadata', async () => {
@@ -6,11 +6,18 @@ describe('bedrock kb structured provider', () => {
       '../../rag/bedrock-kb-structured-provider.js'
     );
 
+    const execute = vi.fn(async () => {
+      throw new Error('live adapter should not be called');
+    });
+
     const provider = new BedrockKbStructuredProvider({
       knowledgeBaseId: 'kb-123',
       region: 'ap-northeast-1',
       dataSourceName: 'structured-facts',
       defaultDryRun: false,
+      liveAdapter: {
+        execute,
+      },
     });
 
     const output = await provider.execute({
@@ -49,6 +56,7 @@ describe('bedrock kb structured provider', () => {
       openQuestions: ['Bedrock KB structured provider is not implemented yet.'],
     });
     expect(output).not.toHaveProperty('rawProviderResponse');
+    expect(execute).not.toHaveBeenCalled();
   });
 
   it('delegates to an injected live adapter when live mode is ready', async () => {
@@ -117,6 +125,101 @@ describe('bedrock kb structured provider', () => {
       dataSourceKind: 'bedrock_kb_structured',
       intent: 'kpi_aggregation',
       dryRun: false,
+    });
+  });
+
+  it('normalizes an empty live raw result', async () => {
+    const { BedrockKbStructuredProvider } = await import(
+      '../../rag/bedrock-kb-structured-provider.js'
+    );
+
+    const provider = new BedrockKbStructuredProvider({
+      runtimeConfig: {
+        knowledgeBaseId: 'kb-123',
+        region: 'ap-northeast-1',
+        dataSourceName: 'structured-facts',
+        mode: 'live',
+        liveEnabled: true,
+        redshiftServerlessWorkgroupName: 'workgroup-a',
+        redshiftDatabaseName: 'warehouse',
+      },
+      liveAdapter: {
+        execute: async () => ({
+          status: 'empty' as const,
+          rows: [],
+          message: 'No rows found.',
+          rawProviderResponse: {
+            responseType: 'object',
+            rowCount: 0,
+            previewRowCount: 0,
+          },
+        }),
+      },
+    });
+
+    const output = await provider.execute({
+      plan: {
+        id: 'plan-3',
+        createdAt: '2026-05-09T00:00:00.000Z',
+        intent: 'generic_lookup',
+        dataSourceKind: 'bedrock_kb_structured',
+        question: 'Show the latest structured records',
+        confidence: 0.6,
+      },
+      dryRun: false,
+    });
+
+    expect(output.status).toBe('empty');
+    expect(output.rows).toHaveLength(0);
+    expect(output.summary).toMatchObject({
+      status: 'empty',
+      rowCount: 0,
+      message: 'No rows found.',
+    });
+  });
+
+  it('normalizes a live adapter error result safely', async () => {
+    const { BedrockKbStructuredProvider } = await import(
+      '../../rag/bedrock-kb-structured-provider.js'
+    );
+
+    const provider = new BedrockKbStructuredProvider({
+      runtimeConfig: {
+        knowledgeBaseId: 'kb-123',
+        region: 'ap-northeast-1',
+        dataSourceName: 'structured-facts',
+        mode: 'live',
+        liveEnabled: true,
+        redshiftServerlessWorkgroupName: 'workgroup-a',
+        redshiftDatabaseName: 'warehouse',
+      },
+      liveAdapter: {
+        execute: async () => ({
+          status: 'error' as const,
+          rows: [],
+          message: 'Boom',
+        }),
+      },
+    });
+
+    const output = await provider.execute({
+      plan: {
+        id: 'plan-4',
+        createdAt: '2026-05-09T00:00:00.000Z',
+        intent: 'generic_lookup',
+        dataSourceKind: 'bedrock_kb_structured',
+        question: 'Show the latest structured records',
+        confidence: 0.6,
+      },
+      dryRun: false,
+    });
+
+    expect(output.status).toBe('error');
+    expect(output.rows).toHaveLength(0);
+    expect(output.summary).toMatchObject({
+      status: 'error',
+      rowCount: 0,
+      message: 'Boom',
     });
   });
 });
