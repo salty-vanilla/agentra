@@ -102,6 +102,7 @@ const STRUCTURED_RAG_TOOL_INSTRUCTIONS = [
   'structured_query_plan はSQL生成や実行を行わず、後続処理のための計画を作るだけです。',
   '構造化問い合わせを実行する前に、structured_plan_readiness で不足情報・推奨provider・次アクションを確認してください。',
   '構造化RAGを一連の流れで扱う場合は structured_rag_flow を使い、plan/validation/readiness/execution を安全にまとめてください。',
+  'structured_rag_flow の結果をユーザー回答・レポート・スライドbriefに整える場合は structured_answer_synthesis を使って、根拠・注意点・次アクションを整理してください。',
   'structured_query_execute_mock は構造化RAGパイプライン検証用のmock実行であり、SQL生成・DB接続・実データ取得は行いません。',
   'structured_query_execute_bedrock_stub は将来のBedrock KB structured provider向けの接続確認用stubであり、実データは取得しません。',
 ].join('\n');

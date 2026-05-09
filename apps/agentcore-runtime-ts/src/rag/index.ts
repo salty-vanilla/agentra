@@ -4,6 +4,8 @@ export * from './bedrock-kb-structured-live-adapter.js';
 export * from './bedrock-kb-structured-normalizer.js';
 export * from './bedrock-kb-structured-provider.js';
 export * from './bedrock-kb-structured-types.js';
+export * from './structured-answer-synthesis-types.js';
+export * from './structured-answer-synthesis.js';
 export * from './mock-structured-query-provider.js';
 export * from './rag-service.js';
 export * from './structured-rag-flow-types.js';
