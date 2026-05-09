@@ -6,8 +6,8 @@ import { calculatorTool } from './calculator.tool.js';
 import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
-import { kbQueryReadinessTool } from './kb-query-readiness.tool.js';
 import { kbAnswerSynthesisTool } from './kb-answer-synthesis.tool.js';
+import { kbQueryReadinessTool } from './kb-query-readiness.tool.js';
 import { kbRagDiagnosticsTool } from './kb-rag-diagnostics.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
 import { structuredAnswerSynthesisTool } from './structured-answer-synthesis.tool.js';
@@ -42,7 +42,7 @@ export type ToolCategory =
 
 export type ToolRiskLevel = 'low' | 'medium' | 'high';
 
-type StrandsTool = Tool;
+export type StrandsTool = Tool;
 
 export type RegisteredTool = {
   name: string;
@@ -104,6 +104,56 @@ const TOOL_ORDER = [
   'create_slide_presentation',
   'getWeather',
 ] as const;
+
+type RegisteredToolName = (typeof TOOL_ORDER)[number];
+
+const ROUTER_TOOL_NAMES = [
+  'date_resolver',
+  'calculator',
+  'table_summary',
+  'create_brief',
+  'merge_briefs',
+  'create_artifact_manifest',
+  'create_slide_presentation',
+] as const satisfies readonly RegisteredToolName[];
+
+const MANUFACTURING_LINE_TOOL_NAMES = [
+  'kb_retrieve',
+  'kb_rag_diagnostics',
+  'kb_query_readiness',
+  'kb_answer_synthesis',
+  'structured_query_plan',
+  'structured_plan_readiness',
+  'structured_rag_flow',
+  'structured_answer_synthesis',
+  'bedrock_structured_poc_diagnostics',
+  'structured_query_execute_mock',
+  'structured_query_execute_bedrock_stub',
+  'date_resolver',
+  'calculator',
+  'table_summary',
+  'normalize_evidence_source',
+  'build_citations',
+  'create_brief',
+  'merge_briefs',
+] as const satisfies readonly RegisteredToolName[];
+
+const WEB_RESEARCH_TOOL_NAMES = [
+  'web_research',
+  'tavily_search',
+  'tavily_extract',
+  'tavily_crawl',
+  'tavily_map',
+  'normalize_evidence_source',
+  'build_citations',
+  'create_brief',
+  'merge_briefs',
+] as const satisfies readonly RegisteredToolName[];
+
+const PRESENTATION_HANDOFF_TOOL_NAMES = [
+  'create_slide_presentation',
+  'create_artifact_manifest',
+] as const satisfies readonly RegisteredToolName[];
 
 function parseBooleanEnv(value: string | undefined): boolean | undefined {
   if (value === undefined) {
@@ -429,15 +479,21 @@ export function getRegisteredTools(
   return tools;
 }
 
-export function buildGeneralTools(
+function buildToolsByName(
+  toolNames: readonly RegisteredToolName[],
   config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
 ): StrandsTool[] {
   const registeredTools = getRegisteredTools(config);
   const enabledTools = new Map(
     registeredTools.map((entry) => [entry.name, entry] as const),
   );
+  const selectedToolNames = new Set(toolNames);
 
   return TOOL_ORDER.flatMap((toolName) => {
+    if (!selectedToolNames.has(toolName)) {
+      return [];
+    }
+
     const entry = enabledTools.get(toolName);
     if (!entry?.enabled) {
       return [];
@@ -445,4 +501,34 @@ export function buildGeneralTools(
 
     return [entry.tool];
   });
+}
+
+export function buildRouterTools(
+  config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
+): StrandsTool[] {
+  return buildToolsByName(ROUTER_TOOL_NAMES, config);
+}
+
+export function buildManufacturingLineTools(
+  config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
+): StrandsTool[] {
+  return buildToolsByName(MANUFACTURING_LINE_TOOL_NAMES, config);
+}
+
+export function buildWebResearchTools(
+  config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
+): StrandsTool[] {
+  return buildToolsByName(WEB_RESEARCH_TOOL_NAMES, config);
+}
+
+export function buildPresentationHandoffTools(
+  config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
+): StrandsTool[] {
+  return buildToolsByName(PRESENTATION_HANDOFF_TOOL_NAMES, config);
+}
+
+export function buildGeneralTools(
+  config: ToolRegistryConfig = resolveToolRegistryConfigFromEnv(),
+): StrandsTool[] {
+  return buildRouterTools(config);
 }

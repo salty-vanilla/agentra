@@ -22,6 +22,7 @@ describe('tool registry', () => {
       process.env.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
+    ENABLE_PRESENTATION_TOOL: process.env.ENABLE_PRESENTATION_TOOL,
     ENABLE_WEB_RESEARCH_TOOL: process.env.ENABLE_WEB_RESEARCH_TOOL,
     ENABLE_WEATHER_TOOL: process.env.ENABLE_WEATHER_TOOL,
     BEDROCK_KB_ID: process.env.BEDROCK_KB_ID,
@@ -55,6 +56,7 @@ describe('tool registry', () => {
       originalEnv.ENABLE_STRUCTURED_QUERY_EXECUTE_BEDROCK_STUB_TOOL;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
+    process.env.ENABLE_PRESENTATION_TOOL = originalEnv.ENABLE_PRESENTATION_TOOL;
     process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
     process.env.ENABLE_WEATHER_TOOL = originalEnv.ENABLE_WEATHER_TOOL;
     process.env.BEDROCK_KB_ID = originalEnv.BEDROCK_KB_ID;
@@ -159,6 +161,12 @@ describe('tool registry', () => {
       delete process.env.ENABLE_TAVILY_TOOLS;
     } else {
       process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
+    }
+
+    if (originalEnv.ENABLE_PRESENTATION_TOOL === undefined) {
+      delete process.env.ENABLE_PRESENTATION_TOOL;
+    } else {
+      process.env.ENABLE_PRESENTATION_TOOL = originalEnv.ENABLE_PRESENTATION_TOOL;
     }
 
     if (originalEnv.ENABLE_WEB_RESEARCH_TOOL === undefined) {
@@ -281,29 +289,19 @@ describe('tool registry', () => {
       false,
     );
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
-    expect(
-      registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled,
-    ).toBe(true);
-    expect(
-      registered.find((entry) => entry.name === 'kb_rag_diagnostics')?.enabled,
-    ).toBe(true);
+    expect(registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled).toBe(
+      true,
+    );
+    expect(registered.find((entry) => entry.name === 'kb_rag_diagnostics')?.enabled).toBe(
+      true,
+    );
     expect(registered.find((entry) => entry.name === 'getWeather')?.enabled).toBe(true);
-    expect(enabledTools).toHaveLength(14);
+    expect(enabledTools).toHaveLength(4);
     expect(enabledNames).toEqual([
       'date_resolver',
       'calculator',
       'table_summary',
-      'kb_query_readiness',
-      'kb_rag_diagnostics',
-      'kb_answer_synthesis',
-      'structured_query_plan',
-      'structured_plan_readiness',
-      'structured_rag_flow',
-      'structured_answer_synthesis',
-      'bedrock_structured_poc_diagnostics',
-      'structured_query_execute_mock',
       'create_slide_presentation',
-      'getWeather',
     ]);
     expect(registered.map((entry) => entry.name)).toEqual([
       'date_resolver',
@@ -335,6 +333,150 @@ describe('tool registry', () => {
     ]);
   });
 
+  it('builds a slim router tool set and keeps buildGeneralTools as a wrapper', async () => {
+    const mod = await import('../../tools/registry.js');
+    const config = {
+      enableWeather: true,
+      enableTavily: true,
+      enablePresentation: true,
+      enableCalculator: true,
+      enableTableSummary: true,
+      enableEvidence: true,
+      enableArtifact: true,
+      enableBrief: true,
+      enableKbRetrieve: true,
+      enableKbQueryReadiness: true,
+      enableKbRagDiagnostics: true,
+      enableKbAnswerSynthesis: true,
+      enableStructuredQueryPlan: true,
+      enableStructuredPlanReadiness: true,
+      enableStructuredRagFlow: true,
+      enableStructuredAnswerSynthesis: true,
+      enableBedrockStructuredPocDiagnostics: true,
+      enableStructuredQueryExecuteMock: true,
+      enableStructuredQueryExecuteBedrockStub: true,
+      enableWebResearch: true,
+    };
+
+    const routerNames = mod.buildRouterTools(config).map((entry) => entry.name);
+
+    expect(routerNames).toEqual([
+      'date_resolver',
+      'calculator',
+      'table_summary',
+      'create_artifact_manifest',
+      'create_brief',
+      'merge_briefs',
+      'create_slide_presentation',
+    ]);
+    expect(routerNames).not.toContain('kb_retrieve');
+    expect(routerNames).not.toContain('kb_rag_flow');
+    expect(routerNames).not.toContain('structured_rag_flow');
+    expect(routerNames).not.toContain('tavily_search');
+    expect(routerNames).not.toContain('getWeather');
+    expect(mod.buildGeneralTools(config).map((entry) => entry.name)).toEqual(routerNames);
+  });
+
+  it('builds manufacturing line tools with rag and structured rag enabled', async () => {
+    const mod = await import('../../tools/registry.js');
+
+    const names = mod
+      .buildManufacturingLineTools({
+        enableKbRetrieve: true,
+        enableStructuredQueryExecuteBedrockStub: true,
+      })
+      .map((entry) => entry.name);
+
+    expect(names).toEqual([
+      'date_resolver',
+      'calculator',
+      'table_summary',
+      'normalize_evidence_source',
+      'build_citations',
+      'create_brief',
+      'merge_briefs',
+      'kb_retrieve',
+      'kb_query_readiness',
+      'kb_rag_diagnostics',
+      'kb_answer_synthesis',
+      'structured_query_plan',
+      'structured_plan_readiness',
+      'structured_rag_flow',
+      'structured_answer_synthesis',
+      'bedrock_structured_poc_diagnostics',
+      'structured_query_execute_mock',
+      'structured_query_execute_bedrock_stub',
+    ]);
+  });
+
+  it('builds web research tools with web research and direct Tavily tools enabled', async () => {
+    const mod = await import('../../tools/registry.js');
+
+    const names = mod
+      .buildWebResearchTools({
+        enableTavily: true,
+        enableWebResearch: true,
+      })
+      .map((entry) => entry.name);
+
+    expect(names).toEqual([
+      'normalize_evidence_source',
+      'build_citations',
+      'create_brief',
+      'merge_briefs',
+      'web_research',
+      'tavily_search',
+      'tavily_extract',
+      'tavily_crawl',
+      'tavily_map',
+    ]);
+  });
+
+  it('builds presentation handoff tools', async () => {
+    const mod = await import('../../tools/registry.js');
+
+    expect(mod.buildPresentationHandoffTools().map((entry) => entry.name)).toEqual([
+      'create_artifact_manifest',
+      'create_slide_presentation',
+    ]);
+  });
+
+  it('keeps per-agent builders deterministic when env flags disable tools', async () => {
+    vi.stubEnv('ENABLE_TAVILY_TOOLS', 'false');
+    vi.stubEnv('ENABLE_PRESENTATION_TOOL', 'false');
+    vi.stubEnv('ENABLE_KB_RETRIEVE_TOOL', 'false');
+    vi.stubEnv('ENABLE_STRUCTURED_RAG_FLOW_TOOL', 'false');
+    vi.stubEnv('ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL', 'false');
+
+    const mod = await import('../../tools/registry.js');
+
+    expect(mod.buildWebResearchTools().map((entry) => entry.name)).toEqual([
+      'normalize_evidence_source',
+      'build_citations',
+      'create_brief',
+      'merge_briefs',
+    ]);
+    expect(mod.buildPresentationHandoffTools().map((entry) => entry.name)).toEqual([
+      'create_artifact_manifest',
+    ]);
+    expect(mod.buildManufacturingLineTools().map((entry) => entry.name)).toEqual([
+      'date_resolver',
+      'calculator',
+      'table_summary',
+      'normalize_evidence_source',
+      'build_citations',
+      'create_brief',
+      'merge_briefs',
+      'kb_query_readiness',
+      'kb_rag_diagnostics',
+      'kb_answer_synthesis',
+      'structured_query_plan',
+      'structured_plan_readiness',
+      'structured_answer_synthesis',
+      'bedrock_structured_poc_diagnostics',
+    ]);
+  });
+
   it('disables web research independently when the feature flag is off', async () => {
     vi.stubEnv('ENABLE_WEB_RESEARCH_TOOL', 'false');
     vi.stubEnv('ENABLE_TAVILY_TOOLS', 'true');
@@ -359,9 +501,9 @@ describe('tool registry', () => {
 
     expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(true);
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(true);
-    expect(
-      registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled,
-    ).toBe(true);
+    expect(registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled).toBe(
+      true,
+    );
     expect(
       registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
     ).toBe(true);
@@ -393,9 +535,9 @@ describe('tool registry', () => {
 
     expect(mod.resolveToolRegistryConfigFromEnv().enableKbRetrieve).toBe(false);
     expect(registered.find((entry) => entry.name === 'kb_retrieve')?.enabled).toBe(false);
-    expect(
-      registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled,
-    ).toBe(true);
+    expect(registered.find((entry) => entry.name === 'kb_query_readiness')?.enabled).toBe(
+      true,
+    );
     expect(
       registered.find((entry) => entry.name === 'structured_query_plan')?.enabled,
     ).toBe(true);

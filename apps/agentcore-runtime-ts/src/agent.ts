@@ -13,7 +13,7 @@ import { z } from 'zod';
 import { buildLoggerOptions } from './logging.js';
 import { createRuntimeSessionManager } from './memory/session-manager-factory.js';
 import { ObservationCollector } from './observability.js';
-import { buildGeneralTools } from './tools/registry.js';
+import { buildRouterTools } from './tools/registry.js';
 
 type ModelKey = 'opus' | 'sonnet' | 'haiku';
 type ResponsePreset = 'fast' | 'balanced' | 'deep';
@@ -235,7 +235,7 @@ function createAgent(config: {
   return new Agent({
     model,
     plugins,
-    tools: buildGeneralTools(),
+    tools: buildRouterTools(),
   });
 }
 
