@@ -6,6 +6,7 @@ import { createSlidePresentationTool } from './create-slide-presentation.js';
 import { dateResolverTool } from './date-resolver.js';
 import { buildCitationsTool, normalizeEvidenceSourceTool } from './evidence.tool.js';
 import { kbRetrieveTool } from './kb-retrieve.tool.js';
+import { structuredAnswerSynthesisTool } from './structured-answer-synthesis.tool.js';
 import { structuredPlanReadinessTool } from './structured-plan-readiness.tool.js';
 import { structuredRagFlowTool } from './structured-rag-flow.tool.js';
 import { structuredQueryExecuteBedrockStubTool } from './structured-query-execute-bedrock-stub.tool.js';
@@ -61,6 +62,7 @@ export type ToolRegistryConfig = {
   enableStructuredQueryPlan?: boolean;
   enableStructuredPlanReadiness?: boolean;
   enableStructuredRagFlow?: boolean;
+  enableStructuredAnswerSynthesis?: boolean;
   enableStructuredQueryExecuteMock?: boolean;
   enableStructuredQueryExecuteBedrockStub?: boolean;
   enableWebResearch?: boolean;
@@ -79,6 +81,7 @@ const TOOL_ORDER = [
   'structured_query_plan',
   'structured_plan_readiness',
   'structured_rag_flow',
+  'structured_answer_synthesis',
   'structured_query_execute_mock',
   'structured_query_execute_bedrock_stub',
   'web_research',
@@ -131,6 +134,10 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       true,
     ),
     enableStructuredRagFlow: resolveEnvFlag('ENABLE_STRUCTURED_RAG_FLOW_TOOL', true),
+    enableStructuredAnswerSynthesis: resolveEnvFlag(
+      'ENABLE_STRUCTURED_ANSWER_SYNTHESIS_TOOL',
+      true,
+    ),
     enableStructuredQueryExecuteMock: resolveEnvFlag(
       'ENABLE_STRUCTURED_QUERY_EXECUTE_MOCK_TOOL',
       true,
@@ -176,6 +183,11 @@ export function getRegisteredTools(
   const enableStructuredRagFlow = resolveToolEnabled(
     config,
     'enableStructuredRagFlow',
+    true,
+  );
+  const enableStructuredAnswerSynthesis = resolveToolEnabled(
+    config,
+    'enableStructuredAnswerSynthesis',
     true,
   );
   const enableStructuredQueryExecuteMock = resolveToolEnabled(
@@ -274,6 +286,13 @@ export function getRegisteredTools(
       riskLevel: 'medium',
       enabled: enableStructuredRagFlow,
       tool: structuredRagFlowTool,
+    },
+    {
+      name: 'structured_answer_synthesis',
+      category: 'structured_rag',
+      riskLevel: 'low',
+      enabled: enableStructuredAnswerSynthesis,
+      tool: structuredAnswerSynthesisTool,
     },
     {
       name: 'structured_query_execute_mock',
