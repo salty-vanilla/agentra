@@ -26,16 +26,21 @@ AgentCore Runtime  →  kb_retrieve / kb_rag_flow / kb_answer_synthesis
 | Bedrock Knowledge Base | `aws-bedrock.CfnKnowledgeBase` | `agentra-{stage}-manufacturing-doc-kb` |
 | Bedrock S3 data source | `aws-bedrock.CfnDataSource` | `agentra-{stage}-manufacturing-docs` |
 
-## Required environment variables
+## Runtime environment variables
 
-After deployment read the CloudFormation outputs from the `AgentraBedrockKbStack-{stage}` stack:
+The following variables are automatically wired into the AgentCore Runtime by CDK when `AgentraBedrockKbStack` is deployed alongside `AgentraAgentCoreRuntimeStack`.
 
-| Variable | CloudFormation output key | Description |
-|---|---|---|
-| `BEDROCK_KB_ID` | `BedrockKbId` | Knowledge base ID for `kb_retrieve` / `kb_rag_flow` calls |
-| `BEDROCK_KB_REGION` | `BedrockKbRegion` | AWS region where the KB lives |
+| Variable | Source | Default | Description |
+|---|---|---|---|
+| `BEDROCK_KB_ID` | `AgentraBedrockKbStack` CloudFormation output `BedrockKbId` | `''` | Knowledge base ID passed to `kb_retrieve` / `kb_rag_flow` |
+| `BEDROCK_KB_REGION` | Deploy-time AWS region | deploy region | AWS region where the KB lives |
+| `ENABLE_KB_RETRIEVE_TOOL` | CDK wiring | `true` when KB ID is set | Enable / disable the `kb_retrieve` tool |
+| `ENABLE_KB_RAG_DIAGNOSTICS_TOOL` | CDK wiring | `true` | Enable / disable `kb_rag_diagnostics` |
+| `ENABLE_KB_QUERY_READINESS_TOOL` | CDK wiring | `true` | Enable / disable `kb_query_readiness` |
+| `ENABLE_KB_RAG_FLOW_TOOL` | CDK wiring | `true` | Enable / disable `kb_rag_flow` |
+| `ENABLE_KB_ANSWER_SYNTHESIS_TOOL` | CDK wiring | `true` | Enable / disable `kb_answer_synthesis` |
 
-Set both variables in the AgentCore Runtime environment (currently manual — see KB-INFRA-3).
+All `ENABLE_*` variables accept `"true"` or `"false"`. The runtime tool registry reads them at startup via `resolveToolRegistryConfigFromEnv()`.
 
 ## Deployment
 
@@ -108,7 +113,7 @@ The AOSS index `bedrock-kb-index` uses the following fields required by Bedrock 
 - The AOSS network policy allows public access (suitable for PoC / dev). Restrict to VPC endpoints in production.
 - The KB IAM role uses source-account and source-ARN conditions to prevent confused-deputy attacks.
 - The AgentCore Runtime does **not** need S3 read access — Bedrock KB handles document retrieval.
-- Runtime IAM permissions for KB retrieval will be added in KB-INFRA-3.
+- Runtime IAM permissions for KB retrieval (`bedrock-agent-runtime:Retrieve` and `RetrieveAndGenerate`) are granted by the `AgentraAgentCoreRuntimeStack` when `normalKbArn` is provided.
 
 ## Stage-specific behavior
 
@@ -120,5 +125,4 @@ The AOSS index `bedrock-kb-index` uses the following fields required by Bedrock 
 
 ## Known gaps / follow-up issues
 
-- **KB-INFRA-3**: Add `bedrock:Retrieve` permission to the AgentCore Runtime IAM role so it can call `kb_retrieve`.
 - The AOSS network policy uses `AllowFromPublic: true` for simplicity. Tighten to VPC endpoint in a production hardening pass.

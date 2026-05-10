@@ -209,6 +209,11 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         AGENT_SESSION_S3_REGION: Stack.of(this).region,
         BEDROCK_KB_ID: props.normalKbId ?? '',
         BEDROCK_KB_REGION: Stack.of(this).region,
+        ENABLE_KB_RETRIEVE_TOOL: props.normalKbId ? 'true' : 'false',
+        ENABLE_KB_RAG_DIAGNOSTICS_TOOL: 'true',
+        ENABLE_KB_QUERY_READINESS_TOOL: 'true',
+        ENABLE_KB_RAG_FLOW_TOOL: 'true',
+        ENABLE_KB_ANSWER_SYNTHESIS_TOOL: 'true',
       },
       agentRuntimeArtifact: {
         containerConfiguration: {
