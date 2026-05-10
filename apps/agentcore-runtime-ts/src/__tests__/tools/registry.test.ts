@@ -26,6 +26,7 @@ describe('tool registry', () => {
     ENABLE_WEB_RESEARCH_AGENT_TOOL: process.env.ENABLE_WEB_RESEARCH_AGENT_TOOL,
     ENABLE_EVIDENCE_TOOLS: process.env.ENABLE_EVIDENCE_TOOLS,
     ENABLE_TAVILY_TOOLS: process.env.ENABLE_TAVILY_TOOLS,
+    ENABLE_RAW_TAVILY_TOOLS: process.env.ENABLE_RAW_TAVILY_TOOLS,
     ENABLE_PRESENTATION_TOOL: process.env.ENABLE_PRESENTATION_TOOL,
     ENABLE_WEB_RESEARCH_TOOL: process.env.ENABLE_WEB_RESEARCH_TOOL,
     BEDROCK_KB_ID: process.env.BEDROCK_KB_ID,
@@ -64,6 +65,7 @@ describe('tool registry', () => {
       originalEnv.ENABLE_WEB_RESEARCH_AGENT_TOOL;
     process.env.ENABLE_EVIDENCE_TOOLS = originalEnv.ENABLE_EVIDENCE_TOOLS;
     process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
+    process.env.ENABLE_RAW_TAVILY_TOOLS = originalEnv.ENABLE_RAW_TAVILY_TOOLS;
     process.env.ENABLE_PRESENTATION_TOOL = originalEnv.ENABLE_PRESENTATION_TOOL;
     process.env.ENABLE_WEB_RESEARCH_TOOL = originalEnv.ENABLE_WEB_RESEARCH_TOOL;
     process.env.BEDROCK_KB_ID = originalEnv.BEDROCK_KB_ID;
@@ -190,6 +192,12 @@ describe('tool registry', () => {
       process.env.ENABLE_TAVILY_TOOLS = originalEnv.ENABLE_TAVILY_TOOLS;
     }
 
+    if (originalEnv.ENABLE_RAW_TAVILY_TOOLS === undefined) {
+      delete process.env.ENABLE_RAW_TAVILY_TOOLS;
+    } else {
+      process.env.ENABLE_RAW_TAVILY_TOOLS = originalEnv.ENABLE_RAW_TAVILY_TOOLS;
+    }
+
     if (originalEnv.ENABLE_PRESENTATION_TOOL === undefined) {
       delete process.env.ENABLE_PRESENTATION_TOOL;
     } else {
@@ -218,6 +226,7 @@ describe('tool registry', () => {
 
     expect(config).toEqual({
       enableTavily: true,
+      enableRawTavily: false,
       enablePresentation: true,
       enableCalculator: true,
       enableTableSummary: true,
@@ -270,10 +279,10 @@ describe('tool registry', () => {
       { name: 'structured_query_execute_mock', enabled: true },
       { name: 'structured_query_execute_bedrock_stub', enabled: false },
       { name: 'web_research', enabled: true },
-      { name: 'tavily_search', enabled: true },
-      { name: 'tavily_extract', enabled: true },
-      { name: 'tavily_crawl', enabled: true },
-      { name: 'tavily_map', enabled: true },
+      { name: 'tavily_search', enabled: false },
+      { name: 'tavily_extract', enabled: false },
+      { name: 'tavily_crawl', enabled: false },
+      { name: 'tavily_map', enabled: false },
       { name: 'create_slide_presentation', enabled: true },
     ]);
   });
@@ -443,6 +452,7 @@ describe('tool registry', () => {
 
     const names = buildWebResearchTools({
       enableTavily: true,
+      enableRawTavily: true,
       enableWebResearch: true,
     }).map((entry) => entry.name);
 
@@ -520,6 +530,7 @@ describe('tool registry', () => {
   it('disables web research independently when the feature flag is off', async () => {
     vi.stubEnv('ENABLE_WEB_RESEARCH_TOOL', 'false');
     vi.stubEnv('ENABLE_TAVILY_TOOLS', 'true');
+    vi.stubEnv('ENABLE_RAW_TAVILY_TOOLS', 'true');
 
     const mod = await import('../../tools/registry.js');
     const registered = mod.getRegisteredTools();
@@ -529,6 +540,59 @@ describe('tool registry', () => {
     );
     expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
       true,
+    );
+  });
+
+  it('disables raw Tavily tools by default even when ENABLE_TAVILY_TOOLS is true', async () => {
+    vi.stubEnv('ENABLE_TAVILY_TOOLS', 'true');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableRawTavily).toBe(false);
+    expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
+      false,
+    );
+    expect(registered.find((entry) => entry.name === 'tavily_extract')?.enabled).toBe(
+      false,
+    );
+    expect(registered.find((entry) => entry.name === 'tavily_crawl')?.enabled).toBe(
+      false,
+    );
+    expect(registered.find((entry) => entry.name === 'tavily_map')?.enabled).toBe(false);
+    expect(registered.find((entry) => entry.name === 'web_research')?.enabled).toBe(true);
+  });
+
+  it('enables raw Tavily tools when ENABLE_RAW_TAVILY_TOOLS is true', async () => {
+    vi.stubEnv('ENABLE_TAVILY_TOOLS', 'true');
+    vi.stubEnv('ENABLE_RAW_TAVILY_TOOLS', 'true');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(mod.resolveToolRegistryConfigFromEnv().enableRawTavily).toBe(true);
+    expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
+      true,
+    );
+    expect(registered.find((entry) => entry.name === 'tavily_extract')?.enabled).toBe(
+      true,
+    );
+    expect(registered.find((entry) => entry.name === 'tavily_crawl')?.enabled).toBe(true);
+    expect(registered.find((entry) => entry.name === 'tavily_map')?.enabled).toBe(true);
+  });
+
+  it('keeps raw Tavily tools disabled when ENABLE_TAVILY_TOOLS is false even if ENABLE_RAW_TAVILY_TOOLS is true', async () => {
+    vi.stubEnv('ENABLE_TAVILY_TOOLS', 'false');
+    vi.stubEnv('ENABLE_RAW_TAVILY_TOOLS', 'true');
+
+    const mod = await import('../../tools/registry.js');
+    const registered = mod.getRegisteredTools();
+
+    expect(registered.find((entry) => entry.name === 'tavily_search')?.enabled).toBe(
+      false,
+    );
+    expect(registered.find((entry) => entry.name === 'web_research')?.enabled).toBe(
+      false,
     );
   });
 

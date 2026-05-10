@@ -57,6 +57,7 @@ export type RegisteredTool = {
 export type ToolRegistryConfig = {
   enableManufacturingLineAgentTool?: boolean;
   enableTavily?: boolean;
+  enableRawTavily?: boolean;
   enablePresentation?: boolean;
   enableCalculator?: boolean;
   enableTableSummary?: boolean;
@@ -107,6 +108,7 @@ export function resolveToolRegistryConfigFromEnv(): ToolRegistryConfig {
       true,
     ),
     enableTavily: resolveEnvFlag('ENABLE_TAVILY_TOOLS', true),
+    enableRawTavily: resolveEnvFlag('ENABLE_RAW_TAVILY_TOOLS', false),
     enablePresentation: resolveEnvFlag('ENABLE_PRESENTATION_TOOL', true),
     enableCalculator: resolveEnvFlag('ENABLE_CALCULATOR_TOOL', true),
     enableTableSummary: resolveEnvFlag('ENABLE_TABLE_SUMMARY_TOOL', true),
@@ -165,6 +167,7 @@ export function getRegisteredTools(
     true,
   );
   const enableTavily = resolveToolEnabled(config, 'enableTavily', true);
+  const enableRawTavily = resolveToolEnabled(config, 'enableRawTavily', false);
   const enablePresentation = resolveToolEnabled(config, 'enablePresentation', true);
   const enableCalculator = resolveToolEnabled(config, 'enableCalculator', true);
   const enableTableSummary = resolveToolEnabled(config, 'enableTableSummary', true);
@@ -396,28 +399,28 @@ export function getRegisteredTools(
       name: 'tavily_search',
       category: 'web',
       riskLevel: 'high',
-      enabled: enableTavily,
+      enabled: enableTavily && enableRawTavily,
       tool: tavilySearchTool,
     },
     {
       name: 'tavily_extract',
       category: 'web',
       riskLevel: 'high',
-      enabled: enableTavily,
+      enabled: enableTavily && enableRawTavily,
       tool: tavilyExtractTool,
     },
     {
       name: 'tavily_crawl',
       category: 'web',
       riskLevel: 'high',
-      enabled: enableTavily,
+      enabled: enableTavily && enableRawTavily,
       tool: tavilyCrawlTool,
     },
     {
       name: 'tavily_map',
       category: 'web',
       riskLevel: 'high',
-      enabled: enableTavily,
+      enabled: enableTavily && enableRawTavily,
       tool: tavilyMapTool,
     },
     {

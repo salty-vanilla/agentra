@@ -64,10 +64,49 @@ function errorMessage(error: unknown): string {
   return String(error);
 }
 
+const MAX_CONTENT_CHARS = 5000;
+const MAX_ANSWER_CHARS = 2000;
+
 function compactPayload(payload: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(payload).filter(([, value]) => value !== undefined),
   );
+}
+
+function truncateString(value: unknown, maxChars: number): unknown {
+  if (typeof value !== 'string' || value.length <= maxChars) {
+    return value;
+  }
+  return `${value.slice(0, maxChars)}…[truncated]`;
+}
+
+function boundResultItem(item: unknown): unknown {
+  if (!isRecord(item)) {
+    return item;
+  }
+  return {
+    ...item,
+    ...(item.content !== undefined && {
+      content: truncateString(item.content, MAX_CONTENT_CHARS),
+    }),
+    ...(item.raw_content !== undefined && {
+      raw_content: truncateString(item.raw_content, MAX_CONTENT_CHARS),
+    }),
+  };
+}
+
+function boundTavilyPayload(data: unknown): unknown {
+  if (!isRecord(data)) {
+    return data;
+  }
+  const bounded: Record<string, unknown> = { ...data };
+  if (bounded.answer !== undefined) {
+    bounded.answer = truncateString(bounded.answer, MAX_ANSWER_CHARS);
+  }
+  if (Array.isArray(bounded.results)) {
+    bounded.results = bounded.results.map(boundResultItem);
+  }
+  return bounded;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -307,7 +346,7 @@ const tavilySearchTool = tool({
         return failure(result.error);
       }
 
-      return success(result.data);
+      return success(boundTavilyPayload(result.data));
     } catch (error) {
       return failure(`Unexpected error: ${errorMessage(error)}`);
     }
@@ -344,7 +383,7 @@ const tavilyExtractTool = tool({
         return failure(result.error);
       }
 
-      return success(result.data);
+      return success(boundTavilyPayload(result.data));
     } catch (error) {
       return failure(`Unexpected error: ${errorMessage(error)}`);
     }
@@ -403,7 +442,7 @@ const tavilyCrawlTool = tool({
         return failure(result.error);
       }
 
-      return success(result.data);
+      return success(boundTavilyPayload(result.data));
     } catch (error) {
       return failure(`Unexpected error: ${errorMessage(error)}`);
     }
@@ -465,4 +504,10 @@ const tavilyMapTool = tool({
   },
 });
 
-export { tavilyCrawlTool, tavilyExtractTool, tavilyMapTool, tavilySearchTool };
+export {
+  boundTavilyPayload,
+  tavilyCrawlTool,
+  tavilyExtractTool,
+  tavilyMapTool,
+  tavilySearchTool,
+};
