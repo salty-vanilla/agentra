@@ -24,6 +24,8 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   tavilyApiKeySecretArn?: string;
   memoryEnabled?: boolean;
   sessionS3Prefix?: string;
+  normalKbArn?: string;
+  normalKbId?: string;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -140,6 +142,20 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       );
     }
 
+    // Grant least-privilege retrieve permissions for normal Bedrock KB
+    if (props.normalKbArn) {
+      runtimeRole.addToPolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            'bedrock-agent-runtime:Retrieve',
+            'bedrock-agent-runtime:RetrieveAndGenerate',
+          ],
+          resources: [props.normalKbArn],
+        }),
+      );
+    }
+
     // --- Memory / Session S3 bucket ---
     const memoryEnabled = props.memoryEnabled ?? false;
     const sessionS3Prefix = props.sessionS3Prefix ?? 'sessions';
@@ -191,6 +207,8 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         AGENT_SESSION_S3_BUCKET: sessionBucket?.bucketName ?? '',
         AGENT_SESSION_S3_PREFIX: sessionS3Prefix,
         AGENT_SESSION_S3_REGION: Stack.of(this).region,
+        BEDROCK_KB_ID: props.normalKbId ?? '',
+        BEDROCK_KB_REGION: Stack.of(this).region,
       },
       agentRuntimeArtifact: {
         containerConfiguration: {
