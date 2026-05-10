@@ -147,7 +147,10 @@ async function getApiKeyFromSecretsManager(secretId: string): Promise<string> {
 
   const secretString = response.SecretString?.trim();
   if (!secretString) {
-    throw new Error('Pexels secret value is empty');
+    throw new Error(
+      'Pexels secret value is empty or missing the PEXELS_API_KEY field.' +
+        ' Expected JSON: {"PEXELS_API_KEY": "..."}',
+    );
   }
 
   try {

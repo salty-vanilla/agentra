@@ -11,11 +11,8 @@ import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
 const app = new cdk.App();
 const stage = (app.node.tryGetContext('stage') as string | undefined)?.trim() || 'dev';
 const stageLabel = stage.toLowerCase();
-const tavilyApiKeySecretArn = (
-  app.node.tryGetContext('tavilyApiKeySecretArn') as string | undefined
-)?.trim();
-const pexelsApiKeySecretArn = (
-  app.node.tryGetContext('pexelsApiKeySecretArn') as string | undefined
+const thirdPartyApiKeysSecretArn = (
+  app.node.tryGetContext('thirdPartyApiKeysSecretArn') as string | undefined
 )?.trim();
 
 function parseCsvContext(key: string): string[] {
@@ -78,7 +75,7 @@ const slideRuntimeStack = new AgentraSlideRuntimeStack(
   {
     description: `Agentra ${stageLabel} slide generation runtime stack.`,
     stage: stageLabel,
-    ...(pexelsApiKeySecretArn ? { pexelsApiKeySecretArn } : {}),
+    ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),
   },
 );
 
@@ -99,7 +96,7 @@ const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
     stage: stageLabel,
     slideRuntimeArn: slideRuntimeStack.runtimeArn,
     slideRuntimeQualifier: 'prod',
-    ...(tavilyApiKeySecretArn ? { tavilyApiKeySecretArn } : {}),
+    ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),
     memoryEnabled: true,
     normalKbArn: bedrockKbStack.knowledgeBaseArn,
     normalKbId: bedrockKbStack.knowledgeBaseId,
