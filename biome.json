@@ -2,6 +2,7 @@
   "files": {
     "includes": [
       "**",
+      "!**/.claude",
       "!**/.tmp",
       "!**/.next",
       "!**/dist",
