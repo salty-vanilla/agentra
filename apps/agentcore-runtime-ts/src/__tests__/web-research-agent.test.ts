@@ -26,7 +26,6 @@ describe('Web Research Agent module', () => {
 
     const names = buildWebResearchTools({
       enableTavily: true,
-      enableRawTavily: true,
       enableWebResearch: true,
     }).map((tool) => tool.name);
 
