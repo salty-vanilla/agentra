@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { AgentraAgentCoreRuntimeStack } from '../lib/agentra-agentcore-runtime-stack.js';
 import { AgentraAgentCoreStack } from '../lib/agentra-agentcore-stack.js';
 import { AgentraAppStack } from '../lib/agentra-app-stack.js';
+import { AgentraBedrockKbStack } from '../lib/agentra-bedrock-kb-stack.js';
 import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';
 import { AgentraSlideRuntimeStack } from '../lib/agentra-slide-runtime-stack.js';
 import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
@@ -121,3 +122,8 @@ const webHostingStack = new AgentraWebHostingStack(
 );
 webHostingStack.addDependency(appStack);
 webHostingStack.addDependency(dataAuthStack);
+
+new AgentraBedrockKbStack(app, `AgentraBedrockKbStack-${stageLabel}`, {
+  description: `Agentra ${stageLabel} Bedrock Knowledge Base stack (normal document RAG for manufacturing line).`,
+  stage: stageLabel,
+});
