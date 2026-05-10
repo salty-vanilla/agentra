@@ -113,7 +113,8 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     );
 
     const runtimeImageAsset = new DockerImageAsset(this, 'AgentCoreRuntimeImageAsset', {
-      directory: join(__dirname, '../../../apps/agentcore-runtime-ts'),
+      directory: join(__dirname, '../../..'),
+      file: 'apps/agentcore-runtime-ts/Dockerfile',
     });
     runtimeImageAsset.repository.grantPull(runtimeRole);
     runtimeRole.addToPolicy(
