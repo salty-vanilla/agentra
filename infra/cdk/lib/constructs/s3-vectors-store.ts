@@ -1,4 +1,4 @@
-import { RemovalPolicy } from 'aws-cdk-lib';
+import { RemovalPolicy, Stack } from 'aws-cdk-lib';
 import type { CfnKnowledgeBase } from 'aws-cdk-lib/aws-bedrock';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { CfnIndex, CfnVectorBucket } from 'aws-cdk-lib/aws-s3vectors';
@@ -34,6 +34,12 @@ export class S3VectorsStore extends VectorStore {
     const indexName = props.indexName ?? 'bedrock-kb-index';
     const dimensions = props.dimensions ?? 1024;
     const isDevStage = stage === 'dev';
+    const stack = Stack.of(this);
+
+    // Build ARNs from known names to avoid relying on Fn::GetAtt for the new S3Vectors resource type.
+    const effectiveBucketName = props.vectorBucketName ?? `agentra-${stage}-vectors`;
+    const vectorBucketArn = `arn:aws:s3vectors:${stack.region}:${stack.account}:bucket/${effectiveBucketName}`;
+    const vectorIndexArn = `${vectorBucketArn}/index/${indexName}`;
 
     // S3 vector bucket — specialized storage for vector embeddings.
     const vectorBucket = new CfnVectorBucket(this, 'VectorBucket', {
@@ -77,18 +83,18 @@ export class S3VectorsStore extends VectorStore {
           's3vectors:QueryVectors',
           's3vectors:ListVectors',
         ],
-        resources: [vectorIndex.attrIndexArn, vectorBucket.attrVectorBucketArn],
+        resources: [vectorIndexArn, vectorBucketArn],
       }),
     );
 
-    this.vectorBucketArn = vectorBucket.attrVectorBucketArn;
-    this.indexArn = vectorIndex.attrIndexArn;
+    this.vectorBucketArn = vectorBucketArn;
+    this.indexArn = vectorIndexArn;
 
     this.storageConfiguration = {
       type: 'S3_VECTORS',
       s3VectorsConfiguration: {
-        vectorBucketArn: vectorBucket.attrVectorBucketArn,
-        indexArn: vectorIndex.attrIndexArn,
+        vectorBucketArn,
+        indexArn: vectorIndexArn,
       },
     };
   }

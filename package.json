@@ -7,7 +7,7 @@
     "node": ">=22.0.0"
   },
   "scripts": {
-    "prepare": "lefthook install",
+    "prepare": "if git rev-parse --git-dir > /dev/null 2>&1; then lefthook install; fi",
     "prepare:workspace": "pnpm generate:api && pnpm build:shared",
     "dev:frontend": "pnpm prepare:workspace && pnpm --filter @agentra/frontend dev",
     "dev:backend": "pnpm build:shared && pnpm --filter @agentra/backend dev",

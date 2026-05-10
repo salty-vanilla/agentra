@@ -7,8 +7,8 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm@10
 
-# Copy workspace config
-COPY pnpm-workspace.yaml pnpm-lock.yaml package.json tsconfig.base.json ./
+# Copy workspace config (tsconfig.base.json excluded to avoid busting install cache on type-only changes)
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 
 # Copy all workspace package.json files needed for install
 COPY packages/presentation-author/package.json packages/presentation-author/package.json
@@ -18,7 +18,8 @@ COPY apps/presentation-author-runtime/package.json apps/presentation-author-runt
 # Install workspace dependencies
 RUN pnpm install --frozen-lockfile --filter @agentra/presentation-author-runtime... --filter @agentra/presentation-author...
 
-# Copy source
+# Copy source (tsconfig.base.json copied here so install cache is unaffected by type changes)
+COPY tsconfig.base.json ./
 COPY packages/presentation-author/ packages/presentation-author/
 COPY apps/presentation-author-runtime/ apps/presentation-author-runtime/
 

@@ -132,6 +132,13 @@ export class AgentraBedrockKbStack extends Stack {
       },
     });
     kb.node.addDependency(vectorStore);
+    // kbRole's DefaultPolicy (AWS::IAM::Policy) is created in parallel with the KB by default.
+    // Bedrock validates S3 Vectors permissions immediately on KB creation, so the policy must
+    // be fully applied first.
+    const kbRoleDefaultPolicy = kbRole.node.tryFindChild('DefaultPolicy');
+    if (kbRoleDefaultPolicy) {
+      kb.node.addDependency(kbRoleDefaultPolicy);
+    }
 
     // --- S3 data source ---
     const dataSource = new CfnDataSource(this, 'ManufacturingS3DataSource', {
