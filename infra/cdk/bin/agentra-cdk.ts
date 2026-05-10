@@ -82,6 +82,15 @@ const slideRuntimeStack = new AgentraSlideRuntimeStack(
   },
 );
 
+const bedrockKbStack = new AgentraBedrockKbStack(
+  app,
+  `AgentraBedrockKbStack-${stageLabel}`,
+  {
+    description: `Agentra ${stageLabel} Bedrock Knowledge Base stack (normal document RAG for manufacturing line).`,
+    stage: stageLabel,
+  },
+);
+
 const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
   app,
   `AgentraAgentCoreRuntimeStack-${stageLabel}`,
@@ -92,9 +101,12 @@ const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
     slideRuntimeQualifier: 'prod',
     ...(tavilyApiKeySecretArn ? { tavilyApiKeySecretArn } : {}),
     memoryEnabled: true,
+    normalKbArn: bedrockKbStack.knowledgeBaseArn,
+    normalKbId: bedrockKbStack.knowledgeBaseId,
   },
 );
 agentCoreRuntimeStack.addDependency(slideRuntimeStack);
+agentCoreRuntimeStack.addDependency(bedrockKbStack);
 
 const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
   description: `Agentra ${stageLabel} backend application stack (Lambda and HTTP API).`,
@@ -122,8 +134,3 @@ const webHostingStack = new AgentraWebHostingStack(
 );
 webHostingStack.addDependency(appStack);
 webHostingStack.addDependency(dataAuthStack);
-
-new AgentraBedrockKbStack(app, `AgentraBedrockKbStack-${stageLabel}`, {
-  description: `Agentra ${stageLabel} Bedrock Knowledge Base stack (normal document RAG for manufacturing line).`,
-  stage: stageLabel,
-});
