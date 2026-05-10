@@ -1,10 +1,21 @@
-import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { CfnOutput, Duration, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import { CfnDataSource, CfnKnowledgeBase } from 'aws-cdk-lib/aws-bedrock';
+import { Alarm, ComparisonOperator } from 'aws-cdk-lib/aws-cloudwatch';
+import { Rule } from 'aws-cdk-lib/aws-events';
+import { SqsQueue as SqsEventTarget } from 'aws-cdk-lib/aws-events-targets';
 import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { Runtime } from 'aws-cdk-lib/aws-lambda';
+import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
+import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { AossVectorStore } from './constructs/aoss-vector-store.js';
 import { S3VectorsStore } from './constructs/s3-vectors-store.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const EMBEDDING_MODEL_ID = 'amazon.titan-embed-text-v2:0';
 const EMBEDDING_DIMENSIONS = 1024;
@@ -43,6 +54,7 @@ export class AgentraBedrockKbStack extends Stack {
       encryption: BucketEncryption.S3_MANAGED,
       enforceSSL: true,
       versioned: true,
+      eventBridgeEnabled: true,
       removalPolicy: isDevStage ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDevStage,
     });
@@ -136,6 +148,80 @@ export class AgentraBedrockKbStack extends Stack {
       dataDeletionPolicy: isDevStage ? 'DELETE' : 'RETAIN',
     });
     dataSource.addDependency(kb);
+
+    // --- Auto-ingestion trigger: S3 → EventBridge → SQS → Lambda ---
+
+    // DLQ for failed Lambda invocations
+    const ingestionDlq = new Queue(this, 'KbIngestionDlq', {
+      queueName: `agentra-${stage}-kb-ingestion-dlq`,
+      retentionPeriod: Duration.days(isDevStage ? 7 : 14),
+      encryption: QueueEncryption.SQS_MANAGED,
+      removalPolicy: isDevStage ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+    });
+
+    // SQS buffer absorbs burst uploads; visibility timeout > Lambda timeout
+    const ingestionQueue = new Queue(this, 'KbIngestionQueue', {
+      queueName: `agentra-${stage}-kb-ingestion`,
+      visibilityTimeout: Duration.seconds(300),
+      retentionPeriod: Duration.days(isDevStage ? 1 : 4),
+      encryption: QueueEncryption.SQS_MANAGED,
+      deadLetterQueue: { queue: ingestionDlq, maxReceiveCount: 3 },
+      removalPolicy: isDevStage ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+    });
+
+    // Lambda checks for an active job then starts one if none running
+    const ingestionTrigger = new NodejsFunction(this, 'KbIngestionTrigger', {
+      entry: join(__dirname, '../lambda/kb-ingestion-trigger/index.ts'),
+      handler: 'handler',
+      runtime: Runtime.NODEJS_22_X,
+      timeout: Duration.seconds(30),
+      environment: {
+        KB_ID: kb.attrKnowledgeBaseId,
+        DATA_SOURCE_ID: dataSource.attrDataSourceId,
+      },
+      bundling: {
+        // @aws-sdk/* is provided by the Node.js 22.x Lambda runtime
+        externalModules: ['@aws-sdk/*'],
+      },
+    });
+
+    ingestionTrigger.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['bedrock-agent:ListIngestionJobs', 'bedrock-agent:StartIngestionJob'],
+        resources: [kb.attrKnowledgeBaseArn],
+      }),
+    );
+
+    // 60-second batch window coalesces burst uploads into a single invocation
+    ingestionTrigger.addEventSource(
+      new SqsEventSource(ingestionQueue, {
+        batchSize: 10,
+        maxBatchingWindow: Duration.seconds(60),
+      }),
+    );
+
+    // EventBridge rule: Object Created on docs/ prefix → SQS
+    new Rule(this, 'S3DocsCreatedRule', {
+      eventPattern: {
+        source: ['aws.s3'],
+        detailType: ['Object Created'],
+        detail: {
+          bucket: { name: [documentBucket.bucketName] },
+          object: { key: [{ prefix: 'docs/' }] },
+        },
+      },
+      targets: [new SqsEventTarget(ingestionQueue)],
+    });
+
+    // Alarm fires when any message lands in the DLQ
+    new Alarm(this, 'KbIngestionDlqAlarm', {
+      metric: ingestionDlq.metricApproximateNumberOfMessagesVisible(),
+      threshold: 1,
+      evaluationPeriods: 1,
+      comparisonOperator: ComparisonOperator.GREATER_THAN_OR_EQUAL_TO_THRESHOLD,
+      alarmDescription: `[${stage}] KB ingestion trigger Lambda failed — check DLQ agentra-${stage}-kb-ingestion-dlq`,
+    });
 
     this.knowledgeBaseId = kb.attrKnowledgeBaseId;
     this.knowledgeBaseArn = kb.attrKnowledgeBaseArn;
