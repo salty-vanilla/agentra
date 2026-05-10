@@ -1,7 +1,9 @@
-import type {
-  ChatObservationSummary,
-  PersistedChatMessage,
-  ThreadSummary,
+import {
+  type ChatObservationSummary,
+  type PersistedChatMessage,
+  persistedChatMessageSchema,
+  type ThreadSummary,
+  threadSummarySchema,
 } from '@agentra/shared';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import {
@@ -45,24 +47,11 @@ function buildThreadTitle(title?: string, fallbackMessage?: string): string {
 }
 
 function toThreadSummary(item: Record<string, unknown>): ThreadSummary {
-  return {
-    threadId: item.threadId as string,
-    title: item.title as string,
-    createdAt: item.createdAt as string,
-    updatedAt: item.updatedAt as string,
-    preview: item.preview as string | undefined,
-  };
+  return threadSummarySchema.parse(item);
 }
 
 function toPersistedChatMessage(item: Record<string, unknown>): PersistedChatMessage {
-  return {
-    messageId: item.messageId as string,
-    threadId: item.threadId as string,
-    role: item.role as 'user' | 'assistant',
-    content: item.content as string,
-    createdAt: item.createdAt as string,
-    observabilitySummary: item.observabilitySummary as ChatObservationSummary | undefined,
-  };
+  return persistedChatMessageSchema.parse(item);
 }
 
 export class DynamoStore implements Store {
