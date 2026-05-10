@@ -4,8 +4,8 @@ import {
   ListThreadMessagesResponse,
 } from './generated/openapi-zod.js';
 
-const threadSummarySchemaInternal = GetThreadResponse.shape.thread;
-const persistedChatMessageSchemaInternal =
+export const threadSummarySchema = GetThreadResponse.shape.thread;
+export const persistedChatMessageSchema =
   ListThreadMessagesResponse.shape.messages.element;
 
 const chatObservationToolCallSchema = z.object({
@@ -18,7 +18,7 @@ const chatObservationToolCallSchema = z.object({
   error: z.string().min(1).optional(),
 });
 
-const chatObservationSummarySchema = z.object({
+export const chatObservationSummarySchema = z.object({
   traceId: z.string().min(1),
   startedAt: z.string().datetime(),
   completedAt: z.string().datetime(),
@@ -42,6 +42,6 @@ const chatObservationSummarySchema = z.object({
   toolFailureCount: z.number().int().min(0),
 });
 
-export type ThreadSummary = z.infer<typeof threadSummarySchemaInternal>;
-export type PersistedChatMessage = z.infer<typeof persistedChatMessageSchemaInternal>;
+export type ThreadSummary = z.infer<typeof threadSummarySchema>;
+export type PersistedChatMessage = z.infer<typeof persistedChatMessageSchema>;
 export type ChatObservationSummary = z.infer<typeof chatObservationSummarySchema>;
