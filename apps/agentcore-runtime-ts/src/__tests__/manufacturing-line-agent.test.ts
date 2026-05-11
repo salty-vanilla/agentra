@@ -21,6 +21,17 @@ describe('Manufacturing Line Agent module', () => {
     expect(MANUFACTURING_LINE_SYSTEM_PROMPT).toContain('next actions');
   });
 
+  it('constrains answer length and defers detail to citations to reduce structured-output latency', () => {
+    expect(MANUFACTURING_LINE_SYSTEM_PROMPT).toContain('Answer brevity rules');
+    expect(MANUFACTURING_LINE_SYSTEM_PROMPT).toContain('800 output tokens');
+    expect(MANUFACTURING_LINE_SYSTEM_PROMPT).toContain(
+      'point to the source document via citations',
+    );
+    expect(MANUFACTURING_LINE_SYSTEM_PROMPT).toContain(
+      'Omit safety notices, recovery procedures, and background sections by default',
+    );
+  });
+
   it('builds a manufacturing tool set with normal and structured RAG tools enabled', async () => {
     const { buildManufacturingLineTools } = await import(
       '../agents/manufacturing-line/tools.js'

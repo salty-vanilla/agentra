@@ -53,6 +53,19 @@ describe('Manufacturing Line Agent handoff', () => {
     expect(prompt).toContain('targetSignals');
   });
 
+  it('constrains the answer length and routes detail into structured fields', () => {
+    const prompt = buildManufacturingLineAgentHandoffPrompt({
+      question: 'How do I respond to a temperature anomaly alarm?',
+    });
+
+    expect(prompt).toContain('target under 800 output tokens');
+    expect(prompt).toContain('reference the source document via citations');
+    expect(prompt).toContain(
+      'omit safety notices, recovery procedures, and background sections from answer by default',
+    );
+    expect(prompt).toContain('place follow-up steps in nextActions');
+  });
+
   it('invokes the Manufacturing Line Agent with the focused prompt and preserves structured output', async () => {
     const invoke = vi.fn().mockResolvedValue({
       structuredOutput: {
