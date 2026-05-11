@@ -42,7 +42,7 @@ export function buildAuthoringPrompt(
     '',
     'PptxGenJS API notes:',
     '- Shape types: use `pptx.ShapeType.rect`, `pptx.ShapeType.ellipse`, `pptx.ShapeType.roundRect`, etc. Do NOT use `pptx.shapes.RECTANGLE` (does not exist).',
-    '- Shadow: always use `safeOuterShadow(color, opacity)` helper. The `color` argument must be a hex string like "333333". Never pass a number or object.',
+    '- Shadow: always use `safeOuterShadow(color, opacity)` helper. The `color` argument must be a hex string like "333333". The `opacity` argument is a decimal in [0, 1] (e.g. `0.25` for 25% — NOT `25`). Never pass a number for color or an object for either argument.',
     '- addShape returns void. Chain like: `slide.addShape(pptx.ShapeType.rect, { x:0, y:0, w:13.33, h:7.5, fill:{ color:"003366" } });`',
     '',
     'Forbidden:',

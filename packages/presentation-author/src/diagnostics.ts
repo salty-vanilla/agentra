@@ -1,5 +1,7 @@
 import type { CreateContactSheetResult } from './contact-sheet.js';
 import { createContactSheet } from './contact-sheet.js';
+import type { ContentTypesIntegrityResult } from './pptx-repair.js';
+import { checkContentTypesIntegrity } from './pptx-repair.js';
 import type { RenderPresentationResult } from './render.js';
 import { renderPresentation } from './render.js';
 import type {
@@ -18,6 +20,7 @@ export interface PresentationDiagnosticsInput {
   contactSheet?: boolean | undefined;
   overflow?: boolean | undefined;
   fonts?: boolean | undefined;
+  openXml?: boolean | undefined;
   timeoutMs?: number | undefined;
 }
 
@@ -27,6 +30,7 @@ export interface PresentationDiagnosticsResult {
   contactSheet?: CreateContactSheetResult | undefined;
   overflow?: ValidatePresentationOverflowResult | undefined;
   fonts?: DetectPresentationFontsResult | undefined;
+  openXml?: ContentTypesIntegrityResult | undefined;
   warnings: string[];
 }
 
@@ -37,12 +41,29 @@ export async function runPresentationDiagnostics(
   const doContactSheet = input.contactSheet ?? true;
   const doOverflow = input.overflow ?? true;
   const doFonts = input.fonts ?? false;
+  const doOpenXml = input.openXml ?? true;
   const warnings: string[] = [];
 
   let renderResult: RenderPresentationResult | undefined;
   let contactSheetResult: CreateContactSheetResult | undefined;
   let overflowResult: ValidatePresentationOverflowResult | undefined;
   let fontsResult: DetectPresentationFontsResult | undefined;
+  let openXmlResult: ContentTypesIntegrityResult | undefined;
+
+  if (doOpenXml) {
+    try {
+      openXmlResult = await checkContentTypesIntegrity(input.pptxPath);
+      warnings.push(...openXmlResult.warnings);
+      if (!openXmlResult.valid) {
+        warnings.push(
+          `OpenXML integrity: ${openXmlResult.missingParts.length} Override(s) in [Content_Types].xml reference missing parts: ${openXmlResult.missingParts.join(', ')}`,
+        );
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      warnings.push(`OpenXML integrity check failed: ${message}`);
+    }
+  }
 
   if (doRender) {
     renderResult = await renderPresentation({
@@ -89,6 +110,7 @@ export async function runPresentationDiagnostics(
     contactSheetResult,
     overflowResult,
     fontsResult,
+    openXmlResult,
     doContactSheet,
     warnings,
   });
@@ -99,6 +121,7 @@ export async function runPresentationDiagnostics(
     contactSheet: contactSheetResult,
     overflow: overflowResult,
     fonts: fontsResult,
+    openXml: openXmlResult,
     warnings,
   };
 }
@@ -108,6 +131,7 @@ function resolveStatus(ctx: {
   contactSheetResult?: CreateContactSheetResult | undefined;
   overflowResult?: ValidatePresentationOverflowResult | undefined;
   fontsResult?: DetectPresentationFontsResult | undefined;
+  openXmlResult?: ContentTypesIntegrityResult | undefined;
   doContactSheet: boolean;
   warnings: string[];
 }): 'pass' | 'warn' | 'fail' {
@@ -120,6 +144,7 @@ function resolveStatus(ctx: {
   // Warn conditions
   if (ctx.overflowResult && !ctx.overflowResult.passed) return 'warn';
   if (ctx.fontsResult && !ctx.fontsResult.success) return 'warn';
+  if (ctx.openXmlResult && !ctx.openXmlResult.valid) return 'warn';
   if (ctx.warnings.length > 0) return 'warn';
 
   return 'pass';
