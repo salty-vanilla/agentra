@@ -15,6 +15,10 @@ const CONTENT_TYPES_PATH = '[Content_Types].xml';
 const PRESENTATION_PATH = 'ppt/presentation.xml';
 const PRESENTATION_RELS_PATH = 'ppt/_rels/presentation.xml.rels';
 const SLIDE_RELS_PATTERN = /^ppt\/slides\/_rels\/slide\d+\.xml\.rels$/;
+const SLIDE_LIKE_XML_PATTERN =
+  /^ppt\/(slides\/slide|slideMasters\/slideMaster|slideLayouts\/slideLayout)\d+\.xml$/;
+const EMPTY_TX_BODY = '<p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody>';
+const EMPTY_EFFECT_LST = '<a:effectLst/>';
 
 /**
  * Post-process a pptx file written by pptxgenjs so PowerPoint does not show
@@ -43,6 +47,9 @@ export async function repairPptx(pptxPath: string): Promise<PptxRepairResult> {
   for (const path of Object.keys(zip.files)) {
     if (SLIDE_RELS_PATTERN.test(path)) {
       await rewriteIfChanged(zip, path, stripNotesSlideRelationship, rewrittenFiles);
+    }
+    if (SLIDE_LIKE_XML_PATTERN.test(path)) {
+      await rewriteIfChanged(zip, path, fixSlideLikeXml, rewrittenFiles);
     }
   }
 
@@ -77,10 +84,15 @@ function stripNotesInfrastructure(zip: JSZip, removedFiles: string[]): void {
 
 function stripEmptyDirs(zip: JSZip, removedFiles: string[]): void {
   for (const dir of EMPTY_DIR_CANDIDATES) {
-    const hasChildren = Object.keys(zip.files).some(
+    const descendants = Object.keys(zip.files).filter(
       (path) => path.startsWith(dir) && path !== dir,
     );
-    if (hasChildren) continue;
+    const hasFileDescendant = descendants.some((path) => !zip.files[path]?.dir);
+    if (hasFileDescendant) continue;
+    for (const path of descendants) {
+      zip.remove(path);
+      removedFiles.push(path);
+    }
     if (zip.files[dir]) {
       zip.remove(dir);
       removedFiles.push(dir);
@@ -116,6 +128,53 @@ function stripNotesMasterRelationship(xml: string): string {
 
 function stripNotesSlideRelationship(xml: string): string {
   return xml.replace(/<Relationship\b[^>]*Type="[^"]*\/notesSlide"[^>]*\/>/g, '');
+}
+
+function fixSlideLikeXml(xml: string): string {
+  return clampAlphaValues(addEffectLstToBgPr(addTxBodyToShapes(xml)));
+}
+
+/**
+ * Clamp `<a:alpha val="N"/>` to OpenXML's ST_PositiveFixedPercentage range
+ * [0, 100000]. pptxgenjs scripts that pass shadow opacity as a 0-100 integer
+ * (e.g. `opacity: 25`) emit `val="2500000"` because pptxgenjs multiplies by
+ * 100000 assuming a 0-1 decimal. PowerPoint flags any alpha > 100000 for
+ * repair on open. We rescale obvious "100x too large" values back to the
+ * intended percentage; anything else clamps to 100000.
+ */
+function clampAlphaValues(xml: string): string {
+  return xml.replace(/<a:alpha\s+val="(-?\d+)"\s*\/>/g, (_match, raw: string) => {
+    const value = Number.parseInt(raw, 10);
+    if (Number.isNaN(value)) return _match;
+    if (value >= 0 && value <= 100000) return _match;
+    const rescaled = value > 100000 && value % 100 === 0 ? value / 100 : value;
+    const clamped = Math.max(0, Math.min(100000, rescaled));
+    return `<a:alpha val="${clamped}"/>`;
+  });
+}
+
+/**
+ * Add a minimal empty <p:txBody> to any <p:sp> that lacks one. PowerPoint
+ * shows the repair dialog when a shape has <p:spPr> but no <p:txBody>; this
+ * happens whenever pptxgenjs emits addShape() without text. Upstream #1441.
+ */
+function addTxBodyToShapes(xml: string): string {
+  return xml.replace(/<p:sp\b[^>]*>[\s\S]*?<\/p:sp>/g, (match) => {
+    if (/<p:txBody\b/.test(match)) return match;
+    return `${match.slice(0, -'</p:sp>'.length)}${EMPTY_TX_BODY}</p:sp>`;
+  });
+}
+
+/**
+ * Add an empty <a:effectLst/> to any <p:bgPr> that lacks one. PowerPoint's
+ * repair logic adds this element when a slide background uses solid fill
+ * without an effect list. Upstream #1442.
+ */
+function addEffectLstToBgPr(xml: string): string {
+  return xml.replace(/<p:bgPr\b[^>]*>[\s\S]*?<\/p:bgPr>/g, (match) => {
+    if (/<a:effectLst\b/.test(match)) return match;
+    return `${match.slice(0, -'</p:bgPr>'.length)}${EMPTY_EFFECT_LST}</p:bgPr>`;
+  });
 }
 
 async function rewriteContentTypes(zip: JSZip, warnings: string[]): Promise<string[]> {

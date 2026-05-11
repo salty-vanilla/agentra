@@ -233,6 +233,102 @@ describe('repairPptx', () => {
     expect(result.removedFiles).toEqual([]);
     expect(result.rewrittenFiles).toEqual([]);
   });
+
+  it('clamps out-of-range <a:alpha> values so PowerPoint accepts them', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pptx-repair-alpha-'));
+    cleanupDirs.push(dir);
+    const path = join(dir, 'deck.pptx');
+
+    const zip = new JSZip();
+    zip.file(
+      '[Content_Types].xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/></Types>',
+    );
+    zip.file(
+      'ppt/presentation.xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:sldMasterIdLst><p:sldMasterId r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst><p:sldId id="257" r:id="rIdSlide1"/></p:sldIdLst></p:presentation>',
+    );
+    zip.file(
+      'ppt/_rels/presentation.xml.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/><Relationship Id="rIdSlide1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/></Relationships>',
+    );
+    zip.file(
+      'ppt/slides/_rels/slide1.xml.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>',
+    );
+    zip.file(
+      'ppt/slides/slide1.xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/><p:sp><p:nvSpPr><p:cNvPr id="2" name="ok"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:effectLst><a:outerShdw><a:srgbClr val="000000"><a:alpha val="75000"/></a:srgbClr></a:outerShdw></a:effectLst></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp><p:sp><p:nvSpPr><p:cNvPr id="3" name="rescalable"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:effectLst><a:outerShdw><a:srgbClr val="000000"><a:alpha val="2500000"/></a:srgbClr></a:outerShdw></a:effectLst></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp><p:sp><p:nvSpPr><p:cNvPr id="4" name="unscalable"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:effectLst><a:outerShdw><a:srgbClr val="000000"><a:alpha val="123456"/></a:srgbClr></a:outerShdw></a:effectLst></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp><p:sp><p:nvSpPr><p:cNvPr id="5" name="negative"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:effectLst><a:outerShdw><a:srgbClr val="000000"><a:alpha val="-5000"/></a:srgbClr></a:outerShdw></a:effectLst></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp></p:spTree></p:cSld></p:sld>',
+    );
+    zip.file('ppt/slideMasters/slideMaster1.xml', '<sm/>');
+    await writeFile(path, await zip.generateAsync({ type: 'nodebuffer' }));
+
+    const result = await repairPptx(path);
+
+    expect(result.applied).toBe(true);
+    expect(result.rewrittenFiles).toContain('ppt/slides/slide1.xml');
+
+    const out = await JSZip.loadAsync(await readFile(path));
+    const slideXml = await readZipText(out, 'ppt/slides/slide1.xml');
+    // In-range value untouched.
+    expect(slideXml).toContain('<a:alpha val="75000"/>');
+    // 2500000 looks like "100x too large" (25 * 100000) — rescale to 25000.
+    expect(slideXml).toContain('<a:alpha val="25000"/>');
+    // 123456 is not a clean 100x rescale — fall back to clamp at 100000.
+    expect(slideXml).toContain('<a:alpha val="100000"/>');
+    // Negative values clamp to 0.
+    expect(slideXml).toContain('<a:alpha val="0"/>');
+    expect(slideXml).not.toContain('<a:alpha val="2500000"/>');
+    expect(slideXml).not.toContain('<a:alpha val="-5000"/>');
+  });
+
+  it('adds <p:txBody> to <p:sp> elements that lack one and adds <a:effectLst/> to <p:bgPr>', async () => {
+    const dir = await mkdtemp(join(tmpdir(), 'pptx-repair-shape-'));
+    cleanupDirs.push(dir);
+    const path = join(dir, 'deck.pptx');
+
+    const zip = new JSZip();
+    zip.file(
+      '[Content_Types].xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/><Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/><Override PartName="/ppt/slideMasters/slideMaster1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slideMaster+xml"/></Types>',
+    );
+    zip.file(
+      'ppt/presentation.xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:presentation xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><p:sldMasterIdLst><p:sldMasterId r:id="rId1"/></p:sldMasterIdLst><p:sldIdLst><p:sldId id="257" r:id="rIdSlide1"/></p:sldIdLst></p:presentation>',
+    );
+    zip.file(
+      'ppt/_rels/presentation.xml.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideMaster" Target="slideMasters/slideMaster1.xml"/><Relationship Id="rIdSlide1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/></Relationships>',
+    );
+    zip.file(
+      'ppt/slides/_rels/slide1.xml.rels',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"/>',
+    );
+    // Slide with: a <p:sp> WITHOUT <p:txBody>, a <p:sp> WITH <p:txBody>, and a <p:bgPr> without <a:effectLst/>.
+    zip.file(
+      'ppt/slides/slide1.xml',
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="0D2B55"/></a:solidFill></p:bgPr></p:bg><p:spTree><p:sp><p:nvSpPr><p:cNvPr id="2" name="rect"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="100" cy="100"/></a:xfrm></p:spPr></p:sp><p:sp><p:nvSpPr><p:cNvPr id="3" name="text"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr/><p:txBody><a:bodyPr/><a:lstStyle/><a:p><a:r><a:t>hi</a:t></a:r></a:p></p:txBody></p:sp></p:spTree></p:cSld></p:sld>',
+    );
+    zip.file('ppt/slideMasters/slideMaster1.xml', '<sm/>');
+    await writeFile(path, await zip.generateAsync({ type: 'nodebuffer' }));
+
+    const result = await repairPptx(path);
+
+    expect(result.applied).toBe(true);
+    expect(result.rewrittenFiles).toContain('ppt/slides/slide1.xml');
+
+    const out = await JSZip.loadAsync(await readFile(path));
+    const slideXml = await readZipText(out, 'ppt/slides/slide1.xml');
+    // Both <p:sp> elements have <p:txBody>.
+    const txBodyCount = (slideXml.match(/<p:txBody\b/g) ?? []).length;
+    expect(txBodyCount).toBe(2);
+    // <p:bgPr> has <a:effectLst/>.
+    expect(slideXml).toMatch(
+      /<p:bgPr\b[^>]*>[\s\S]*<a:effectLst\b[^/]*\/>[\s\S]*<\/p:bgPr>/,
+    );
+    // Existing <p:txBody> content preserved.
+    expect(slideXml).toContain('<a:t>hi</a:t>');
+  });
 });
 
 describe('checkContentTypesIntegrity', () => {
