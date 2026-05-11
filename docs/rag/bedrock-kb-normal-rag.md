@@ -65,10 +65,10 @@ aws cloudformation describe-stacks \
 
 ## How to sync documents
 
-1. Upload source documents (PDF, txt, docx, …) to S3 under the `docs/` prefix:
+1. Upload source documents (PDF, txt, docx, …) to S3 under the correct `manufacturing-line/<category>/` prefix (see [manufacturing-line-document-layout.md](./manufacturing-line-document-layout.md)):
 
 ```bash
-aws s3 cp my-manual.pdf s3://agentra-dev-manufacturing-docs/docs/
+aws s3 cp startup-procedure.pdf s3://agentra-dev-manufacturing-docs/manufacturing-line/procedures/
 ```
 
 2. Start a KB ingestion job:
