@@ -129,3 +129,52 @@ batching window to coalesce burst uploads. No manual sync is needed after upload
 |---|---|---|
 | Removal policy | DESTROY (auto-delete on stack destroy) | RETAIN |
 | Data source deletion policy | DELETE | RETAIN |
+
+## Uploading seed documents
+
+Seed documents are stored under `docs/rag/seed-documents/manufacturing-line/` in this repository.
+Upload them to the KB S3 bucket before running retrieval validation.
+
+### Prerequisites
+
+- AWS CLI v2 installed and configured (`aws configure` or SSO login)
+- Appropriate IAM permissions: `s3:PutObject` on `agentra-{stage}-manufacturing-docs`
+
+### Upload command
+
+```bash
+STAGE=dev  # change to prod when needed
+BUCKET="agentra-${STAGE}-manufacturing-docs"
+LOCAL_DIR="docs/rag/seed-documents/manufacturing-line"
+
+aws s3 cp "${LOCAL_DIR}/" "s3://${BUCKET}/manufacturing-line/" \
+  --recursive \
+  --exclude "*.DS_Store"
+```
+
+### Verify upload
+
+```bash
+aws s3 ls "s3://${BUCKET}/manufacturing-line/" --recursive
+```
+
+### Seed document inventory
+
+The following seed documents are included in `docs/rag/seed-documents/manufacturing-line/`:
+
+```
+error-codes/e-temp-001.md                              # 温度異常エラーコード
+error-codes/e-vib-002.md                               # 振動異常エラーコード
+procedures/temperature-anomaly-troubleshooting.md      # 温度異常トラブルシューティング
+procedures/vibration-anomaly-troubleshooting.md        # 振動異常トラブルシューティング
+runbooks/line-stop-initial-response.md                 # ライン停止初動ランブック
+maintenance/equipment-m1-maintenance-notes.md          # M1プレス機メンテナンスノート
+kpi-definitions/availability-throughput-definitions.md # 可動率・スループット・OEE定義
+safety/high-temperature-response-safety.md             # 高温異常時安全手順
+```
+
+### Ingestion timing
+
+After upload, the EventBridge → SQS → Lambda auto-ingestion pipeline triggers within 60 seconds.
+Wait approximately 5–10 minutes for Bedrock KB to complete chunking and embedding before
+running retrieval queries.
