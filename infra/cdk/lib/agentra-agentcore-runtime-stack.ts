@@ -21,7 +21,7 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   stage: string;
   slideRuntimeArn?: string;
   slideRuntimeQualifier?: string;
-  tavilyApiKeySecretArn?: string;
+  thirdPartyApiKeysSecretArn?: string;
   memoryEnabled?: boolean;
   sessionS3Prefix?: string;
   normalKbArn?: string;
@@ -41,18 +41,20 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       normalizedStage.length > 0
         ? normalizedStage.charAt(0).toUpperCase() + normalizedStage.slice(1)
         : 'Default';
-    const tavilyApiKeySecretArn =
-      props.tavilyApiKeySecretArn ?? this.node.tryGetContext('tavilyApiKeySecretArn');
-    if (!tavilyApiKeySecretArn) {
+    const thirdPartyApiKeysSecretArn =
+      props.thirdPartyApiKeysSecretArn ??
+      this.node.tryGetContext('thirdPartyApiKeysSecretArn');
+    if (!thirdPartyApiKeysSecretArn) {
       throw new Error(
-        'tavilyApiKeySecretArn must be provided via props or context (-c tavilyApiKeySecretArn=...)',
+        'thirdPartyApiKeysSecretArn must be provided via props or context (-c thirdPartyApiKeysSecretArn=...).' +
+          ' The secret must be JSON with keys: TAVILY_API_KEY, PEXELS_API_KEY',
       );
     }
 
-    const tavilyApiKeySecret = Secret.fromSecretCompleteArn(
+    const thirdPartyApiKeysSecret = Secret.fromSecretCompleteArn(
       this,
-      'TavilyApiKeySecret',
-      tavilyApiKeySecretArn,
+      'ThirdPartyApiKeysSecret',
+      thirdPartyApiKeysSecretArn,
     );
 
     const runtimeRole = new Role(this, 'AgentCoreRuntimeExecutionRole', {
@@ -67,7 +69,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         resources: ['*'],
       }),
     );
-    tavilyApiKeySecret.grantRead(runtimeRole);
+    thirdPartyApiKeysSecret.grantRead(runtimeRole);
 
     runtimeRole.addToPolicy(
       new PolicyStatement({
@@ -201,7 +203,8 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       environmentVariables: {
         BEDROCK_REGION: Stack.of(this).region,
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentcore-${props.stage}`,
-        TAVILY_API_KEY_SECRET_ID: tavilyApiKeySecret.secretArn,
+        TAVILY_API_KEY_SECRET_ID: thirdPartyApiKeysSecret.secretArn,
+        PEXELS_API_KEY_SECRET_ID: thirdPartyApiKeysSecret.secretArn,
         SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
         SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
         AGENT_MEMORY_ENABLED: memoryEnabled ? 'true' : 'false',
@@ -253,8 +256,8 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     new CfnOutput(this, 'AgentCoreRuntimeId', { value: this.runtimeId });
     new CfnOutput(this, 'AgentCoreRuntimeVersion', { value: this.runtimeVersion });
     new CfnOutput(this, 'AgentCoreRuntimeEndpointArn', { value: this.endpointArn });
-    new CfnOutput(this, 'TavilyApiKeySecretArn', {
-      value: tavilyApiKeySecret.secretArn,
+    new CfnOutput(this, 'ThirdPartyApiKeysSecretArn', {
+      value: thirdPartyApiKeysSecret.secretArn,
     });
     new CfnOutput(this, 'AgentMemoryEnabled', {
       value: memoryEnabled ? 'true' : 'false',

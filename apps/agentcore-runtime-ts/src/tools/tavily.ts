@@ -171,7 +171,8 @@ async function getApiKeyFromSecretsManager(secretId: string): Promise<string> {
   }
 
   throw new Error(
-    'Secrets Manager value is empty. Expected plain API key or JSON with TAVILY_API_KEY.',
+    'Secrets Manager value is empty or missing the TAVILY_API_KEY field.' +
+      ' Expected JSON: {"TAVILY_API_KEY": "tvly-..."}',
   );
 }
 
@@ -204,7 +205,8 @@ async function loadApiKey(): Promise<string> {
   }
 
   throw new Error(
-    'TAVILY_API_KEY_SECRET_ID or TAVILY_API_KEY_SSM_NAME is not set. Configure one of those secret references for AWS.',
+    'TAVILY_API_KEY_SECRET_ID or TAVILY_API_KEY_SSM_NAME env var is not set.' +
+      ' The secret must be JSON: {"TAVILY_API_KEY": "tvly-..."}',
   );
 }
 

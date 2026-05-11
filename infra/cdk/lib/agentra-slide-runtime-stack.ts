@@ -19,7 +19,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface AgentraSlideRuntimeStackProps extends StackProps {
   stage: string;
-  pexelsApiKeySecretArn?: string;
+  thirdPartyApiKeysSecretArn?: string;
 }
 
 export class AgentraSlideRuntimeStack extends Stack {
@@ -29,7 +29,7 @@ export class AgentraSlideRuntimeStack extends Stack {
   readonly endpointArn: string;
   readonly artifactsBucketName: string;
   readonly artifactsBucketArn: string;
-  readonly pexelsApiKeySecret?: ISecret | undefined;
+  readonly thirdPartyApiKeysSecret?: ISecret | undefined;
 
   constructor(scope: Construct, id: string, props: AgentraSlideRuntimeStackProps) {
     super(scope, id, props);
@@ -85,23 +85,24 @@ export class AgentraSlideRuntimeStack extends Stack {
     // S3 artifact bucket permissions
     artifactsBucket.grantReadWrite(runtimeRole);
 
-    // --- Pexels API Key (optional) ---
-    const pexelsApiKeySecretArn =
-      props.pexelsApiKeySecretArn ?? this.node.tryGetContext('pexelsApiKeySecretArn');
-    let pexelsApiKeySecret: ISecret | undefined;
-    let pexelsEnvVars: Record<string, string> = {};
+    // --- Third-party API keys secret (optional; enables image retrieval when provided) ---
+    const thirdPartyApiKeysSecretArn =
+      props.thirdPartyApiKeysSecretArn ??
+      this.node.tryGetContext('thirdPartyApiKeysSecretArn');
+    let thirdPartyApiKeysSecret: ISecret | undefined;
+    let thirdPartyEnvVars: Record<string, string> = {};
 
-    if (pexelsApiKeySecretArn) {
-      pexelsApiKeySecret = Secret.fromSecretCompleteArn(
+    if (thirdPartyApiKeysSecretArn) {
+      thirdPartyApiKeysSecret = Secret.fromSecretCompleteArn(
         this,
-        'PexelsApiKeySecret',
-        pexelsApiKeySecretArn,
+        'ThirdPartyApiKeysSecret',
+        thirdPartyApiKeysSecretArn,
       );
-      pexelsApiKeySecret.grantRead(runtimeRole);
-      pexelsEnvVars = {
-        PEXELS_API_KEY_SECRET_ID: pexelsApiKeySecret.secretArn,
+      thirdPartyApiKeysSecret.grantRead(runtimeRole);
+      thirdPartyEnvVars = {
+        PEXELS_API_KEY_SECRET_ID: thirdPartyApiKeysSecret.secretArn,
       };
-      this.pexelsApiKeySecret = pexelsApiKeySecret;
+      this.thirdPartyApiKeysSecret = thirdPartyApiKeysSecret;
     }
 
     // CloudWatch Logs permissions
@@ -175,11 +176,11 @@ export class AgentraSlideRuntimeStack extends Stack {
         PRESENTATION_ARTIFACT_PREFIX: 'runs',
         PRESENTATION_ARTIFACT_PRESIGNED_URLS: 'true',
         PRESENTATION_ARTIFACT_URL_EXPIRES_SECONDS: '3600',
-        PRESENTATION_IMAGE_RETRIEVAL_ENABLED: pexelsApiKeySecret ? 'true' : 'false',
+        PRESENTATION_IMAGE_RETRIEVAL_ENABLED: thirdPartyApiKeysSecret ? 'true' : 'false',
         PRESENTATION_IMAGE_GENERATION_ENABLED: 'false',
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentra-slide-${props.stage}`,
         LOG_LEVEL: 'info',
-        ...pexelsEnvVars,
+        ...thirdPartyEnvVars,
       },
       agentRuntimeArtifact: {
         containerConfiguration: {
@@ -236,9 +237,9 @@ export class AgentraSlideRuntimeStack extends Stack {
       value: `/aws/bedrock-agentcore/runtimes/agentra-slide-${props.stage}`,
     });
 
-    if (pexelsApiKeySecret) {
-      new CfnOutput(this, 'PexelsApiKeySecretArn', {
-        value: pexelsApiKeySecret.secretArn,
+    if (thirdPartyApiKeysSecret) {
+      new CfnOutput(this, 'ThirdPartyApiKeysSecretArn', {
+        value: thirdPartyApiKeysSecret.secretArn,
       });
     }
   }
