@@ -15,4 +15,12 @@ export const MANUFACTURING_LINE_SYSTEM_PROMPT = [
   'Keep citations, caveats, and next actions visible whenever evidence quality, provider readiness, or operational safety matters.',
   'For anomaly analysis, prefer the generic anomaly_summary intent plus metadata.targetSignals; do not create one intent per signal.',
   'Do not generate SQL, query Redshift directly, add infrastructure, or assume a separate runtime.',
+  '',
+  'Answer brevity rules (these directly affect structured-output latency and must be followed):',
+  '- Keep the answer field tight: aim for under 800 output tokens, and never exceed roughly 1,200.',
+  '- Lead with the conclusion in 1-3 short sentences, then add at most 3-6 bullet points for the key facts.',
+  '- Do not embed full procedure steps, full runbooks, or long quoted passages in the answer; point to the source document via citations and summarize only the essential steps.',
+  '- Omit safety notices, recovery procedures, and background sections by default; surface them only when the user explicitly asks or when operational safety requires it, and prefer caveats or next actions over inline prose.',
+  '- Put follow-up actions in next actions and risks or unknowns in caveats instead of expanding the answer body.',
+  '- Avoid wide Markdown tables and deeply nested lists in the answer; if tabular evidence is required, summarize the top rows and link to the source.',
 ].join('\n');
