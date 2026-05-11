@@ -200,12 +200,15 @@ export class AgentraBedrockKbStack extends Stack {
       removalPolicy: isDevStage ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
     });
 
-    // Lambda checks for an active job then starts one if none running
+    // Lambda checks for an active job then starts one if none running.
+    // Concurrency 1 prevents the TOCTOU race where multiple instances all pass
+    // the ListIngestionJobs check and then race to call StartIngestionJob.
     const ingestionTrigger = new NodejsFunction(this, 'KbIngestionTrigger', {
       entry: join(__dirname, '../lambda/kb-ingestion-trigger/index.ts'),
       handler: 'handler',
       runtime: Runtime.NODEJS_22_X,
       timeout: Duration.seconds(30),
+      reservedConcurrentExecutions: 1,
       environment: {
         KB_ID: kb.attrKnowledgeBaseId,
         DATA_SOURCE_ID: dataSource.attrDataSourceId,
@@ -219,12 +222,14 @@ export class AgentraBedrockKbStack extends Stack {
     ingestionTrigger.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['bedrock-agent:ListIngestionJobs', 'bedrock-agent:StartIngestionJob'],
+        actions: ['bedrock:ListIngestionJobs', 'bedrock:StartIngestionJob'],
         resources: [kb.attrKnowledgeBaseArn],
       }),
     );
 
-    // 60-second batch window coalesces burst uploads into a single invocation
+    // 60-second batch window coalesces burst uploads into a single invocation.
+    // reservedConcurrentExecutions: 1 on the function already ensures at most one
+    // invocation runs at a time; no additional maxConcurrency needed here.
     ingestionTrigger.addEventSource(
       new SqsEventSource(ingestionQueue, {
         batchSize: 10,
