@@ -9,7 +9,13 @@ import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
-import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
+import {
+  BlockPublicAccess,
+  Bucket,
+  BucketEncryption,
+  type LifecycleRule,
+  StorageClass,
+} from 'aws-cdk-lib/aws-s3';
 import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { AossVectorStore } from './constructs/aoss-vector-store.js';
@@ -48,6 +54,23 @@ export class AgentraBedrockKbStack extends Stack {
     const isDevStage = stage === 'dev';
 
     // --- S3 document source bucket ---
+    // PoC lifecycle: transition non-current versions to cheaper storage after 30 days;
+    // expire them after 90 days to keep the bucket from accumulating stale drafts.
+    const pocLifecycleRules: LifecycleRule[] = [
+      {
+        id: 'expire-noncurrent-versions',
+        enabled: true,
+        noncurrentVersionTransitions: [
+          {
+            storageClass: StorageClass.INFREQUENT_ACCESS,
+            transitionAfter: Duration.days(30),
+          },
+        ],
+        noncurrentVersionExpiration: Duration.days(90),
+        expiredObjectDeleteMarker: true,
+      },
+    ];
+
     const documentBucket = new Bucket(this, 'ManufacturingDocBucket', {
       bucketName: `agentra-${stage}-manufacturing-docs`,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
@@ -55,6 +78,7 @@ export class AgentraBedrockKbStack extends Stack {
       enforceSSL: true,
       versioned: true,
       eventBridgeEnabled: true,
+      lifecycleRules: pocLifecycleRules,
       removalPolicy: isDevStage ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDevStage,
     });
@@ -149,7 +173,7 @@ export class AgentraBedrockKbStack extends Stack {
         type: 'S3',
         s3Configuration: {
           bucketArn: documentBucket.bucketArn,
-          inclusionPrefixes: ['docs/'],
+          inclusionPrefixes: ['manufacturing-line/'],
         },
       },
       dataDeletionPolicy: isDevStage ? 'DELETE' : 'RETAIN',
@@ -215,7 +239,7 @@ export class AgentraBedrockKbStack extends Stack {
         detailType: ['Object Created'],
         detail: {
           bucket: { name: [documentBucket.bucketName] },
-          object: { key: [{ prefix: 'docs/' }] },
+          object: { key: [{ prefix: 'manufacturing-line/' }] },
         },
       },
       targets: [new SqsEventTarget(ingestionQueue)],
