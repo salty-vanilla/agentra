@@ -150,10 +150,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       runtimeRole.addToPolicy(
         new PolicyStatement({
           effect: Effect.ALLOW,
-          actions: [
-            'bedrock-agent-runtime:Retrieve',
-            'bedrock-agent-runtime:RetrieveAndGenerate',
-          ],
+          actions: ['bedrock:Retrieve', 'bedrock:RetrieveAndGenerate'],
           resources: [props.normalKbArn],
         }),
       );

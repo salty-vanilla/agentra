@@ -57,12 +57,20 @@ export class S3VectorsStore extends VectorStore {
 
     // Vector index inside the bucket.
     // distanceMetric 'euclidean' is equivalent to l2 used in the AOSS implementation.
+    // AMAZON_BEDROCK_TEXT_CHUNK is marked non-filterable because chunk text exceeds
+    // the 2048-byte limit S3 Vectors enforces on filterable metadata fields.
     const vectorIndex = new CfnIndex(this, 'VectorIndex', {
       vectorBucketArn: vectorBucket.attrVectorBucketArn,
       indexName,
       dataType: 'float32',
       dimension: dimensions,
       distanceMetric: 'euclidean',
+      metadataConfiguration: {
+        nonFilterableMetadataKeys: [
+          'AMAZON_BEDROCK_TEXT_CHUNK',
+          'AMAZON_BEDROCK_METADATA',
+        ],
+      },
       tags: [
         { key: 'Project', value: 'agentra' },
         { key: 'ManagedBy', value: 'cdk' },
