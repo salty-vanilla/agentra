@@ -212,6 +212,10 @@ export async function runPresentationAuthor(
     );
   }
 
+  if (execution.pptxRepair) {
+    warnings.push(...execution.pptxRepair.warnings);
+  }
+
   try {
     await access(workspace.pptxPath);
   } catch {

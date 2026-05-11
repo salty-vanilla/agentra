@@ -26,6 +26,7 @@
     "@aws-sdk/client-secrets-manager": "^3.1032.0",
     "@resvg/resvg-js": "^2.6.2",
     "fontkit": "^2.0.2",
+    "jszip": "^3.10.1",
     "linebreak": "^1.1.0",
     "mathjax-full": "^3.2.2",
     "pptxgenjs": "^3.12.0",

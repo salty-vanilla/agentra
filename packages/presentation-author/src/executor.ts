@@ -1,8 +1,9 @@
 import { spawn } from 'node:child_process';
-import { readFile, realpath, writeFile } from 'node:fs/promises';
+import { access, readFile, realpath, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
-import type { AuthoringScriptExecutionResult } from './types.js';
+import { repairPptx } from './pptx-repair.js';
+import type { AuthoringScriptExecutionResult, PptxRepairSummary } from './types.js';
 
 const DEFAULT_TIMEOUT_MS = 60_000;
 
@@ -113,7 +114,13 @@ export async function executeAuthoringScript(input: {
     sandboxSourceJsPath,
   ];
 
-  return new Promise<AuthoringScriptExecutionResult>((resolve, reject) => {
+  const spawnResult = await new Promise<{
+    exitCode: number | null;
+    stdout: string;
+    stderr: string;
+    durationMs: number;
+    timedOut: boolean;
+  }>((resolve, reject) => {
     const child = spawn(process.execPath, nodeArgs, {
       cwd: sandboxWorkDir,
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -140,16 +147,50 @@ export async function executeAuthoringScript(input: {
       const durationMs = Math.round(performance.now() - start);
       const stdout = Buffer.concat(stdoutChunks).toString('utf-8');
       const stderr = Buffer.concat(stderrChunks).toString('utf-8');
-
-      resolve({
-        success: exitCode === 0,
-        exitCode,
-        stdout,
-        stderr,
-        durationMs,
-        timedOut,
-        nodePathUsed,
-      });
+      resolve({ exitCode, stdout, stderr, durationMs, timedOut });
     });
   });
+
+  const success = spawnResult.exitCode === 0;
+  let pptxRepair: PptxRepairSummary | undefined;
+  if (success) {
+    pptxRepair = await runPptxRepair(input.pptxPath);
+  }
+
+  return {
+    success,
+    exitCode: spawnResult.exitCode,
+    stdout: spawnResult.stdout,
+    stderr: spawnResult.stderr,
+    durationMs: spawnResult.durationMs,
+    timedOut: spawnResult.timedOut,
+    nodePathUsed,
+    pptxRepair,
+  };
+}
+
+async function runPptxRepair(pptxPath: string): Promise<PptxRepairSummary> {
+  try {
+    await access(pptxPath);
+  } catch {
+    return {
+      applied: false,
+      removedOverrides: [],
+      removedFiles: [],
+      rewrittenFiles: [],
+      warnings: [`pptx-repair skipped: ${pptxPath} does not exist`],
+    };
+  }
+  try {
+    return await repairPptx(pptxPath);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return {
+      applied: false,
+      removedOverrides: [],
+      removedFiles: [],
+      rewrittenFiles: [],
+      warnings: [`pptx post-process repair failed: ${message}`],
+    };
+  }
 }

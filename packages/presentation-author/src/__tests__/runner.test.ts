@@ -1,12 +1,14 @@
 import { existsSync } from 'node:fs';
-import { rm } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import JSZip from 'jszip';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   extractJavaScriptFromLlmOutput,
   validateAuthoringScript,
 } from '../authoring-script.js';
+import { checkContentTypesIntegrity } from '../pptx-repair.js';
 import { runPresentationAuthor } from '../runner.js';
 import type { LlmClient, PresentationAuthorDeps } from '../types.js';
 import { createPresentationWorkspace } from '../workspace.js';
@@ -119,6 +121,54 @@ describe('runPresentationAuthor', () => {
     expect(result.execution.success).toBe(true);
     expect(result.execution.exitCode).toBe(0);
     expect(result.execution.nodePathUsed).toBeTruthy();
+  }, 30_000);
+
+  it('repairs the multi-slide pptx so [Content_Types].xml has no phantom Overrides', async () => {
+    const outputDir = join(tmpdir(), 'pa-test-repair');
+    cleanupDirs.push(outputDir);
+
+    const multiSlideScript = `
+const pptxgen = require("pptxgenjs");
+
+async function main() {
+  const pptx = new pptxgen();
+  pptx.layout = "LAYOUT_WIDE";
+  for (let i = 1; i <= 4; i++) {
+    const slide = pptx.addSlide();
+    slide.addText("Slide " + i, { x: 1, y: 1, w: 10, h: 1, fontSize: 24 });
+  }
+  await pptx.writeFile({ fileName: "deck.pptx" });
+}
+
+main().catch((err) => { console.error(err); process.exit(1); });
+`;
+
+    const result = await runPresentationAuthor(
+      { prompt: 'multi-slide deck', outputDir },
+      makeDeps(multiSlideScript),
+    );
+
+    expect(result.execution.success).toBe(true);
+    expect(result.execution.pptxRepair).toBeDefined();
+    expect(result.execution.pptxRepair?.applied).toBe(true);
+    expect(result.execution.pptxRepair?.removedOverrides).toEqual(
+      expect.arrayContaining([
+        '/ppt/slideMasters/slideMaster2.xml',
+        '/ppt/slideMasters/slideMaster3.xml',
+        '/ppt/slideMasters/slideMaster4.xml',
+      ]),
+    );
+
+    const integrity = await checkContentTypesIntegrity(result.pptxPath);
+    expect(integrity.valid).toBe(true);
+    expect(integrity.missingParts).toEqual([]);
+
+    const zip = await JSZip.loadAsync(await readFile(result.pptxPath));
+    const contentTypesEntry = zip.file('[Content_Types].xml');
+    if (!contentTypesEntry) throw new Error('[Content_Types].xml missing');
+    const contentTypes = await contentTypesEntry.async('string');
+    expect(contentTypes).toContain('slideMaster1.xml');
+    expect(contentTypes).not.toContain('slideMaster2.xml');
   }, 30_000);
 
   it('executes script without helpers (produces warning)', async () => {

@@ -130,4 +130,13 @@ export interface AuthoringScriptExecutionResult {
   durationMs: number;
   timedOut?: boolean | undefined;
   nodePathUsed?: string | undefined;
+  pptxRepair?: PptxRepairSummary | undefined;
+}
+
+export interface PptxRepairSummary {
+  applied: boolean;
+  removedOverrides: string[];
+  removedFiles: string[];
+  rewrittenFiles: string[];
+  warnings: string[];
 }
