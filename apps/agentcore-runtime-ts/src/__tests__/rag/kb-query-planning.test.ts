@@ -19,6 +19,16 @@ describe('kb query planning', () => {
     });
   });
 
+  it('does not set missingContext for a Japanese query without whitespace', async () => {
+    const { createKbQueryPlan } = await import('../../rag/kb-query-planning.js');
+
+    const plan = createKbQueryPlan({
+      query: '温度異常エラー発生時の対応手順を教えてください',
+    });
+
+    expect(plan.missingContext).toBeUndefined();
+  });
+
   it('defaults topK to 5', async () => {
     const { createKbQueryPlan } = await import('../../rag/kb-query-planning.js');
 

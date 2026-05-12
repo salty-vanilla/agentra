@@ -68,6 +68,24 @@ describe('kb retrieval readiness', () => {
     expect(output.executable).toBe(false);
   });
 
+  it('reports ready for a Japanese query without whitespace word boundaries', async () => {
+    const { evaluateKbRetrievalReadiness } = await import(
+      '../../rag/kb-retrieval-readiness.js'
+    );
+
+    const output = evaluateKbRetrievalReadiness({
+      plan: {
+        ...readyPlan,
+        query: '温度異常エラー発生時の対応手順を教えてください',
+      },
+      kbRetrieveEnabled: true,
+      knowledgeBaseConfigured: true,
+    });
+
+    expect(output.status).toBe('ready');
+    expect(output.executable).toBe(true);
+  });
+
   it('recommends web fallback when the KB is not configured', async () => {
     const { evaluateKbRetrievalReadiness } = await import(
       '../../rag/kb-retrieval-readiness.js'

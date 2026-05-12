@@ -38,12 +38,20 @@ function countWords(query: string): number {
     .filter(Boolean).length;
 }
 
+// CJK scripts (Japanese, Chinese, Korean) don't use whitespace between words,
+// so word-count checks are meaningless for them — character length is sufficient.
+const CJK_PATTERN = /[　-鿿豈-﫿가-힯]/u;
+
+function hasCjkCharacters(text: string): boolean {
+  return CJK_PATTERN.test(text);
+}
+
 function resolveQuerySpecificity(plan: KbQueryPlan): string[] {
   const missingContext = normalizeStringArray(plan.missingContext);
   const query = trimText(plan.query) ?? '';
   const derivedMissingContext =
     query.length < MIN_QUERY_LENGTH_FOR_CLARIFICATION ||
-    countWords(query) < MIN_WORD_COUNT_FOR_CLARIFICATION
+    (!hasCjkCharacters(query) && countWords(query) < MIN_WORD_COUNT_FOR_CLARIFICATION)
       ? ['document topic']
       : [];
 
@@ -58,7 +66,7 @@ function hasEnoughQuerySignal(plan: KbQueryPlan): boolean {
 
   return (
     query.length >= MIN_QUERY_LENGTH_FOR_CLARIFICATION &&
-    countWords(query) >= MIN_WORD_COUNT_FOR_CLARIFICATION
+    (hasCjkCharacters(query) || countWords(query) >= MIN_WORD_COUNT_FOR_CLARIFICATION)
   );
 }
 

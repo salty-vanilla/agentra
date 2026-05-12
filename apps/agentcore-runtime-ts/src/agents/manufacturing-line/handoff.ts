@@ -86,6 +86,7 @@ export function buildManufacturingLineAgentHandoffPrompt(
     '- avoid wide Markdown tables and deeply nested lists in answer; summarize the top rows and point to the source when tabular evidence is needed',
     '- include agentKind, agentName, and handoffMode when available',
     '- include sources, citations, brief, caveats, nextActions, and metadata when available',
+    '- in sources and citations, omit snippet text entirely; include only id, type, title, url/uri, score, and retrievedAt — never copy raw document text into the structured output',
     '- if the question needs clarification, ask the minimum clarifying question in answer and set status to needs_clarification',
     '- if the requested mode cannot be served, explain that in answer and set status appropriately',
   );
