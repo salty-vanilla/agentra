@@ -8,8 +8,7 @@ import {
   ResponseTransferMode,
 } from 'aws-cdk-lib/aws-apigateway';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { Runtime } from 'aws-cdk-lib/aws-lambda';
-import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
+import { DockerImageCode, DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
 import type { Construct } from 'constructs';
 import type { AgentraDataAuthStack } from './agentra-data-auth-stack.js';
 
@@ -31,17 +30,22 @@ export class AgentraAppStack extends Stack {
   constructor(scope: Construct, id: string, props: AgentraAppStackProps) {
     super(scope, id, props);
 
-    const backendEntry = join(__dirname, '../../../apps/backend/src/lambda.ts');
+    const backendImage = DockerImageCode.fromImageAsset(join(__dirname, '../../../'), {
+      file: 'apps/backend/Dockerfile',
+    });
 
-    const apiHandler = new NodejsFunction(this, 'BackendHandler', {
-      entry: backendEntry,
-      handler: 'handler',
-      runtime: Runtime.NODEJS_22_X,
+    const apiHandler = new DockerImageFunction(this, 'BackendHandler', {
+      code: backendImage,
       // API Gateway response streaming and long-running AgentCore calls need a much longer Lambda budget.
       timeout: Duration.minutes(15),
       memorySize: 512,
       environment: {
         NODE_OPTIONS: '--enable-source-maps',
+        PORT: '8080',
+        AWS_LWA_PORT: '8080',
+        AWS_LWA_READINESS_CHECK_PORT: '8080',
+        AWS_LWA_READINESS_CHECK_PATH: '/health',
+        AWS_LWA_INVOKE_MODE: 'response_stream',
         STORE_TYPE: 'dynamo',
         THREADS_TABLE_NAME: props.dataAuthStack.threadsTable.tableName,
         MESSAGES_TABLE_NAME: props.dataAuthStack.messagesTable.tableName,

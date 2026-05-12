@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/dev.ts",
     "start": "node --import tsx src/dev.ts",
+    "build": "pnpm --filter @agentra/shared build && tsc -p tsconfig.build.json",
     "chat:direct": "node --import tsx src/tools/direct-chat.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && pnpm contract",
