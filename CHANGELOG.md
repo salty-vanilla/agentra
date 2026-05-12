@@ -9,6 +9,13 @@ and this project adheres to [Conventional Commits](https://www.conventionalcommi
 
 ## [Unreleased]
 
+### Changed — STREAM-2: REST API streaming migration
+
+- Replaced the backend `HttpApi` with an API Gateway REST API Lambda proxy integration
+- Enabled `responseTransferMode: STREAM` on the backend integration so `/chat` can stream through API Gateway instead of buffering the full response
+- Switched the API to a regional endpoint to preserve the longer idle timeout needed for long-running chat streams
+- Kept the same frontend base URL shape by stripping the REST API's trailing slash before exporting it to Amplify
+
 ### Added — PA-14: LLM-driven Image Curation & S3 Upload
 
 - **Image tool-use system** (`packages/presentation-author/src/images/`): LLM calls `search_image` / `generate_image` tools during authoring to find or create images

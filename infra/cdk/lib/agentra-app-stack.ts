@@ -1,8 +1,12 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CfnOutput, Duration, Stack, type StackProps } from 'aws-cdk-lib';
-import { CorsHttpMethod, HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
+import {
+  Cors,
+  EndpointType,
+  LambdaRestApi,
+  ResponseTransferMode,
+} from 'aws-cdk-lib/aws-apigateway';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Runtime } from 'aws-cdk-lib/aws-lambda';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -80,29 +84,21 @@ export class AgentraAppStack extends Stack {
     props.dataAuthStack.threadsTable.grantReadWriteData(apiHandler);
     props.dataAuthStack.messagesTable.grantReadWriteData(apiHandler);
 
-    const api = new HttpApi(this, 'HttpApi', {
-      corsPreflight: {
+    const api = new LambdaRestApi(this, 'RestApi', {
+      handler: apiHandler,
+      proxy: true,
+      endpointTypes: [EndpointType.REGIONAL],
+      integrationOptions: {
+        responseTransferMode: ResponseTransferMode.STREAM,
+      },
+      defaultCorsPreflightOptions: {
         allowOrigins: props.allowedCorsOrigins ?? ['http://localhost:3000'],
         allowHeaders: ['content-type', 'authorization'],
-        allowMethods: [CorsHttpMethod.ANY],
+        allowMethods: Cors.ALL_METHODS,
       },
     });
 
-    const integration = new HttpLambdaIntegration('BackendIntegration', apiHandler);
-
-    api.addRoutes({
-      path: '/{proxy+}',
-      methods: [HttpMethod.ANY],
-      integration,
-    });
-
-    api.addRoutes({
-      path: '/',
-      methods: [HttpMethod.ANY],
-      integration,
-    });
-
-    this.apiEndpoint = api.apiEndpoint;
+    this.apiEndpoint = api.url.replace(/\/$/, '');
 
     new CfnOutput(this, 'ApiUrl', { value: this.apiEndpoint });
   }

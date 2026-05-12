@@ -106,7 +106,7 @@ agentCoreRuntimeStack.addDependency(slideRuntimeStack);
 agentCoreRuntimeStack.addDependency(bedrockKbStack);
 
 const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
-  description: `Agentra ${stageLabel} backend application stack (Lambda and HTTP API).`,
+  description: `Agentra ${stageLabel} backend application stack (Lambda and REST API).`,
   dataAuthStack,
   agentCoreRuntimeArn: agentCoreRuntimeStack.runtimeArn,
   agentCoreRuntimeQualifier: 'prod',
