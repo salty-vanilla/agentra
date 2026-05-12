@@ -62,97 +62,93 @@ const questionSchema = z
     message: QUESTION_TOO_LONG_MESSAGE,
   });
 
-const structuredQueryPlanInputSchema = z
-  .object({
-    question: questionSchema,
-    intent: structuredQueryIntentSchema.optional(),
-    dataSourceKind: structuredQueryDataSourceKindSchema.optional(),
-    targetEntity: z.string().optional(),
-    timeRange: z
-      .object({
-        start: z.string().optional(),
-        end: z.string().optional(),
-        timezone: z.string().optional(),
-      })
-      .optional(),
-    filters: z
-      .array(
-        z.object({
-          field: z.string(),
-          operator: structuredQueryFilterOperatorSchema,
-          value: z.union([
-            z.string(),
-            z.number(),
-            z.boolean(),
-            z.array(z.union([z.string(), z.number(), z.boolean()])),
-          ]),
-        }),
-      )
-      .optional(),
-    metrics: z.array(structuredQueryMetricSchema).optional(),
-    groupBy: z.array(z.string()).optional(),
-    orderBy: z
-      .array(
-        z.object({
-          field: z.string(),
-          direction: z.enum(['asc', 'desc']),
-        }),
-      )
-      .optional(),
-    limit: z.number().int().positive().max(1000).optional(),
-    assumptions: z.array(z.string()).optional(),
-    notes: z.array(z.string()).optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const structuredQueryPlanInputSchema = z.object({
+  question: questionSchema,
+  intent: structuredQueryIntentSchema.optional(),
+  dataSourceKind: structuredQueryDataSourceKindSchema.optional(),
+  targetEntity: z.string().optional(),
+  timeRange: z
+    .object({
+      start: z.string().optional(),
+      end: z.string().optional(),
+      timezone: z.string().optional(),
+    })
+    .optional(),
+  filters: z
+    .array(
+      z.object({
+        field: z.string(),
+        operator: structuredQueryFilterOperatorSchema,
+        value: z.union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.array(z.union([z.string(), z.number(), z.boolean()])),
+        ]),
+      }),
+    )
+    .optional(),
+  metrics: z.array(structuredQueryMetricSchema).optional(),
+  groupBy: z.array(z.string()).optional(),
+  orderBy: z
+    .array(
+      z.object({
+        field: z.string(),
+        direction: z.enum(['asc', 'desc']),
+      }),
+    )
+    .optional(),
+  limit: z.number().int().positive().max(1000).optional(),
+  assumptions: z.array(z.string()).optional(),
+  notes: z.array(z.string()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
-const structuredQueryPlanSchema = z
-  .object({
-    id: z.string(),
-    createdAt: z.string(),
-    intent: structuredQueryIntentSchema,
-    dataSourceKind: structuredQueryDataSourceKindSchema,
-    question: questionSchema,
-    targetEntity: z.string().optional(),
-    timeRange: z
-      .object({
-        start: z.string().optional(),
-        end: z.string().optional(),
-        timezone: z.string().optional(),
-      })
-      .optional(),
-    filters: z
-      .array(
-        z.object({
-          field: z.string(),
-          operator: structuredQueryFilterOperatorSchema,
-          value: z.union([
-            z.string(),
-            z.number(),
-            z.boolean(),
-            z.array(z.union([z.string(), z.number(), z.boolean()])),
-          ]),
-        }),
-      )
-      .optional(),
-    metrics: z.array(structuredQueryMetricSchema).optional(),
-    groupBy: z.array(z.string()).optional(),
-    orderBy: z
-      .array(
-        z.object({
-          field: z.string(),
-          direction: z.enum(['asc', 'desc']),
-        }),
-      )
-      .optional(),
-    limit: z.number().int().positive().max(1000).optional(),
-    confidence: z.number().min(0).max(1),
-    assumptions: z.array(z.string()).optional(),
-    missingSlots: z.array(z.string()).optional(),
-    notes: z.array(z.string()).optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const structuredQueryPlanSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  intent: structuredQueryIntentSchema,
+  dataSourceKind: structuredQueryDataSourceKindSchema,
+  question: questionSchema,
+  targetEntity: z.string().optional(),
+  timeRange: z
+    .object({
+      start: z.string().optional(),
+      end: z.string().optional(),
+      timezone: z.string().optional(),
+    })
+    .optional(),
+  filters: z
+    .array(
+      z.object({
+        field: z.string(),
+        operator: structuredQueryFilterOperatorSchema,
+        value: z.union([
+          z.string(),
+          z.number(),
+          z.boolean(),
+          z.array(z.union([z.string(), z.number(), z.boolean()])),
+        ]),
+      }),
+    )
+    .optional(),
+  metrics: z.array(structuredQueryMetricSchema).optional(),
+  groupBy: z.array(z.string()).optional(),
+  orderBy: z
+    .array(
+      z.object({
+        field: z.string(),
+        direction: z.enum(['asc', 'desc']),
+      }),
+    )
+    .optional(),
+  limit: z.number().int().positive().max(1000).optional(),
+  confidence: z.number().min(0).max(1),
+  assumptions: z.array(z.string()).optional(),
+  missingSlots: z.array(z.string()).optional(),
+  notes: z.array(z.string()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
 const structuredRagFlowInputSchema = z
   .object({
@@ -172,7 +168,6 @@ const structuredRagFlowInputSchema = z
     createBrief: z.boolean().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
-  .strict()
   .superRefine((input, ctx) => {
     if (
       input.question === undefined &&

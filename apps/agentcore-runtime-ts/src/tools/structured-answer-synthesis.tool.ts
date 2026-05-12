@@ -173,27 +173,25 @@ const structuredPlanReadinessResultSchema = z.object({
   metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
-const structuredRagFlowOutputSchema = z
-  .object({
-    status: z.enum([
-      'planned',
-      'validated',
-      'ready',
-      'executed',
-      'needs_clarification',
-      'not_configured',
-      'unsupported',
-      'error',
-    ]),
-    plan: structuredQueryPlanSchema,
-    validation: structuredQueryPlanValidationResultSchema.optional(),
-    readiness: structuredPlanReadinessResultSchema.optional(),
-    execution: structuredQueryExecutionOutputSchema.optional(),
-    nextAction: z.string().trim().min(1),
-    messages: z.array(z.string()),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const structuredRagFlowOutputSchema = z.object({
+  status: z.enum([
+    'planned',
+    'validated',
+    'ready',
+    'executed',
+    'needs_clarification',
+    'not_configured',
+    'unsupported',
+    'error',
+  ]),
+  plan: structuredQueryPlanSchema,
+  validation: structuredQueryPlanValidationResultSchema.optional(),
+  readiness: structuredPlanReadinessResultSchema.optional(),
+  execution: structuredQueryExecutionOutputSchema.optional(),
+  nextAction: z.string().trim().min(1),
+  messages: z.array(z.string()),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
 const structuredAnswerSynthesisInputSchema = z
   .object({
@@ -204,7 +202,6 @@ const structuredAnswerSynthesisInputSchema = z
     createBrief: z.boolean().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
-  .strict()
   .superRefine((input, ctx) => {
     if (Object.keys(input.metadata ?? {}).length > MAX_METADATA_KEYS) {
       ctx.addIssue({
