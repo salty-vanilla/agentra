@@ -3,7 +3,10 @@ import {
   buildManufacturingLineAgentHandoffPrompt,
   manufacturingLineAgentHandoffInputSchema,
 } from '../agents/manufacturing-line/handoff.js';
-import { executeInvokeManufacturingLineAgentTool } from '../tools/invoke-manufacturing-line-agent.tool.js';
+import {
+  executeInvokeManufacturingLineAgentTool,
+  streamInvokeManufacturingLineAgentTool,
+} from '../tools/invoke-manufacturing-line-agent.tool.js';
 
 describe('Manufacturing Line Agent handoff', () => {
   it('validates question, context, and metadata limits', () => {
@@ -146,5 +149,137 @@ describe('Manufacturing Line Agent handoff', () => {
         rawValueType: 'undefined',
       },
     });
+  });
+});
+
+describe('streamInvokeManufacturingLineAgentTool', () => {
+  function makeAgentResult(structuredOutput: unknown) {
+    return {
+      structuredOutput,
+      toString() {
+        return JSON.stringify(structuredOutput);
+      },
+      metrics: undefined,
+    };
+  }
+
+  async function* makeAgentStream(events: unknown[], result: unknown) {
+    for (const event of events) {
+      yield event;
+    }
+    return result;
+  }
+
+  it('yields running then complete progress events for each sub-agent tool call', async () => {
+    const toolUseId = 'tool-1';
+    const agentResult = makeAgentResult({
+      status: 'success' as const,
+      answer: 'KB result',
+      citations: [],
+    });
+
+    const streamEvents = [
+      {
+        type: 'modelStreamUpdateEvent',
+        event: {
+          type: 'modelContentBlockStartEvent',
+          start: { type: 'toolUseStart', toolUseId, name: 'kb_retrieve' },
+        },
+      },
+      {
+        type: 'toolResultEvent',
+        result: { toolUseId, status: 'success', content: [] },
+      },
+    ];
+
+    const stream = makeAgentStream(streamEvents, agentResult);
+    const progress: unknown[] = [];
+
+    const gen = streamInvokeManufacturingLineAgentTool(
+      { question: 'What is the procedure?' },
+      {
+        agentFactory: () => ({
+          invoke: vi.fn(),
+          stream: vi.fn().mockReturnValue(stream),
+        }),
+      },
+    );
+
+    while (true) {
+      const { value, done } = await gen.next();
+      if (done) {
+        expect(value.status).toBe('success');
+        break;
+      }
+      progress.push(value);
+    }
+
+    expect(progress).toEqual([
+      { stage: 'kb_retrieve', status: 'running' },
+      { stage: 'kb_retrieve', status: 'complete', durationMs: expect.any(Number) },
+    ]);
+  });
+
+  it('yields error status when sub-agent tool returns error', async () => {
+    const toolUseId = 'tool-err';
+    const agentResult = makeAgentResult({ status: 'success', answer: 'done' });
+
+    const streamEvents = [
+      {
+        type: 'contentBlockEvent',
+        contentBlock: { type: 'toolUseBlock', toolUseId, name: 'structured_rag_flow' },
+      },
+      {
+        type: 'toolResultEvent',
+        result: { toolUseId, status: 'error', content: [] },
+      },
+    ];
+
+    const stream = makeAgentStream(streamEvents, agentResult);
+    const progress: unknown[] = [];
+
+    const gen = streamInvokeManufacturingLineAgentTool(
+      { question: 'Diagnose fault' },
+      {
+        agentFactory: () => ({
+          invoke: vi.fn(),
+          stream: vi.fn().mockReturnValue(stream),
+        }),
+      },
+    );
+
+    while (true) {
+      const { value, done } = await gen.next();
+      if (done) break;
+      progress.push(value);
+    }
+
+    expect(progress).toContainEqual(
+      expect.objectContaining({ stage: 'structured_rag_flow', status: 'error' }),
+    );
+  });
+
+  it('returns error payload when the sub-agent stream throws', async () => {
+    const failingStream = {
+      next: () => Promise.reject(new Error('sub-agent failure')),
+      [Symbol.asyncIterator]() {
+        return this;
+      },
+    };
+
+    const gen = streamInvokeManufacturingLineAgentTool(
+      { question: 'What failed?' },
+      {
+        agentFactory: () => ({
+          invoke: vi.fn(),
+          stream: vi.fn().mockReturnValue(failingStream),
+        }),
+      },
+    );
+
+    const { value, done } = await gen.next();
+    expect(done).toBe(true);
+    expect(value.status).toBe('error');
+    expect(JSON.parse(value.content[0].text).answer).toContain('sub-agent failure');
   });
 });
