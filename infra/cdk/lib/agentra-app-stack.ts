@@ -33,7 +33,8 @@ export class AgentraAppStack extends Stack {
       entry: backendEntry,
       handler: 'handler',
       runtime: Runtime.NODEJS_22_X,
-      timeout: Duration.seconds(30),
+      // API Gateway response streaming and long-running AgentCore calls need a much longer Lambda budget.
+      timeout: Duration.minutes(15),
       memorySize: 512,
       environment: {
         NODE_OPTIONS: '--enable-source-maps',
