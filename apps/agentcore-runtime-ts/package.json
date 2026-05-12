@@ -8,6 +8,7 @@
     "build": "tsc -p tsconfig.json",
     "start": "node dist/agent.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "profile:manufacturing-line": "tsx scripts/profile-manufacturing-line.ts",
     "test": "vitest run"
   },
   "dependencies": {
