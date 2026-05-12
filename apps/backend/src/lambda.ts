@@ -1,4 +1,6 @@
-import { handle } from 'hono/aws-lambda';
-import { app } from './app.js';
+import { startBackendServer } from './server.js';
 
-export const handler = handle(app);
+startBackendServer({
+  host: process.env.HOST ?? '0.0.0.0',
+  port: Number(process.env.PORT ?? 8080),
+});

@@ -9,7 +9,6 @@ import {
   type ThreadSummary,
   UpdateThreadBody,
 } from '@agentra/shared';
-import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { streamSSE } from 'hono/streaming';
@@ -459,4 +458,4 @@ app.onError((error, context) => {
   );
 });
 
-export { app, serve };
+export { app };
