@@ -14,7 +14,7 @@ import { cors } from 'hono/cors';
 import { uuidv7 } from 'uuidv7';
 import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
 import { type ChatCommand, chatCommandSchema } from './lib/chat-command.js';
-import type { ProgressSummaryEvent } from './lib/chat-stream.js';
+import type { ProgressSummaryEvent, SubAgentProgressEvent } from './lib/chat-stream.js';
 import { buildRouterCommandDirective } from './lib/command-directive.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { createAbortableSleep, createSseResponse } from './lib/sse.js';
@@ -217,6 +217,22 @@ app.post('/chat', async (context) => {
       });
     }
 
+    async function emitSubAgentProgress(
+      progress: Omit<SubAgentProgressEvent, 'type' | 'timestamp'>,
+    ) {
+      const event: SubAgentProgressEvent = {
+        type: 'sub_agent_progress',
+        stage: progress.stage,
+        status: progress.status,
+        timestamp: nowIso(),
+        ...(progress.durationMs !== undefined ? { durationMs: progress.durationMs } : {}),
+      };
+      await stream.writeEvent({
+        event: 'sub_agent_progress',
+        data: { type: 'sub_agent_progress', event },
+      });
+    }
+
     stream.onAbort(() => {
       console.info(
         `Client disconnected from /chat SSE stream (threadId=${thread.threadId}, traceId=${traceId}).`,
@@ -276,6 +292,9 @@ app.post('/chat', async (context) => {
           logObservabilityDebug('observation', latestObservabilitySummary, {
             threadId: thread.threadId,
           });
+          if (runtimeEvent.subAgentStage) {
+            await emitSubAgentProgress(runtimeEvent.subAgentStage);
+          }
           await stream.writeEvent({
             event: 'observation',
             data: {

@@ -32,6 +32,19 @@ export const chatStreamProgressSummaryEventSchema = z.object({
   event: progressSummaryEventSchema,
 });
 
+export const subAgentProgressEventSchema = z.object({
+  type: z.literal('sub_agent_progress'),
+  stage: z.string().min(1),
+  status: z.enum(['running', 'complete', 'error']),
+  durationMs: z.number().int().min(0).optional(),
+  timestamp: z.string(),
+});
+
+export const chatStreamSubAgentProgressEventSchema = z.object({
+  type: z.literal('sub_agent_progress'),
+  event: subAgentProgressEventSchema,
+});
+
 export const chatStreamTextEventSchema = z.object({
   type: z.literal('text'),
   text: z.string(),
@@ -59,11 +72,13 @@ export const chatStreamErrorEventSchema = z.object({
 export const chatStreamEventSchema = z.union([
   chatStreamTextEventSchema,
   chatStreamProgressSummaryEventSchema,
+  chatStreamSubAgentProgressEventSchema,
   chatStreamObservationEventSchema,
   chatStreamDoneEventSchema,
   chatStreamErrorEventSchema,
 ]);
 
 export type ProgressSummaryEvent = z.infer<typeof progressSummaryEventSchema>;
+export type SubAgentProgressEvent = z.infer<typeof subAgentProgressEventSchema>;
 export type ChatStreamEvent = z.infer<typeof chatStreamEventSchema>;
 export type ChatObservationSummary = z.infer<typeof chatObservationSummarySchema>;

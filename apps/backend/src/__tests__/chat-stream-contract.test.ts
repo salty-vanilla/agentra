@@ -30,6 +30,19 @@ describe('chat stream contract', () => {
 
     expect(
       chatStreamEventSchema.safeParse({
+        type: 'sub_agent_progress',
+        event: {
+          type: 'sub_agent_progress',
+          stage: 'kb_retrieve',
+          status: 'complete',
+          durationMs: 1200,
+          timestamp: '2026-05-07T00:00:02.000Z',
+        },
+      }).success,
+    ).toBe(true);
+
+    expect(
+      chatStreamEventSchema.safeParse({
         type: 'error',
         error: 'Agent invocation failed. traceId=trace_123',
         observabilitySummary: {

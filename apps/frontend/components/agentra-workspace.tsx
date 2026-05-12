@@ -29,6 +29,7 @@ import type {
   ChatCommand,
   ChatRequest as FrontendChatRequest,
   ProgressSummaryEvent,
+  SubAgentProgressEvent,
 } from '@/lib/generated/model';
 import {
   agentraQueryKeys,
@@ -94,6 +95,9 @@ export function AgentraWorkspace() {
   );
   const [progressEvents, setProgressEvents] = useState<ProgressSummaryEvent[]>([]);
   const [activeProgressPhase, setActiveProgressPhase] = useState<string | undefined>();
+  const [subAgentProgressEvents, setSubAgentProgressEvents] = useState<
+    SubAgentProgressEvent[]
+  >([]);
   const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressIndexRef = useRef(0);
   // Use a ref so the memoized modelAdapter can read the latest model key without
@@ -150,6 +154,17 @@ export function AgentraWorkspace() {
   const handleProgressEvent = useCallback((event: ProgressSummaryEvent) => {
     setProgressEvents((prev) => [...prev, event]);
     setActiveProgressPhase(event.phase);
+  }, []);
+
+  const handleSubAgentProgressEvent = useCallback((event: SubAgentProgressEvent) => {
+    setSubAgentProgressEvents((prev) => {
+      const existingIndex = prev.findIndex((item) => item.stage === event.stage);
+      if (existingIndex < 0) {
+        return [...prev, event];
+      }
+
+      return prev.map((item, index) => (index === existingIndex ? event : item));
+    });
   }, []);
 
   const stopProgressSimulation = useCallback(
@@ -236,6 +251,7 @@ export function AgentraWorkspace() {
     () => ({
       async *run({ abortSignal, messages }) {
         setLiveObservabilitySummary(null);
+        setSubAgentProgressEvents([]);
         const normalizedHistory = normalizeThreadMessages(messages);
         const lastUserMessageIndex = findLastUserMessageIndex(normalizedHistory);
 
@@ -376,6 +392,8 @@ export function AgentraWorkspace() {
               yield { content: [{ type: 'text', text: fullText }] };
             } else if (event.type === 'progress_summary') {
               handleProgressEvent(event.event);
+            } else if (event.type === 'sub_agent_progress') {
+              handleSubAgentProgressEvent(event.event);
             } else if (event.type === 'observation') {
               doneObservabilitySummary = event.observation;
               setLiveObservabilitySummary(event.observation);
@@ -439,6 +457,7 @@ export function AgentraWorkspace() {
       setSelectedThreadId,
       clearProgressTimer,
       handleProgressEvent,
+      handleSubAgentProgressEvent,
       startProgressSimulation,
       stopProgressSimulation,
     ],
@@ -458,6 +477,7 @@ export function AgentraWorkspace() {
     clearProgressTimer();
     setProgressEvents([]);
     setActiveProgressPhase(undefined);
+    setSubAgentProgressEvents([]);
     setSlideCommandActive(false);
     setPendingSlideCommand(null);
   }, [selectedThreadId, clearProgressTimer]);
@@ -674,6 +694,7 @@ export function AgentraWorkspace() {
                   slideDialogOpen={slideDialogOpen}
                   onSlideDialogOpenChange={setSlideDialogOpen}
                   progressEvents={progressEvents}
+                  subAgentProgressEvents={subAgentProgressEvents}
                   {...(activeProgressPhase ? { activeProgressPhase } : {})}
                 />
               </section>
