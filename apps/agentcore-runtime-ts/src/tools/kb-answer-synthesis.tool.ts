@@ -69,52 +69,45 @@ const briefSchema = z
   })
   .passthrough();
 
-const retrievalSchema = z
-  .object({
-    query: z.string().min(1),
-    provider: ragProviderKindSchema,
-    sources: z.array(evidenceSourceSchema),
-    citations: z.array(citationSchema),
-    brief: briefSchema.optional(),
-    rawResultSummary: z
-      .object({
-        resultCount: z.number().int().nonnegative(),
-        originalResultCount: z.number().int().nonnegative().optional(),
-        filteredByScoreCount: z.number().int().nonnegative().optional(),
-        noResults: z.boolean().optional(),
-      })
-      .strict(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const retrievalSchema = z.object({
+  query: z.string().min(1),
+  provider: ragProviderKindSchema,
+  sources: z.array(evidenceSourceSchema),
+  citations: z.array(citationSchema),
+  brief: briefSchema.optional(),
+  rawResultSummary: z.object({
+    resultCount: z.number().int().nonnegative(),
+    originalResultCount: z.number().int().nonnegative().optional(),
+    filteredByScoreCount: z.number().int().nonnegative().optional(),
+    noResults: z.boolean().optional(),
+  }),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
 const kbAnswerSynthesisInputSchema = z
   .object({
-    flow: z
-      .object({
-        status: z.enum([
-          'planned',
-          'ready',
-          'retrieved',
-          'answer_ready',
-          'needs_clarification',
-          'not_configured',
-          'fallback_recommended',
-          'unsupported',
-          'error',
-        ]),
-        retrieval: retrievalSchema.optional(),
-        nextAction: z.string().optional(),
-        messages: z.array(z.string()).optional(),
-        metadata: z.record(z.string(), z.unknown()).optional(),
-      })
-      .strict(),
+    flow: z.object({
+      status: z.enum([
+        'planned',
+        'ready',
+        'retrieved',
+        'answer_ready',
+        'needs_clarification',
+        'not_configured',
+        'fallback_recommended',
+        'unsupported',
+        'error',
+      ]),
+      retrieval: retrievalSchema.optional(),
+      nextAction: z.string().optional(),
+      messages: z.array(z.string()).optional(),
+      metadata: z.record(z.string(), z.unknown()).optional(),
+    }),
     includeSourcePreview: z.boolean().optional(),
     maxSources: z.number().int().min(1).max(20).optional(),
     createBrief: z.boolean().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
-  .strict()
   .superRefine((input, ctx) => {
     if (Object.keys(input.metadata ?? {}).length > MAX_METADATA_KEYS) {
       ctx.addIssue({
