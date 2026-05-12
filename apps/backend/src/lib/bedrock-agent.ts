@@ -105,6 +105,7 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
 async function* streamAgentCoreBody(
   contentType: string | undefined,
   body: unknown,
+  abortSignal?: AbortSignal,
 ): AsyncGenerator<RuntimeStreamEvent> {
   const streamBody = body as {
     transformToString?: () => Promise<string>;
@@ -116,6 +117,10 @@ async function* streamAgentCoreBody(
     let buffer = '';
 
     for await (const chunk of streamBody as AsyncIterable<unknown>) {
+      if (abortSignal?.aborted) {
+        return;
+      }
+
       buffer += decodeRuntimeChunk(chunk);
 
       if (isSse) {
@@ -182,6 +187,7 @@ async function* invokeAgentCoreRuntimeStream(
   inputText: string,
   traceId?: string,
   extra?: { userId?: string },
+  abortSignal?: AbortSignal,
 ): AsyncGenerator<RuntimeStreamEvent> {
   if (!AGENTCORE_RUNTIME_ARN) {
     throw new Error('AGENTCORE_RUNTIME_ARN is not set. AgentCore runtime is required.');
@@ -205,12 +211,15 @@ async function* invokeAgentCoreRuntimeStream(
     ),
   });
 
-  const response = await agentCoreClient.send(command);
+  const response = await agentCoreClient.send(
+    command,
+    abortSignal ? { abortSignal } : undefined,
+  );
   if (!response.response) {
     return;
   }
 
-  yield* streamAgentCoreBody(response.contentType, response.response);
+  yield* streamAgentCoreBody(response.contentType, response.response, abortSignal);
 }
 
 /**
@@ -224,8 +233,16 @@ export async function* invokeAgentStream(
   inputText: string,
   traceId?: string,
   extra?: { userId?: string },
+  abortSignal?: AbortSignal,
 ): AsyncGenerator<RuntimeStreamEvent> {
-  yield* invokeAgentCoreRuntimeStream(modelKey, sessionId, inputText, traceId, extra);
+  yield* invokeAgentCoreRuntimeStream(
+    modelKey,
+    sessionId,
+    inputText,
+    traceId,
+    extra,
+    abortSignal,
+  );
 }
 
 export function getModelId(modelKey: ModelKey): string {
