@@ -5,6 +5,7 @@ import { buildRouterPrompt, createRouterAgent } from './agents/router/index.js';
 import { buildLoggerOptions } from './logging.js';
 import { createRuntimeSessionManager } from './memory/session-manager-factory.js';
 import { ObservationCollector } from './observability.js';
+import type { SubAgentProgressEvent } from './tools/invoke-manufacturing-line-agent.tool.js';
 
 export type {
   ManufacturingLineAgentConfig,
@@ -214,6 +215,21 @@ const app = new BedrockAgentCoreApp({
               event.contentBlock.toolUseId,
               event.contentBlock.name,
             );
+            continue;
+          }
+
+          if (event.type === 'toolStreamUpdateEvent') {
+            const progress = event.event.data as SubAgentProgressEvent | undefined;
+            if (progress && typeof progress.stage === 'string') {
+              yield {
+                event: 'message',
+                data: {
+                  type: 'observation',
+                  observation: observability.createSnapshot('success'),
+                  subAgentStage: progress,
+                },
+              };
+            }
             continue;
           }
 
