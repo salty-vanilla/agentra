@@ -11,13 +11,13 @@ import {
 } from '@agentra/shared';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { streamSSE } from 'hono/streaming';
 import { uuidv7 } from 'uuidv7';
 import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agent.js';
 import { type ChatCommand, chatCommandSchema } from './lib/chat-command.js';
 import type { ProgressSummaryEvent } from './lib/chat-stream.js';
 import { buildRouterCommandDirective } from './lib/command-directive.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
+import { createAbortableSleep, createSseResponse } from './lib/sse.js';
 import { authMiddleware } from './middleware/auth.js';
 import {
   appendMessage,
@@ -37,6 +37,7 @@ type HonoEnv = {
 
 type ObservationStatus = 'success' | 'error' | 'cancelled';
 const OBSERVABILITY_DEBUG_LOG = process.env.OBSERVABILITY_DEBUG_LOG === 'true';
+const DEFAULT_SSE_HEARTBEAT_INTERVAL_MS = 15_000;
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -44,6 +45,15 @@ function nowIso(): string {
 
 function toMillis(iso: string): number {
   return new Date(iso).getTime();
+}
+
+function getSseHeartbeatIntervalMs(): number {
+  const parsed = Number(process.env.SSE_HEARTBEAT_INTERVAL_MS ?? '');
+  if (Number.isFinite(parsed) && parsed >= 1_000) {
+    return parsed;
+  }
+
+  return DEFAULT_SSE_HEARTBEAT_INTERVAL_MS;
 }
 
 function createFallbackObservabilitySummary(input: {
@@ -180,12 +190,14 @@ app.post('/chat', async (context) => {
     content: message,
   });
 
-  return streamSSE(context, async (stream) => {
+  return createSseResponse(context.req.raw.signal, async (stream) => {
     const startedAt = nowIso();
     let fullReply = '';
     let latestObservabilitySummary: ChatObservationSummary | undefined;
-
     const isSlideCommand = command?.type === 'create_slide_presentation';
+    const heartbeatIntervalMs = getSseHeartbeatIntervalMs();
+    const upstreamAbortController = new AbortController();
+    const heartbeatAbortController = new AbortController();
 
     async function emitProgress(
       phase: ProgressSummaryEvent['phase'],
@@ -199,10 +211,30 @@ app.post('/chat', async (context) => {
         summary,
         timestamp: nowIso(),
       };
-      await stream.writeSSE({
-        data: JSON.stringify({ type: 'progress_summary', event }),
+      await stream.writeEvent({
+        event: 'status',
+        data: { type: 'progress_summary', event },
       });
     }
+
+    stream.onAbort(() => {
+      console.info(
+        `Client disconnected from /chat SSE stream (threadId=${thread.threadId}, traceId=${traceId}).`,
+      );
+      upstreamAbortController.abort();
+      heartbeatAbortController.abort();
+    });
+
+    const heartbeatTask = (async () => {
+      while (!heartbeatAbortController.signal.aborted) {
+        await createAbortableSleep(heartbeatAbortController.signal, heartbeatIntervalMs);
+        if (heartbeatAbortController.signal.aborted) {
+          break;
+        }
+
+        await stream.writeComment('ping');
+      }
+    })();
 
     try {
       // Build the effective prompt: append command directive if present
@@ -228,11 +260,13 @@ app.post('/chat', async (context) => {
         effectiveMessage,
         traceId,
         { userId },
+        upstreamAbortController.signal,
       )) {
         if (runtimeEvent.type === 'text') {
           fullReply += runtimeEvent.text;
-          await stream.writeSSE({
-            data: JSON.stringify({ type: 'text', text: runtimeEvent.text }),
+          await stream.writeEvent({
+            event: 'token',
+            data: { type: 'text', text: runtimeEvent.text },
           });
           continue;
         }
@@ -242,11 +276,12 @@ app.post('/chat', async (context) => {
           logObservabilityDebug('observation', latestObservabilitySummary, {
             threadId: thread.threadId,
           });
-          await stream.writeSSE({
-            data: JSON.stringify({
+          await stream.writeEvent({
+            event: 'observation',
+            data: {
               type: 'observation',
               observation: runtimeEvent.observation,
-            }),
+            },
           });
           continue;
         }
@@ -264,6 +299,11 @@ app.post('/chat', async (context) => {
         }
       }
     } catch (err) {
+      if (context.req.raw.signal.aborted || upstreamAbortController.signal.aborted) {
+        await heartbeatTask.catch(() => undefined);
+        return;
+      }
+
       console.error('Bedrock agent stream error:', err);
       const completedAt = nowIso();
       const fallbackSummary =
@@ -275,13 +315,22 @@ app.post('/chat', async (context) => {
           status: 'error',
         });
       logObservabilityDebug('error', fallbackSummary, { threadId: thread.threadId });
-      await stream.writeSSE({
-        data: JSON.stringify({
+      await stream.writeEvent({
+        event: 'error',
+        data: {
           type: 'error',
           error: `Agent invocation failed. traceId=${traceId}`,
           observabilitySummary: fallbackSummary,
-        }),
+        },
       });
+      heartbeatAbortController.abort();
+      await heartbeatTask.catch(() => undefined);
+      return;
+    }
+
+    if (context.req.raw.signal.aborted || upstreamAbortController.signal.aborted) {
+      heartbeatAbortController.abort();
+      await heartbeatTask.catch(() => undefined);
       return;
     }
 
@@ -303,15 +352,19 @@ app.post('/chat', async (context) => {
       observabilitySummary: finalSummary,
     });
 
-    await stream.writeSSE({
-      data: JSON.stringify({
+    await stream.writeEvent({
+      event: 'done',
+      data: {
         type: 'done',
         threadId: thread.threadId,
         model: getModelId(modelKey),
         createdAt: completedAt,
         observabilitySummary: finalSummary,
-      }),
+      },
     });
+
+    heartbeatAbortController.abort();
+    await heartbeatTask.catch(() => undefined);
   });
 });
 
