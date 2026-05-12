@@ -13,58 +13,54 @@ const questionSchema = z
   .min(1)
   .max(MAX_QUERY_LENGTH, `query must not exceed ${MAX_QUERY_LENGTH} characters`);
 
-const planInputSchema = z
-  .object({
-    query: questionSchema,
-    intent: z
-      .enum([
-        'document_lookup',
-        'how_to',
-        'troubleshooting',
-        'policy_lookup',
-        'spec_lookup',
-        'comparison',
-        'summary',
-        'unknown',
-      ])
-      .optional(),
-    topK: z.number().int().min(1).max(20).optional(),
-    scoreThreshold: z.number().min(0).max(1).optional(),
-    queryRewriteHint: z.string().max(1000).optional(),
-    expectedSourceTypes: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
-    metadataFilterHints: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const planInputSchema = z.object({
+  query: questionSchema,
+  intent: z
+    .enum([
+      'document_lookup',
+      'how_to',
+      'troubleshooting',
+      'policy_lookup',
+      'spec_lookup',
+      'comparison',
+      'summary',
+      'unknown',
+    ])
+    .optional(),
+  topK: z.number().int().min(1).max(20).optional(),
+  scoreThreshold: z.number().min(0).max(1).optional(),
+  queryRewriteHint: z.string().max(1000).optional(),
+  expectedSourceTypes: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
+  metadataFilterHints: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
-const planSchema = z
-  .object({
-    id: z.string(),
-    createdAt: z.string(),
-    query: questionSchema,
-    intent: z
-      .enum([
-        'document_lookup',
-        'how_to',
-        'troubleshooting',
-        'policy_lookup',
-        'spec_lookup',
-        'comparison',
-        'summary',
-        'unknown',
-      ])
-      .optional()
-      .default('document_lookup'),
-    topK: z.number().int().min(1).max(20),
-    scoreThreshold: z.number().min(0).max(1).optional(),
-    queryRewriteHint: z.string().max(1000).optional(),
-    expectedSourceTypes: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
-    metadataFilterHints: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
-    missingContext: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
-    confidence: z.number().min(0).max(1),
-    metadata: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
+const planSchema = z.object({
+  id: z.string(),
+  createdAt: z.string(),
+  query: questionSchema,
+  intent: z
+    .enum([
+      'document_lookup',
+      'how_to',
+      'troubleshooting',
+      'policy_lookup',
+      'spec_lookup',
+      'comparison',
+      'summary',
+      'unknown',
+    ])
+    .optional()
+    .default('document_lookup'),
+  topK: z.number().int().min(1).max(20),
+  scoreThreshold: z.number().min(0).max(1).optional(),
+  queryRewriteHint: z.string().max(1000).optional(),
+  expectedSourceTypes: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
+  metadataFilterHints: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
+  missingContext: z.array(z.string()).max(MAX_ARRAY_COUNT).optional(),
+  confidence: z.number().min(0).max(1),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
 
 const kbRagFlowInputSchema = z
   .object({
@@ -78,7 +74,6 @@ const kbRagFlowInputSchema = z
     createBrief: z.boolean().optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
-  .strict()
   .superRefine((input, ctx) => {
     if (
       input.query === undefined &&
