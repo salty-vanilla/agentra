@@ -5,16 +5,20 @@
   "type": "module",
   "scripts": {
     "synth": "cdk synth",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "aws-cdk-lib": "latest",
     "constructs": "latest"
   },
   "devDependencies": {
+    "@aws-sdk/client-bedrock-agent": "latest",
+    "@types/aws-lambda": "latest",
     "@types/node": "latest",
     "aws-cdk": "latest",
     "tsx": "latest",
-    "typescript": "latest"
+    "typescript": "latest",
+    "vitest": "latest"
   }
 }
