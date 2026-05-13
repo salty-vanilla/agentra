@@ -1,0 +1,68 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/run-with-flags.js pre:config-protection scripts/hooks/config-protection.js standard,strict",
+            "description": "Block modifications to linter/formatter config files (eslint, prettier, biome)"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/run-with-flags.js pre:doc-file-warning scripts/hooks/doc-file-warning.js standard,strict",
+            "description": "Warn about ad-hoc doc files (NOTES.md, TODO.md, SCRATCH.md, etc.)"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/run-with-flags.js pre:suggest-compact scripts/hooks/suggest-compact.js standard,strict",
+            "description": "Suggest /compact at logical intervals to preserve context"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/run-with-flags.js post:console-warn scripts/hooks/post-edit-console-warn.js standard,strict",
+            "description": "Warn about console.log statements in edited TS/JS files"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/hooks/run-with-flags.js stop:desktop-notify scripts/hooks/desktop-notify.js standard,strict",
+            "async": true,
+            "timeout": 10,
+            "description": "Send macOS desktop notification when Claude finishes responding"
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Skill(github-issue-to-pr)",
+      "Skill(github-pr-review-close)",
+      "Bash(git worktree *)"
+    ]
+  }
+}
