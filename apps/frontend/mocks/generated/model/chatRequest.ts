@@ -8,7 +8,6 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 import type { ChatCommand } from './chatCommand';
-import type { ChatMessage } from './chatMessage';
 import type { ChatRequestModel } from './chatRequestModel';
 
 export interface ChatRequest {
@@ -16,7 +15,6 @@ export interface ChatRequest {
   threadId?: string;
   /** @minLength 1 */
   message: string;
-  history?: ChatMessage[];
   model?: ChatRequestModel;
   command?: ChatCommand;
 }

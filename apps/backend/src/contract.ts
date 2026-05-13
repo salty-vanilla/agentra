@@ -127,7 +127,6 @@ async function main() {
       },
       body: JSON.stringify({
         message: 'contract check',
-        history: [],
       }),
     }),
     200,
@@ -143,7 +142,6 @@ async function main() {
       },
       body: JSON.stringify({
         message: 'please create a slide deck',
-        history: [],
         command: {
           type: 'create_slide_presentation',
           topic: 'Contract smoke slide deck',

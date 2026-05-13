@@ -237,12 +237,29 @@ async function* streamAgentCoreBody(
   }
 }
 
+export function buildRuntimePayload(
+  modelKey: ModelKey,
+  sessionId: string,
+  inputText: string,
+  traceId?: string,
+  extra?: { userId?: string; commandDirective?: string },
+): Record<string, unknown> {
+  return {
+    prompt: inputText,
+    model: modelKey,
+    ...(extra?.commandDirective ? { commandDirective: extra.commandDirective } : {}),
+    ...(traceId ? { traceId } : {}),
+    ...(extra?.userId ? { userId: extra.userId } : {}),
+    ...(sessionId ? { threadId: sessionId } : {}),
+  };
+}
+
 async function* invokeAgentCoreRuntimeStream(
   modelKey: ModelKey,
   sessionId: string,
   inputText: string,
   traceId?: string,
-  extra?: { userId?: string },
+  extra?: { userId?: string; commandDirective?: string },
   abortSignal?: AbortSignal,
 ): AsyncGenerator<RuntimeStreamEvent> {
   if (!AGENTCORE_RUNTIME_ARN) {
@@ -257,13 +274,7 @@ async function* invokeAgentCoreRuntimeStream(
     contentType: 'application/json',
     accept: 'text/event-stream',
     payload: new TextEncoder().encode(
-      JSON.stringify({
-        prompt: inputText,
-        model: modelKey,
-        ...(traceId ? { traceId } : {}),
-        ...(extra?.userId ? { userId: extra.userId } : {}),
-        ...(sessionId ? { threadId: sessionId } : {}),
-      }),
+      JSON.stringify(buildRuntimePayload(modelKey, sessionId, inputText, traceId, extra)),
     ),
   });
 
@@ -288,7 +299,7 @@ export async function* invokeAgentStream(
   sessionId: string,
   inputText: string,
   traceId?: string,
-  extra?: { userId?: string },
+  extra?: { userId?: string; commandDirective?: string },
   abortSignal?: AbortSignal,
 ): AsyncGenerator<RuntimeStreamEvent> {
   yield* invokeAgentCoreRuntimeStream(
