@@ -36,6 +36,8 @@ export const postChatBodyModelDefault = `sonnet`;
 
 
 
+
+
 export const PostChatBody = zod.object({
   "threadId": zod.string().min(1).optional(),
   "message": zod.string().min(1),
@@ -53,7 +55,15 @@ export const PostChatBody = zod.object({
   "durationMinutes": zod.union([zod.number().min(1),zod.enum(['auto'])]).optional(),
   "language": zod.enum(['ja', 'en']).optional(),
   "tone": zod.string().optional(),
-  "outputFormat": zod.enum(['pptx']).optional()
+  "outputFormat": zod.enum(['pptx']).optional(),
+  "template": zod.object({
+  "brandFrameId": zod.string().min(1).optional()
+}).optional(),
+  "icons": zod.object({
+  "enabled": zod.boolean().optional(),
+  "providerId": zod.enum(['lucide-local']).optional(),
+  "preferredIconIds": zod.array(zod.string().min(1)).optional()
+}).optional()
 }).optional()
 })
 

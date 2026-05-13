@@ -7,8 +7,10 @@ This spec is the source of truth for frontend client generation and API mocks.
 
  * OpenAPI spec version: 0.1.0
  */
+import type { ChatCommandIcons } from './chatCommandIcons';
 import type { ChatCommandLanguage } from './chatCommandLanguage';
 import type { ChatCommandOutputFormat } from './chatCommandOutputFormat';
+import type { ChatCommandTemplate } from './chatCommandTemplate';
 import type { ChatCommandType } from './chatCommandType';
 
 export interface ChatCommand {
@@ -22,4 +24,6 @@ export interface ChatCommand {
   language?: ChatCommandLanguage;
   tone?: string;
   outputFormat?: ChatCommandOutputFormat;
+  template?: ChatCommandTemplate;
+  icons?: ChatCommandIcons;
 }
