@@ -35,6 +35,8 @@ export * from './chatStreamSubAgentProgressEvent';
 export * from './chatStreamSubAgentProgressEventType';
 export * from './chatStreamTextEvent';
 export * from './chatStreamTextEventType';
+export * from './chatStreamThreadStartedEvent';
+export * from './chatStreamThreadStartedEventType';
 export * from './createThreadRequest';
 export * from './errorResponse';
 export * from './errorResponseDetails';

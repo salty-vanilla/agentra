@@ -16,6 +16,7 @@ import type {
   ChatStreamProgressSummaryEvent,
   ChatStreamSubAgentProgressEvent,
   ChatStreamTextEvent,
+  ChatStreamThreadStartedEvent,
   CreateThreadRequest,
   ErrorResponse,
   HealthResponse,
@@ -26,12 +27,20 @@ import type {
 } from '@/lib/generated/model';
 
 export type ChatStreamEvent =
+  | ChatStreamThreadStartedEvent
   | ChatStreamTextEvent
   | ChatStreamProgressSummaryEvent
   | ChatStreamSubAgentProgressEvent
   | ChatStreamObservationEvent
   | ChatStreamDoneEvent
   | ChatStreamErrorEvent;
+
+export class PrematureSseEofError extends Error {
+  constructor() {
+    super('SSE stream ended without a terminal event (premature EOF)');
+    this.name = 'PrematureSseEofError';
+  }
+}
 
 export type MockChatResponse = {
   threadId: string;
@@ -95,6 +104,8 @@ export async function sendChat(
 /**
  * Streams a chat response from the real backend via SSE.
  * Yields ChatStreamEvent objects as SSE data lines arrive.
+ * Throws PrematureSseEofError if the stream ends without a terminal done/error event
+ * and the caller did not abort.
  */
 export async function* sendChatStream(
   request: ChatRequest,
@@ -120,6 +131,7 @@ export async function* sendChatStream(
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
+  let receivedTerminalEvent = false;
 
   try {
     while (true) {
@@ -136,7 +148,11 @@ export async function* sendChatStream(
         const jsonStr = line.slice('data:'.length).trim();
         if (!jsonStr) continue;
         try {
-          yield JSON.parse(jsonStr) as ChatStreamEvent;
+          const event = JSON.parse(jsonStr) as ChatStreamEvent;
+          if (event.type === 'done' || event.type === 'error') {
+            receivedTerminalEvent = true;
+          }
+          yield event;
         } catch {
           // Ignore malformed SSE data lines
         }
@@ -144,6 +160,10 @@ export async function* sendChatStream(
     }
   } finally {
     reader.releaseLock();
+  }
+
+  if (!receivedTerminalEvent && !signal?.aborted) {
+    throw new PrematureSseEofError();
   }
 }
 

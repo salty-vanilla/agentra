@@ -45,6 +45,11 @@ export const chatStreamSubAgentProgressEventSchema = z.object({
   event: subAgentProgressEventSchema,
 });
 
+export const chatStreamThreadStartedEventSchema = z.object({
+  type: z.literal('thread_started'),
+  threadId: z.string().min(1),
+});
+
 export const chatStreamTextEventSchema = z.object({
   type: z.literal('text'),
   text: z.string(),
@@ -65,11 +70,13 @@ export const chatStreamDoneEventSchema = z.object({
 
 export const chatStreamErrorEventSchema = z.object({
   type: z.literal('error'),
+  threadId: z.string().min(1).optional(),
   error: z.string().min(1),
   observabilitySummary: chatObservationSummarySchema.optional(),
 });
 
 export const chatStreamEventSchema = z.union([
+  chatStreamThreadStartedEventSchema,
   chatStreamTextEventSchema,
   chatStreamProgressSummaryEventSchema,
   chatStreamSubAgentProgressEventSchema,

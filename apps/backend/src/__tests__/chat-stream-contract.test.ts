@@ -62,4 +62,51 @@ describe('chat stream contract', () => {
       }).success,
     ).toBe(true);
   });
+
+  it('accepts thread_started event with threadId', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'thread_started',
+        threadId: 'thread-abc-123',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects thread_started event without threadId', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'thread_started',
+      }).success,
+    ).toBe(false);
+  });
+
+  it('accepts error event with optional threadId', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'error',
+        threadId: 'thread-abc-123',
+        error: 'Agent invocation failed.',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts error event without threadId (backward compatibility)', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'error',
+        error: 'Agent invocation failed.',
+      }).success,
+    ).toBe(true);
+  });
+
+  it('accepts done event with required threadId', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'done',
+        threadId: 'thread-abc-123',
+        model: 'claude-sonnet-4-6',
+        createdAt: '2026-05-07T00:00:05.000Z',
+      }).success,
+    ).toBe(true);
+  });
 });

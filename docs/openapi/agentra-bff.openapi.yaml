@@ -45,9 +45,9 @@ paths:
                 type: string
                 description: |
                   Server-Sent Events stream. Each line is `data: <json>`.
-                  JSON payload is one of ChatStreamTextEvent, ChatStreamProgressSummaryEvent,
-                  ChatStreamSubAgentProgressEvent, ChatStreamObservationEvent,
-                  ChatStreamDoneEvent, ChatStreamErrorEvent.
+                  JSON payload is one of ChatStreamThreadStartedEvent, ChatStreamTextEvent,
+                  ChatStreamProgressSummaryEvent, ChatStreamSubAgentProgressEvent,
+                  ChatStreamObservationEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:
@@ -356,6 +356,20 @@ components:
         createdAt:
           type: string
           format: date-time
+    ChatStreamThreadStartedEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - threadId
+      properties:
+        type:
+          type: string
+          enum:
+            - thread_started
+        threadId:
+          type: string
+          minLength: 1
     ChatStreamTextEvent:
       type: object
       additionalProperties: false
@@ -613,6 +627,9 @@ components:
           type: string
           enum:
             - error
+        threadId:
+          type: string
+          minLength: 1
         error:
           type: string
           minLength: 1
