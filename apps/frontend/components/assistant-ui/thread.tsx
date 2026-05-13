@@ -38,6 +38,7 @@ import { type ModelKey, ModelSelector } from '@/components/model-selector';
 import { ProgressSummaryCard } from '@/components/progress-summary-card';
 import { SlideCommandBadge } from '@/components/slide-command-badge';
 import { SlideCommandDialog } from '@/components/slide-command-dialog';
+import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -45,7 +46,11 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { isMockApiMode } from '@/lib/api-config';
-import type { ChatCommand, ProgressSummaryEvent } from '@/lib/generated/model';
+import type {
+  ChatCommand,
+  ProgressSummaryEvent,
+  SubAgentProgressEvent,
+} from '@/lib/generated/model';
 import { cn } from '@/lib/utils';
 
 const threadMessageRootVariants = cva(
@@ -77,6 +82,7 @@ export const Thread: FC<{
   onSlideDialogOpenChange?: (open: boolean) => void;
   progressEvents?: ProgressSummaryEvent[];
   activeProgressPhase?: string;
+  subAgentProgressEvents?: SubAgentProgressEvent[];
 }> = ({
   modelValue,
   onModelChange,
@@ -87,6 +93,7 @@ export const Thread: FC<{
   onSlideDialogOpenChange,
   progressEvents,
   activeProgressPhase,
+  subAgentProgressEvents,
 }) => {
   return (
     <ThreadPrimitive.Root
@@ -121,6 +128,11 @@ export const Thread: FC<{
                   events={progressEvents}
                   {...(activeProgressPhase ? { activePhase: activeProgressPhase } : {})}
                 />
+              </div>
+            )}
+            {subAgentProgressEvents && subAgentProgressEvents.length > 0 && (
+              <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
+                <SubAgentProgressCard events={subAgentProgressEvents} />
               </div>
             )}
             <ThreadScrollToBottom />

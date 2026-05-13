@@ -4,10 +4,20 @@ import {
   InvokeAgentRuntimeCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
 
+export type SubAgentStage = {
+  stage: string;
+  status: 'running' | 'complete' | 'error';
+  durationMs?: number;
+};
+
 export type ModelKey = 'opus' | 'sonnet' | 'haiku';
 export type RuntimeStreamEvent =
   | { type: 'text'; text: string }
-  | { type: 'observation'; observation: ChatObservationSummary }
+  | {
+      type: 'observation';
+      observation: ChatObservationSummary;
+      subAgentStage?: SubAgentStage;
+    }
   | { type: 'done'; observabilitySummary?: ChatObservationSummary }
   | { type: 'error'; error: string; observabilitySummary?: ChatObservationSummary };
 
@@ -54,6 +64,7 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
           type?: string;
           text?: string;
           observation?: ChatObservationSummary;
+          subAgentStage?: SubAgentStage;
           observabilitySummary?: ChatObservationSummary;
           error?: string;
         };
@@ -68,6 +79,7 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
       type?: string;
       text?: string;
       observation?: ChatObservationSummary;
+      subAgentStage?: SubAgentStage;
       observabilitySummary?: ChatObservationSummary;
       error?: string;
     };
@@ -80,7 +92,13 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
       return { type: 'text', text: typed.text };
     }
     if (typed.type === 'observation' && typed.observation) {
-      return { type: 'observation', observation: typed.observation };
+      return {
+        type: 'observation',
+        observation: typed.observation,
+        ...(isSubAgentStage(typed.subAgentStage)
+          ? { subAgentStage: typed.subAgentStage }
+          : {}),
+      };
     }
     if (typed.type === 'done') {
       return typed.observabilitySummary
@@ -100,6 +118,23 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
     return undefined;
   }
   return undefined;
+}
+
+function isSubAgentStage(value: unknown): value is SubAgentStage {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  const candidate = value as Partial<SubAgentStage>;
+  return (
+    typeof candidate.stage === 'string' &&
+    candidate.stage.length > 0 &&
+    (candidate.status === 'running' ||
+      candidate.status === 'complete' ||
+      candidate.status === 'error') &&
+    (candidate.durationMs === undefined ||
+      (Number.isInteger(candidate.durationMs) && candidate.durationMs >= 0))
+  );
 }
 
 async function* streamAgentCoreBody(

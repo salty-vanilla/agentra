@@ -46,7 +46,8 @@ paths:
                 description: |
                   Server-Sent Events stream. Each line is `data: <json>`.
                   JSON payload is one of ChatStreamTextEvent, ChatStreamProgressSummaryEvent,
-                  ChatStreamObservationEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
+                  ChatStreamSubAgentProgressEvent, ChatStreamObservationEvent,
+                  ChatStreamDoneEvent, ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:
@@ -420,6 +421,47 @@ components:
             - progress_summary
         event:
           $ref: '#/components/schemas/ProgressSummaryEvent'
+    SubAgentProgressEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - stage
+        - status
+        - timestamp
+      properties:
+        type:
+          type: string
+          enum:
+            - sub_agent_progress
+        stage:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - running
+            - complete
+            - error
+        durationMs:
+          type: integer
+          minimum: 0
+        timestamp:
+          type: string
+          format: date-time
+    ChatStreamSubAgentProgressEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - event
+      properties:
+        type:
+          type: string
+          enum:
+            - sub_agent_progress
+        event:
+          $ref: '#/components/schemas/SubAgentProgressEvent'
     ChatObservationToolCall:
       type: object
       additionalProperties: false
