@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ObservationCollector } from '../observability.js';
 
 describe('observability collector', () => {
@@ -65,5 +65,35 @@ describe('observability collector', () => {
         threadId: 'thread-1',
       },
     });
+  });
+
+  it('logs error summary to console with structured format', () => {
+    const consoleInfoSpy = vi.spyOn(console, 'info').mockImplementation(() => {});
+
+    const collector = new ObservationCollector(
+      'trace-789',
+      '2026-05-07T00:00:00.000Z',
+      false,
+    );
+
+    const errorSummary = collector.createSnapshot('error', '2026-05-07T00:00:05.000Z');
+    collector.logErrorSummary(errorSummary);
+
+    expect(consoleInfoSpy).toHaveBeenCalledOnce();
+    const logCall = consoleInfoSpy.mock.calls[0][0];
+    const parsed = JSON.parse(logCall as string);
+
+    expect(parsed).toMatchObject({
+      level: 'error',
+      message: 'invocation_error_summary',
+      traceId: 'trace-789',
+      observationSummary: {
+        status: 'error',
+        traceId: 'trace-789',
+      },
+    });
+    expect(parsed.timestamp).toBeDefined();
+
+    consoleInfoSpy.mockRestore();
   });
 });
