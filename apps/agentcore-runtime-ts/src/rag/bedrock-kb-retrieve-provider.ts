@@ -8,6 +8,7 @@ import {
   BedrockAgentRuntimeClient,
   RetrieveCommand,
 } from '@aws-sdk/client-bedrock-agent-runtime';
+import { createCallTelemetry, formatTelemetryLog } from '../lib/timeout-handler.js';
 import type {
   RagMetadataFilter,
   RagMetadataFilterCondition,
@@ -28,6 +29,7 @@ const MAX_FILTER_CONDITIONS = 20;
 const MAX_FILTER_KEY_LENGTH = 200;
 const MAX_FILTER_STRING_LENGTH = 1000;
 const MAX_FILTER_ARRAY_LENGTH = 50;
+const KB_RETRIEVE_TIMEOUT_MS = 30000; // 30 seconds
 
 type RetrieveClient = {
   send(command: RetrieveCommand): Promise<unknown>;
@@ -443,22 +445,67 @@ function createBedrockAgentRuntimeClient(region = resolveRegion()): RetrieveClie
 async function retrieveKnowledgeBase(
   client: RetrieveClient,
   input: ResolvedBedrockKbRetrieveInput,
+  abortSignal?: AbortSignal,
 ): Promise<unknown> {
-  const bedrockFilter = toBedrockRetrievalFilter(input.metadataFilter);
-  const command = new RetrieveCommand({
-    knowledgeBaseId: input.knowledgeBaseId,
-    retrievalQuery: {
-      text: input.query,
-    },
-    retrievalConfiguration: {
-      vectorSearchConfiguration: {
-        numberOfResults: input.topK,
-        ...(bedrockFilter ? { filter: bedrockFilter as never } : {}),
-      },
-    },
-  });
+  const telemetry = createCallTelemetry();
+  const controller = new AbortController();
+  let timedOut = false;
 
-  return client.send(command);
+  const timeoutHandle = setTimeout(() => {
+    timedOut = true;
+    console.warn(
+      `[bedrock-kb] retrieve timeout: Operation exceeded ${KB_RETRIEVE_TIMEOUT_MS}ms`,
+    );
+    controller.abort();
+  }, KB_RETRIEVE_TIMEOUT_MS);
+
+  try {
+    const bedrockFilter = toBedrockRetrievalFilter(input.metadataFilter);
+    const command = new RetrieveCommand({
+      knowledgeBaseId: input.knowledgeBaseId,
+      retrievalQuery: {
+        text: input.query,
+      },
+      retrievalConfiguration: {
+        vectorSearchConfiguration: {
+          numberOfResults: input.topK,
+          ...(bedrockFilter ? { filter: bedrockFilter as never } : {}),
+        },
+      },
+    });
+
+    const _signal = abortSignal || controller.signal;
+    const result = await client.send(command);
+    return result;
+  } catch (error) {
+    const logMessage = formatTelemetryLog('bedrock-kb-retrieve', telemetry);
+    if (timedOut) {
+      console.error(
+        `[bedrock-kb] ${logMessage} - retrieve timed out after ${KB_RETRIEVE_TIMEOUT_MS}ms`,
+      );
+      throw new Error(
+        `Knowledge Base retrieval timed out after ${KB_RETRIEVE_TIMEOUT_MS}ms: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    if (abortSignal?.aborted) {
+      console.warn(`[bedrock-kb] ${logMessage} - retrieve was cancelled`);
+      throw new Error(
+        `Knowledge Base retrieval was cancelled: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
+
+    console.error(`[bedrock-kb] ${logMessage}`, error);
+    throw error;
+  } finally {
+    clearTimeout(timeoutHandle);
+    telemetry.completedAt = Date.now();
+    telemetry.durationMs = telemetry.completedAt - telemetry.startedAt;
+  }
 }
 
 export function buildBedrockKbRetrieveOutput(
@@ -558,12 +605,15 @@ export class BedrockKbRetrieveProvider implements RagProvider {
     this.client = config.client ?? createBedrockAgentRuntimeClient(config.region);
   }
 
-  async search(input: BedrockKbRetrieveSearchInput): Promise<RagSearchOutput> {
+  async search(
+    input: BedrockKbRetrieveSearchInput,
+    abortSignal?: AbortSignal,
+  ): Promise<RagSearchOutput> {
     const resolved = resolveBedrockKbRetrieveInput(input, {
       knowledgeBaseId: this.config.knowledgeBaseId,
       defaultTopK: this.config.defaultTopK,
     });
-    const response = await retrieveKnowledgeBase(this.client, resolved);
+    const response = await retrieveKnowledgeBase(this.client, resolved, abortSignal);
     return buildBedrockKbRetrieveOutput(resolved, response);
   }
 }
