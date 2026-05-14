@@ -111,7 +111,20 @@ function logObservabilityDebug(
 const app = new Hono<HonoEnv>();
 
 app.use('*', requestIdMiddleware);
-app.use('*', cors());
+
+const allowedOrigins = process.env.ALLOWED_CORS_ORIGINS?.split(',').map((origin) =>
+  origin.trim(),
+) ?? ['http://localhost:3000'];
+
+app.use(
+  '*',
+  cors({
+    origin: allowedOrigins,
+    allowHeaders: ['content-type', 'authorization'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    credentials: true,
+  }),
+);
 app.use('/chat', authMiddleware);
 app.use('/threads/*', authMiddleware);
 app.use('/threads', authMiddleware);
