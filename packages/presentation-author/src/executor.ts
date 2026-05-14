@@ -23,7 +23,7 @@ function resolveNodeModulePackageJsonPath(moduleName: string): string {
   return require.resolve(`${moduleName}/package.json`);
 }
 
-async function prepareSandboxRuntime(input: {
+export async function prepareSandboxRuntime(input: {
   workDir: string;
   pptxgenjsBundlePath: string;
   jszipBundlePath: string;
@@ -32,8 +32,22 @@ async function prepareSandboxRuntime(input: {
   const bundlePath = join(input.workDir, 'pptxgenjs-sandbox.cjs');
 
   const pptxgenjsBundleSource = await readFile(input.pptxgenjsBundlePath, 'utf-8');
+  const pattern = /require\((['"])jszip\1\)/;
+
+  const matches = pptxgenjsBundleSource.match(new RegExp(pattern.source, 'g'));
+  if (!matches || matches.length === 0) {
+    throw new Error(
+      `Failed to prepare sandbox runtime: jszip require pattern not found in bundled pptxgenjs`,
+    );
+  }
+  if (matches.length !== 1) {
+    throw new Error(
+      `Failed to prepare sandbox runtime: expected exactly 1 jszip require pattern, found ${matches.length}`,
+    );
+  }
+
   const rewrittenPptxgenjsBundleSource = pptxgenjsBundleSource.replace(
-    /require\((['"])jszip\1\)/,
+    pattern,
     `require(${JSON.stringify(input.jszipBundlePath)})`,
   );
 
