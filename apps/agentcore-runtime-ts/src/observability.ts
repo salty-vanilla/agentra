@@ -385,6 +385,18 @@ export class ObservationCollector {
     });
   }
 
+  logErrorSummary(summary: ObservationSummary): void {
+    const timestamp = new Date().toISOString();
+    const logEntry = {
+      timestamp,
+      level: 'error',
+      message: 'invocation_error_summary',
+      traceId: this.traceId,
+      observationSummary: summary,
+    };
+    console.info(JSON.stringify(logEntry));
+  }
+
   private logDebug(message: string, data?: Record<string, unknown>) {
     if (!this.debugEnabled) {
       return;

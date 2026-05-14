@@ -5,6 +5,7 @@ import { buildRouterPrompt, createRouterAgent } from './agents/router/index.js';
 import { buildLoggerOptions } from './logging.js';
 import { createRuntimeSessionManager } from './memory/session-manager-factory.js';
 import { ObservationCollector } from './observability.js';
+import { RuntimeLogger } from './runtime-logger.js';
 import type { SubAgentProgressEvent } from './tools/invoke-manufacturing-line-agent.tool.js';
 
 export type {
@@ -154,6 +155,14 @@ const app = new BedrockAgentCoreApp({
         startedAt,
         OBSERVABILITY_DEBUG_LOG,
       );
+      const modelId = resolveConfig(effectivePreset, request.length).modelId;
+      const logger = new RuntimeLogger(traceId, threadId, modelId);
+
+      logger.logInvocationStart({
+        userId,
+        preset: effectivePreset,
+        length: request.length,
+      });
 
       try {
         const stream = agent.stream(finalPrompt);
@@ -268,6 +277,16 @@ const app = new BedrockAgentCoreApp({
 
         const finalObservation = observability.createSnapshot('success');
         observability.logFinalSummary();
+        const durationMs = Math.max(
+          0,
+          new Date(finalObservation.completedAt).getTime() -
+            new Date(startedAt).getTime(),
+        );
+        logger.logInvocationEnd(durationMs, {
+          tokenUsage: finalObservation.tokenUsage,
+          toolCallCount: finalObservation.toolCallCount,
+          toolFailureCount: finalObservation.toolFailureCount,
+        });
 
         yield {
           event: 'message',
@@ -282,6 +301,11 @@ const app = new BedrockAgentCoreApp({
           error instanceof Error && error.message.trim().length > 0
             ? error.message
             : 'Runtime processing failed.';
+
+        observability.logErrorSummary(finalObservation);
+        logger.logInvocationError(error, {
+          finalObservation,
+        });
 
         yield {
           event: 'message',
