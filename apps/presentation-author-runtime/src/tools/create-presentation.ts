@@ -13,6 +13,24 @@ import { FONT_POLICY_STYLE_GUIDE } from '../font-policy.js';
 import { createPresentationAuthorLlmClient } from '../llm-adapter.js';
 import { logger } from '../logger.js';
 
+type UserFacingArtifact = Omit<
+  UploadedPresentationArtifact,
+  'localPath' | 'bucket' | 'key' | 's3Uri'
+>;
+
+function filterUserFacingArtifacts(
+  artifacts: UploadedPresentationArtifact[],
+): UserFacingArtifact[] {
+  return artifacts.map((artifact) => ({
+    kind: artifact.kind,
+    label: artifact.label,
+    downloadUrl: artifact.downloadUrl,
+    uploaded: artifact.uploaded,
+    contentType: artifact.contentType,
+    sizeBytes: artifact.sizeBytes,
+  }));
+}
+
 const envDiagnostics = process.env.PRESENTATION_AUTHOR_ENABLE_DIAGNOSTICS !== 'false';
 const envRevision = process.env.PRESENTATION_AUTHOR_ENABLE_REVISION !== 'false';
 const envOutputDir = process.env.PRESENTATION_AUTHOR_OUTPUT_DIR;
@@ -37,7 +55,7 @@ const llmClient = createPresentationAuthorLlmClient();
 const s3Client = envBucketName ? new S3Client({}) : undefined;
 
 export interface SlideRuntimePresentationResult extends CreatePresentationToolOutput {
-  uploadedArtifacts?: UploadedPresentationArtifact[] | undefined;
+  uploadedArtifacts?: UserFacingArtifact[] | undefined;
   pptxDownloadUrl?: string | undefined;
   contactSheetDownloadUrl?: string | undefined;
 }
@@ -88,6 +106,14 @@ export async function executeCreatePresentationTool(
     const durationMs = Date.now() - startTime;
 
     if (result.success) {
+      logger.debug({
+        component: 'create-presentation-tool',
+        runId,
+        step: 'create_presentation_paths',
+        pptxPath: result.pptxPath,
+        contactSheetPath: result.contactSheetPath,
+      });
+
       logger.info({
         component: 'create-presentation-tool',
         runId,
@@ -99,8 +125,6 @@ export async function executeCreatePresentationTool(
         revisionSucceeded: result.revisionSucceeded,
         revisionReason: result.revisionReason,
         artifactCount: result.artifacts?.length ?? 0,
-        pptxPath: result.pptxPath,
-        contactSheetPath: result.contactSheetPath,
         warningCount: result.warnings?.length ?? 0,
         imageRetrievedCount: result.images?.retrievedCount ?? 0,
         imageGeneratedCount: result.images?.generatedCount ?? 0,
@@ -157,7 +181,9 @@ export async function executeCreatePresentationTool(
       return {
         ...result,
         warnings: [...result.warnings, ...uploadWarnings],
-        uploadedArtifacts,
+        uploadedArtifacts: uploadedArtifacts
+          ? filterUserFacingArtifacts(uploadedArtifacts)
+          : undefined,
         pptxDownloadUrl,
         contactSheetDownloadUrl,
       };
