@@ -93,7 +93,7 @@ export async function uploadPresentationArtifacts(
     return { uploadedArtifacts, warnings };
   }
 
-  const eligible: (typeof result.artifacts[number] & {
+  const eligible: ((typeof result.artifacts)[number] & {
     path: string;
     exists: true;
   })[] = [];
