@@ -93,7 +93,11 @@ export class RuntimeLogger {
   private readonly context: LogContext;
 
   constructor(traceId: string, threadId?: string, model?: string) {
-    this.context = { traceId, threadId, model };
+    this.context = {
+      traceId,
+      ...(threadId ? { threadId } : {}),
+      ...(model ? { model } : {}),
+    };
   }
 
   setRequestId(requestId: string): void {
