@@ -1,4 +1,5 @@
 import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
+import { ApiError } from '@/lib/api-error';
 import {
   createThread as createThreadRequest,
   deleteThread as deleteThreadRequest,
@@ -18,7 +19,6 @@ import type {
   ChatStreamTextEvent,
   ChatStreamThreadStartedEvent,
   CreateThreadRequest,
-  ErrorResponse,
   HealthResponse,
   ThreadMessagesResponse,
   ThreadResponse,
@@ -200,15 +200,11 @@ export async function deleteThreadById(threadId: string): Promise<ThreadResponse
 }
 
 async function expectThreadResponse(
-  responsePromise: Promise<ThreadResponse | ErrorResponse>,
+  responsePromise: Promise<ThreadResponse>,
 ): Promise<ThreadResponse> {
   const response = await responsePromise;
-  if (!isThreadResponse(response)) {
-    throw new Error('Thread operation failed.');
+  if (!response || typeof response !== 'object' || !('thread' in response)) {
+    throw new ApiError(502, { error: 'Unexpected response shape from thread API.' });
   }
   return response;
-}
-
-function isThreadResponse(response: unknown): response is ThreadResponse {
-  return !!response && typeof response === 'object' && 'thread' in response;
 }

@@ -309,6 +309,28 @@ components:
           type: string
           enum:
             - pptx
+        template:
+          type: object
+          additionalProperties: false
+          properties:
+            brandFrameId:
+              type: string
+              minLength: 1
+        icons:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              type: boolean
+            providerId:
+              type: string
+              enum:
+                - lucide-local
+            preferredIconIds:
+              type: array
+              items:
+                type: string
+                minLength: 1
     ChatRequest:
       type: object
       additionalProperties: false
@@ -714,4 +736,5 @@ components:
           type: string
           minLength: 1
         details:
-          type: object
+          type: array
+          items: {}

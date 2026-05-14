@@ -7,10 +7,10 @@ This spec is the source of truth for frontend client generation and API mocks.
 
  * OpenAPI spec version: 0.1.0
  */
+import type { ChatCommandIconsProviderId } from './chatCommandIconsProviderId';
 
-export interface ErrorResponse {
-  /** @minLength 1 */
-  error: string;
-  details?: unknown[];
-  [key: string]: unknown;
- }
+export type ChatCommandIcons = {
+  enabled?: boolean;
+  providerId?: ChatCommandIconsProviderId;
+  preferredIconIds?: string[];
+};

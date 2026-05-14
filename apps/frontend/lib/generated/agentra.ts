@@ -17,6 +17,7 @@ import type {
   UpdateThreadRequest
 } from './model';
 
+import { fetchMutator } from '../api-error';
 /**
  * @summary Get backend health
  */
@@ -30,20 +31,14 @@ export const getGetHealthUrl = () => {
 
 export const getHealth = async ( options?: RequestInit): Promise<HealthResponse> => {
 
-  const res = await fetch(getGetHealthUrl(),
+  return fetchMutator<HealthResponse>(getGetHealthUrl(),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: HealthResponse = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -60,7 +55,7 @@ export const getPostChatUrl = () => {
 
 export const postChat = async (chatRequest: ChatRequest, options?: RequestInit): Promise<string> => {
 
-  const res = await fetch(getPostChatUrl(),
+  return fetchMutator<string>(getPostChatUrl(),
   {
     ...options,
     method: 'POST',
@@ -68,13 +63,7 @@ export const postChat = async (chatRequest: ChatRequest, options?: RequestInit):
     body: JSON.stringify(
       chatRequest,)
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: string = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -91,20 +80,14 @@ export const getListThreadsUrl = () => {
 
 export const listThreads = async ( options?: RequestInit): Promise<ThreadsResponse> => {
 
-  const res = await fetch(getListThreadsUrl(),
+  return fetchMutator<ThreadsResponse>(getListThreadsUrl(),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: ThreadsResponse = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -121,7 +104,7 @@ export const getCreateThreadUrl = () => {
 
 export const createThread = async (createThreadRequest?: CreateThreadRequest, options?: RequestInit): Promise<ThreadResponse> => {
 
-  const res = await fetch(getCreateThreadUrl(),
+  return fetchMutator<ThreadResponse>(getCreateThreadUrl(),
   {
     ...options,
     method: 'POST',
@@ -129,13 +112,7 @@ export const createThread = async (createThreadRequest?: CreateThreadRequest, op
     body: JSON.stringify(
       createThreadRequest,)
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: ThreadResponse = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -152,20 +129,14 @@ export const getGetThreadUrl = (threadId: string,) => {
 
 export const getThread = async (threadId: string, options?: RequestInit): Promise<ThreadResponse> => {
 
-  const res = await fetch(getGetThreadUrl(threadId),
+  return fetchMutator<ThreadResponse>(getGetThreadUrl(threadId),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: ThreadResponse = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -183,7 +154,7 @@ export const getUpdateThreadUrl = (threadId: string,) => {
 export const updateThread = async (threadId: string,
     updateThreadRequest: UpdateThreadRequest, options?: RequestInit): Promise<ThreadResponse> => {
 
-  const res = await fetch(getUpdateThreadUrl(threadId),
+  return fetchMutator<ThreadResponse>(getUpdateThreadUrl(threadId),
   {
     ...options,
     method: 'PATCH',
@@ -191,13 +162,7 @@ export const updateThread = async (threadId: string,
     body: JSON.stringify(
       updateThreadRequest,)
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: ThreadResponse = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -214,20 +179,14 @@ export const getDeleteThreadUrl = (threadId: string,) => {
 
 export const deleteThread = async (threadId: string, options?: RequestInit): Promise<ThreadResponse> => {
 
-  const res = await fetch(getDeleteThreadUrl(threadId),
+  return fetchMutator<ThreadResponse>(getDeleteThreadUrl(threadId),
   {
     ...options,
     method: 'DELETE'
 
 
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: ThreadResponse = body ? JSON.parse(body) : {}
-  return data
-}
+);}
 
 
 
@@ -244,17 +203,11 @@ export const getListThreadMessagesUrl = (threadId: string,) => {
 
 export const listThreadMessages = async (threadId: string, options?: RequestInit): Promise<ThreadMessagesResponse> => {
 
-  const res = await fetch(getListThreadMessagesUrl(threadId),
+  return fetchMutator<ThreadMessagesResponse>(getListThreadMessagesUrl(threadId),
   {
     ...options,
     method: 'GET'
 
 
   }
-)
-
-  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
-
-  const data: ThreadMessagesResponse = body ? JSON.parse(body) : {}
-  return data
-}
+);}

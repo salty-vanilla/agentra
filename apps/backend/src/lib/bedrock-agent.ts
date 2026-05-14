@@ -1,4 +1,7 @@
-import type { ChatObservationSummary } from '@agentra/shared';
+import {
+  type ChatObservationSummary,
+  chatObservationSummarySchema,
+} from '@agentra/shared';
 import {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
@@ -53,6 +56,18 @@ function decodeRuntimeChunk(chunk: unknown): string {
   return String(chunk ?? '');
 }
 
+function parseObservationSummary(raw: unknown): ChatObservationSummary | undefined {
+  const result = chatObservationSummarySchema.safeParse(raw);
+  if (!result.success) {
+    console.warn(
+      '[bedrock-agent] invalid observation summary dropped',
+      JSON.stringify(result.error.issues),
+    );
+    return undefined;
+  }
+  return result.data;
+}
+
 function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
   try {
     const parsed = JSON.parse(raw) as
@@ -92,26 +107,32 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
       return { type: 'text', text: typed.text };
     }
     if (typed.type === 'observation' && typed.observation) {
+      const observation = parseObservationSummary(typed.observation);
+      if (!observation) return undefined;
       return {
         type: 'observation',
-        observation: typed.observation,
+        observation,
         ...(isSubAgentStage(typed.subAgentStage)
           ? { subAgentStage: typed.subAgentStage }
           : {}),
       };
     }
     if (typed.type === 'done') {
-      return typed.observabilitySummary
-        ? { type: 'done', observabilitySummary: typed.observabilitySummary }
+      const observabilitySummary = typed.observabilitySummary
+        ? parseObservationSummary(typed.observabilitySummary)
+        : undefined;
+      return observabilitySummary
+        ? { type: 'done', observabilitySummary }
         : { type: 'done' };
     }
     if (typed.type === 'error' && typeof typed.error === 'string') {
+      const observabilitySummary = typed.observabilitySummary
+        ? parseObservationSummary(typed.observabilitySummary)
+        : undefined;
       return {
         type: 'error',
         error: typed.error,
-        ...(typed.observabilitySummary
-          ? { observabilitySummary: typed.observabilitySummary }
-          : {}),
+        ...(observabilitySummary ? { observabilitySummary } : {}),
       };
     }
   } catch {

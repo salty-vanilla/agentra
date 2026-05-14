@@ -8,4 +8,9 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 
-export type ErrorResponseDetails = { [key: string]: unknown };
+export type ChatCommandIconsProviderId = typeof ChatCommandIconsProviderId[keyof typeof ChatCommandIconsProviderId];
+
+
+export const ChatCommandIconsProviderId = {
+  'lucide-local': 'lucide-local',
+} as const;

@@ -8,9 +8,7 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ErrorResponse {
+export type ChatCommandTemplate = {
   /** @minLength 1 */
-  error: string;
-  details?: unknown[];
-  [key: string]: unknown;
- }
+  brandFrameId?: string;
+};
