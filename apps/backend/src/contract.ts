@@ -56,6 +56,7 @@ async function assertChatStreamResponse(
 
   let sawDone = false;
   let sawError = false;
+  let sawThreadStarted = false;
   for (const raw of events) {
     const parsed = JSON.parse(raw) as unknown;
     const event = chatStreamEventSchema.parse(parsed);
@@ -65,10 +66,17 @@ async function assertChatStreamResponse(
     if (event.type === 'error') {
       sawError = true;
     }
+    if (event.type === 'thread_started') {
+      sawThreadStarted = true;
+    }
   }
 
   if (!sawDone && !sawError) {
     throw new Error(`${label}: stream completed without done or error event`);
+  }
+
+  if (!sawThreadStarted) {
+    throw new Error(`${label}: stream did not emit a thread_started event`);
   }
 
   return events;

@@ -199,6 +199,11 @@ app.post('/chat', async (context) => {
     const upstreamAbortController = new AbortController();
     const heartbeatAbortController = new AbortController();
 
+    await stream.writeEvent({
+      event: 'thread_started',
+      data: { type: 'thread_started', threadId: thread.threadId },
+    });
+
     async function emitProgress(
       phase: ProgressSummaryEvent['phase'],
       title: string,
@@ -338,6 +343,7 @@ app.post('/chat', async (context) => {
         event: 'error',
         data: {
           type: 'error',
+          threadId: thread.threadId,
           error: `Agent invocation failed. traceId=${traceId}`,
           observabilitySummary: fallbackSummary,
         },

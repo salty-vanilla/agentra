@@ -20,6 +20,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/s
 import {
   createThread,
   deleteThreadById,
+  PrematureSseEofError,
   sendChat,
   sendChatStream,
   updateThreadTitle,
@@ -382,12 +383,15 @@ export function AgentraWorkspace() {
 
         // Real mode: SSE streaming
         let fullText = '';
+        let streamThreadId: string | null = null;
         let doneThreadId: string | null = null;
         let doneObservabilitySummary: ChatObservationSummary | null = null;
 
         try {
           for await (const event of sendChatStream(finalRequest, abortSignal)) {
-            if (event.type === 'text') {
+            if (event.type === 'thread_started') {
+              streamThreadId = event.threadId;
+            } else if (event.type === 'text') {
               fullText += event.text;
               yield { content: [{ type: 'text', text: fullText }] };
             } else if (event.type === 'progress_summary') {
@@ -404,6 +408,9 @@ export function AgentraWorkspace() {
                 setLiveObservabilitySummary(event.observabilitySummary);
               }
             } else if (event.type === 'error') {
+              if (event.threadId) {
+                streamThreadId = event.threadId;
+              }
               if (event.observabilitySummary) {
                 doneObservabilitySummary = event.observabilitySummary;
                 setLiveObservabilitySummary(event.observabilitySummary);
@@ -413,15 +420,19 @@ export function AgentraWorkspace() {
           }
         } catch (error: unknown) {
           stopProgressSimulation(true);
-          if (selectedThreadId) {
+          const threadIdForInvalidation = selectedThreadId ?? streamThreadId;
+          if (threadIdForInvalidation) {
             await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
             await queryClient.invalidateQueries({
-              queryKey: agentraQueryKeys.threadMessages(selectedThreadId),
+              queryKey: agentraQueryKeys.threadMessages(threadIdForInvalidation),
             });
           }
+          const isPrematureEof = error instanceof PrematureSseEofError;
           toast.error('メッセージ送信に失敗しました', {
             description: getErrorMessage(
-              error,
+              isPrematureEof
+                ? new Error('接続が予期せず切断されました。再試行してください。')
+                : error,
               'バックエンドまたは AgentCore の状態を確認してください。',
             ),
             duration: 6000,
