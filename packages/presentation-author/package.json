@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc -b",
     "typecheck": "tsc --noEmit",
-    "test": "tsc --noEmit",
+    "test": "vitest",
     "dogfood": "tsx scripts/dogfood.ts"
   },
   "dependencies": {
