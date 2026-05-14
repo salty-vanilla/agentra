@@ -357,6 +357,20 @@ components:
         createdAt:
           type: string
           format: date-time
+    ChatStreamThreadStartedEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - threadId
+      properties:
+        type:
+          type: string
+          enum:
+            - thread_started
+        threadId:
+          type: string
+          minLength: 1
     ChatStreamTextEvent:
       type: object
       additionalProperties: false
@@ -615,6 +629,9 @@ components:
           enum:
             - error
         error:
+          type: string
+          minLength: 1
+        threadId:
           type: string
           minLength: 1
         observabilitySummary:
