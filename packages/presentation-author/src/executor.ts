@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { access, readFile, realpath, writeFile } from 'node:fs/promises';
+import { access, cp, readFile, realpath, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
 import { repairPptx } from './pptx-repair.js';
@@ -109,6 +109,31 @@ export async function executeAuthoringScript(input: {
   const nodeExecutableDir = dirname(process.execPath);
   const nodeInstallRoot = dirname(nodeExecutableDir);
   const sandboxSourceJsPath = join(sandboxWorkDir, basename(input.sourceJsPath));
+
+  // Validate that the source file exists and copy it into the sandbox if needed
+  try {
+    await access(input.sourceJsPath);
+  } catch {
+    throw new Error(
+      `Source script not found: ${input.sourceJsPath}. The source script must exist before calling executeAuthoringScript.`,
+    );
+  }
+
+  // Resolve both paths to handle symlinks and verify they're different before copying
+  const resolvedSourcePath = await realpath(input.sourceJsPath);
+  const arePathsSame = resolvedSourcePath === sandboxSourceJsPath;
+
+  if (!arePathsSame) {
+    try {
+      await cp(input.sourceJsPath, sandboxSourceJsPath);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      throw new Error(
+        `Failed to copy source script from ${input.sourceJsPath} to ${sandboxSourceJsPath}: ${message}`,
+      );
+    }
+  }
+
   const fsReadAllowList = [
     sandboxWorkDir,
     sandboxPreloadPath,
