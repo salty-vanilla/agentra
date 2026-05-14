@@ -22,6 +22,34 @@ export function configureAmplify() {
     return false;
   }
 
+  // Token Storage Decision: localStorage (Amplify default)
+  //
+  // Current approach: Cognito tokens are stored in browser localStorage (Amplify default).
+  // This is a deliberate choice with known tradeoffs:
+  //
+  // PROS:
+  // - Standard SPA token persistence across browser tabs and restarts
+  // - Works with current OAuth redirect flow
+  //
+  // CONS:
+  // - Tokens are readable by JavaScript (XSS risk)
+  //
+  // MITIGATIONS:
+  // 1. Strict Content Security Policy (CSP):
+  //    - Disable inline scripts, unsafe-eval
+  //    - Whitelist external script sources
+  //    - Consider script-src nonce or hash-based validation
+  //
+  // 2. Regular security audits and dependency scanning
+  //
+  // FUTURE IMPROVEMENTS:
+  // 1. HttpOnly/Secure/SameSite cookies (requires backend changes to manage tokens)
+  // 2. Backend-managed session with secure cookie + CSRF protection
+  // 3. Custom storage adapter using sessionStorage (cleared on browser close)
+  //
+  // See: https://owasp.org/www-community/attacks/xss/
+  // See: https://cheatsheetseries.owasp.org/cheatsheets/HTML5_Security_Cheat_Sheet.html
+
   Amplify.configure({
     Auth: {
       Cognito: {

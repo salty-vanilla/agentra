@@ -48,10 +48,13 @@ export class AgentraDataAuthStack extends Stack {
     this.userPoolClient = new UserPoolClient(this, 'UserPoolClient', {
       userPool: this.userPool,
       supportedIdentityProviders: [UserPoolClientIdentityProvider.COGNITO],
+      // Only enable OAuth authorization-code grant (used by frontend).
+      // Direct password flows (userPassword, adminUserPassword, userSrp) are disabled
+      // to minimize the public client attack surface since the browser app uses OAuth redirect.
       authFlows: {
-        userPassword: true,
-        adminUserPassword: true,
-        userSrp: true,
+        userPassword: false,
+        adminUserPassword: false,
+        userSrp: false,
       },
       oAuth: {
         flows: { authorizationCodeGrant: true },

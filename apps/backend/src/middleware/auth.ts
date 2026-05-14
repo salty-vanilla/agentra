@@ -66,7 +66,14 @@ export function validateCognitoAccessTokenClaims(payload: CognitoTokenClaims) {
 // biome-ignore lint/suspicious/noExplicitAny: Hono generic variables differ per app instance
 export const authMiddleware: MiddlewareHandler<any> = async (c, next) => {
   // SKIP_AUTH=true allows local development without a real Cognito token
+  // Must NOT be used with DynamoDB store in production
   if (process.env.SKIP_AUTH === 'true') {
+    if (process.env.STORE_TYPE === 'dynamo') {
+      throw new Error(
+        'Authentication bypass (SKIP_AUTH=true) is not allowed with DynamoDB storage. ' +
+          'Remove SKIP_AUTH or set STORE_TYPE=memory for local development only.',
+      );
+    }
     c.set('userId', 'user-demo-001');
     return next();
   }

@@ -13,8 +13,8 @@ import type { ChatStreamErrorEventType } from './chatStreamErrorEventType';
 export interface ChatStreamErrorEvent {
   type: ChatStreamErrorEventType;
   /** @minLength 1 */
-  threadId?: string;
-  /** @minLength 1 */
   error: string;
+  /** @minLength 1 */
+  threadId?: string;
   observabilitySummary?: ChatObservationSummary;
 }

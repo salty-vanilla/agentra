@@ -55,4 +55,43 @@ describe('AgentraDataAuthStack', () => {
       expectRemovalPolicy(table, 'Retain');
     }
   });
+
+  it('disables unused password auth flows in Cognito app client', () => {
+    const app = new App();
+    const stack = new AgentraDataAuthStack(app, 'AgentraDataAuthStack', {
+      stage: 'prod',
+    });
+    const template = Template.fromStack(stack);
+
+    // Verify password flows are NOT in ExplicitAuthFlows
+    const clients = getResources(template, 'AWS::Cognito::UserPoolClient');
+    expect(clients).toHaveLength(1);
+
+    const client = clients[0] as
+      | { Properties: { ExplicitAuthFlows: string[] } }
+      | undefined;
+    expect(client).toBeDefined();
+
+    if (!client?.Properties?.ExplicitAuthFlows) {
+      throw new Error('ExplicitAuthFlows not found in client properties');
+    }
+
+    const explicitAuthFlows = client.Properties.ExplicitAuthFlows;
+    expect(explicitAuthFlows).not.toContain('ALLOW_USER_PASSWORD_AUTH');
+    expect(explicitAuthFlows).not.toContain('ALLOW_ADMIN_USER_PASSWORD_AUTH');
+    expect(explicitAuthFlows).not.toContain('ALLOW_USER_SRP_AUTH');
+  });
+
+  it('enables OAuth authorization-code grant in Cognito app client', () => {
+    const app = new App();
+    const stack = new AgentraDataAuthStack(app, 'AgentraDataAuthStack', {
+      stage: 'prod',
+    });
+    const template = Template.fromStack(stack);
+
+    template.hasResourceProperties('AWS::Cognito::UserPoolClient', {
+      AllowedOAuthFlows: ['code'],
+      AllowedOAuthScopes: ['openid', 'email', 'profile'],
+    });
+  });
 });
