@@ -16,13 +16,19 @@ export type SseStream = {
   readonly aborted: boolean;
 };
 
-export function createSseHeaders(): Headers {
-  return new Headers({
+export function createSseHeaders(requestId?: string): Headers {
+  const headers: Record<string, string> = {
     'Cache-Control': 'no-cache, no-transform',
     Connection: 'keep-alive',
     'Content-Type': 'text/event-stream; charset=utf-8',
     'X-Accel-Buffering': 'no',
-  });
+  };
+
+  if (requestId) {
+    headers['x-request-id'] = requestId;
+  }
+
+  return new Headers(headers);
 }
 
 export function formatSseComment(comment: string): string {
@@ -81,9 +87,10 @@ export function createAbortableSleep(signal: AbortSignal, ms: number): Promise<v
 export function createSseResponse(
   signal: AbortSignal,
   handler: (stream: SseStream) => Promise<void>,
+  requestId?: string,
 ): Response {
   if (signal.aborted) {
-    return new Response(null, { headers: createSseHeaders() });
+    return new Response(null, { headers: createSseHeaders(requestId) });
   }
 
   return new Response(
@@ -160,6 +167,6 @@ export function createSseResponse(
         })();
       },
     }),
-    { headers: createSseHeaders() },
+    { headers: createSseHeaders(requestId) },
   );
 }

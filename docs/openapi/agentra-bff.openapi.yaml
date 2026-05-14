@@ -265,6 +265,20 @@ components:
         createdAt:
           type: string
           format: date-time
+        requestId:
+          type: string
+          minLength: 1
+          description: Request ID for tracing across services
+        errorMessage:
+          type: string
+          description: Error message if chat failed
+        errorStack:
+          type: string
+          description: Truncated error stack trace if chat failed
+        cancelledAt:
+          type: string
+          format: date-time
+          description: ISO timestamp when chat was cancelled
         observabilitySummary:
           $ref: '#/components/schemas/ChatObservationSummary'
     ChatCommand:

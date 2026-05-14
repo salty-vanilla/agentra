@@ -33,6 +33,10 @@ export interface Store {
     role: Exclude<ChatRole, 'system'>;
     content: string;
     observabilitySummary?: ChatObservationSummary;
+    requestId?: string;
+    errorMessage?: string;
+    errorStack?: string;
+    cancelledAt?: string;
   }): Promise<PersistedChatMessage>;
 }
 
@@ -63,4 +67,8 @@ export const appendMessage = (input: {
   role: Exclude<ChatRole, 'system'>;
   content: string;
   observabilitySummary?: ChatObservationSummary;
+  requestId?: string;
+  errorMessage?: string;
+  errorStack?: string;
+  cancelledAt?: string;
 }) => activeStore.appendMessage(input);

@@ -183,6 +183,7 @@ export const ListThreadMessagesParams = zod.object({
 
 
 
+
 export const listThreadMessagesResponseMessagesItemObservabilitySummaryDurationMsMin = 0;
 
 export const listThreadMessagesResponseMessagesItemObservabilitySummaryTokenUsageInputTokensMin = 0;
@@ -218,6 +219,10 @@ export const ListThreadMessagesResponse = zod.object({
   "role": zod.enum(['user', 'assistant']),
   "content": zod.string().min(1),
   "createdAt": zod.string().datetime({}),
+  "requestId": zod.string().min(1).optional().describe('Request ID for tracing across services'),
+  "errorMessage": zod.string().optional().describe('Error message if chat failed'),
+  "errorStack": zod.string().optional().describe('Truncated error stack trace if chat failed'),
+  "cancelledAt": zod.string().datetime({}).optional().describe('ISO timestamp when chat was cancelled'),
   "observabilitySummary": zod.object({
   "traceId": zod.string().min(1),
   "startedAt": zod.string().datetime({}),

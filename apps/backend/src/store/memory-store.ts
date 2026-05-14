@@ -104,6 +104,10 @@ export class MemoryStore implements Store {
     role: Exclude<ChatRole, 'system'>;
     content: string;
     observabilitySummary?: ChatObservationSummary;
+    requestId?: string;
+    errorMessage?: string;
+    errorStack?: string;
+    cancelledAt?: string;
   }): Promise<PersistedChatMessage> {
     const timestamp = now();
     const message: PersistedChatMessage = {
@@ -115,6 +119,10 @@ export class MemoryStore implements Store {
       ...(input.observabilitySummary
         ? { observabilitySummary: input.observabilitySummary }
         : {}),
+      ...(input.requestId ? { requestId: input.requestId } : {}),
+      ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
+      ...(input.errorStack ? { errorStack: input.errorStack } : {}),
+      ...(input.cancelledAt ? { cancelledAt: input.cancelledAt } : {}),
     };
 
     const currentMessages = this.messageStore.get(input.threadId) ?? [];
