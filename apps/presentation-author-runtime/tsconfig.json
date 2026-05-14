@@ -18,5 +18,8 @@
   },
   "include": ["src/**/*.ts"],
   "exclude": ["src/__tests__"],
-  "references": [{ "path": "../../packages/presentation-author" }]
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/presentation-author" }
+  ]
 }

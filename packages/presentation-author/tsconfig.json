@@ -7,5 +7,6 @@
     "moduleResolution": "NodeNext",
     "composite": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  "references": [{ "path": "../shared" }]
 }
