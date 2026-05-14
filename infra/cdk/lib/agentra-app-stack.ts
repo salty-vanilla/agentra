@@ -59,6 +59,9 @@ export class AgentraAppStack extends Stack {
         SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
         SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
         PRESENTATION_ARTIFACT_BUCKET_NAME: props.presentationArtifactsBucketName ?? '',
+        ALLOWED_CORS_ORIGINS: (
+          props.allowedCorsOrigins ?? ['http://localhost:3000']
+        ).join(','),
       },
     });
 
