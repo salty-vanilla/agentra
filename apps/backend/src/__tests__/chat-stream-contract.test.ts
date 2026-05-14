@@ -44,6 +44,7 @@ describe('chat stream contract', () => {
     expect(
       chatStreamEventSchema.safeParse({
         type: 'error',
+        requestId: 'req-123',
         error: 'Agent invocation failed. traceId=trace_123',
         observabilitySummary: {
           ...observabilitySummary,
@@ -84,6 +85,7 @@ describe('chat stream contract', () => {
     expect(
       chatStreamEventSchema.safeParse({
         type: 'error',
+        requestId: 'req-abc-123',
         threadId: 'thread-abc-123',
         error: 'Agent invocation failed.',
       }).success,
@@ -94,6 +96,7 @@ describe('chat stream contract', () => {
     expect(
       chatStreamEventSchema.safeParse({
         type: 'error',
+        requestId: 'req-def-456',
         error: 'Agent invocation failed.',
       }).success,
     ).toBe(true);
@@ -104,6 +107,7 @@ describe('chat stream contract', () => {
       chatStreamEventSchema.safeParse({
         type: 'done',
         threadId: 'thread-abc-123',
+        requestId: 'req-abc-123',
         model: 'claude-sonnet-4-6',
         createdAt: '2026-05-07T00:00:05.000Z',
       }).success,

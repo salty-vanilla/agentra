@@ -63,6 +63,7 @@ export const chatStreamObservationEventSchema = z.object({
 export const chatStreamDoneEventSchema = z.object({
   type: z.literal('done'),
   threadId: z.string().min(1),
+  requestId: z.string().min(1),
   model: z.string().min(1),
   createdAt: z.string().datetime(),
   observabilitySummary: chatObservationSummarySchema.optional(),
@@ -71,7 +72,15 @@ export const chatStreamDoneEventSchema = z.object({
 export const chatStreamErrorEventSchema = z.object({
   type: z.literal('error'),
   threadId: z.string().min(1).optional(),
+  requestId: z.string().min(1),
   error: z.string().min(1),
+  observabilitySummary: chatObservationSummarySchema.optional(),
+});
+
+export const chatStreamCancelledEventSchema = z.object({
+  type: z.literal('cancelled'),
+  threadId: z.string().min(1),
+  requestId: z.string().min(1),
   observabilitySummary: chatObservationSummarySchema.optional(),
 });
 
@@ -83,6 +92,7 @@ export const chatStreamEventSchema = z.union([
   chatStreamObservationEventSchema,
   chatStreamDoneEventSchema,
   chatStreamErrorEventSchema,
+  chatStreamCancelledEventSchema,
 ]);
 
 export type ProgressSummaryEvent = z.infer<typeof progressSummaryEventSchema>;

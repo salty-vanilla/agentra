@@ -40,7 +40,7 @@ describe('SSE premature EOF detection', () => {
     const rawBody = [
       'data: {"type":"thread_started","threadId":"t1"}',
       'data: {"type":"text","text":"hello"}',
-      'data: {"type":"done","threadId":"t1","model":"m","createdAt":"2026-01-01T00:00:00.000Z"}',
+      'data: {"type":"done","threadId":"t1","requestId":"req1","model":"m","createdAt":"2026-01-01T00:00:00.000Z"}',
       '',
     ].join('\n');
 
@@ -53,7 +53,7 @@ describe('SSE premature EOF detection', () => {
   it('detects a complete stream with error event as non-premature', () => {
     const rawBody = [
       'data: {"type":"thread_started","threadId":"t2"}',
-      'data: {"type":"error","threadId":"t2","error":"Agent failed"}',
+      'data: {"type":"error","threadId":"t2","requestId":"req2","error":"Agent failed"}',
       '',
     ].join('\n');
 
@@ -79,7 +79,7 @@ describe('SSE premature EOF detection', () => {
   it('detects a first-message failure: thread_started followed by error includes threadId', () => {
     const rawBody = [
       'data: {"type":"thread_started","threadId":"t4"}',
-      'data: {"type":"error","threadId":"t4","error":"Agent invocation failed."}',
+      'data: {"type":"error","threadId":"t4","requestId":"req4","error":"Agent invocation failed."}',
       '',
     ].join('\n');
 
