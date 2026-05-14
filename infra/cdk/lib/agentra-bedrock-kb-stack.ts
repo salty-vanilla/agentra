@@ -230,10 +230,14 @@ export class AgentraBedrockKbStack extends Stack {
     // 60-second batch window coalesces burst uploads into a single invocation.
     // reservedConcurrentExecutions: 1 on the function already ensures at most one
     // invocation runs at a time; no additional maxConcurrency needed here.
+    // reportBatchItemFailures lets the handler requeue individual messages by
+    // returning their messageId in batchItemFailures — used when an ingestion
+    // job is already IN_PROGRESS so the event is retried rather than dropped.
     ingestionTrigger.addEventSource(
       new SqsEventSource(ingestionQueue, {
         batchSize: 10,
         maxBatchingWindow: Duration.seconds(60),
+        reportBatchItemFailures: true,
       }),
     );
 
