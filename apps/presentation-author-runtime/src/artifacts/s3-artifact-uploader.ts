@@ -93,10 +93,16 @@ export async function uploadPresentationArtifacts(
     return { uploadedArtifacts, warnings };
   }
 
-  const eligible = result.artifacts.filter(
-    (a): a is (typeof result.artifacts)[number] & { path: string; exists: true } =>
-      UPLOADABLE_KINDS.has(a.kind) && a.exists === true && !!a.path,
-  );
+  const eligible: (typeof result.artifacts[number] & {
+    path: string;
+    exists: true;
+  })[] = [];
+
+  for (const a of result.artifacts) {
+    if (UPLOADABLE_KINDS.has(a.kind) && a.exists === true && a.path) {
+      eligible.push(a as typeof a & { path: string; exists: true });
+    }
+  }
 
   logger.info({
     component: 's3-artifact-uploader',
@@ -160,7 +166,7 @@ export async function uploadPresentationArtifacts(
 
     uploadedArtifacts.push({
       kind: artifact.kind,
-      label: artifact.label || artifact.name,
+      label: artifact.label || basename(artifact.path),
       localPath: artifact.path,
       bucket: bucketName,
       key,
