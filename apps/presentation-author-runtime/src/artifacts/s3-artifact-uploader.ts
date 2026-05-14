@@ -94,7 +94,8 @@ export async function uploadPresentationArtifacts(
   }
 
   const eligible = result.artifacts.filter(
-    (a) => UPLOADABLE_KINDS.has(a.kind) && a.exists && a.path,
+    (a): a is (typeof result.artifacts)[number] & { path: string; exists: true } =>
+      UPLOADABLE_KINDS.has(a.kind) && a.exists === true && !!a.path,
   );
 
   logger.info({
@@ -158,8 +159,8 @@ export async function uploadPresentationArtifacts(
     }
 
     uploadedArtifacts.push({
-      kind: artifact.kind as UploadedPresentationArtifact['kind'],
-      label: artifact.label,
+      kind: artifact.kind,
+      label: artifact.label || artifact.name,
       localPath: artifact.path,
       bucket: bucketName,
       key,

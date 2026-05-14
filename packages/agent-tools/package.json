@@ -16,7 +16,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@agentra/shared": "workspace:*"
+  },
   "devDependencies": {
     "typescript": "latest",
     "vitest": "^3.2.4"

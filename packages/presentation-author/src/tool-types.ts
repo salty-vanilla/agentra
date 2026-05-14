@@ -1,3 +1,4 @@
+import type { ArtifactRef } from '@agentra/shared';
 import type { IconConfig, IconResultMetadata } from './icons/types.js';
 import type { ImageResultMetadata, PresentationImagesInput } from './images/types.js';
 
@@ -63,21 +64,7 @@ export interface CreatePresentationToolInput {
   images?: PresentationImagesInput | undefined;
 }
 
-export interface CreatePresentationArtifact {
-  kind:
-    | 'pptx'
-    | 'source-js'
-    | 'contact-sheet'
-    | 'rendered-slide'
-    | 'render-dir'
-    | 'work-dir'
-    | 'diagnostics-json'
-    | 'image-asset';
-
-  path: string;
-  label: string;
-  exists: boolean;
-}
+export type CreatePresentationArtifact = ArtifactRef;
 
 export interface CreatePresentationToolOutput {
   success: boolean;

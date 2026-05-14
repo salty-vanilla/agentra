@@ -1,6 +1,8 @@
 import { access } from 'node:fs/promises';
+import { basename } from 'node:path';
+import type { ArtifactRef } from '@agentra/shared';
+import { uuidv7 } from 'uuidv7';
 import type { PresentationDiagnosticsResult } from './diagnostics.js';
-import type { CreatePresentationArtifact } from './tool-types.js';
 
 export async function fileExists(path: string): Promise<boolean> {
   try {
@@ -25,84 +27,112 @@ export function extractRenderedSlidePaths(
   return diagnostics.render.slideImagePaths;
 }
 
+const now = new Date().toISOString();
+
+function createArtifact(
+  kind: ArtifactRef['kind'],
+  path: string,
+  label: string,
+  exists: boolean,
+): ArtifactRef {
+  return {
+    id: uuidv7(),
+    kind,
+    name: basename(path),
+    path,
+    label,
+    exists,
+    createdAt: now,
+  };
+}
+
 export async function collectPresentationArtifacts(input: {
   workDir: string;
   pptxPath?: string | undefined;
   sourceJsPath?: string | undefined;
   diagnostics?: PresentationDiagnosticsResult | undefined;
   imageAssetPaths?: string[] | undefined;
-}): Promise<CreatePresentationArtifact[]> {
-  const artifacts: CreatePresentationArtifact[] = [];
+}): Promise<ArtifactRef[]> {
+  const artifacts: ArtifactRef[] = [];
 
   // work-dir
-  artifacts.push({
-    kind: 'work-dir',
-    path: input.workDir,
-    label: 'Working directory',
-    exists: await fileExists(input.workDir),
-  });
+  artifacts.push(
+    createArtifact(
+      'work-dir',
+      input.workDir,
+      'Working directory',
+      await fileExists(input.workDir),
+    ),
+  );
 
   // pptx
   if (input.pptxPath) {
-    artifacts.push({
-      kind: 'pptx',
-      path: input.pptxPath,
-      label: 'Generated PPTX',
-      exists: await fileExists(input.pptxPath),
-    });
+    artifacts.push(
+      createArtifact(
+        'pptx',
+        input.pptxPath,
+        'Generated PPTX',
+        await fileExists(input.pptxPath),
+      ),
+    );
   }
 
   // source-js
   if (input.sourceJsPath) {
-    artifacts.push({
-      kind: 'source-js',
-      path: input.sourceJsPath,
-      label: 'Authoring script',
-      exists: await fileExists(input.sourceJsPath),
-    });
+    artifacts.push(
+      createArtifact(
+        'source-js',
+        input.sourceJsPath,
+        'Authoring script',
+        await fileExists(input.sourceJsPath),
+      ),
+    );
   }
 
   // contact-sheet
   const contactSheetPath = extractContactSheetPath(input.diagnostics);
   if (contactSheetPath) {
-    artifacts.push({
-      kind: 'contact-sheet',
-      path: contactSheetPath,
-      label: 'Contact sheet',
-      exists: await fileExists(contactSheetPath),
-    });
+    artifacts.push(
+      createArtifact(
+        'contact-sheet',
+        contactSheetPath,
+        'Contact sheet',
+        await fileExists(contactSheetPath),
+      ),
+    );
   }
 
   // render-dir + rendered-slide
   if (input.diagnostics?.render?.success && input.diagnostics.render.renderDir) {
     const renderDir = input.diagnostics.render.renderDir;
-    artifacts.push({
-      kind: 'render-dir',
-      path: renderDir,
-      label: 'Rendered slides directory',
-      exists: await fileExists(renderDir),
-    });
+    artifacts.push(
+      createArtifact(
+        'render-dir',
+        renderDir,
+        'Rendered slides directory',
+        await fileExists(renderDir),
+      ),
+    );
 
     const slidePaths = extractRenderedSlidePaths(input.diagnostics);
     for (const slidePath of slidePaths) {
-      artifacts.push({
-        kind: 'rendered-slide',
-        path: slidePath,
-        label: `Rendered slide`,
-        exists: await fileExists(slidePath),
-      });
+      artifacts.push(
+        createArtifact(
+          'rendered-slide',
+          slidePath,
+          'Rendered slide',
+          await fileExists(slidePath),
+        ),
+      );
     }
   }
 
   // image-asset (retrieved / generated images)
   if (input.imageAssetPaths) {
     for (const imgPath of input.imageAssetPaths) {
-      artifacts.push({
-        kind: 'image-asset',
-        path: imgPath,
-        label: 'Image asset',
-        exists: await fileExists(imgPath),
-      });
+      artifacts.push(
+        createArtifact('image-asset', imgPath, 'Image asset', await fileExists(imgPath)),
+      );
     }
   }
 
