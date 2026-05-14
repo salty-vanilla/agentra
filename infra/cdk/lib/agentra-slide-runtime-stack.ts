@@ -62,12 +62,13 @@ export class AgentraSlideRuntimeStack extends Stack {
       description: 'Execution role for Agentra Slide AgentCore Runtime.',
     });
 
-    // Bedrock permissions
+    // Bedrock permissions (Claude Sonnet 4.6 model)
+    const bedrockModelArn = `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-sonnet-4-6`;
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-        resources: ['*'],
+        resources: [bedrockModelArn],
       }),
     );
     runtimeRole.addToPolicy(
@@ -78,12 +79,23 @@ export class AgentraSlideRuntimeStack extends Stack {
           'bedrock:ListInferenceProfiles',
           'bedrock:UseInferenceProfile',
         ],
-        resources: ['*'],
+        resources: [`arn:aws:bedrock:${this.region}:${this.account}:inference-profile/*`],
       }),
     );
 
-    // S3 artifact bucket permissions
-    artifactsBucket.grantReadWrite(runtimeRole);
+    // S3 artifact bucket permissions (scoped to runs/ prefix)
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject', 's3:ListBucket'],
+        resources: [artifactsBucket.bucketArn, `${artifactsBucket.bucketArn}/runs/*`],
+        conditions: {
+          StringLike: {
+            's3:prefix': ['runs/*', 'runs'],
+          },
+        },
+      }),
+    );
 
     // --- Third-party API keys secret (optional; enables image retrieval when provided) ---
     const thirdPartyApiKeysSecretArn =

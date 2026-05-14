@@ -62,11 +62,13 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       description: 'Execution role for Agentra AgentCore Runtime.',
     });
 
+    // Bedrock permissions scoped to inference profiles
+    // (Note: InvokeModel on foundation-model/* cannot be further scoped by AWS constraints)
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-        resources: ['*'],
+        resources: [`arn:aws:bedrock:${this.region}::foundation-model/*`],
       }),
     );
     thirdPartyApiKeysSecret.grantRead(runtimeRole);
@@ -79,7 +81,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
           'bedrock:ListInferenceProfiles',
           'bedrock:UseInferenceProfile',
         ],
-        resources: ['*'],
+        resources: [`arn:aws:bedrock:${this.region}:${this.account}:inference-profile/*`],
       }),
     );
 
@@ -172,8 +174,14 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         lifecycleRules: props.stage === 'dev' ? [{ expiration: Duration.days(30) }] : [],
       });
 
-      // Grant S3 read/write to session prefix
-      sessionBucket.grantReadWrite(runtimeRole, `${sessionS3Prefix}/*`);
+      // Grant least-privilege S3 access scoped to session prefix
+      runtimeRole.addToPolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+          resources: [`${sessionBucket.bucketArn}/${sessionS3Prefix}/*`],
+        }),
+      );
       // ListBucket is needed for SessionManager snapshot listing
       runtimeRole.addToPolicy(
         new PolicyStatement({
