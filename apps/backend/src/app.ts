@@ -16,9 +16,11 @@ import { getModelId, invokeAgentStream, type ModelKey } from './lib/bedrock-agen
 import { type ChatCommand, chatCommandSchema } from './lib/chat-command.js';
 import type { ProgressSummaryEvent, SubAgentProgressEvent } from './lib/chat-stream.js';
 import { buildRouterCommandDirective } from './lib/command-directive.js';
+import { sanitizeErrorMessage, sanitizeErrorStack } from './lib/error-sanitize.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { createAbortableSleep, createSseResponse } from './lib/sse.js';
 import { authMiddleware } from './middleware/auth.js';
+import { requestIdMiddleware } from './middleware/request-id.js';
 import {
   appendMessage,
   createThread,
@@ -32,6 +34,7 @@ import {
 type HonoEnv = {
   Variables: {
     userId: string;
+    requestId: string;
   };
 };
 
@@ -107,12 +110,11 @@ function logObservabilityDebug(
 
 const app = new Hono<HonoEnv>();
 
+app.use('*', requestIdMiddleware);
 app.use('*', cors());
 app.use('/chat', authMiddleware);
 app.use('/threads/*', authMiddleware);
 app.use('/threads', authMiddleware);
-
-app.use('*', cors());
 
 app.get('/', (context) => {
   return context.json({
@@ -157,6 +159,7 @@ app.post('/chat', async (context) => {
   const modelKey: ModelKey = parsed.model ?? 'sonnet';
   const command = parsed.command;
   const userId = context.get('userId');
+  const requestId = context.get('requestId');
   const traceId = uuidv7();
 
   // Validate command if present
@@ -189,204 +192,295 @@ app.post('/chat', async (context) => {
     content: message,
   });
 
-  return createSseResponse(context.req.raw.signal, async (stream) => {
-    const startedAt = nowIso();
-    let fullReply = '';
-    let latestObservabilitySummary: ChatObservationSummary | undefined;
-    const isSlideCommand = command?.type === 'create_slide_presentation';
-    const heartbeatIntervalMs = getSseHeartbeatIntervalMs();
-    const upstreamAbortController = new AbortController();
-    const heartbeatAbortController = new AbortController();
+  return createSseResponse(
+    context.req.raw.signal,
+    async (stream) => {
+      const startedAt = nowIso();
+      let fullReply = '';
+      let latestObservabilitySummary: ChatObservationSummary | undefined;
+      const isSlideCommand = command?.type === 'create_slide_presentation';
+      const heartbeatIntervalMs = getSseHeartbeatIntervalMs();
+      const upstreamAbortController = new AbortController();
+      const heartbeatAbortController = new AbortController();
 
-    await stream.writeEvent({
-      event: 'thread_started',
-      data: { type: 'thread_started', threadId: thread.threadId },
-    });
-
-    async function emitProgress(
-      phase: ProgressSummaryEvent['phase'],
-      title: string,
-      summary: string,
-    ) {
-      const event: ProgressSummaryEvent = {
-        type: 'progress_summary',
-        phase,
-        title,
-        summary,
-        timestamp: nowIso(),
-      };
       await stream.writeEvent({
-        event: 'status',
-        data: { type: 'progress_summary', event },
+        event: 'thread_started',
+        data: { type: 'thread_started', threadId: thread.threadId },
       });
-    }
 
-    async function emitSubAgentProgress(
-      progress: Omit<SubAgentProgressEvent, 'type' | 'timestamp'>,
-    ) {
-      const event: SubAgentProgressEvent = {
-        type: 'sub_agent_progress',
-        stage: progress.stage,
-        status: progress.status,
-        timestamp: nowIso(),
-        ...(progress.durationMs !== undefined ? { durationMs: progress.durationMs } : {}),
-      };
-      await stream.writeEvent({
-        event: 'sub_agent_progress',
-        data: { type: 'sub_agent_progress', event },
-      });
-    }
-
-    stream.onAbort(() => {
-      console.info(
-        `Client disconnected from /chat SSE stream (threadId=${thread.threadId}, traceId=${traceId}).`,
-      );
-      upstreamAbortController.abort();
-      heartbeatAbortController.abort();
-    });
-
-    const heartbeatTask = (async () => {
-      while (!heartbeatAbortController.signal.aborted) {
-        await createAbortableSleep(heartbeatAbortController.signal, heartbeatIntervalMs);
-        if (heartbeatAbortController.signal.aborted) {
-          break;
-        }
-
-        await stream.writeComment('ping');
+      async function emitProgress(
+        phase: ProgressSummaryEvent['phase'],
+        title: string,
+        summary: string,
+      ) {
+        const event: ProgressSummaryEvent = {
+          type: 'progress_summary',
+          phase,
+          title,
+          summary,
+          timestamp: nowIso(),
+        };
+        await stream.writeEvent({
+          event: 'status',
+          data: { type: 'progress_summary', event },
+        });
       }
-    })();
 
-    try {
-      const commandDirective = command ? buildRouterCommandDirective(command) : undefined;
+      async function emitSubAgentProgress(
+        progress: Omit<SubAgentProgressEvent, 'type' | 'timestamp'>,
+      ) {
+        const event: SubAgentProgressEvent = {
+          type: 'sub_agent_progress',
+          stage: progress.stage,
+          status: progress.status,
+          timestamp: nowIso(),
+          ...(progress.durationMs !== undefined
+            ? { durationMs: progress.durationMs }
+            : {}),
+        };
+        await stream.writeEvent({
+          event: 'sub_agent_progress',
+          data: { type: 'sub_agent_progress', event },
+        });
+      }
 
-      // Emit a simple "in progress" message for slide commands.
-      // TODO: Replace with real pipeline progress events once the Router
-      // supports progress callbacks from tool execution (see: progress
-      // channel / merge-iterables approach).
-      if (isSlideCommand) {
-        await emitProgress(
-          'router_handoff',
-          'スライドを作成しています',
-          'Presentation Author エージェントが資料を生成中です。しばらくお待ちください。',
+      stream.onAbort(() => {
+        console.info(
+          `Client disconnected from /chat SSE stream (threadId=${thread.threadId}, traceId=${traceId}).`,
         );
-      }
+        upstreamAbortController.abort();
+        heartbeatAbortController.abort();
+      });
 
-      for await (const runtimeEvent of invokeAgentStream(
-        modelKey,
-        thread.threadId,
-        message,
-        traceId,
-        { userId, ...(commandDirective ? { commandDirective } : {}) },
-        upstreamAbortController.signal,
-      )) {
-        if (runtimeEvent.type === 'text') {
-          fullReply += runtimeEvent.text;
-          await stream.writeEvent({
-            event: 'token',
-            data: { type: 'text', text: runtimeEvent.text },
-          });
-          continue;
-        }
-
-        if (runtimeEvent.type === 'observation') {
-          latestObservabilitySummary = runtimeEvent.observation;
-          logObservabilityDebug('observation', latestObservabilitySummary, {
-            threadId: thread.threadId,
-          });
-          if (runtimeEvent.subAgentStage) {
-            await emitSubAgentProgress(runtimeEvent.subAgentStage);
+      const heartbeatTask = (async () => {
+        while (!heartbeatAbortController.signal.aborted) {
+          await createAbortableSleep(
+            heartbeatAbortController.signal,
+            heartbeatIntervalMs,
+          );
+          if (heartbeatAbortController.signal.aborted) {
+            break;
           }
-          await stream.writeEvent({
-            event: 'observation',
-            data: {
-              type: 'observation',
-              observation: runtimeEvent.observation,
-            },
+
+          await stream.writeComment('ping');
+        }
+      })();
+
+      try {
+        const commandDirective = command
+          ? buildRouterCommandDirective(command)
+          : undefined;
+
+        // Emit a simple "in progress" message for slide commands.
+        // TODO: Replace with real pipeline progress events once the Router
+        // supports progress callbacks from tool execution (see: progress
+        // channel / merge-iterables approach).
+        if (isSlideCommand) {
+          await emitProgress(
+            'router_handoff',
+            'スライドを作成しています',
+            'Presentation Author エージェントが資料を生成中です。しばらくお待ちください。',
+          );
+        }
+
+        for await (const runtimeEvent of invokeAgentStream(
+          modelKey,
+          thread.threadId,
+          message,
+          traceId,
+          { userId, ...(commandDirective ? { commandDirective } : {}) },
+          upstreamAbortController.signal,
+        )) {
+          if (runtimeEvent.type === 'text') {
+            fullReply += runtimeEvent.text;
+            await stream.writeEvent({
+              event: 'token',
+              data: { type: 'text', text: runtimeEvent.text },
+            });
+            continue;
+          }
+
+          if (runtimeEvent.type === 'observation') {
+            latestObservabilitySummary = runtimeEvent.observation;
+            logObservabilityDebug('observation', latestObservabilitySummary, {
+              threadId: thread.threadId,
+            });
+            if (runtimeEvent.subAgentStage) {
+              await emitSubAgentProgress(runtimeEvent.subAgentStage);
+            }
+            await stream.writeEvent({
+              event: 'observation',
+              data: {
+                type: 'observation',
+                observation: runtimeEvent.observation,
+              },
+            });
+            continue;
+          }
+
+          if (runtimeEvent.type === 'done') {
+            latestObservabilitySummary =
+              runtimeEvent.observabilitySummary ?? latestObservabilitySummary;
+            continue;
+          }
+
+          if (runtimeEvent.type === 'error') {
+            latestObservabilitySummary =
+              runtimeEvent.observabilitySummary ?? latestObservabilitySummary;
+            throw new Error(runtimeEvent.error);
+          }
+        }
+      } catch (err) {
+        if (context.req.raw.signal.aborted || upstreamAbortController.signal.aborted) {
+          await heartbeatTask.catch(() => undefined);
+          return;
+        }
+
+        const completedAt = nowIso();
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        const errorStack = err instanceof Error ? err.stack : undefined;
+
+        console.error('Chat stream error', {
+          requestId,
+          traceId,
+          threadId: thread.threadId,
+          errorMessage: sanitizeErrorMessage(errorMessage),
+          errorName: err instanceof Error ? err.name : 'Unknown',
+          durationMs: toMillis(completedAt) - toMillis(startedAt),
+          userId,
+        });
+
+        const fallbackSummary =
+          latestObservabilitySummary ??
+          createFallbackObservabilitySummary({
+            traceId,
+            startedAt,
+            completedAt,
+            status: 'error',
           });
-          continue;
-        }
+        logObservabilityDebug('error', fallbackSummary, { threadId: thread.threadId });
 
-        if (runtimeEvent.type === 'done') {
-          latestObservabilitySummary =
-            runtimeEvent.observabilitySummary ?? latestObservabilitySummary;
-          continue;
-        }
+        // Send error event to client
+        await stream.writeEvent({
+          event: 'error',
+          data: {
+            type: 'error',
+            threadId: thread.threadId,
+            requestId,
+            error: `Agent invocation failed. traceId=${traceId}`,
+            observabilitySummary: fallbackSummary,
+          },
+        });
 
-        if (runtimeEvent.type === 'error') {
-          latestObservabilitySummary =
-            runtimeEvent.observabilitySummary ?? latestObservabilitySummary;
-          throw new Error(runtimeEvent.error);
-        }
-      }
-    } catch (err) {
-      if (context.req.raw.signal.aborted || upstreamAbortController.signal.aborted) {
+        // Persist error record to database
+        const sanitized = sanitizeErrorStack(errorStack);
+        const errorRecord = {
+          threadId: thread.threadId,
+          role: 'assistant' as const,
+          content: '',
+          observabilitySummary: fallbackSummary,
+          requestId,
+          errorMessage: sanitizeErrorMessage(errorMessage),
+          ...(sanitized ? { errorStack: sanitized } : {}),
+        };
+        await appendMessage(errorRecord).catch((dbErr) => {
+          console.error('Failed to persist error record', {
+            traceId,
+            requestId,
+            dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
+          });
+        });
+
+        heartbeatAbortController.abort();
         await heartbeatTask.catch(() => undefined);
         return;
       }
 
-      console.error('Bedrock agent stream error:', err);
+      if (context.req.raw.signal.aborted || upstreamAbortController.signal.aborted) {
+        const cancelledAt = nowIso();
+        const cancellationSummary = createFallbackObservabilitySummary({
+          traceId,
+          startedAt,
+          completedAt: cancelledAt,
+          status: 'cancelled',
+        });
+
+        console.info('Chat stream cancelled', {
+          requestId,
+          traceId,
+          threadId: thread.threadId,
+          durationMs: toMillis(cancelledAt) - toMillis(startedAt),
+          userId,
+        });
+
+        // Send cancellation event to client
+        await stream.writeEvent({
+          event: 'cancelled',
+          data: {
+            type: 'cancelled',
+            threadId: thread.threadId,
+            requestId,
+            observabilitySummary: cancellationSummary,
+          },
+        });
+
+        // Persist cancellation record to database
+        await appendMessage({
+          threadId: thread.threadId,
+          role: 'assistant',
+          content: '',
+          observabilitySummary: cancellationSummary,
+          requestId,
+          cancelledAt,
+        }).catch((dbErr) => {
+          console.error('Failed to persist cancellation record', {
+            traceId,
+            requestId,
+            dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
+          });
+        });
+
+        heartbeatAbortController.abort();
+        await heartbeatTask.catch(() => undefined);
+        return;
+      }
+
       const completedAt = nowIso();
-      const fallbackSummary =
+      const finalSummary =
         latestObservabilitySummary ??
         createFallbackObservabilitySummary({
           traceId,
           startedAt,
           completedAt,
-          status: 'error',
+          status: 'success',
         });
-      logObservabilityDebug('error', fallbackSummary, { threadId: thread.threadId });
+      logObservabilityDebug('done', finalSummary, { threadId: thread.threadId });
+
+      await appendMessage({
+        threadId: thread.threadId,
+        role: 'assistant',
+        content: fullReply,
+        observabilitySummary: finalSummary,
+        requestId,
+      });
+
       await stream.writeEvent({
-        event: 'error',
+        event: 'done',
         data: {
-          type: 'error',
+          type: 'done',
           threadId: thread.threadId,
-          error: `Agent invocation failed. traceId=${traceId}`,
-          observabilitySummary: fallbackSummary,
+          requestId,
+          model: getModelId(modelKey),
+          createdAt: completedAt,
+          observabilitySummary: finalSummary,
         },
       });
+
       heartbeatAbortController.abort();
       await heartbeatTask.catch(() => undefined);
-      return;
-    }
-
-    if (context.req.raw.signal.aborted || upstreamAbortController.signal.aborted) {
-      heartbeatAbortController.abort();
-      await heartbeatTask.catch(() => undefined);
-      return;
-    }
-
-    const completedAt = nowIso();
-    const finalSummary =
-      latestObservabilitySummary ??
-      createFallbackObservabilitySummary({
-        traceId,
-        startedAt,
-        completedAt,
-        status: 'success',
-      });
-    logObservabilityDebug('done', finalSummary, { threadId: thread.threadId });
-
-    await appendMessage({
-      threadId: thread.threadId,
-      role: 'assistant',
-      content: fullReply,
-      observabilitySummary: finalSummary,
-    });
-
-    await stream.writeEvent({
-      event: 'done',
-      data: {
-        type: 'done',
-        threadId: thread.threadId,
-        model: getModelId(modelKey),
-        createdAt: completedAt,
-        observabilitySummary: finalSummary,
-      },
-    });
-
-    heartbeatAbortController.abort();
-    await heartbeatTask.catch(() => undefined);
-  });
+    },
+    requestId,
+  );
 });
 
 app.get('/threads', async (context) => {

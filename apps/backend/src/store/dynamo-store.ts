@@ -199,6 +199,10 @@ export class DynamoStore implements Store {
     role: 'user' | 'assistant';
     content: string;
     observabilitySummary?: ChatObservationSummary;
+    requestId?: string;
+    errorMessage?: string;
+    errorStack?: string;
+    cancelledAt?: string;
   }): Promise<PersistedChatMessage> {
     const timestamp = new Date().toISOString();
     const messageId = uuidv7();
@@ -211,6 +215,10 @@ export class DynamoStore implements Store {
       ...(input.observabilitySummary
         ? { observabilitySummary: input.observabilitySummary }
         : {}),
+      ...(input.requestId ? { requestId: input.requestId } : {}),
+      ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
+      ...(input.errorStack ? { errorStack: input.errorStack } : {}),
+      ...(input.cancelledAt ? { cancelledAt: input.cancelledAt } : {}),
     };
 
     await this.client.send(
@@ -226,6 +234,10 @@ export class DynamoStore implements Store {
           ...(input.observabilitySummary
             ? { observabilitySummary: input.observabilitySummary }
             : {}),
+          ...(input.requestId ? { requestId: input.requestId } : {}),
+          ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
+          ...(input.errorStack ? { errorStack: input.errorStack } : {}),
+          ...(input.cancelledAt ? { cancelledAt: input.cancelledAt } : {}),
         },
       }),
     );

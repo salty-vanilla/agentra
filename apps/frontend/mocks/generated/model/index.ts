@@ -9,8 +9,6 @@ This spec is the source of truth for frontend client generation and API mocks.
  */
 
 export * from './chatCommand';
-export * from './chatCommandIcons';
-export * from './chatCommandIconsProviderId';
 export * from './chatCommandLanguage';
 export * from './chatCommandOutputFormat';
 export * from './chatCommandTemplate';
@@ -42,6 +40,7 @@ export * from './chatStreamThreadStartedEvent';
 export * from './chatStreamThreadStartedEventType';
 export * from './createThreadRequest';
 export * from './errorResponse';
+export * from './errorResponseDetails';
 export * from './healthResponse';
 export * from './healthResponseStatus';
 export * from './messageRole';

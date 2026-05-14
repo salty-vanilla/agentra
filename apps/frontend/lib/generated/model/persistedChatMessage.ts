@@ -19,5 +19,16 @@ export interface PersistedChatMessage {
   /** @minLength 1 */
   content: string;
   createdAt: string;
+  /**
+     * Request ID for tracing across services
+     * @minLength 1
+     */
+  requestId?: string;
+  /** Error message if chat failed */
+  errorMessage?: string;
+  /** Truncated error stack trace if chat failed */
+  errorStack?: string;
+  /** ISO timestamp when chat was cancelled */
+  cancelledAt?: string;
   observabilitySummary?: ChatObservationSummary;
 }
