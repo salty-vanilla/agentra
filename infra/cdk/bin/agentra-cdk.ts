@@ -8,9 +8,29 @@ import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';
 import { AgentraSlideRuntimeStack } from '../lib/agentra-slide-runtime-stack.js';
 import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
 
+const STAGE_PATTERN = /^[a-z0-9-]+$/;
+const MAX_STAGE_LENGTH = 16;
+
+function validateStage(stage: string): void {
+  if (!STAGE_PATTERN.test(stage)) {
+    throw new Error(
+      `Invalid stage "${stage}": must contain only lowercase letters, numbers, and hyphens. ` +
+        'Example: "dev", "prod", "staging-v2"',
+    );
+  }
+  if (stage.length > MAX_STAGE_LENGTH) {
+    throw new Error(
+      `Invalid stage "${stage}": length ${stage.length} exceeds maximum ${MAX_STAGE_LENGTH}. ` +
+        'Keep stage names short (e.g., "dev", "prod") to avoid collision in resource names.',
+    );
+  }
+}
+
 const app = new cdk.App();
 const stage = (app.node.tryGetContext('stage') as string | undefined)?.trim() || 'dev';
 const stageLabel = stage.toLowerCase();
+validateStage(stageLabel);
+
 const thirdPartyApiKeysSecretArn = (
   app.node.tryGetContext('thirdPartyApiKeysSecretArn') as string | undefined
 )?.trim();
