@@ -3,6 +3,12 @@ import {
   InvokeAgentRuntimeCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
 import { uuidv7 } from 'uuidv7';
+import {
+  createCallTelemetry,
+  executeWithTimeout,
+  formatTelemetryLog,
+  TimeoutError,
+} from '../lib/timeout-handler.js';
 
 // --- Types ---
 
@@ -176,8 +182,11 @@ export function parseSlideRuntimeResponse(rawText: string): InvokeSlideRuntimeRe
 
 // --- Invocation ---
 
+const SLIDE_RUNTIME_TIMEOUT_MS = 120000; // 2 minutes
+
 export async function invokeSlideRuntime(
   input: InvokeSlideRuntimeInput,
+  abortSignal?: AbortSignal,
 ): Promise<InvokeSlideRuntimeResult> {
   if (!SLIDE_RUNTIME_ARN) {
     throw new Error(
@@ -185,44 +194,82 @@ export async function invokeSlideRuntime(
     );
   }
 
+  const telemetry = createCallTelemetry();
   const sessionId = input.sessionId ?? uuidv7();
-  const payload = {
-    prompt: input.prompt,
-    ...(input.language ? { language: input.language } : {}),
-    ...(input.traceId ? { traceId: input.traceId } : {}),
-    ...(input.brandFrameId ? { brandFrameId: input.brandFrameId } : {}),
-  };
 
-  const command = new InvokeAgentRuntimeCommand({
-    agentRuntimeArn: SLIDE_RUNTIME_ARN,
-    qualifier: SLIDE_RUNTIME_QUALIFIER,
-    runtimeSessionId: sessionId,
-    contentType: 'application/json',
-    accept: 'application/json',
-    payload: new TextEncoder().encode(JSON.stringify(payload)),
-  });
+  try {
+    const payload = {
+      prompt: input.prompt,
+      ...(input.language ? { language: input.language } : {}),
+      ...(input.traceId ? { traceId: input.traceId } : {}),
+      ...(input.brandFrameId ? { brandFrameId: input.brandFrameId } : {}),
+    };
 
-  const response = await client.send(command);
+    const command = new InvokeAgentRuntimeCommand({
+      agentRuntimeArn: SLIDE_RUNTIME_ARN,
+      qualifier: SLIDE_RUNTIME_QUALIFIER,
+      runtimeSessionId: sessionId,
+      contentType: 'application/json',
+      accept: 'application/json',
+      payload: new TextEncoder().encode(JSON.stringify(payload)),
+    });
 
-  let rawText = '';
-  const body = response.response as
-    | { transformToString?: () => Promise<string> }
-    | AsyncIterable<unknown>
-    | undefined;
+    const result = await executeWithTimeout(
+      async (signal) => {
+        const response = await client.send(command, {
+          abortSignal: signal,
+        });
 
-  if (body && Symbol.asyncIterator in (body as object)) {
-    for await (const chunk of body as AsyncIterable<unknown>) {
-      if (chunk instanceof Uint8Array) {
-        rawText += new TextDecoder().decode(chunk);
-      } else if (typeof chunk === 'string') {
-        rawText += chunk;
-      } else {
-        rawText += String(chunk ?? '');
-      }
+        let rawText = '';
+        const body = response.response as
+          | { transformToString?: () => Promise<string> }
+          | AsyncIterable<unknown>
+          | undefined;
+
+        if (body && Symbol.asyncIterator in (body as object)) {
+          for await (const chunk of body as AsyncIterable<unknown>) {
+            if (signal.aborted) {
+              throw new Error('Request was cancelled');
+            }
+            if (chunk instanceof Uint8Array) {
+              rawText += new TextDecoder().decode(chunk);
+            } else if (typeof chunk === 'string') {
+              rawText += chunk;
+            } else {
+              rawText += String(chunk ?? '');
+            }
+          }
+        } else if (body && 'transformToString' in body && body.transformToString) {
+          rawText = await body.transformToString();
+        }
+
+        return rawText;
+      },
+      {
+        timeoutMs: SLIDE_RUNTIME_TIMEOUT_MS,
+        onTimeout: (reason) => {
+          console.warn(`[slide-runtime] timeout: ${reason}`);
+        },
+      },
+      telemetry,
+    );
+
+    return parseSlideRuntimeResponse(result);
+  } catch (error) {
+    if (error instanceof TimeoutError) {
+      const logMessage = formatTelemetryLog('slide-runtime-invoke', telemetry);
+      console.error(`[slide-runtime] ${logMessage}`);
+      throw new Error(
+        `Slide Runtime invocation timed out after ${SLIDE_RUNTIME_TIMEOUT_MS}ms`,
+      );
     }
-  } else if (body && 'transformToString' in body && body.transformToString) {
-    rawText = await body.transformToString();
-  }
 
-  return parseSlideRuntimeResponse(rawText);
+    if (abortSignal?.aborted) {
+      throw new Error('Slide Runtime invocation was cancelled');
+    }
+
+    const logMessage = formatTelemetryLog('slide-runtime-invoke', telemetry);
+    console.error(`[slide-runtime] ${logMessage}`);
+    throw error;
+  }
 }

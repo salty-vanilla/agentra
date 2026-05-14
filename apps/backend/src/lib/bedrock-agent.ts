@@ -6,6 +6,7 @@ import {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
 } from '@aws-sdk/client-bedrock-agentcore';
+import { createCallTelemetry, formatTelemetryLog } from './timeout-handler.js';
 
 export type SubAgentStage = {
   stage: string;
@@ -29,6 +30,8 @@ const MODEL_ID_MAP: Record<ModelKey, string> = {
   sonnet: 'global.anthropic.claude-sonnet-4-6',
   haiku: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
 };
+
+const AGENTCORE_INVOKE_TIMEOUT_MS = 300000; // 5 minutes
 
 const agentCoreClient = new BedrockAgentCoreClient({
   region: process.env.BEDROCK_REGION ?? 'us-east-1',
@@ -266,27 +269,73 @@ async function* invokeAgentCoreRuntimeStream(
     throw new Error('AGENTCORE_RUNTIME_ARN is not set. AgentCore runtime is required.');
   }
 
-  const command = new InvokeAgentRuntimeCommand({
-    agentRuntimeArn: AGENTCORE_RUNTIME_ARN,
-    qualifier: AGENTCORE_RUNTIME_QUALIFIER,
-    runtimeSessionId: sessionId,
-    ...(traceId ? { traceId } : {}),
-    contentType: 'application/json',
-    accept: 'text/event-stream',
-    payload: new TextEncoder().encode(
-      JSON.stringify(buildRuntimePayload(modelKey, sessionId, inputText, traceId, extra)),
-    ),
-  });
+  const telemetry = createCallTelemetry();
+  const invokeController = new AbortController();
+  let invocationTimedOut = false;
 
-  const response = await agentCoreClient.send(
-    command,
-    abortSignal ? { abortSignal } : undefined,
-  );
-  if (!response.response) {
-    return;
+  const invokeTimeoutHandle = setTimeout(() => {
+    invocationTimedOut = true;
+    console.warn(
+      `[bedrock-agent] invoke timeout: Operation exceeded ${AGENTCORE_INVOKE_TIMEOUT_MS}ms`,
+    );
+    invokeController.abort();
+  }, AGENTCORE_INVOKE_TIMEOUT_MS);
+
+  try {
+    const command = new InvokeAgentRuntimeCommand({
+      agentRuntimeArn: AGENTCORE_RUNTIME_ARN,
+      qualifier: AGENTCORE_RUNTIME_QUALIFIER,
+      runtimeSessionId: sessionId,
+      ...(traceId ? { traceId } : {}),
+      contentType: 'application/json',
+      accept: 'text/event-stream',
+      payload: new TextEncoder().encode(
+        JSON.stringify(
+          buildRuntimePayload(modelKey, sessionId, inputText, traceId, extra),
+        ),
+      ),
+    });
+
+    const signal = abortSignal || invokeController.signal;
+    const response = await agentCoreClient.send(command, { abortSignal: signal });
+
+    if (!response.response) {
+      return;
+    }
+
+    yield* streamAgentCoreBody(response.contentType, response.response, abortSignal);
+  } catch (error) {
+    const logMessage = formatTelemetryLog('bedrock-agent-invoke', telemetry);
+    if (invocationTimedOut) {
+      console.error(
+        `[bedrock-agent] ${logMessage} - invocation timed out after ${AGENTCORE_INVOKE_TIMEOUT_MS}ms`,
+      );
+      yield {
+        type: 'error',
+        error: `AgentCore invocation timed out after ${AGENTCORE_INVOKE_TIMEOUT_MS}ms`,
+      };
+      return;
+    }
+
+    if (abortSignal?.aborted) {
+      console.warn(`[bedrock-agent] ${logMessage} - invocation was cancelled`);
+      yield {
+        type: 'error',
+        error: 'AgentCore invocation was cancelled',
+      };
+      return;
+    }
+
+    console.error(`[bedrock-agent] ${logMessage}`, error);
+    yield {
+      type: 'error',
+      error: `AgentCore invocation failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+  } finally {
+    clearTimeout(invokeTimeoutHandle);
+    telemetry.completedAt = Date.now();
+    telemetry.durationMs = telemetry.completedAt - telemetry.startedAt;
   }
-
-  yield* streamAgentCoreBody(response.contentType, response.response, abortSignal);
 }
 
 /**
