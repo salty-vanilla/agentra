@@ -50,10 +50,12 @@ pnpm --filter @agentra/infra-cdk synth -c stage=dev \
   -c callbackUrls=http://localhost:3000/ \
   -c logoutUrls=http://localhost:3000/ \
   -c corsOrigins=http://localhost:3000 \
-  -c tavilyApiKeySecretArn=<arn>
+  -c thirdPartyApiKeysSecretArn=arn:aws:secretsmanager:ap-northeast-1:123456789012:secret:agentra/dev/third-party-keys-xxxxx
 
 cdk deploy AgentraBedrockKbStack-dev -c stage=dev ...
 ```
+
+The `thirdPartyApiKeysSecretArn` must reference a Secrets Manager secret containing JSON with `TAVILY_API_KEY` and `PEXELS_API_KEY`.
 
 After deploy, retrieve the outputs:
 
