@@ -178,7 +178,7 @@ export const handlers = [
       );
     }
 
-    const { history, message, threadId } = parsed.data;
+    const { message, threadId } = parsed.data;
     const thread = threadId
       ? (getThread(threadId) ?? createThread({ initialMessage: message }))
       : createThread({ initialMessage: message });
@@ -189,7 +189,7 @@ export const handlers = [
       content: message,
     });
 
-    const reply = buildDummyReply(message, history.length);
+    const reply = buildDummyReply(message);
 
     appendMessage({
       threadId: thread.threadId,
@@ -339,7 +339,6 @@ function parseChatRequest(payload: unknown) {
 
   const message = 'message' in payload ? payload.message : undefined;
   const threadId = 'threadId' in payload ? payload.threadId : undefined;
-  const history = 'history' in payload ? payload.history : undefined;
 
   if (typeof message !== 'string' || message.trim().length === 0) {
     return {
@@ -356,43 +355,22 @@ function parseChatRequest(payload: unknown) {
     };
   }
 
-  if (
-    history !== undefined &&
-    (!Array.isArray(history) ||
-      history.some(
-        (entry) =>
-          !entry ||
-          typeof entry !== 'object' ||
-          !('role' in entry) ||
-          !('content' in entry) ||
-          typeof entry.role !== 'string' ||
-          typeof entry.content !== 'string' ||
-          entry.content.trim().length === 0,
-      ))
-  ) {
-    return {
-      success: false as const,
-    };
-  }
-
   return {
     success: true as const,
     data: {
       message,
-      history: Array.isArray(history) ? history : [],
       ...(threadId ? { threadId } : {}),
     } satisfies ChatRequest,
   };
 }
 
-function buildDummyReply(message: string, historyLength: number) {
+function buildDummyReply(message: string) {
   const normalized = message.toLowerCase();
 
   if (normalized.includes('phase 2') || normalized.includes('認証')) {
     return [
       'Phase 2 では認証境界を先に固めるのが筋です。',
       'frontend では認証済み UI の分岐、backend ではトークン検証後の app user 解決を追加してください。',
-      `現在の会話履歴件数は ${historyLength} 件で、thread 単位の制御をあとから足せる形にしてあります。`,
     ].join('\n');
   }
 
@@ -410,7 +388,7 @@ function buildDummyReply(message: string, historyLength: number) {
   return [
     `受け取ったメッセージ: 「${message}」`,
     '現在は frontend の MSW モック応答です。BFF が未起動でも UI とスレッド遷移を確認できます。',
-    'thread と history を受け取る API 形状は OpenAPI 契約から生成しているため、実 API と mock の乖離を抑えやすくしています。',
+    'API 形状は OpenAPI 契約から生成しているため、実 API と mock の乖離を抑えやすくしています。',
   ].join('\n');
 }
 

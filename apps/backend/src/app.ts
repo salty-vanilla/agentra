@@ -147,7 +147,6 @@ app.post('/chat', async (context) => {
 
   const payload = await readJsonBody(context);
   const parsed = payload as {
-    history?: Array<{ role: 'system' | 'user' | 'assistant'; content: string }>;
     message: string;
     threadId?: string;
     model?: ModelKey;
@@ -258,10 +257,7 @@ app.post('/chat', async (context) => {
     })();
 
     try {
-      // Build the effective prompt: append command directive if present
-      const effectiveMessage = command
-        ? `${message}\n\n${buildRouterCommandDirective(command)}`
-        : message;
+      const commandDirective = command ? buildRouterCommandDirective(command) : undefined;
 
       // Emit a simple "in progress" message for slide commands.
       // TODO: Replace with real pipeline progress events once the Router
@@ -278,9 +274,9 @@ app.post('/chat', async (context) => {
       for await (const runtimeEvent of invokeAgentStream(
         modelKey,
         thread.threadId,
-        effectiveMessage,
+        message,
         traceId,
-        { userId },
+        { userId, ...(commandDirective ? { commandDirective } : {}) },
         upstreamAbortController.signal,
       )) {
         if (runtimeEvent.type === 'text') {

@@ -284,7 +284,6 @@ export function AgentraWorkspace() {
 
         const chatRequest = {
           message: latestUserMessage.content,
-          history: normalizedHistory.slice(0, lastUserMessageIndex),
           ...(selectedThreadId ? { threadId: selectedThreadId } : {}),
           model: selectedModelRef.current,
         };

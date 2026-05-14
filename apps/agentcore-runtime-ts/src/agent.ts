@@ -68,6 +68,12 @@ const PRESETS: Record<ResponsePreset, GenerationConfig> = {
   },
 };
 
+const MODEL_TO_PRESET: Record<ModelKey, ResponsePreset> = {
+  haiku: 'fast',
+  sonnet: 'balanced',
+  opus: 'deep',
+};
+
 const LENGTH_CONFIG: Record<LengthKey, { maxTokens: number }> = {
   short: { maxTokens: 1024 },
   normal: { maxTokens: 4096 },
@@ -76,9 +82,11 @@ const LENGTH_CONFIG: Record<LengthKey, { maxTokens: number }> = {
 
 const RequestSchema = z.object({
   prompt: z.string().trim().min(1).default('Hello! How can I help you today?'),
+  model: z.enum(['opus', 'sonnet', 'haiku']).optional(),
   preset: z.enum(['fast', 'balanced', 'deep']).default(DEFAULT_PRESET),
   tone: z.enum(['business', 'engineer']).default(DEFAULT_TONE),
   length: z.enum(['short', 'normal', 'detailed']).default(DEFAULT_LENGTH),
+  commandDirective: z.string().optional(),
   traceId: z.string().trim().min(1).optional(),
   userId: z.string().trim().min(1).optional(),
   threadId: z.string().trim().min(1).optional(),
@@ -127,13 +135,17 @@ const app = new BedrockAgentCoreApp({
 
       const session = await createRuntimeSessionManager({ userId, threadId });
 
+      const effectivePreset = request.model
+        ? MODEL_TO_PRESET[request.model]
+        : request.preset;
       const agent = createRouterAgent({
-        modelConfig: resolveConfig(request.preset, request.length),
+        modelConfig: resolveConfig(effectivePreset, request.length),
         sessionManager: session.sessionManager,
       });
       const finalPrompt = buildRouterPrompt({
         userPrompt: request.prompt,
         tone: request.tone,
+        commandDirective: request.commandDirective,
       });
       const traceId = request.traceId ?? createTraceId();
       const startedAt = nowIso();
