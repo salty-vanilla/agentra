@@ -20,6 +20,7 @@ RUN pnpm install --frozen-lockfile --filter @agentra/presentation-author-runtime
 
 # Copy source (tsconfig.base.json copied here so install cache is unaffected by type changes)
 COPY tsconfig.base.json ./
+COPY packages/shared/ packages/shared/
 COPY packages/presentation-author/ packages/presentation-author/
 COPY apps/presentation-author-runtime/ apps/presentation-author-runtime/
 
@@ -31,11 +32,11 @@ RUN pnpm --filter @agentra/presentation-author exec tsc -b --force && \
 RUN pnpm --filter @agentra/presentation-author-runtime deploy --legacy /deploy
 
 # pnpm deploy --legacy leaves workspace deps (@agentra/*) as dangling symlinks.
-# Replace with real copy, then let npm resolve transitive deps (pptxgenjs etc.).
-RUN rm -rf /deploy/node_modules/@agentra/presentation-author && \
-    cp -rL packages/presentation-author /deploy/node_modules/@agentra/presentation-author && \
-    cd /deploy/node_modules/@agentra/presentation-author && \
-    npm install --omit=dev --ignore-scripts
+# Copy shared and presentation-author packages for proper resolution
+RUN rm -rf /deploy/node_modules/@agentra && \
+    mkdir -p /deploy/node_modules/@agentra && \
+    cp -rL packages/shared /deploy/node_modules/@agentra/shared && \
+    cp -rL packages/presentation-author /deploy/node_modules/@agentra/presentation-author
 
 # --- Python venv stage (runs in parallel with build) ---
 FROM python:3.11-slim-bookworm AS python

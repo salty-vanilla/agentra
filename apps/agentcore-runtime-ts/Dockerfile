@@ -8,6 +8,7 @@ RUN npm install -g pnpm@10
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 
 # Copy all workspace package.json files needed for install
+COPY packages/shared/package.json packages/shared/package.json
 COPY packages/agent-tools/package.json packages/agent-tools/package.json
 COPY apps/agentcore-runtime-ts/package.json apps/agentcore-runtime-ts/package.json
 
@@ -16,6 +17,7 @@ RUN pnpm install --frozen-lockfile --filter @agentra/agentcore-runtime-ts...
 
 # Copy source (tsconfig.base.json copied here so install cache is unaffected by type changes)
 COPY tsconfig.base.json ./
+COPY packages/shared/ packages/shared/
 COPY packages/agent-tools/ packages/agent-tools/
 COPY apps/agentcore-runtime-ts/ apps/agentcore-runtime-ts/
 
@@ -26,8 +28,10 @@ RUN pnpm --filter @agentra/agent-tools exec tsc -b --force && \
 # Deploy: creates a self-contained directory with all deps
 RUN pnpm --filter @agentra/agentcore-runtime-ts deploy --legacy /deploy
 
-# Replace workspace symlink with real copy
-RUN rm -rf /deploy/node_modules/@agentra/agent-tools && \
+# Replace workspace symlinks with real copies
+RUN rm -rf /deploy/node_modules/@agentra && \
+    mkdir -p /deploy/node_modules/@agentra && \
+    cp -rL packages/shared /deploy/node_modules/@agentra/shared && \
     cp -rL packages/agent-tools /deploy/node_modules/@agentra/agent-tools
 
 FROM node:22-slim
