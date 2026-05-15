@@ -10,13 +10,13 @@ RUN npm install -g pnpm@10
 # Copy workspace config (tsconfig.base.json excluded to avoid busting install cache on type-only changes)
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 
-# Copy all workspace package.json files needed for install
-COPY packages/presentation-author/package.json packages/presentation-author/package.json
+# Copy workspace package.json files needed for install
 COPY packages/shared/package.json packages/shared/package.json
+COPY packages/presentation-author/package.json packages/presentation-author/package.json
 COPY apps/presentation-author-runtime/package.json apps/presentation-author-runtime/package.json
 
-# Install workspace dependencies
-RUN pnpm install --frozen-lockfile --filter @agentra/presentation-author-runtime... --filter @agentra/presentation-author...
+# Full install — populates pnpm store so the later production install can run offline
+RUN pnpm install --frozen-lockfile --filter @agentra/presentation-author-runtime...
 
 # Copy source (tsconfig.base.json copied here so install cache is unaffected by type changes)
 COPY tsconfig.base.json ./
@@ -24,19 +24,46 @@ COPY packages/shared/ packages/shared/
 COPY packages/presentation-author/ packages/presentation-author/
 COPY apps/presentation-author-runtime/ apps/presentation-author-runtime/
 
-# Build presentation-author first (--force to ignore stale tsbuildinfo), then runtime
-RUN pnpm --filter @agentra/presentation-author exec tsc -b --force && \
+# Build shared, presentation-author (--force ignores stale tsbuildinfo), then runtime
+RUN pnpm --filter @agentra/shared build && \
+    pnpm --filter @agentra/presentation-author exec tsc -b --force && \
     pnpm --filter @agentra/presentation-author-runtime build
 
-# Deploy: creates a self-contained directory with all deps
-RUN pnpm --filter @agentra/presentation-author-runtime deploy --legacy /deploy
+# Pack @agentra/shared — files field (["dist"]) ensures only built output is included
+RUN mkdir -p /tarballs && \
+    cd packages/shared && pnpm pack --pack-destination /tarballs && \
+    mv /tarballs/agentra-shared-*.tgz /tarballs/shared.tgz
 
-# pnpm deploy --legacy leaves workspace deps (@agentra/*) as dangling symlinks.
-# Copy shared and presentation-author packages for proper resolution
-RUN rm -rf /deploy/node_modules/@agentra && \
-    mkdir -p /deploy/node_modules/@agentra && \
-    cp -rL packages/shared /deploy/node_modules/@agentra/shared && \
-    cp -rL packages/presentation-author /deploy/node_modules/@agentra/presentation-author
+# Replace workspace:* with file: in presentation-author before packing so that
+# when the tarball is installed in a standalone directory pnpm can resolve @agentra/shared.
+# NOTE: this mutates the in-container package.json only — no subsequent build step reads it.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('packages/presentation-author/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}fs.writeFileSync('packages/presentation-author/package.json',JSON.stringify(p,null,2));"
+
+# Pack @agentra/presentation-author — files field (["dist","vendor","templates","assets"])
+# ensures all runtime assets are included in the tarball
+RUN cd packages/presentation-author && pnpm pack --pack-destination /tarballs && \
+    mv /tarballs/agentra-presentation-author-*.tgz /tarballs/presentation-author.tgz
+
+# Build production package.json for the runtime with file: references to tarballs
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/presentation-author-runtime/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
+
+# Production install: all packages are in the store from the full install above; --offline
+# hard-fails if any package is missing, making store-population failures loud rather than silent
+WORKDIR /deploy
+RUN pnpm install --offline
+
+# Copy built application dist
+RUN cp -r /app/apps/presentation-author-runtime/dist ./dist
+
+# Smoke tests: verify all runtime modules resolve correctly from the production install
+RUN node -e "import('@agentra/shared').then(()=>console.log('shared ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('@agentra/presentation-author').then(()=>console.log('presentation-author ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('@aws-sdk/client-secrets-manager').then(()=>console.log('secrets-manager ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('pptxgenjs').then(()=>console.log('pptxgenjs ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('jszip').then(()=>console.log('jszip ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('mathjax-full/js/mathjax.js').then(()=>console.log('mathjax ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('prismjs').then(()=>console.log('prismjs ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('@resvg/resvg-js').then(()=>console.log('resvg ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})"
 
 # --- Python venv stage (runs in parallel with build) ---
 FROM python:3.11-slim-bookworm AS python
@@ -72,20 +99,12 @@ WORKDIR /app
 # Ensure HOME is writable for LibreOffice profile
 ENV HOME=/tmp
 
-# Copy the self-contained deploy output (includes node_modules + dist)
+# Copy the production install (node_modules built from tarballs + dist)
+# vendor, templates, and assets are included via the @agentra/presentation-author tarball
 COPY --from=build /deploy ./
 
 # Copy skill definitions (SKILL.md files read at runtime by AgentSkills plugin)
 COPY apps/presentation-author-runtime/skills/ ./skills/
-
-# Copy vendored helpers and scripts (needed at runtime by @agentra/presentation-author)
-COPY packages/presentation-author/vendor/ ./node_modules/@agentra/presentation-author/vendor/
-
-# Copy template assets (BrandFrame header/footer images, manifests)
-COPY packages/presentation-author/templates/ ./node_modules/@agentra/presentation-author/templates/
-
-# Copy icon assets (SVG icons for runtime SVG→PNG rendering)
-COPY packages/presentation-author/assets/ ./node_modules/@agentra/presentation-author/assets/
 
 EXPOSE 8080
 

@@ -7,12 +7,12 @@ RUN npm install -g pnpm@10
 # Copy workspace config (tsconfig.base.json excluded to avoid busting install cache on type-only changes)
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 
-# Copy all workspace package.json files needed for install
+# Copy workspace package.json files needed for install
 COPY packages/shared/package.json packages/shared/package.json
 COPY packages/agent-tools/package.json packages/agent-tools/package.json
 COPY apps/agentcore-runtime-ts/package.json apps/agentcore-runtime-ts/package.json
 
-# Install workspace dependencies
+# Full install — populates pnpm store so the later production install can run offline
 RUN pnpm install --frozen-lockfile --filter @agentra/agentcore-runtime-ts...
 
 # Copy source (tsconfig.base.json copied here so install cache is unaffected by type changes)
@@ -21,18 +21,39 @@ COPY packages/shared/ packages/shared/
 COPY packages/agent-tools/ packages/agent-tools/
 COPY apps/agentcore-runtime-ts/ apps/agentcore-runtime-ts/
 
-# Build agent-tools first, then runtime
-RUN pnpm --filter @agentra/agent-tools exec tsc -b --force && \
+# Build agent-tools first (--force ignores stale tsbuildinfo), then runtime
+RUN pnpm --filter @agentra/shared build && \
+    pnpm --filter @agentra/agent-tools exec tsc -b --force && \
     pnpm --filter @agentra/agentcore-runtime-ts build
 
-# Deploy: creates a self-contained directory with all deps
-RUN pnpm --filter @agentra/agentcore-runtime-ts deploy --legacy /deploy
+# Pack @agentra/shared — files field (["dist"]) ensures only built output is included
+RUN mkdir -p /tarballs && \
+    cd packages/shared && pnpm pack --pack-destination /tarballs && \
+    mv /tarballs/agentra-shared-*.tgz /tarballs/shared.tgz
 
-# Replace workspace symlinks with real copies
-RUN rm -rf /deploy/node_modules/@agentra && \
-    mkdir -p /deploy/node_modules/@agentra && \
-    cp -rL packages/shared /deploy/node_modules/@agentra/shared && \
-    cp -rL packages/agent-tools /deploy/node_modules/@agentra/agent-tools
+# Replace workspace:* with file: in agent-tools before packing so that
+# when the tarball is installed in a standalone directory pnpm can resolve @agentra/shared.
+# NOTE: this mutates the in-container package.json only — no subsequent build step reads it.
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('packages/agent-tools/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}fs.writeFileSync('packages/agent-tools/package.json',JSON.stringify(p,null,2));"
+
+# Pack @agentra/agent-tools — files field (["dist"]) ensures only built output is included
+RUN cd packages/agent-tools && pnpm pack --pack-destination /tarballs && \
+    mv /tarballs/agentra-agent-tools-*.tgz /tarballs/agent-tools.tgz
+
+# Build production package.json for the runtime with file: references to tarballs
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/agentcore-runtime-ts/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
+
+# Production install: all packages are in the store from the full install above; --offline
+# hard-fails if any package is missing, making store-population failures loud rather than silent
+WORKDIR /deploy
+RUN pnpm install --offline
+
+# Copy built application dist
+RUN cp -r /app/apps/agentcore-runtime-ts/dist ./dist
+
+# Smoke test: verify @agentra/shared and @agentra/agent-tools resolve correctly
+RUN node -e "import('@agentra/shared').then(()=>console.log('shared ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
+    node -e "import('@agentra/agent-tools').then(()=>console.log('agent-tools ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})"
 
 FROM node:22-slim
 

@@ -4,21 +4,40 @@ WORKDIR /app
 
 RUN npm install -g pnpm@10
 
+# Copy workspace config (tsconfig.base.json excluded to avoid busting install cache on type-only changes)
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
-COPY tsconfig.base.json ./
 COPY packages/shared/package.json packages/shared/package.json
 COPY apps/backend/package.json apps/backend/package.json
 
+# Full install — populates pnpm store so the later production install can run offline
 RUN pnpm install --frozen-lockfile --filter @agentra/backend...
 
+# Copy source (tsconfig.base.json copied here so install cache is unaffected by type changes)
+COPY tsconfig.base.json ./
 COPY packages/shared/ packages/shared/
 COPY apps/backend/ apps/backend/
 
 RUN pnpm --filter @agentra/shared build
 RUN pnpm --filter @agentra/backend build
-RUN pnpm --filter @agentra/backend deploy --legacy /deploy
-RUN rm -rf /deploy/node_modules/@agentra/shared && cp -rL packages/shared /deploy/node_modules/@agentra/shared
-RUN cp -rL apps/backend/dist /deploy/dist
+
+# Pack @agentra/shared — files field (["dist"]) ensures only built output is included
+RUN mkdir -p /tarballs && \
+    cd packages/shared && pnpm pack --pack-destination /tarballs && \
+    mv /tarballs/agentra-shared-*.tgz /tarballs/shared.tgz
+
+# Build production package.json for the backend with file: reference to shared tarball
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/backend/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
+
+# Production install: all packages are in the store from the full install above; --offline
+# hard-fails if any package is missing, making store-population failures loud rather than silent
+WORKDIR /deploy
+RUN pnpm install --offline
+
+# Copy built application dist
+RUN cp -r /app/apps/backend/dist ./dist
+
+# Smoke test: verify @agentra/shared resolves correctly
+RUN node -e "import('@agentra/shared').then(()=>console.log('shared ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})"
 
 FROM --platform=linux/arm64 public.ecr.aws/docker/library/node:24-slim
 

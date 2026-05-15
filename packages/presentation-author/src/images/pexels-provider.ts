@@ -2,10 +2,6 @@ import { createWriteStream } from 'node:fs';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { pipeline } from 'node:stream/promises';
-import {
-  GetSecretValueCommand,
-  SecretsManagerClient,
-} from '@aws-sdk/client-secrets-manager';
 import type {
   ImageRetrievalProvider,
   ImageSearchRequest,
@@ -142,6 +138,9 @@ function resolveAwsRegion(): string {
 }
 
 async function getApiKeyFromSecretsManager(secretId: string): Promise<string> {
+  const { GetSecretValueCommand, SecretsManagerClient } = await import(
+    '@aws-sdk/client-secrets-manager'
+  );
   const client = new SecretsManagerClient({ region: resolveAwsRegion() });
   const response = await client.send(new GetSecretValueCommand({ SecretId: secretId }));
 
