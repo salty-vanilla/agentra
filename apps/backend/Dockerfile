@@ -1,4 +1,4 @@
-FROM node:24-slim AS build
+FROM --platform=linux/arm64 node:24-slim AS build
 
 WORKDIR /app
 
@@ -14,13 +14,13 @@ RUN pnpm install --frozen-lockfile --filter @agentra/backend...
 COPY packages/shared/ packages/shared/
 COPY apps/backend/ apps/backend/
 
-RUN pnpm --filter @agentra/shared build 2>&1 | tee /tmp/shared-build.log
-RUN cat /tmp/shared-build.log
-RUN cd apps/backend && npx tsc -b --force
+RUN pnpm --filter @agentra/shared build
+RUN pnpm --filter @agentra/backend build
 RUN pnpm --filter @agentra/backend deploy --legacy /deploy
 RUN rm -rf /deploy/node_modules/@agentra/shared && cp -rL packages/shared /deploy/node_modules/@agentra/shared
+RUN cp -rL apps/backend/dist /deploy/dist
 
-FROM public.ecr.aws/docker/library/node:24-slim
+FROM --platform=linux/arm64 public.ecr.aws/docker/library/node:24-slim
 
 WORKDIR /app
 

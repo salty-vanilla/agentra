@@ -7,8 +7,13 @@ import {
   LambdaRestApi,
   ResponseTransferMode,
 } from 'aws-cdk-lib/aws-apigateway';
+import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { DockerImageCode, DockerImageFunction } from 'aws-cdk-lib/aws-lambda';
+import {
+  Architecture,
+  DockerImageCode,
+  DockerImageFunction,
+} from 'aws-cdk-lib/aws-lambda';
 import type { Construct } from 'constructs';
 import type { AgentraDataAuthStack } from './agentra-data-auth-stack.js';
 
@@ -32,10 +37,12 @@ export class AgentraAppStack extends Stack {
 
     const backendImage = DockerImageCode.fromImageAsset(join(__dirname, '../../../'), {
       file: 'apps/backend/Dockerfile',
+      platform: Platform.LINUX_ARM64,
     });
 
     const apiHandler = new DockerImageFunction(this, 'BackendHandler', {
       code: backendImage,
+      architecture: Architecture.ARM_64,
       // API Gateway response streaming and long-running AgentCore calls need a much longer Lambda budget.
       timeout: Duration.minutes(15),
       memorySize: 512,
