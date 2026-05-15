@@ -63,12 +63,15 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     });
 
     // Bedrock permissions scoped to inference profiles
-    // (Note: InvokeModel on foundation-model/* cannot be further scoped by AWS constraints)
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-        resources: [`arn:aws:bedrock:${this.region}::foundation-model/*`],
+        resources: [
+          'arn:aws:bedrock:*::foundation-model/*',
+          `arn:aws:bedrock:*:${this.account}:inference-profile/*`,
+          `arn:aws:bedrock:*:${this.account}:application-inference-profile/*`,
+        ],
       }),
     );
     thirdPartyApiKeysSecret.grantRead(runtimeRole);
