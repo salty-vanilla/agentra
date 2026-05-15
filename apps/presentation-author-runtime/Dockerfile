@@ -44,13 +44,14 @@ RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('packages
 RUN cd packages/presentation-author && pnpm pack --pack-destination /tarballs && \
     mv /tarballs/agentra-presentation-author-*.tgz /tarballs/presentation-author.tgz
 
-# Build production package.json for the runtime with file: references to tarballs
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/presentation-author-runtime/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
+# Build production package.json: workspace:* → file: tarball, registry ranges → exact installed
+# versions read from node_modules so pnpm can resolve fully offline from the store
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/presentation-author-runtime/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}else{try{const ins=JSON.parse(fs.readFileSync('node_modules/'+k+'/package.json','utf8'));p.dependencies[k]=ins.version;}catch(e){}}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
 
-# Production install: all packages are in the store from the full install above; --offline
-# hard-fails if any package is missing, making store-population failures loud rather than silent
+# Production install: shamefully-hoist ensures transitive deps of packed workspace packages
+# (e.g. jszip, pptxgenjs) are accessible from the runtime's top-level node_modules
 WORKDIR /deploy
-RUN pnpm install --offline
+RUN echo "shamefully-hoist=true" > .npmrc && pnpm install --prefer-offline
 
 # Copy built application dist
 RUN cp -r /app/apps/presentation-author-runtime/dist ./dist

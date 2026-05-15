@@ -40,13 +40,15 @@ RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('packages
 RUN cd packages/agent-tools && pnpm pack --pack-destination /tarballs && \
     mv /tarballs/agentra-agent-tools-*.tgz /tarballs/agent-tools.tgz
 
-# Build production package.json for the runtime with file: references to tarballs
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/agentcore-runtime-ts/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
+# Build production package.json: workspace:* → file: tarball, registry ranges → exact installed
+# versions read from node_modules. @agentra/shared is added explicitly so pnpm hoists it to
+# top-level node_modules even though it is a transitive dep (not a direct dep of this runtime).
+RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/agentcore-runtime-ts/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}else{try{const ins=JSON.parse(fs.readFileSync('node_modules/'+k+'/package.json','utf8'));p.dependencies[k]=ins.version;}catch(e){}}}p.dependencies['@agentra/shared']='file:/tarballs/shared.tgz';delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
 
-# Production install: all packages are in the store from the full install above; --offline
-# hard-fails if any package is missing, making store-population failures loud rather than silent
+# Production install: exact versions use pnpm store; --prefer-offline avoids re-downloading
+# package tarballs (they're in the store from above) while allowing fast metadata-only fetches
 WORKDIR /deploy
-RUN pnpm install --offline
+RUN pnpm install --prefer-offline
 
 # Copy built application dist
 RUN cp -r /app/apps/agentcore-runtime-ts/dist ./dist
