@@ -200,6 +200,14 @@ agentcore-logs-request stage=default_stage requestId="" profile=aws_profile:
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "1h" "{{requestId}}"
 
+# Filter AgentCore logs by traceId
+agentcore-logs-trace stage=default_stage traceId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{traceId}}" ]] && { echo "ERROR: traceId required. Usage: just agentcore-logs-trace [stage] <traceId>" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "1h" "{{traceId}}"
+
 # Filter AgentCore logs by runtimeSessionId
 agentcore-logs-session stage=default_stage sessionId="" profile=aws_profile:
     #!/usr/bin/env bash
@@ -229,6 +237,14 @@ agentcore-logs-follow-request stage=default_stage requestId="" profile=aws_profi
     [[ -z "{{requestId}}" ]] && { echo "ERROR: requestId required" >&2; exit 1; }
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "5m" "{{requestId}}" --follow
+
+# Follow AgentCore logs by traceId in real time
+agentcore-logs-follow-trace stage=default_stage traceId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{traceId}}" ]] && { echo "ERROR: traceId required" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "5m" "{{traceId}}" --follow
 
 # Follow AgentCore logs by runtimeSessionId in real time
 agentcore-logs-follow-session stage=default_stage sessionId="" profile=aws_profile:
