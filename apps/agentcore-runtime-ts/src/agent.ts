@@ -161,6 +161,8 @@ const app = new BedrockAgentCoreApp({
         logger.setRequestId(context.requestId);
       }
       const toolStartTimes = new Map<string, { name: string; startedAt: number }>();
+      let currentStreamingToolUseId: string | undefined;
+      let currentStreamingToolName: string | undefined;
 
       logger.logInvocationStart({
         userId,
@@ -213,6 +215,8 @@ const app = new BedrockAgentCoreApp({
           ) {
             const { toolUseId, name } = event.event.start;
             toolStartTimes.set(toolUseId, { name, startedAt: Date.now() });
+            currentStreamingToolUseId = toolUseId;
+            currentStreamingToolName = name;
             observability.onModelToolUseStart(toolUseId, name);
             logger.logToolCallStart(toolUseId, name);
             continue;
@@ -247,6 +251,15 @@ const app = new BedrockAgentCoreApp({
           if (event.type === 'toolStreamUpdateEvent') {
             const progress = event.event.data as SubAgentProgressEvent | undefined;
             if (progress && typeof progress.stage === 'string') {
+              if (currentStreamingToolUseId && currentStreamingToolName) {
+                logger.logSubAgentToolProgress(
+                  currentStreamingToolUseId,
+                  currentStreamingToolName,
+                  progress.stage,
+                  progress.status,
+                  progress.durationMs,
+                );
+              }
               yield {
                 event: 'message',
                 data: {
@@ -263,6 +276,10 @@ const app = new BedrockAgentCoreApp({
             const { toolUseId } = event.result;
             const toolInfo = toolStartTimes.get(toolUseId);
             toolStartTimes.delete(toolUseId);
+            if (currentStreamingToolUseId === toolUseId) {
+              currentStreamingToolUseId = undefined;
+              currentStreamingToolName = undefined;
+            }
             const toolDuration = toolInfo ? Date.now() - toolInfo.startedAt : 0;
             const toolName = toolInfo?.name ?? 'unknown_tool';
             const toolStatus = event.result.status === 'error' ? 'error' : 'success';

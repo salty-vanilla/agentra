@@ -64,6 +64,30 @@ function toNormalizedOutput(
   };
 }
 
+const JSON_FENCE_RE = /^```(?:json)?[ \t]*\r?\n([\s\S]*?)\r?\n```[ \t]*$/;
+
+function tryExtractJson(value: string): unknown {
+  const trimmed = value.trim();
+  if (!trimmed) return undefined;
+
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    // fall through
+  }
+
+  const match = JSON_FENCE_RE.exec(trimmed);
+  if (match?.[1]) {
+    try {
+      return JSON.parse(match[1]);
+    } catch {
+      // fall through
+    }
+  }
+
+  return undefined;
+}
+
 export function normalizeSubAgentHandoffOutput(
   input: NormalizeSubAgentHandoffOutputInput,
 ): SubAgentHandoffOutput {
@@ -73,6 +97,20 @@ export function normalizeSubAgentHandoffOutput(
   }
 
   if (typeof input.value === 'string' && input.value.trim()) {
+    const extracted = tryExtractJson(input.value);
+    if (extracted !== undefined) {
+      const extractedParsed = subAgentHandoffOutputSchema.safeParse(extracted);
+      if (extractedParsed.success) {
+        return toNormalizedOutput(input, {
+          ...extractedParsed.data,
+          metadata: {
+            ...(extractedParsed.data.metadata ?? {}),
+            rawValueType: 'string_json',
+          },
+        });
+      }
+    }
+
     return toNormalizedOutput(input, {
       status: 'success',
       agentKind: input.agentKind,
