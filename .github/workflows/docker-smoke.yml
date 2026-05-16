@@ -1,0 +1,103 @@
+name: Docker Smoke Tests
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: docker-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker-smoke:
+    name: docker-smoke / ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - service: backend
+            dockerfile: apps/backend/Dockerfile
+            platform: linux/arm64
+            port: 8080
+            health_path: /health
+            extra_env: "--env STORE_TYPE=memory --env SKIP_AUTH=true"
+          - service: agentcore-runtime-ts
+            dockerfile: apps/agentcore-runtime-ts/Dockerfile
+            platform: linux/amd64
+            port: 8080
+            health_path: ""
+            extra_env: "--env AWS_REGION=us-east-1 --env AWS_ACCESS_KEY_ID=test --env AWS_SECRET_ACCESS_KEY=test"
+          - service: presentation-author-runtime
+            dockerfile: apps/presentation-author-runtime/Dockerfile
+            platform: linux/amd64
+            port: 8080
+            health_path: ""
+            extra_env: "--env AWS_REGION=us-east-1 --env AWS_ACCESS_KEY_ID=test --env AWS_SECRET_ACCESS_KEY=test"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: ${{ matrix.platform }}
+          load: true
+          tags: agentra-${{ matrix.service }}:ci
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Start container
+        run: |
+          docker run --detach \
+            --name agentra-${{ matrix.service }} \
+            --publish ${{ matrix.port }}:${{ matrix.port }} \
+            ${{ matrix.extra_env }} \
+            agentra-${{ matrix.service }}:ci
+
+      - name: Health check
+        if: matrix.health_path != ''
+        run: |
+          for i in $(seq 1 12); do
+            if curl -sf http://localhost:${{ matrix.port }}${{ matrix.health_path }}; then
+              echo "Health check passed"
+              exit 0
+            fi
+            echo "Attempt $i/12, retrying in 5s..."
+            sleep 5
+          done
+          echo "Health check timed out after 60s"
+          exit 1
+
+      - name: Verify container is running
+        if: matrix.health_path == ''
+        run: |
+          sleep 15
+          STATUS=$(docker inspect --format='{{.State.Status}}' agentra-${{ matrix.service }} 2>/dev/null || echo "not found")
+          if [[ "$STATUS" != "running" ]]; then
+            echo "Container status: $STATUS (expected: running)"
+            exit 1
+          fi
+          echo "Container is running"
+
+      - name: Print container logs on failure
+        if: failure()
+        run: docker logs agentra-${{ matrix.service }} 2>&1 || true
+
+      - name: Stop and remove container
+        if: always()
+        run: |
+          docker stop agentra-${{ matrix.service }} || true
+          docker rm agentra-${{ matrix.service }} || true
