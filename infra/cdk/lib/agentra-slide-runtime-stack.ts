@@ -62,13 +62,17 @@ export class AgentraSlideRuntimeStack extends Stack {
       description: 'Execution role for Agentra Slide AgentCore Runtime.',
     });
 
-    // Bedrock permissions (Claude Sonnet 4.6 model)
-    const bedrockModelArn = `arn:aws:bedrock:${this.region}::foundation-model/anthropic.claude-sonnet-4-6`;
+    // Bedrock permissions — wildcarded over regions so that the global cross-region
+    // inference profile (global.anthropic.claude-sonnet-4-6) can route to any region.
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
-        resources: [bedrockModelArn],
+        resources: [
+          'arn:aws:bedrock:*::foundation-model/*',
+          `arn:aws:bedrock:*:${this.account}:inference-profile/*`,
+          `arn:aws:bedrock:*:${this.account}:application-inference-profile/*`,
+        ],
       }),
     );
     runtimeRole.addToPolicy(

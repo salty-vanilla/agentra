@@ -34,15 +34,32 @@ import {
 const DEFAULT_PROMPT =
   '温度異常の初動対応を説明する5枚の報告スライドを作成してください。';
 
+// Patterns that indicate a real artifact was produced (not a start/progress message).
+// Deliberately excludes /スライド.*作成/ which matches initiation messages like
+// "スライドの作成を開始します" before any PPTX has been generated.
 const SLIDE_ARTIFACT_PATTERNS = [
   /\.pptx/i,
-  /\.html/i,
   /presigned.*url/i,
   /s3.*key/i,
-  /download/i,
+  /download.*url/i,
+  /downloadUrl/i,
   /slide.*generat/i,
-  /スライド.*作成/,
   /プレゼンテーション.*完成/,
+];
+
+// Patterns that indicate the slide generation engine encountered an error.
+// Used in strict mode to detect false positives where the tool was invoked
+// but the PPTX was never produced (e.g. Bedrock permission errors).
+const SLIDE_ERROR_PATTERNS = [
+  /権限エラー/,
+  /アクセス権限/,
+  /permission.*error/i,
+  /access.*denied/i,
+  /authentication.*failed/i,
+  /生成に失敗/,
+  /pptx.*failed/i,
+  /failed.*pptx/i,
+  /not authorized/i,
 ];
 
 function buildSlideCommandDirective(prompt: string): string {
@@ -101,25 +118,35 @@ async function main(): Promise<void> {
   const artifactFound = SLIDE_ARTIFACT_PATTERNS.some((pattern) =>
     pattern.test(responseText),
   );
+  const errorDetected = SLIDE_ERROR_PATTERNS.some((pattern) =>
+    pattern.test(responseText),
+  );
   const slideToolObserved = stats.toolNames.some(
     (t) => t.includes('slide') || t.includes('presentation'),
   );
 
   console.log('--- artifact analysis ---');
   console.log(`slide artifact signal found: ${artifactFound ? 'yes' : 'no'}`);
+  console.log(`slide error signal detected: ${errorDetected ? 'yes' : 'no'}`);
   console.log(`slide-related tool observed: ${slideToolObserved ? 'yes' : 'no'}`);
 
   printSummary(finalConfig, stats);
 
   const runtimeFailed = !gotDone || stats.eventCounts.error > 0;
-  const strictFailed = finalConfig.strict && !artifactFound && !slideToolObserved;
+  // In strict mode, fail if no real artifact signal found OR if an error was detected
+  // in the response (covers the case where the tool was called but generation failed).
+  const strictFailed = finalConfig.strict && (!artifactFound || errorDetected);
 
   if (runtimeFailed) {
     console.error('[smoke] FAIL: runtime error or no done event');
     process.exit(1);
   }
   if (strictFailed) {
-    console.error('[smoke] FAIL: strict mode - no slide artifact signal found');
+    if (errorDetected) {
+      console.error('[smoke] FAIL: strict mode - slide error detected in response');
+    } else {
+      console.error('[smoke] FAIL: strict mode - no slide artifact signal found');
+    }
     process.exit(1);
   }
 }
