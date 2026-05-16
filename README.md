@@ -49,7 +49,7 @@ pnpm install
 just install
 ```
 
-Inside the Devbox shell the following tools are pinned to the versions used in CI:
+Inside the Devbox shell, Node.js and pnpm match the versions used in CI. The remaining tools are provided consistently for local development:
 
 | Tool | Version |
 |------|---------|
