@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { access, cp, readFile, realpath, writeFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { repairPptx } from './pptx-repair.js';
 import type { AuthoringScriptExecutionResult, PptxRepairSummary } from './types.js';
 
@@ -18,15 +19,40 @@ export function resolveNodeModulePath(moduleName: string): string {
   return dirname(dirname(pkgJsonPath));
 }
 
-function resolveNodeModulePackageJsonPath(moduleName: string): string {
-  const require = createRequire(import.meta.url);
-  return require.resolve(`${moduleName}/package.json`);
+async function resolveSandboxRuntimeDir(explicit?: string): Promise<string> {
+  if (explicit) return explicit;
+
+  const fromEnv = process.env.PRESENTATION_SANDBOX_RUNTIME_DIR?.trim();
+  if (fromEnv) return fromEnv;
+
+  // Check local .sandbox-runtime relative to package root.
+  // import.meta.url points to dist/executor.js; pkg root is two levels up.
+  const pkgRoot = dirname(dirname(fileURLToPath(import.meta.url)));
+  const localDir = join(pkgRoot, '.sandbox-runtime');
+  try {
+    await access(localDir);
+    return localDir;
+  } catch {}
+
+  const globalDefault = '/opt/presentation-sandbox-runtime';
+  try {
+    await access(globalDefault);
+    return globalDefault;
+  } catch {
+    throw new Error(
+      'Sandbox runtime is not prepared.\n' +
+        'Run:\n  pnpm --filter @agentra/presentation-author sandbox:install\n' +
+        'or set:\n  PRESENTATION_SANDBOX_RUNTIME_DIR=/path/to/sandbox-runtime',
+    );
+  }
 }
 
 export async function prepareSandboxRuntime(input: {
   workDir: string;
   pptxgenjsBundlePath: string;
   jszipBundlePath: string;
+  prismjsMainPath: string;
+  mathjaxFullDir: string;
 }): Promise<{ bundlePath: string; preloadPath: string }> {
   const preloadPath = join(input.workDir, 'sandbox-preload.cjs');
   const bundlePath = join(input.workDir, 'pptxgenjs-sandbox.cjs');
@@ -51,12 +77,26 @@ export async function prepareSandboxRuntime(input: {
     `require(${JSON.stringify(input.jszipBundlePath)})`,
   );
 
+  // Preload intercepts require() calls for all sandbox-runtime packages,
+  // redirecting them to the isolated node_modules inside sandboxRuntimeDir.
+  const prismjsPkgDir = dirname(input.prismjsMainPath);
   const preloadSource = [
     "const Module = require('node:module');",
+    "const path = require('node:path');",
     'const originalResolveFilename = Module._resolveFilename;',
     'Module._resolveFilename = function(request, parent, isMain, options) {',
     `  if (request === 'pptxgenjs') return ${JSON.stringify(bundlePath)};`,
     `  if (request === 'jszip') return ${JSON.stringify(input.jszipBundlePath)};`,
+    `  if (request === 'prismjs' || request.startsWith('prismjs/')) {`,
+    `    if (request === 'prismjs') return ${JSON.stringify(input.prismjsMainPath)};`,
+    `    var sub = request.slice('prismjs'.length);`,
+    `    var r = path.join(${JSON.stringify(prismjsPkgDir)}, sub);`,
+    `    if (!path.extname(r)) r += '.js';`,
+    `    return r;`,
+    `  }`,
+    `  if (request.startsWith('mathjax-full/')) {`,
+    `    return path.join(${JSON.stringify(input.mathjaxFullDir)}, request.slice('mathjax-full'.length));`,
+    `  }`,
     '  return originalResolveFilename.call(this, request, parent, isMain, options);',
     '};',
     '',
@@ -72,22 +112,33 @@ export async function executeAuthoringScript(input: {
   sourceJsPath: string;
   pptxPath: string;
   timeoutMs?: number | undefined;
+  sandboxRuntimeDir?: string | undefined;
 }): Promise<AuthoringScriptExecutionResult> {
   const timeoutMs = input.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   const start = performance.now();
   const sandboxWorkDir = await realpath(input.workDir);
 
+  const sandboxRuntimeDir = await resolveSandboxRuntimeDir(input.sandboxRuntimeDir);
+  const sandboxNodeModules = join(sandboxRuntimeDir, 'node_modules');
+
   let pptxgenjsBundlePath: string;
   let jszipBundlePath: string;
+  let prismjsMainPath: string;
+  let mathjaxFullDir: string;
   try {
-    pptxgenjsBundlePath = createRequire(import.meta.url).resolve('pptxgenjs');
-    jszipBundlePath = join(
-      dirname(resolveNodeModulePackageJsonPath('jszip')),
-      'dist',
-      'jszip.min.js',
-    );
+    pptxgenjsBundlePath = createRequire(
+      join(sandboxNodeModules, 'pptxgenjs', 'package.json'),
+    ).resolve('pptxgenjs');
+    jszipBundlePath = join(sandboxNodeModules, 'jszip', 'dist', 'jszip.min.js');
+    prismjsMainPath = createRequire(
+      join(sandboxNodeModules, 'prismjs', 'package.json'),
+    ).resolve('prismjs');
+    mathjaxFullDir = join(sandboxNodeModules, 'mathjax-full');
   } catch {
-    throw new Error('Failed to resolve bundled presentation dependencies.');
+    throw new Error(
+      `Failed to resolve sandbox runtime dependencies from ${sandboxRuntimeDir}. ` +
+        'Run: pnpm --filter @agentra/presentation-author sandbox:install',
+    );
   }
 
   const { bundlePath: sandboxBundlePath, preloadPath: sandboxPreloadPath } =
@@ -95,11 +146,13 @@ export async function executeAuthoringScript(input: {
       workDir: sandboxWorkDir,
       pptxgenjsBundlePath,
       jszipBundlePath,
+      prismjsMainPath,
+      mathjaxFullDir,
     });
   const nodePathUsed = sandboxPreloadPath;
 
   // Run generated code with a strict permission boundary:
-  // - only the workspace and bundled node_modules are readable
+  // - only the workspace and sandbox runtime node_modules are readable
   // - only the workspace is writable
   // - no parent process environment is inherited
   const sandboxEnv: NodeJS.ProcessEnv = {
@@ -142,6 +195,7 @@ export async function executeAuthoringScript(input: {
     process.execPath,
     nodeExecutableDir,
     nodeInstallRoot,
+    sandboxNodeModules,
   ];
   const nodeArgs = [
     '--permission',
