@@ -3,7 +3,10 @@ import {
   buildWebResearchAgentHandoffPrompt,
   webResearchAgentHandoffInputSchema,
 } from '../agents/web-research/handoff.js';
-import { executeInvokeWebResearchAgentTool } from '../tools/invoke-web-research-agent.tool.js';
+import {
+  executeInvokeWebResearchAgentTool,
+  streamInvokeWebResearchAgentTool,
+} from '../tools/invoke-web-research-agent.tool.js';
 
 describe('Web Research Agent handoff', () => {
   it('validates question, context, domain, and metadata limits', () => {
@@ -182,5 +185,138 @@ describe('Web Research Agent handoff', () => {
         rawValueType: 'undefined',
       },
     });
+  });
+});
+
+describe('streamInvokeWebResearchAgentTool', () => {
+  function makeAgentResult(structuredOutput: unknown) {
+    return {
+      structuredOutput,
+      toString() {
+        return JSON.stringify(structuredOutput);
+      },
+      metrics: undefined,
+    };
+  }
+
+  async function* makeAgentStream(events: unknown[], result: unknown) {
+    for (const event of events) {
+      yield event;
+    }
+    return result;
+  }
+
+  it('yields running then complete progress events for each sub-agent tool call', async () => {
+    const toolUseId = 'tool-1';
+    const agentResult = makeAgentResult({
+      status: 'success' as const,
+      answer: 'Tavily returned current web results.',
+      sources: [],
+      citations: [],
+    });
+
+    const streamEvents = [
+      {
+        type: 'modelStreamUpdateEvent',
+        event: {
+          type: 'modelContentBlockStartEvent',
+          start: { type: 'toolUseStart', toolUseId, name: 'tavily_search' },
+        },
+      },
+      {
+        type: 'toolResultEvent',
+        result: { toolUseId, status: 'success', content: [] },
+      },
+    ];
+
+    const stream = makeAgentStream(streamEvents, agentResult);
+    const progress: unknown[] = [];
+
+    const gen = streamInvokeWebResearchAgentTool(
+      { question: 'What are the latest AI trends?' },
+      {
+        agentFactory: () => ({
+          invoke: vi.fn(),
+          stream: vi.fn().mockReturnValue(stream),
+        }),
+      },
+    );
+
+    while (true) {
+      const { value, done } = await gen.next();
+      if (done) {
+        expect(value.status).toBe('success');
+        break;
+      }
+      progress.push(value);
+    }
+
+    expect(progress).toEqual([
+      { stage: 'tavily_search', status: 'running' },
+      { stage: 'tavily_search', status: 'complete', durationMs: expect.any(Number) },
+    ]);
+  });
+
+  it('yields error status when sub-agent tool returns error', async () => {
+    const toolUseId = 'tool-err';
+    const agentResult = makeAgentResult({ status: 'success', answer: 'done' });
+
+    const streamEvents = [
+      {
+        type: 'contentBlockEvent',
+        contentBlock: { type: 'toolUseBlock', toolUseId, name: 'web_research' },
+      },
+      {
+        type: 'toolResultEvent',
+        result: { toolUseId, status: 'error', content: [] },
+      },
+    ];
+
+    const stream = makeAgentStream(streamEvents, agentResult);
+    const progress: unknown[] = [];
+
+    const gen = streamInvokeWebResearchAgentTool(
+      { question: 'Search for something' },
+      {
+        agentFactory: () => ({
+          invoke: vi.fn(),
+          stream: vi.fn().mockReturnValue(stream),
+        }),
+      },
+    );
+
+    while (true) {
+      const { value, done } = await gen.next();
+      if (done) break;
+      progress.push(value);
+    }
+
+    expect(progress).toContainEqual(
+      expect.objectContaining({ stage: 'web_research', status: 'error' }),
+    );
+  });
+
+  it('returns error payload when the sub-agent stream throws', async () => {
+    const failingStream = {
+      next: () => Promise.reject(new Error('web research failure')),
+      [Symbol.asyncIterator]() {
+        return this;
+      },
+    };
+
+    const gen = streamInvokeWebResearchAgentTool(
+      { question: 'What failed?' },
+      {
+        agentFactory: () => ({
+          invoke: vi.fn(),
+          stream: vi.fn().mockReturnValue(failingStream),
+        }),
+      },
+    );
+
+    const { value, done } = await gen.next();
+    expect(done).toBe(true);
+    expect(value.status).toBe('error');
+    expect(JSON.parse(value.content[0].text).answer).toContain('web research failure');
   });
 });
