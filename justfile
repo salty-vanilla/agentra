@@ -20,6 +20,13 @@ cdk-whoami profile=aws_profile:
 cdk-diff-all stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    required_vars=(THIRD_PARTY_API_KEY_SECRET_ARN AMPLIFY_URL)
+    for var in "${required_vars[@]}"; do
+      if [[ -z "${!var:-}" ]]; then
+        echo "ERROR: required environment variable $var is not set" >&2
+        exit 1
+      fi
+    done
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     aws sts get-caller-identity
     pnpm --filter @agentra/infra-cdk exec cdk diff --all \
@@ -65,6 +72,13 @@ cdk-deploy-all stage=default_stage profile=aws_profile:
 cdk-diff-agentcore stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    required_vars=(THIRD_PARTY_API_KEY_SECRET_ARN)
+    for var in "${required_vars[@]}"; do
+      if [[ -z "${!var:-}" ]]; then
+        echo "ERROR: required environment variable $var is not set" >&2
+        exit 1
+      fi
+    done
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     aws sts get-caller-identity
     STACKS=(
@@ -104,22 +118,35 @@ cdk-deploy-agentcore stage=default_stage profile=aws_profile:
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 
 # Run AgentCore chat smoke test (requires AGENTCORE_RUNTIME_ARN in env)
+# Note: script files are added by PR #193 — guard exits cleanly if not yet merged
 smoke-agentcore stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    SCRIPT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-chat.ts"
+    if [[ ! -f "$SCRIPT" ]]; then
+      echo "ERROR: $SCRIPT not found. Merge PR #193 first." >&2
+      exit 1
+    fi
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     aws sts get-caller-identity
-    pnpm --filter @agentra/agentcore-runtime-ts smoke:chat
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT"
 
 # Run slide generation smoke test (requires AGENTCORE_RUNTIME_ARN in env)
+# Note: script files are added by PR #193 — guard exits cleanly if not yet merged
 smoke-slide stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    SCRIPT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-slide.ts"
+    if [[ ! -f "$SCRIPT" ]]; then
+      echo "ERROR: $SCRIPT not found. Merge PR #193 first." >&2
+      exit 1
+    fi
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     aws sts get-caller-identity
-    pnpm --filter @agentra/agentcore-runtime-ts smoke:slide
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT"
 
-# Deploy AgentCore stacks then run smoke tests
+# Deploy AgentCore stacks then run chat + slide smoke tests
 dev-deploy-agentcore-and-smoke stage=default_stage profile=aws_profile:
     just cdk-deploy-agentcore {{stage}} {{profile}}
     just smoke-agentcore {{stage}} {{profile}}
+    just smoke-slide {{stage}} {{profile}}
