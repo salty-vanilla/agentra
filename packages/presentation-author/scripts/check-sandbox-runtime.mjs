@@ -1,18 +1,28 @@
-import { access } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const pkgDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const sandboxDir = join(pkgDir, '.sandbox-runtime');
-const packages = ['pptxgenjs', 'jszip', 'prismjs', 'mathjax-full'];
+
+const checks = [
+  "require('pptxgenjs')",
+  "require('jszip')",
+  "require('prismjs')",
+  // prism language components depend on Prism being loaded first
+  "require('prismjs'); require('prismjs/components/prism-typescript')",
+  "require('mathjax-full/js/mathjax.js')",
+];
 
 let ok = true;
-for (const pkg of packages) {
+for (const check of checks) {
   try {
-    await access(join(sandboxDir, 'node_modules', pkg));
-    console.log(`ok  ${pkg}`);
-  } catch {
-    console.error(`MISSING  ${pkg}`);
+    execFileSync(process.execPath, ['-e', check], { cwd: sandboxDir, stdio: 'pipe' });
+    console.log(`ok  ${check}`);
+  } catch (err) {
+    const stderr = err.stderr?.toString().trim() ?? String(err);
+    console.error(`FAIL  ${check}`);
+    console.error(`      ${stderr.split('\n')[0]}`);
     ok = false;
   }
 }
