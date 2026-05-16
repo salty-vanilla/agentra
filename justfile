@@ -118,32 +118,34 @@ cdk-deploy-agentcore stage=default_stage profile=aws_profile:
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 
 # Run AgentCore chat smoke test (requires AGENTCORE_RUNTIME_ARN in env)
-# Note: script files are added by PR #193 — guard exits cleanly if not yet merged
+# Note: script files are added by PR #194 — guard exits cleanly if not yet merged
 smoke-agentcore stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
-    SCRIPT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-chat.ts"
-    if [[ ! -f "$SCRIPT" ]]; then
-      echo "ERROR: $SCRIPT not found. Merge PR #193 first." >&2
+    SCRIPT_ROOT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-chat.ts"
+    SCRIPT_PKG="scripts/smoke-agentcore-chat.ts"
+    if [[ ! -f "$SCRIPT_ROOT" ]]; then
+      echo "ERROR: $SCRIPT_ROOT not found. Merge PR #194 first." >&2
       exit 1
     fi
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     aws sts get-caller-identity
-    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT_PKG"
 
 # Run slide generation smoke test (requires AGENTCORE_RUNTIME_ARN in env)
-# Note: script files are added by PR #193 — guard exits cleanly if not yet merged
+# Note: script files are added by PR #194 — guard exits cleanly if not yet merged
 smoke-slide stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
-    SCRIPT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-slide.ts"
-    if [[ ! -f "$SCRIPT" ]]; then
-      echo "ERROR: $SCRIPT not found. Merge PR #193 first." >&2
+    SCRIPT_ROOT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-slide.ts"
+    SCRIPT_PKG="scripts/smoke-agentcore-slide.ts"
+    if [[ ! -f "$SCRIPT_ROOT" ]]; then
+      echo "ERROR: $SCRIPT_ROOT not found. Merge PR #194 first." >&2
       exit 1
     fi
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     aws sts get-caller-identity
-    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT_PKG"
 
 # Deploy AgentCore stacks then run chat + slide smoke tests
 dev-deploy-agentcore-and-smoke stage=default_stage profile=aws_profile:
