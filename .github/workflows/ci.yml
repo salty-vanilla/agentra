@@ -38,6 +38,11 @@ jobs:
       - name: Build presentation author package
         run: pnpm --filter @agentra/presentation-author build
 
+      - name: Install presentation-author sandbox runtime
+        run: |
+          pnpm --filter @agentra/presentation-author sandbox:install
+          pnpm --filter @agentra/presentation-author sandbox:doctor
+
       - name: Run biome
         run: pnpm biome check .
 

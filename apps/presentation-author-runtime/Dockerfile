@@ -34,9 +34,11 @@ RUN pnpm --filter @agentra/shared build && \
 # dedicated directory. npm flat node_modules makes these easier to read from the
 # sandbox subprocess than pnpm's symlinked virtual store.
 FROM node:24-slim AS sandbox-runtime
-COPY packages/presentation-author/sandbox-runtime/package.json /opt/presentation-sandbox-runtime/package.json
+COPY packages/presentation-author/sandbox-runtime/package.json \
+     packages/presentation-author/sandbox-runtime/package-lock.json \
+     /opt/presentation-sandbox-runtime/
 WORKDIR /opt/presentation-sandbox-runtime
-RUN npm install --omit=dev
+RUN npm ci --omit=dev
 
 # --- Python venv stage (runs in parallel with build) ---
 FROM python:3.11-slim-bookworm AS python
