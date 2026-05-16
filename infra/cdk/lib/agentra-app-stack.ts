@@ -72,7 +72,10 @@ export class AgentraAppStack extends Stack {
       architecture: Architecture.ARM_64,
       timeout: Duration.seconds(30),
       memorySize: 512,
-      environment: sharedEnv,
+      environment: {
+        ...sharedEnv,
+        AWS_LWA_INVOKE_MODE: 'buffered',
+      },
     });
 
     // Streaming Lambda — response_stream mode, long timeout for AgentCore SSE
