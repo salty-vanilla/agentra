@@ -474,7 +474,7 @@ export function printSummary(config: SmokeConfig, stats: SmokeStats): void {
   const stage = process.env.AGENTRA_STAGE ?? 'dev';
   console.log('--- summary ---');
   console.log(`traceId        : ${config.traceId}`);
-  console.log(`runtimeSessionId: ${config.sessionId}`);
+  console.log(`threadId       : ${config.sessionId}`);
   console.log(`trace logs     : just agentcore-logs-trace ${stage} ${config.traceId}`);
   console.log(
     `session logs   : just agentcore-logs-session ${stage} ${config.sessionId}`,

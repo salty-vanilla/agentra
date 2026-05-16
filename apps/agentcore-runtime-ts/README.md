@@ -53,13 +53,13 @@ Resource: `arn:aws:logs:*:*:log-group:/aws/bedrock-agentcore/runtimes/*`
 | `just agentcore-log-groups [stage]` | List all discovered log groups |
 | `just agentcore-logs [stage] [since=30m]` | Recent lifecycle and error logs |
 | `just agentcore-logs-trace [stage] <traceId>` | All logs for a specific traceId |
-| `just agentcore-logs-request [stage] <requestId>` | All logs matching a requestId |
-| `just agentcore-logs-session [stage] <sessionId>` | All logs for a runtimeSessionId |
+| `just agentcore-logs-session [stage] <threadId>` | All logs for a threadId (session identifier) |
+| `just agentcore-logs-keyword [stage] <keyword>` | Free-text keyword search across logs |
 | `just agentcore-errors [stage] [since=1h]` | Error logs only |
 | `just agentcore-logs-follow [stage]` | Tail general logs in real time |
 | `just agentcore-logs-follow-trace [stage] <traceId>` | Tail by traceId in real time |
-| `just agentcore-logs-follow-request [stage] <requestId>` | Tail by requestId in real time |
-| `just agentcore-logs-follow-session [stage] <sessionId>` | Tail by sessionId in real time |
+| `just agentcore-logs-follow-session [stage] <threadId>` | Tail by threadId in real time |
+| `just agentcore-logs-follow-keyword [stage] <keyword>` | Tail by keyword in real time |
 | `just agentcore-errors-follow [stage]` | Tail error logs in real time |
 
 ### Typical workflow
