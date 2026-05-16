@@ -9,45 +9,118 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  ci:
-    name: ci
+  lint:
+    name: lint
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
         with:
           version: 10.9.0
           run_install: false
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm biome check .
 
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build agent tools package
+  build-packages:
+    name: build-packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Build agent-tools (includes shared via tsc -b project references)
         run: pnpm --filter @agentra/agent-tools build
-
-      - name: Build presentation author package
+      - name: Build presentation-author
         run: pnpm --filter @agentra/presentation-author build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-dist
+          path: |
+            packages/shared/dist
+            packages/agent-tools/dist
+            packages/presentation-author/dist
+          retention-days: 1
 
+  typecheck:
+    name: typecheck / ${{ matrix.workspace }}
+    needs: [build-packages]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        workspace:
+          - '@agentra/shared'
+          - '@agentra/agent-tools'
+          - '@agentra/presentation-author'
+          - '@agentra/frontend'
+          - '@agentra/backend'
+          - '@agentra/agentcore-runtime-ts'
+          - '@agentra/presentation-author-runtime'
+          - '@agentra/infra-cdk'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-dist
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter ${{ matrix.workspace }} typecheck
+
+  test:
+    name: test / ${{ matrix.workspace }}
+    needs: [build-packages]
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - workspace: '@agentra/agent-tools'
+            sandbox: false
+          - workspace: '@agentra/presentation-author'
+            sandbox: true
+          - workspace: '@agentra/backend'
+            sandbox: false
+          - workspace: '@agentra/agentcore-runtime-ts'
+            sandbox: false
+          - workspace: '@agentra/presentation-author-runtime'
+            sandbox: false
+          - workspace: '@agentra/infra-cdk'
+            sandbox: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-dist
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
       - name: Install presentation-author sandbox runtime
+        if: ${{ matrix.sandbox }}
         run: |
           pnpm --filter @agentra/presentation-author sandbox:install
           pnpm --filter @agentra/presentation-author sandbox:doctor
-
-      - name: Run biome
-        run: pnpm biome check .
-
-      - name: Run typecheck
-        run: pnpm typecheck
-
-      - name: Run test
-        run: pnpm test
+      - run: pnpm --filter ${{ matrix.workspace }} test
