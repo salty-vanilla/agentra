@@ -65,12 +65,15 @@ Resource: `arn:aws:logs:*:*:log-group:/aws/bedrock-agentcore/runtimes/*`
 ### Typical workflow
 
 ```bash
-# 1. Run a smoke test — it prints traceId and sessionId at the end
+# 1. Run a smoke test — it prints traceId and threadId at the end
 just smoke-agentcore dev
 
 # 2. Inspect all logs for that trace (copy traceId from smoke output)
 just agentcore-logs-trace dev 01960000-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
-# 3. Or follow in real time while a new request is in flight
+# 3. Or filter by threadId (conversation/session identifier)
+just agentcore-logs-session dev <threadId>
+
+# 4. Or follow in real time while a new request is in flight
 just agentcore-logs-follow-trace dev 01960000-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 ```
