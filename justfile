@@ -246,7 +246,7 @@ agentcore-logs-follow-trace stage=default_stage traceId="" profile=aws_profile:
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "5m" "{{traceId}}" --follow
 
-# Follow AgentCore logs by runtimeSessionId in real time
+# Follow AgentCore logs by threadId in real time
 agentcore-logs-follow-session stage=default_stage sessionId="" profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
