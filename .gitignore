@@ -25,3 +25,4 @@ asset-local-*.png
 templates/components/
 .worktrees/
 everything-claude-code/
+.devbox/

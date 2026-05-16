@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/jetify-com/devbox/0.13.7/.schema/devbox.schema.json",
+  "packages": [
+    "nodejs@22",
+    "pnpm@10.9.0",
+    "just@1",
+    "direnv@2",
+    "awscli2@2",
+    "jq@1",
+    "yq-go@4",
+    "gh@2"
+  ],
+  "shell": {
+    "init_hook": ["corepack enable 2>/dev/null || true"],
+    "scripts": {
+      "install": "pnpm install",
+      "check": "pnpm lint && pnpm typecheck && pnpm test"
+    }
+  }
+}

@@ -1,9 +1,32 @@
+set dotenv-load     := true
+set dotenv-filename := ".env.local"
+
 aws_profile   := env_var_or_default("AGENTRA_AWS_PROFILE", "quick-admin")
 default_stage := env_var_or_default("AGENTRA_STAGE", "dev")
 
 # Show available commands
 default:
     just --list
+
+# ── Local dev ─────────────────────────────────────────────────────────────────
+
+# Install Node dependencies
+install:
+    pnpm install
+
+# Lint, typecheck, and test
+check:
+    pnpm lint
+    pnpm typecheck
+    pnpm test
+
+# Start the frontend dev server (port 3000)
+dev-frontend:
+    pnpm dev:frontend
+
+# Start the backend dev server
+dev-backend:
+    pnpm dev:backend
 
 # ── Identity ──────────────────────────────────────────────────────────────────
 
