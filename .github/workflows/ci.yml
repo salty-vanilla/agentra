@@ -1,8 +1,10 @@
 name: CI
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -43,13 +45,16 @@ jobs:
         run: pnpm --filter @agentra/agent-tools build
       - name: Build presentation-author
         run: pnpm --filter @agentra/presentation-author build
+      - name: Pack package dist artifact
+        run: |
+          tar -czf packages-dist.tar.gz \
+            packages/shared/dist \
+            packages/agent-tools/dist \
+            packages/presentation-author/dist
       - uses: actions/upload-artifact@v4
         with:
           name: packages-dist
-          path: |
-            packages/shared/dist
-            packages/agent-tools/dist
-            packages/presentation-author/dist
+          path: packages-dist.tar.gz
           retention-days: 1
 
   typecheck:
@@ -70,9 +75,6 @@ jobs:
           - '@agentra/infra-cdk'
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: packages-dist
       - uses: pnpm/action-setup@v4
         with:
           version: 10.9.0
@@ -82,6 +84,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-dist
+          path: .
+      - name: Extract package dist artifact
+        run: tar -xzf packages-dist.tar.gz
       - run: pnpm --filter ${{ matrix.workspace }} typecheck
 
   test:
@@ -106,9 +114,6 @@ jobs:
             sandbox: false
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          name: packages-dist
       - uses: pnpm/action-setup@v4
         with:
           version: 10.9.0
@@ -118,6 +123,12 @@ jobs:
           node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-dist
+          path: .
+      - name: Extract package dist artifact
+        run: tar -xzf packages-dist.tar.gz
       - name: Install presentation-author sandbox runtime
         if: ${{ matrix.sandbox }}
         run: |
