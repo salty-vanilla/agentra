@@ -147,10 +147,9 @@ export async function executeInvokeWebResearchAgentTool(
   } catch (error) {
     const message = errorMessage(error);
     const output = buildErrorOutput(message, input);
-    return {
-      status: 'error' as const,
-      content: [{ text: JSON.stringify(output) }],
-    };
+    // Return toolSuccess so the Router reads the error as structured content
+    // rather than treating it as a transient failure to retry.
+    return toolSuccess(output);
   }
 }
 
