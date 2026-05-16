@@ -31,11 +31,66 @@ agentra/
 
 ## Getting Started
 
+### Using Devbox (recommended)
+
+[Devbox](https://www.jetify.com/devbox) pins the OS/CLI tool versions required for development. Install it once, then enter a reproducible shell.
+
+```bash
+# Install Devbox (one-time)
+brew install jetify-com/devbox/devbox
+
+# Enter the reproducible dev shell
+devbox shell
+
+# Install Node dependencies
+pnpm install
+
+# Or use just (available inside devbox shell)
+just install
+```
+
+Inside the Devbox shell the following tools are pinned to the versions used in CI:
+
+| Tool | Version |
+|------|---------|
+| Node.js | 22.x |
+| pnpm | 10.9.0 |
+| just | latest stable |
+| direnv | latest stable |
+| AWS CLI | v2 |
+| jq / yq | latest stable |
+| gh | v2 |
+
+> **Docker:** Docker Desktop or OrbStack is required separately. Devbox does not manage the Docker daemon on macOS.
+
+### Without Devbox (minimum requirements)
+
+If you prefer to manage tools yourself, ensure the following are installed:
+
+- Node.js 22
+- pnpm 10.9.0 (`npm install -g pnpm@10.9.0`)
+- Docker (Desktop or OrbStack)
+- AWS CLI v2
+- `gh` CLI (optional, for issue/PR workflows)
+
 ```bash
 pnpm install
 pnpm dev:backend
 pnpm dev:frontend
 ```
+
+### Environment variables
+
+Copy `.env.example` to `.env.local` and fill in the values:
+
+```bash
+cp .env.example .env.local
+# edit .env.local with your values
+```
+
+`.env.local` is **not** committed to git. `THIRD_PARTY_API_KEY_SECRET_ARN` refers to an AWS Secrets Manager secret containing `TAVILY_API_KEY` and `PEXELS_API_KEY` as JSON keys.
+
+If you use `direnv`, run `direnv allow` once after editing `.envrc`. Devbox shell activation is explicit (`devbox shell`); `direnv` loads `.env.local` automatically.
 
 Frontend は `http://localhost:3000`、backend は `http://localhost:8787` を想定しています。
 
