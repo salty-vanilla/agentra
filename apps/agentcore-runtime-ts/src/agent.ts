@@ -130,7 +130,7 @@ const app = new BedrockAgentCoreApp({
   invocationHandler: {
     requestSchema: RequestSchema,
 
-    process: async function* (request) {
+    process: async function* (request, context) {
       const userId = request.userId || 'dev-user';
       const threadId = request.threadId || `ephemeral-${createTraceId()}`;
 
@@ -156,11 +156,15 @@ const app = new BedrockAgentCoreApp({
         OBSERVABILITY_DEBUG_LOG,
       );
       const modelId = resolveConfig(effectivePreset, request.length).modelId;
-      const logger = new RuntimeLogger(traceId, threadId, modelId);
+      const logger = new RuntimeLogger(traceId, threadId, modelId, context.log);
+      if (context.requestId) {
+        logger.setRequestId(context.requestId);
+      }
       const toolStartTimes = new Map<string, { name: string; startedAt: number }>();
 
       logger.logInvocationStart({
         userId,
+        sessionId: context.sessionId,
         preset: effectivePreset,
         length: request.length,
       });

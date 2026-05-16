@@ -1,3 +1,5 @@
+import type { FastifyBaseLogger } from 'fastify';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 type LogContext = {
@@ -72,13 +74,9 @@ function structureLog(
   message: string,
   context: LogContext,
   data?: LogData,
+  pinoLogger?: FastifyBaseLogger,
 ): void {
-  const timestamp = new Date().toISOString();
-
-  const logEntry = {
-    timestamp,
-    level,
-    message,
+  const logData = {
     traceId: context.traceId,
     ...(context.threadId ? { threadId: context.threadId } : {}),
     ...(context.model ? { model: context.model } : {}),
@@ -86,18 +84,32 @@ function structureLog(
     ...(data ? data : {}),
   };
 
-  console.info(JSON.stringify(logEntry));
+  if (pinoLogger) {
+    pinoLogger[level](logData, message);
+    return;
+  }
+
+  console.info(
+    JSON.stringify({ timestamp: new Date().toISOString(), level, message, ...logData }),
+  );
 }
 
 export class RuntimeLogger {
   private readonly context: LogContext;
+  private readonly pinoLogger: FastifyBaseLogger | undefined;
 
-  constructor(traceId: string, threadId?: string, model?: string) {
+  constructor(
+    traceId: string,
+    threadId?: string,
+    model?: string,
+    pinoLogger?: FastifyBaseLogger,
+  ) {
     this.context = {
       traceId,
       ...(threadId ? { threadId } : {}),
       ...(model ? { model } : {}),
     };
+    this.pinoLogger = pinoLogger;
   }
 
   setRequestId(requestId: string): void {
@@ -105,33 +117,38 @@ export class RuntimeLogger {
   }
 
   logInvocationStart(data?: LogData): void {
-    structureLog('info', 'agent_request_start', this.context, {
-      timestamp: new Date().toISOString(),
-      ...data,
-    });
+    structureLog('info', 'agent_request_start', this.context, data, this.pinoLogger);
   }
 
   logInvocationEnd(durationMs: number, data?: LogData): void {
-    structureLog('info', 'agent_request_end', this.context, {
-      durationMs,
-      ...data,
-    });
+    structureLog(
+      'info',
+      'agent_request_end',
+      this.context,
+      { durationMs, ...data },
+      this.pinoLogger,
+    );
   }
 
   logInvocationError(error: unknown, data?: LogData): void {
     const sanitized = sanitizeError(error);
-    structureLog('error', 'agent_request_error', this.context, {
-      error: sanitized,
-      ...data,
-    });
+    structureLog(
+      'error',
+      'agent_request_error',
+      this.context,
+      { error: sanitized, ...data },
+      this.pinoLogger,
+    );
   }
 
   logToolCallStart(toolUseId: string, toolName: string, data?: LogData): void {
-    structureLog('info', 'tool_call_start', this.context, {
-      toolUseId,
-      toolName,
-      ...data,
-    });
+    structureLog(
+      'info',
+      'tool_call_start',
+      this.context,
+      { toolUseId, toolName, ...data },
+      this.pinoLogger,
+    );
   }
 
   logToolCallEnd(
@@ -140,12 +157,13 @@ export class RuntimeLogger {
     durationMs: number,
     data?: LogData,
   ): void {
-    structureLog('info', 'tool_call_end', this.context, {
-      toolUseId,
-      toolName,
-      durationMs,
-      ...data,
-    });
+    structureLog(
+      'info',
+      'tool_call_end',
+      this.context,
+      { toolUseId, toolName, durationMs, ...data },
+      this.pinoLogger,
+    );
   }
 
   logToolCallError(
@@ -154,31 +172,32 @@ export class RuntimeLogger {
     durationMs: number,
     data?: LogData,
   ): void {
-    structureLog('error', 'tool_call_error', this.context, {
-      toolUseId,
-      toolName,
-      durationMs,
-      ...data,
-    });
+    structureLog(
+      'error',
+      'tool_call_error',
+      this.context,
+      { toolUseId, toolName, durationMs, ...data },
+      this.pinoLogger,
+    );
   }
 
   logObservationSummary(data: LogData): void {
-    structureLog('info', 'observation_summary', this.context, data);
+    structureLog('info', 'observation_summary', this.context, data, this.pinoLogger);
   }
 
   debug(message: string, data?: LogData): void {
-    structureLog('debug', message, this.context, data);
+    structureLog('debug', message, this.context, data, this.pinoLogger);
   }
 
   info(message: string, data?: LogData): void {
-    structureLog('info', message, this.context, data);
+    structureLog('info', message, this.context, data, this.pinoLogger);
   }
 
   warn(message: string, data?: LogData): void {
-    structureLog('warn', message, this.context, data);
+    structureLog('warn', message, this.context, data, this.pinoLogger);
   }
 
   error(message: string, data?: LogData): void {
-    structureLog('error', message, this.context, data);
+    structureLog('error', message, this.context, data, this.pinoLogger);
   }
 }
