@@ -82,6 +82,10 @@ export class AgentraWebHostingStack extends Stack {
           value: props.appStack.apiEndpoint,
         },
         {
+          name: 'NEXT_PUBLIC_STREAMING_API_BASE_URL',
+          value: props.appStack.streamingApiEndpoint,
+        },
+        {
           name: 'NEXT_PUBLIC_COGNITO_USER_POOL_ID',
           value: props.dataAuthStack.userPool.userPoolId,
         },

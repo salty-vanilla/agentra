@@ -1,4 +1,4 @@
-import { API_BASE_URL, isMockApiMode } from '@/lib/api-config';
+import { isMockApiMode, STREAMING_API_BASE_URL } from '@/lib/api-config';
 import { ApiError } from '@/lib/api-error';
 import {
   createThread as createThreadRequest,
@@ -117,7 +117,7 @@ export async function* sendChatStream(
     Accept: 'text/event-stream',
   };
 
-  const response = await fetch(`${API_BASE_URL}/chat`, {
+  const response = await fetch(`${STREAMING_API_BASE_URL}/chat`, {
     method: 'POST',
     headers,
     body: JSON.stringify(request),
