@@ -87,12 +87,23 @@ export class AgentraSlideRuntimeStack extends Stack {
       }),
     );
 
-    // S3 artifact bucket permissions (scoped to runs/ prefix)
+    // S3 artifact bucket permissions (scoped to runs/ prefix).
+    // Split into two statements: s3:prefix is a bucket-level condition key and is
+    // not present in the request context for object-level actions (GetObject, PutObject,
+    // DeleteObject). Combining them in one statement with s3:prefix causes IAM to
+    // evaluate the condition as false for object operations, effectively denying them.
     runtimeRole.addToPolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject', 's3:ListBucket'],
-        resources: [artifactsBucket.bucketArn, `${artifactsBucket.bucketArn}/runs/*`],
+        actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+        resources: [`${artifactsBucket.bucketArn}/runs/*`],
+      }),
+    );
+    runtimeRole.addToPolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['s3:ListBucket'],
+        resources: [artifactsBucket.bucketArn],
         conditions: {
           StringLike: {
             's3:prefix': ['runs/*', 'runs'],
