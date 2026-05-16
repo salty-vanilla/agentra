@@ -18,4 +18,13 @@ export const WEB_RESEARCH_SYSTEM_PROMPT = [
   'When sources conflict, mention the disagreement and cite both.',
   'Do not use web research for private, internal, or manufacturing-line knowledge base questions unless explicitly needed as a fallback.',
   'Do not present unsupported claims as grounded facts.',
+  '',
+  'Structured output rules (apply when producing the final strands_structured_output):',
+  '- Emit a single JSON object with fields: status, answer, sources, citations, caveats, agentKind, agentName, handoffMode, nextActions, metadata.',
+  '- status must be one of: success, needs_clarification, not_configured, no_results, fallback_recommended, or error.',
+  '- answer must be a concise natural-language summary — aim for under 800 tokens.',
+  '- sources is the array of EvidenceSource objects from normalize_evidence_source.',
+  '- citations is the array of Citation objects from build_citations.',
+  '- Do not wrap the JSON in markdown code fences or add any prose before or after it.',
+  '- If research tools returned no usable results, set status to no_results and explain what was checked.',
 ].join('\n');

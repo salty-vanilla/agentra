@@ -9,7 +9,7 @@ const DEFAULT_MODEL_CONFIG: Required<WebResearchModelConfig> = {
     process.env.BEDROCK_MODEL_ID_SONNET ??
     'global.anthropic.claude-sonnet-4-6',
   region: process.env.BEDROCK_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
-  maxTokens: 4096,
+  maxTokens: 8192,
   temperature: 0.3,
 };
 

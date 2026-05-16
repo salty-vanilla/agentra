@@ -98,4 +98,96 @@ describe('sub-agent handoff normalizer', () => {
       },
     });
   });
+
+  it('parses a JSON string value as a structured handoff output', () => {
+    const jsonValue = JSON.stringify({
+      status: 'success',
+      answer: 'The answer from JSON string',
+      sources: [{ url: 'https://example.com' }],
+      citations: [{ label: '[1]' }],
+    });
+
+    const output = normalizeSubAgentHandoffOutput({
+      value: jsonValue,
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: 'standard',
+      fallbackErrorMessage: 'fallback',
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+      },
+    });
+
+    expect(output).toEqual({
+      status: 'success',
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: 'standard',
+      answer: 'The answer from JSON string',
+      sources: [{ url: 'https://example.com' }],
+      citations: [{ label: '[1]' }],
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+        rawValueType: 'string_json',
+      },
+    });
+  });
+
+  it('extracts and parses JSON wrapped in a markdown code fence', () => {
+    const fencedJson = [
+      '```json',
+      JSON.stringify({
+        status: 'success',
+        answer: 'The answer from fenced JSON',
+        caveats: ['Freshness: results as of today'],
+      }),
+      '```',
+    ].join('\n');
+
+    const output = normalizeSubAgentHandoffOutput({
+      value: fencedJson,
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: 'freshness_required',
+      fallbackErrorMessage: 'fallback',
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+      },
+    });
+
+    expect(output).toEqual({
+      status: 'success',
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: 'freshness_required',
+      answer: 'The answer from fenced JSON',
+      caveats: ['Freshness: results as of today'],
+      metadata: {
+        parentAgent: 'router-agent',
+        childAgent: 'web-research-agent',
+        handoffTool: 'invoke_web_research_agent',
+        rawValueType: 'string_json',
+      },
+    });
+  });
+
+  it('falls back to plain string when JSON string does not satisfy the handoff schema', () => {
+    const output = normalizeSubAgentHandoffOutput({
+      value: '{"not_a_valid_field": true}',
+      agentKind: 'web_research',
+      agentName: 'Web Research Agent',
+      handoffMode: 'standard',
+      fallbackErrorMessage: 'fallback',
+    });
+
+    expect(output.status).toBe('success');
+    expect(output.answer).toBe('{"not_a_valid_field": true}');
+    expect(output.metadata?.rawValueType).toBe('string');
+  });
 });

@@ -120,6 +120,41 @@ describe('Web Research Agent handoff', () => {
     });
   });
 
+  it('normalizes null structuredOutput with JSON text fallback into structured payload', async () => {
+    const jsonPayload = JSON.stringify({
+      status: 'success',
+      answer: 'The latest AI trends include multimodal models and agentic workflows.',
+      sources: [{ url: 'https://example.com/ai-trends' }],
+      citations: [{ label: '[1]', url: 'https://example.com/ai-trends' }],
+      caveats: ['Results as of today'],
+    });
+
+    const invoke = vi.fn().mockResolvedValue({
+      structuredOutput: null,
+      toString() {
+        return jsonPayload;
+      },
+    });
+
+    const response = await executeInvokeWebResearchAgentTool(
+      {
+        question: 'What are the latest AI trends?',
+      },
+      {
+        agentFactory: () => ({ invoke }),
+      },
+    );
+
+    expect(invoke).toHaveBeenCalledTimes(1);
+    const payload = JSON.parse(response.content[0].text);
+    expect(response.status).toBe('success');
+    expect(payload.status).toBe('success');
+    expect(payload.sources).toHaveLength(1);
+    expect(payload.citations).toHaveLength(1);
+    expect(payload.caveats).toEqual(['Results as of today']);
+    expect(payload.metadata?.rawValueType).toBe('string_json');
+  });
+
   it('normalizes invocation failures into a structured error payload', async () => {
     const response = await executeInvokeWebResearchAgentTool(
       {

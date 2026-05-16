@@ -137,6 +137,12 @@ async function main(): Promise<void> {
       );
       process.exit(1);
     }
+    if (!noResearchTools && !strandsStructuredOutputFound) {
+      console.error(
+        '[smoke] FAIL: strict mode - research tools observed but strands_structured_output was NOT — JSON parse failure likely',
+      );
+      process.exit(1);
+    }
   }
 }
 

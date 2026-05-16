@@ -19,6 +19,8 @@ describe('Web Research Agent module', () => {
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('freshness');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('caveats');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('manufacturing-line');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('Structured output rules');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('strands_structured_output');
   });
 
   it('builds a web research tool set with date normalization and direct Tavily tools enabled', async () => {
