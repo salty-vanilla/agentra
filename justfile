@@ -1,4 +1,5 @@
-set dotenv-load := true
+set dotenv-load     := true
+set dotenv-filename := ".env.local"
 
 aws_profile   := env_var_or_default("AGENTRA_AWS_PROFILE", "quick-admin")
 default_stage := env_var_or_default("AGENTRA_STAGE", "dev")
