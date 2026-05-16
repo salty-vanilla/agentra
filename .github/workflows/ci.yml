@@ -109,7 +109,7 @@ jobs:
           - workspace: '@agentra/agentcore-runtime-ts'
             sandbox: false
           - workspace: '@agentra/presentation-author-runtime'
-            sandbox: false
+            sandbox: true
           - workspace: '@agentra/infra-cdk'
             sandbox: false
     steps:
