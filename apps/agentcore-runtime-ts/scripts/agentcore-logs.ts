@@ -160,7 +160,7 @@ function buildQueryString(mode: LogMode, filterId: string): string {
     case 'errors':
       return [
         base,
-        '| filter @message like /"level":"error"/ or @message like /agent_request_error/ or @message like /tool_call_error/',
+        '| filter @message like /"level":50/ or @message like /agent_request_error/ or @message like /tool_call_error/',
         '| sort @timestamp desc',
         `| limit ${DEFAULT_LIMIT}`,
       ].join('\n');
@@ -174,6 +174,24 @@ function escapeRegex(s: string): string {
 }
 
 // ── Output formatting ─────────────────────────────────────────────────────────
+
+const PINO_LEVEL_MAP: Record<number, string> = {
+  10: 'TRACE',
+  20: 'DEBUG',
+  30: 'INFO',
+  40: 'WARN',
+  50: 'ERROR',
+  60: 'FATAL',
+};
+
+function formatLevel(raw: unknown): string {
+  if (typeof raw === 'number') {
+    return (PINO_LEVEL_MAP[raw] ?? String(raw)).padEnd(5);
+  }
+  return String(raw ?? 'INFO')
+    .toUpperCase()
+    .padEnd(5);
+}
 
 function getField(row: ResultField[], name: string): string | undefined {
   return row.find((f) => f.field === name)?.value;
@@ -196,10 +214,8 @@ function printRow(row: ResultField[]): void {
   }
 
   if (parsed) {
-    const level = String(parsed.level ?? 'info')
-      .toUpperCase()
-      .padEnd(5);
-    const msg = String(parsed.message ?? '');
+    const level = formatLevel(parsed.level);
+    const msg = String(parsed.message ?? parsed.msg ?? '');
     const traceId =
       typeof parsed.traceId === 'string' ? ` trace=${parsed.traceId.slice(0, 8)}` : '';
     const toolName =

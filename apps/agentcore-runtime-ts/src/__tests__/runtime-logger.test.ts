@@ -1,3 +1,4 @@
+import type { FastifyBaseLogger } from 'fastify';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { RuntimeLogger } from '../runtime-logger.js';
 
@@ -253,5 +254,25 @@ describe('RuntimeLogger', () => {
       toolName: 'search_web',
       durationMs: 789,
     });
+  });
+
+  it('routes logs through pino logger when provided, bypassing console.info', () => {
+    const pinoInfo = vi.fn();
+    const mockLogger = {
+      info: pinoInfo,
+      debug: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as unknown as FastifyBaseLogger;
+
+    const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet', mockLogger);
+    logger.info('test message', { extra: 'data' });
+
+    expect(consoleInfoSpy).not.toHaveBeenCalled();
+    expect(pinoInfo).toHaveBeenCalledOnce();
+    expect(pinoInfo).toHaveBeenCalledWith(
+      { traceId: 'trace-123', threadId: 'thread-456', model: 'sonnet', extra: 'data' },
+      'test message',
+    );
   });
 });
