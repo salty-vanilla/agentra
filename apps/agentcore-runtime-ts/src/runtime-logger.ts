@@ -181,6 +181,28 @@ export class RuntimeLogger {
     );
   }
 
+  logSubAgentToolProgress(
+    parentToolUseId: string,
+    parentToolName: string,
+    stage: string,
+    status: 'running' | 'complete' | 'error',
+    durationMs?: number,
+  ): void {
+    structureLog(
+      status === 'error' ? 'error' : 'info',
+      'sub_agent_tool_progress',
+      this.context,
+      {
+        parentToolUseId,
+        parentToolName,
+        stage,
+        status,
+        ...(durationMs !== undefined ? { durationMs } : {}),
+      },
+      this.pinoLogger,
+    );
+  }
+
   logObservationSummary(data: LogData): void {
     structureLog('info', 'observation_summary', this.context, data, this.pinoLogger);
   }

@@ -275,4 +275,61 @@ describe('RuntimeLogger', () => {
       'test message',
     );
   });
+
+  it('logs sub-agent tool progress for running, complete, and error stages', () => {
+    const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
+
+    logger.logSubAgentToolProgress(
+      'tu-1',
+      'invoke_web_research_agent',
+      'tavily_search',
+      'running',
+    );
+    logger.logSubAgentToolProgress(
+      'tu-1',
+      'invoke_web_research_agent',
+      'tavily_search',
+      'complete',
+      1234,
+    );
+    logger.logSubAgentToolProgress(
+      'tu-1',
+      'invoke_web_research_agent',
+      'build_citations',
+      'error',
+      500,
+    );
+
+    expect(consoleInfoSpy).toHaveBeenCalledTimes(3);
+
+    const [running, complete, error] = consoleInfoSpy.mock.calls.map((call) =>
+      JSON.parse(call[0] as string),
+    );
+
+    expect(running).toMatchObject({
+      level: 'info',
+      message: 'sub_agent_tool_progress',
+      parentToolUseId: 'tu-1',
+      parentToolName: 'invoke_web_research_agent',
+      stage: 'tavily_search',
+      status: 'running',
+    });
+    expect(running.durationMs).toBeUndefined();
+
+    expect(complete).toMatchObject({
+      level: 'info',
+      message: 'sub_agent_tool_progress',
+      stage: 'tavily_search',
+      status: 'complete',
+      durationMs: 1234,
+    });
+
+    expect(error).toMatchObject({
+      level: 'error',
+      message: 'sub_agent_tool_progress',
+      stage: 'build_citations',
+      status: 'error',
+      durationMs: 500,
+    });
+  });
 });
