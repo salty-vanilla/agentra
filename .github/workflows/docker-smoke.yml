@@ -1,8 +1,10 @@
 name: Docker Smoke Tests
 
 on:
-  push:
   pull_request:
+  push:
+    branches:
+      - main
 
 concurrency:
   group: docker-smoke-${{ github.ref }}
