@@ -175,3 +175,72 @@ dev-deploy-agentcore-and-smoke stage=default_stage profile=aws_profile:
     just cdk-deploy-agentcore {{stage}} {{profile}}
     just smoke-agentcore {{stage}} {{profile}}
     just smoke-slide {{stage}} {{profile}}
+
+# ── AgentCore Log Discovery ───────────────────────────────────────────────────
+
+# List all AgentCore Runtime log groups
+agentcore-log-groups stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts groups "{{stage}}"
+
+# Search recent AgentCore logs (default: last 30m)
+agentcore-logs stage=default_stage since="30m" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts general "{{stage}}" "{{since}}"
+
+# Filter AgentCore logs by requestId
+agentcore-logs-request stage=default_stage requestId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{requestId}}" ]] && { echo "ERROR: requestId required. Usage: just agentcore-logs-request [stage] <requestId>" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "1h" "{{requestId}}"
+
+# Filter AgentCore logs by runtimeSessionId
+agentcore-logs-session stage=default_stage sessionId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{sessionId}}" ]] && { echo "ERROR: sessionId required. Usage: just agentcore-logs-session [stage] <sessionId>" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts session "{{stage}}" "1h" "{{sessionId}}"
+
+# Search AgentCore error logs (default: last 1h)
+agentcore-errors stage=default_stage since="1h" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts errors "{{stage}}" "{{since}}"
+
+# Follow AgentCore logs in real time (Ctrl-C to stop)
+agentcore-logs-follow stage=default_stage since="5m" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts general "{{stage}}" "{{since}}" "" --follow
+
+# Follow AgentCore logs by requestId in real time
+agentcore-logs-follow-request stage=default_stage requestId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{requestId}}" ]] && { echo "ERROR: requestId required" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "5m" "{{requestId}}" --follow
+
+# Follow AgentCore logs by runtimeSessionId in real time
+agentcore-logs-follow-session stage=default_stage sessionId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{sessionId}}" ]] && { echo "ERROR: sessionId required" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts session "{{stage}}" "5m" "{{sessionId}}" --follow
+
+# Follow AgentCore error logs in real time
+agentcore-errors-follow stage=default_stage since="5m" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts errors "{{stage}}" "{{since}}" "" --follow

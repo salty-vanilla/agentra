@@ -23,7 +23,7 @@ describe('RuntimeLogger', () => {
 
     expect(parsed).toMatchObject({
       level: 'info',
-      message: 'invocation_start',
+      message: 'agent_request_start',
       traceId: 'trace-123',
       threadId: 'thread-456',
       model: 'sonnet',
@@ -44,7 +44,7 @@ describe('RuntimeLogger', () => {
 
     expect(parsed).toMatchObject({
       level: 'info',
-      message: 'invocation_end',
+      message: 'agent_request_end',
       traceId: 'trace-123',
       durationMs: 1234,
       tokenUsage: { inputTokens: 100, outputTokens: 200, totalTokens: 300 },
@@ -64,7 +64,7 @@ describe('RuntimeLogger', () => {
 
     expect(parsed).toMatchObject({
       level: 'error',
-      message: 'invocation_error',
+      message: 'agent_request_error',
       traceId: 'trace-123',
       error: {
         name: 'Error',
@@ -200,5 +200,58 @@ describe('RuntimeLogger', () => {
 
     expect(withThreadLog.threadId).toBe('thread-456');
     expect(withoutThreadLog.threadId).toBeUndefined();
+  });
+
+  it('logs tool call start with toolUseId and toolName', () => {
+    const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
+
+    logger.logToolCallStart('tool-use-abc', 'search_web');
+
+    expect(consoleInfoSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleInfoSpy.mock.calls[0][0] as string);
+
+    expect(parsed).toMatchObject({
+      level: 'info',
+      message: 'tool_call_start',
+      traceId: 'trace-123',
+      toolUseId: 'tool-use-abc',
+      toolName: 'search_web',
+    });
+  });
+
+  it('logs tool call end with duration', () => {
+    const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
+
+    logger.logToolCallEnd('tool-use-abc', 'search_web', 456);
+
+    expect(consoleInfoSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleInfoSpy.mock.calls[0][0] as string);
+
+    expect(parsed).toMatchObject({
+      level: 'info',
+      message: 'tool_call_end',
+      traceId: 'trace-123',
+      toolUseId: 'tool-use-abc',
+      toolName: 'search_web',
+      durationMs: 456,
+    });
+  });
+
+  it('logs tool call error at error level', () => {
+    const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
+
+    logger.logToolCallError('tool-use-abc', 'search_web', 789);
+
+    expect(consoleInfoSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleInfoSpy.mock.calls[0][0] as string);
+
+    expect(parsed).toMatchObject({
+      level: 'error',
+      message: 'tool_call_error',
+      traceId: 'trace-123',
+      toolUseId: 'tool-use-abc',
+      toolName: 'search_web',
+      durationMs: 789,
+    });
   });
 });

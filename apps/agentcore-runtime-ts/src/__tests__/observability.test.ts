@@ -85,7 +85,7 @@ describe('observability collector', () => {
 
     expect(parsed).toMatchObject({
       level: 'error',
-      message: 'invocation_error_summary',
+      message: 'agent_request_error_summary',
       traceId: 'trace-789',
       observationSummary: {
         status: 'error',
