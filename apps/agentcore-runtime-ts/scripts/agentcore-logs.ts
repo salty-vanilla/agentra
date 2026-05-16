@@ -101,11 +101,34 @@ function nowEpochSec(): number {
 
 // ── Log group resolution ──────────────────────────────────────────────────────
 
-function resolveLogGroupNames(stage: string): string[] {
-  return [
-    `${LOG_GROUP_PREFIX}agentcore-${stage}`,
-    `${LOG_GROUP_PREFIX}agentra-slide-${stage}`,
-  ];
+async function discoverLogGroups(
+  client: CloudWatchLogsClient,
+  stage: string,
+): Promise<string[]> {
+  const groups: string[] = [];
+  let nextToken: string | undefined;
+  do {
+    const resp = await client.send(
+      new DescribeLogGroupsCommand({
+        logGroupNamePrefix: LOG_GROUP_PREFIX,
+        limit: 50,
+        ...(nextToken ? { nextToken } : {}),
+      }),
+    );
+    for (const group of resp.logGroups ?? []) {
+      if (group.logGroupName?.includes(`-${stage}`)) {
+        groups.push(group.logGroupName);
+      }
+    }
+    nextToken = resp.nextToken;
+  } while (nextToken);
+
+  return groups.length > 0
+    ? groups
+    : [
+        `${LOG_GROUP_PREFIX}agentcore-${stage}`,
+        `${LOG_GROUP_PREFIX}agentra-slide-${stage}`,
+      ];
 }
 
 // ── Query construction ────────────────────────────────────────────────────────
@@ -116,7 +139,7 @@ function buildQueryString(mode: LogMode, filterId: string): string {
     case 'general':
       return [
         base,
-        '| filter @message like /agent_request_start|agent_request_end|agent_request_error|tool_call_error|ERROR|WARN/',
+        '| filter @message like /agent_request_start|agent_request_end|agent_request_error|tool_call_start|tool_call_end|tool_call_error|ERROR|WARN/',
         '| sort @timestamp desc',
         `| limit ${DEFAULT_LIMIT}`,
       ].join('\n');
@@ -159,9 +182,11 @@ function getField(row: ResultField[], name: string): string | undefined {
 function printRow(row: ResultField[]): void {
   const ts = getField(row, '@timestamp') ?? '';
   const logGroup = getField(row, '@log') ?? '';
+  const logStream = getField(row, '@logStream') ?? '';
   const message = getField(row, '@message') ?? '';
 
   const logGroupShort = logGroup.split('/').pop() ?? logGroup;
+  const location = logStream ? `${logGroupShort}/${logStream}` : logGroupShort;
 
   let parsed: Record<string, unknown> | undefined;
   try {
@@ -181,11 +206,9 @@ function printRow(row: ResultField[]): void {
       typeof parsed.toolName === 'string' ? ` tool=${parsed.toolName}` : '';
     const durationMs =
       typeof parsed.durationMs === 'number' ? ` dur=${parsed.durationMs}ms` : '';
-    console.log(
-      `${ts} [${logGroupShort}] ${level} ${msg}${traceId}${toolName}${durationMs}`,
-    );
+    console.log(`${ts} [${location}] ${level} ${msg}${traceId}${toolName}${durationMs}`);
   } else {
-    console.log(`${ts} [${logGroupShort}] ${message}`);
+    console.log(`${ts} [${location}] ${message}`);
   }
 }
 
@@ -276,7 +299,7 @@ async function runOneShot(
   client: CloudWatchLogsClient,
   config: LogConfig,
 ): Promise<void> {
-  const logGroupNames = resolveLogGroupNames(config.stage);
+  const logGroupNames = await discoverLogGroups(client, config.stage);
   const queryString = buildQueryString(config.mode, config.filterId);
   const startTime = parseSinceToEpochSec(config.since);
   const endTime = nowEpochSec();
@@ -317,7 +340,7 @@ async function runOneShot(
 // ── Follow mode ───────────────────────────────────────────────────────────────
 
 async function runFollow(client: CloudWatchLogsClient, config: LogConfig): Promise<void> {
-  const logGroupNames = resolveLogGroupNames(config.stage);
+  const logGroupNames = await discoverLogGroups(client, config.stage);
   const queryString = buildQueryString(config.mode, config.filterId);
 
   console.log(

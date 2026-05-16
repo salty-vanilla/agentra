@@ -254,4 +254,16 @@ describe('RuntimeLogger', () => {
       durationMs: 789,
     });
   });
+
+  it('includes runtimeSessionId when set via setter', () => {
+    const logger = new RuntimeLogger('trace-123');
+    logger.setRuntimeSessionId('session-xyz');
+
+    logger.info('test message');
+
+    expect(consoleInfoSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleInfoSpy.mock.calls[0][0] as string);
+
+    expect(parsed.runtimeSessionId).toBe('session-xyz');
+  });
 });

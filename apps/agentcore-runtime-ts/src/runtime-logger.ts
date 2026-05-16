@@ -3,6 +3,7 @@ type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 type LogContext = {
   traceId: string;
   threadId?: string;
+  runtimeSessionId?: string;
   model?: string;
   requestId?: string;
 };
@@ -81,6 +82,7 @@ function structureLog(
     message,
     traceId: context.traceId,
     ...(context.threadId ? { threadId: context.threadId } : {}),
+    ...(context.runtimeSessionId ? { runtimeSessionId: context.runtimeSessionId } : {}),
     ...(context.model ? { model: context.model } : {}),
     ...(context.requestId ? { requestId: context.requestId } : {}),
     ...(data ? data : {}),
@@ -102,6 +104,10 @@ export class RuntimeLogger {
 
   setRequestId(requestId: string): void {
     this.context.requestId = requestId;
+  }
+
+  setRuntimeSessionId(runtimeSessionId: string): void {
+    this.context.runtimeSessionId = runtimeSessionId;
   }
 
   logInvocationStart(data?: LogData): void {

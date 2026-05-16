@@ -475,7 +475,10 @@ export function printSummary(config: SmokeConfig, stats: SmokeStats): void {
   console.log('--- summary ---');
   console.log(`traceId        : ${config.traceId}`);
   console.log(`runtimeSessionId: ${config.sessionId}`);
-  console.log(`logs           : just agentcore-logs-request ${stage} ${config.traceId}`);
+  console.log(`trace logs     : just agentcore-logs-trace ${stage} ${config.traceId}`);
+  console.log(
+    `session logs   : just agentcore-logs-session ${stage} ${config.sessionId}`,
+  );
   console.log(`elapsedMs      : ${elapsedMs}`);
   console.log(`textChars      : ${stats.textChars}`);
   console.log(

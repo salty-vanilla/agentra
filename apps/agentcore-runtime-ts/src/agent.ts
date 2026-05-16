@@ -157,6 +157,7 @@ const app = new BedrockAgentCoreApp({
       );
       const modelId = resolveConfig(effectivePreset, request.length).modelId;
       const logger = new RuntimeLogger(traceId, threadId, modelId);
+      logger.setRuntimeSessionId(threadId);
       const toolStartTimes = new Map<string, { name: string; startedAt: number }>();
 
       logger.logInvocationStart({
