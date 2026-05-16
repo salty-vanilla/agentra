@@ -2,8 +2,8 @@
 /**
  * Live AgentCore slide generation smoke script.
  *
- * Calls the deployed AgentCore Runtime with a slide commandDirective to verify
- * the slide generation path (create_slide_presentation tool → slide runtime).
+ * Tests the main-runtime → create_slide_presentation tool → slide runtime path.
+ * Does NOT invoke the slide runtime directly (different payload/accept contract).
  *
  * Usage:
  *   eval "$(aws configure export-credentials --profile quick-admin --format env)"
@@ -11,17 +11,15 @@
  *   SMOKE_STRICT=true ... pnpm smoke:agentcore:slide   # fail if no slide artifact signal found
  *
  * Env vars:
- *   AWS_REGION                       (default: ap-northeast-1)
- *   AGENTCORE_RUNTIME_ARN            (required unless SLIDE_AGENTCORE_RUNTIME_ARN is set)
- *   SLIDE_AGENTCORE_RUNTIME_ARN      (falls back to AGENTCORE_RUNTIME_ARN)
- *   AGENTCORE_RUNTIME_QUALIFIER      (used when SLIDE_AGENTCORE_RUNTIME_ARN is not set)
- *   SLIDE_AGENTCORE_RUNTIME_QUALIFIER (qualifier for slide runtime, optional)
- *   SMOKE_MODEL                      opus|sonnet|haiku (default: sonnet)
- *   SMOKE_USER_ID                    (default: smoke-user-local)
- *   SMOKE_THREAD_ID                  (default: generated uuidv7)
- *   SMOKE_TRACE_ID                   (default: generated uuidv7)
- *   SMOKE_TIMEOUT_MS                 (default: 300000)
- *   SMOKE_STRICT                     true to fail if no slide artifact signal found
+ *   AWS_REGION                    (default: ap-northeast-1)
+ *   AGENTCORE_RUNTIME_ARN         (required)
+ *   AGENTCORE_RUNTIME_QUALIFIER   (optional)
+ *   SMOKE_MODEL                   opus|sonnet|haiku (default: sonnet)
+ *   SMOKE_USER_ID                 (default: smoke-user-local)
+ *   SMOKE_THREAD_ID               (default: generated uuidv7)
+ *   SMOKE_TRACE_ID                (default: generated uuidv7)
+ *   SMOKE_TIMEOUT_MS              (default: 300000)
+ *   SMOKE_STRICT                  true to fail if no slide artifact signal found
  */
 import {
   accumulateEvent,
@@ -30,7 +28,6 @@ import {
   parseArgs,
   printSummary,
   readConfig,
-  type SmokeConfig,
   streamRuntime,
 } from './smoke-utils.js';
 
@@ -65,38 +62,24 @@ function buildSlideCommandDirective(prompt: string): string {
   ].join('\n');
 }
 
-function resolveSlideConfig(baseConfig: SmokeConfig): SmokeConfig {
-  const slideArn = process.env.SLIDE_AGENTCORE_RUNTIME_ARN?.trim();
-  const slideQualifier =
-    process.env.SLIDE_AGENTCORE_RUNTIME_QUALIFIER?.trim() || undefined;
-  if (slideArn) {
-    return { ...baseConfig, runtimeArn: slideArn, qualifier: slideQualifier };
-  }
-  return baseConfig;
-}
-
 async function main(): Promise<void> {
-  const baseConfig = readConfig('AGENTCORE_RUNTIME_ARN');
-  const { prompt, config: parsedConfig } = parseArgs(DEFAULT_PROMPT, baseConfig);
-  const config = resolveSlideConfig(parsedConfig);
+  const config = readConfig('AGENTCORE_RUNTIME_ARN');
+  const { prompt, config: finalConfig } = parseArgs(DEFAULT_PROMPT, config);
 
-  const usingSlideArn = Boolean(process.env.SLIDE_AGENTCORE_RUNTIME_ARN?.trim());
-  console.log(
-    `[smoke] target=${usingSlideArn ? 'slide-runtime' : 'main-runtime (slide path)'}`,
-  );
-  console.log(`[smoke] strict=${config.strict}`);
+  console.log('[smoke] target=main-runtime (slide path)');
+  console.log(`[smoke] strict=${finalConfig.strict}`);
   console.log(`[smoke] prompt=${prompt}`);
   console.log('');
   console.log('--- response ---');
 
   const commandDirective = buildSlideCommandDirective(prompt);
-  const payload = buildPayload(config, prompt, commandDirective);
+  const payload = buildPayload(finalConfig, prompt, commandDirective);
 
   let stats = initialStats();
   let gotDone = false;
   let responseText = '';
 
-  for await (const event of streamRuntime(config, payload)) {
+  for await (const event of streamRuntime(finalConfig, payload)) {
     stats = accumulateEvent(stats, event);
     if (event.type === 'text') {
       process.stdout.write(event.text);
@@ -126,10 +109,10 @@ async function main(): Promise<void> {
   console.log(`slide artifact signal found: ${artifactFound ? 'yes' : 'no'}`);
   console.log(`slide-related tool observed: ${slideToolObserved ? 'yes' : 'no'}`);
 
-  printSummary(config, stats);
+  printSummary(finalConfig, stats);
 
   const runtimeFailed = !gotDone || stats.eventCounts.error > 0;
-  const strictFailed = config.strict && !artifactFound && !slideToolObserved;
+  const strictFailed = finalConfig.strict && !artifactFound && !slideToolObserved;
 
   if (runtimeFailed) {
     console.error('[smoke] FAIL: runtime error or no done event');

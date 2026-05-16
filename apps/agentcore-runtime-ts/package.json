@@ -12,6 +12,7 @@
     "smoke:chat": "tsx scripts/smoke-agentcore-chat.ts",
     "smoke:mfg": "tsx scripts/smoke-agentcore-manufacturing-line.ts",
     "smoke:slide": "tsx scripts/smoke-agentcore-slide.ts",
+    "smoke:research": "tsx scripts/smoke-agentcore-web-research.ts",
     "test": "vitest run"
   },
   "dependencies": {

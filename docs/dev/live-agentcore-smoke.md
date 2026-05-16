@@ -4,7 +4,7 @@ Developer CLI scripts that call the deployed AgentCore Runtime directly, bypassi
 
 ## Why these scripts exist
 
-When `/chat` SSE times out in production, it is often unclear whether:
+When `/chat` SSE times out or returns an error in production, it is often unclear whether:
 - The AgentCore Runtime is failing (agent, KB, tools, model)
 - The transport layer is failing (API Gateway, Lambda Web Adapter, HTTP streaming)
 
@@ -15,6 +15,11 @@ UI fails
   -> run smoke:agentcore:chat
     -> if smoke succeeds: problem is API/Lambda/SSE transport
     -> if smoke fails:    problem is runtime/KB/tool/IAM/model
+
+Web research path specifically degraded (fallback answer, no citations)
+  -> run smoke:agentcore:research --strict
+    -> if strict fails: invoke_web_research_agent / tavily / citations broken
+    -> if strict passes: problem is routing or downstream agent
 ```
 
 ## Prerequisites
@@ -35,14 +40,7 @@ UI fails
 | `SMOKE_THREAD_ID` | No | generated | Runtime session ID (reuse to continue a session) |
 | `SMOKE_TRACE_ID` | No | generated | Trace ID for CloudWatch correlation |
 | `SMOKE_TIMEOUT_MS` | No | `300000` | Invocation timeout in ms |
-| `SMOKE_STRICT` | No | `false` | Fail on missing tool observations |
-
-Slide-specific:
-
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `SLIDE_AGENTCORE_RUNTIME_ARN` | No | falls back to `AGENTCORE_RUNTIME_ARN` | Slide-specific runtime ARN |
-| `SLIDE_AGENTCORE_RUNTIME_QUALIFIER` | No | — | Qualifier for slide runtime |
+| `SMOKE_STRICT` | No | `false` | Fail on missing tool observations or degraded responses |
 
 ## Commands
 
@@ -58,7 +56,10 @@ pnpm smoke:agentcore:chat
 # Manufacturing-line RAG/tools smoke
 pnpm smoke:agentcore:mfg
 
-# Slide generation smoke
+# Web Research Agent smoke
+pnpm smoke:agentcore:research
+
+# Slide generation smoke (main-runtime → create_slide_presentation tool)
 pnpm smoke:agentcore:slide
 ```
 
@@ -67,6 +68,7 @@ Or from the workspace root:
 ```bash
 pnpm --filter @agentra/agentcore-runtime-ts smoke:chat
 pnpm --filter @agentra/agentcore-runtime-ts smoke:mfg
+pnpm --filter @agentra/agentcore-runtime-ts smoke:research
 pnpm --filter @agentra/agentcore-runtime-ts smoke:slide
 ```
 
@@ -79,7 +81,7 @@ pnpm smoke:agentcore:chat -- --prompt "カスタムプロンプト"
 pnpm smoke:agentcore:chat -- --session-id "my-session-id"
 pnpm smoke:agentcore:chat -- --model opus
 pnpm smoke:agentcore:chat -- --timeout-ms 600000
-pnpm smoke:agentcore:mfg -- --strict
+pnpm smoke:agentcore:research -- --strict
 ```
 
 ## Example output
@@ -87,21 +89,27 @@ pnpm smoke:agentcore:mfg -- --strict
 ```
 [smoke] region=ap-northeast-1 arn=...abc123def456 qualifier=(none) model=sonnet
 [smoke] traceId=01960000-0000-7000-0000-000000000001 sessionId=01960000-0000-7000-0000-000000000002
-[smoke] target=main-runtime
-[smoke] prompt=こんにちは。あなたが利用できる主な機能を簡単に説明してください。
+[smoke] target=main-runtime (web-research path)
+[smoke] strict=true
+[smoke] prompt=最新のAI技術トレンドについて...
 
 --- response ---
-こんにちは！私は以下の機能を提供できます...
+最新のAI技術トレンドとしては...（出典：...）
 
-[observation] status=success durationMs=1234 tools=kb_retrieve,kb_answer_synthesis
+[observation] status=success durationMs=3210 tools=invoke_web_research_agent,tavily_search,build_citations
+
+--- tool analysis ---
+research tools observed    : invoke_web_research_agent, tavily_search, build_citations
+strands_structured_output  : no
+fallback/error pattern     : (none)
 
 --- summary ---
 traceId        : 01960000-0000-7000-0000-000000000001
 runtimeSessionId: 01960000-0000-7000-0000-000000000002
-elapsedMs      : 8432
-textChars      : 512
-events         : text=24 observation=1 done=1 error=0
-tools observed : kb_retrieve, kb_answer_synthesis
+elapsedMs      : 12345
+textChars      : 1024
+events         : text=40 observation=1 done=1 error=0
+tools observed : invoke_web_research_agent, tavily_search, build_citations
 status         : success
 ```
 
@@ -135,14 +143,26 @@ Common failure categories:
 | Error event in stream | Runtime returned an error (check traceId in CloudWatch) |
 | No done event, no error | Stream ended unexpectedly (network or Lambda Web Adapter issue) |
 
+Research Agent specific:
+
+| Pattern | Likely cause |
+|---------|-------------|
+| `strict mode - no research tools observed` | Router didn't delegate to web research; check routing logic |
+| `fallback/error pattern detected: "Web Research Agent did not return..."` | `invoke_web_research_agent` failed internally; check Tavily API key / SSM config |
+| `fallback/error pattern detected: "Web検索エージェントにて..."` | Japanese user-facing fallback emitted; runtime degraded but didn't error |
+| `strands_structured_output: no` (when expected) | Strands structured output step was skipped; possible JSON parse failure in final step |
+
 ## Strict mode
 
-Manufacturing-line and slide scripts support `SMOKE_STRICT=true` or `--strict`. In strict mode:
+All scripts except `smoke:chat` support `SMOKE_STRICT=true` or `--strict`:
 
-- `smoke:mfg` — fails if no `kb_*` or `structured_*` tools appear in observations
-- `smoke:slide` — fails if no slide artifact signal (pptx/html/URL patterns) found in the response
+| Script | Strict mode checks |
+|--------|-------------------|
+| `smoke:mfg` | Fails if no `kb_*` or `structured_*` tools observed |
+| `smoke:research` | Fails if no research tools (`invoke_web_research_agent`, `tavily_search`, `build_citations`) observed **OR** if fallback error pattern found in response text |
+| `smoke:slide` | Fails if no slide artifact signal (`.pptx`, download URL, etc.) found in response |
 
-Use strict mode in manual regression checks. Avoid it in CI by default (KB and tool availability depends on live AWS resources).
+Use strict mode in manual regression checks. Avoid in CI by default (depends on live AWS resources and Tavily API key availability).
 
 ## Difference from UI/API smoke tests
 
@@ -153,7 +173,7 @@ Use strict mode in manual regression checks. Avoid it in CI by default (KB and t
 | API Gateway + Lambda Web Adapter | Yes | Yes | No |
 | AgentCore Runtime invocation | Indirectly | Indirectly | **Directly** |
 | KB retrieval | Indirectly | Indirectly | **Directly** |
-| Tool calls | Indirectly | Indirectly | **Directly** |
+| Web Research / Tavily tools | Indirectly | Indirectly | **Directly** |
 | Slide generation | Indirectly | Indirectly | **Directly** |
 | Requires deployed frontend | Yes | No | No |
 | Requires Cognito auth | Yes | Yes | No |
