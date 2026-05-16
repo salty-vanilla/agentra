@@ -2,54 +2,71 @@
 
 ## Workspace Package Integration (CRITICAL)
 
-When Dockerfiles reference workspace packages (`@agentra/*`), they MUST use the **pack-based approach**:
+When Dockerfiles reference workspace packages (`@agentra/*`), they MUST use the **minimal workspace layout** approach for the production stage.
 
-### Pattern: Build → Pack → Production Install
+### Pattern: Build stage → Production stage with minimal layout
 
 ```dockerfile
-# 1. Full workspace install (populates pnpm store for the production install below)
-RUN pnpm install --frozen-lockfile
+# ── Build stage ──────────────────────────────────────────────────────────────
+FROM node:24-slim AS build
 
-# 2. Build all workspace packages
-RUN pnpm --filter @agentra/shared build
-RUN pnpm --filter @agentra/my-pkg exec tsc -b --force
+WORKDIR /app
+RUN npm install -g pnpm@10
 
-# 3. Pack @agentra/shared (package.json must declare "files": ["dist"])
-RUN mkdir -p /tarballs && \
-    cd packages/shared && pnpm pack --pack-destination /tarballs && \
-    mv /tarballs/agentra-shared-*.tgz /tarballs/shared.tgz
+# Copy workspace config + only the package.json files needed for install
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY packages/shared/package.json packages/shared/package.json
+COPY apps/my-app/package.json apps/my-app/package.json
 
-# 4. For packages that depend on other workspace packages,
-#    replace workspace:* → file: before packing
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('packages/my-pkg/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}fs.writeFileSync('packages/my-pkg/package.json',JSON.stringify(p,null,2));"
-RUN cd packages/my-pkg && pnpm pack --pack-destination /tarballs && \
-    mv /tarballs/agentra-my-pkg-*.tgz /tarballs/my-pkg.tgz
+# Full install populates pnpm store and builds the dependency graph
+RUN pnpm install --frozen-lockfile --filter @agentra/my-app...
 
-# 5. Build production package.json with file: references to tarballs
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/my-app/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
+# Copy source and build
+COPY tsconfig.base.json ./
+COPY packages/shared/ packages/shared/
+COPY apps/my-app/ apps/my-app/
+RUN pnpm --filter @agentra/shared build && \
+    pnpm --filter @agentra/my-app build
 
-# 6. Production install — pnpm uses the store from step 1 (no network access needed)
-WORKDIR /deploy
-RUN pnpm install --prefer-offline
+# ── Production stage ──────────────────────────────────────────────────────────
+FROM node:24-slim
 
-# 7. Copy built dist and run smoke tests
-RUN cp -r /app/apps/my-app/dist ./dist
-RUN node -e "import('@agentra/shared').then(()=>console.log('shared ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})"
+WORKDIR /app
+RUN npm install -g pnpm@10
+
+# Minimal workspace layout — package.json files only, no source
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY packages/shared/package.json packages/shared/package.json
+COPY apps/my-app/package.json apps/my-app/package.json
+
+# Built dist from build stage; pnpm workspace symlinks resolve through these
+COPY --from=build /app/packages/shared/dist packages/shared/dist
+COPY --from=build /app/apps/my-app/dist apps/my-app/dist
+
+# Production install — pnpm links workspace packages to their local dist dirs
+RUN pnpm install --prod --frozen-lockfile --filter @agentra/my-app...
+
+WORKDIR /app/apps/my-app
+CMD ["node", "dist/index.js"]
 ```
 
-**Why pnpm pack instead of cp -rL:**
-- `pnpm deploy --legacy` leaves workspace deps as dangling symlinks that break transitive dep resolution
-- `cp -rL` copies source trees but skips transitive deps (e.g. `setimmediate` for `jszip`)
-- Packed tarballs installed via `pnpm install` let pnpm correctly hoist all transitive deps
+**Why this pattern:**
+- pnpm workspace symlinks in the production stage correctly hoist all transitive deps
+- No `pnpm pack`, tarballs, synthetic package.json rewrites, or `shamefully-hoist` needed
+- Node.js module resolution walks up from the file's location to `/app/node_modules/`, so workspace symlinks resolve correctly regardless of WORKDIR
+
+**Why NOT pnpm deploy --legacy or cp -rL:**
+- `pnpm deploy --legacy` leaves workspace deps as dangling symlinks that don't resolve transitive deps
+- `cp -rL` copies source trees but misses transitive deps (e.g. `setimmediate` for `jszip`)
 
 ### Package metadata requirements
 
-Every workspace package used in Docker MUST declare a `files` field:
+Every workspace package that appears in the production stage MUST have a `"files"` field:
 - `@agentra/shared`: `"files": ["dist"]`
 - `@agentra/agent-tools`: `"files": ["dist"]`
 - `@agentra/presentation-author`: `"files": ["dist", "vendor", "templates", "assets"]`
 
-**Why:** `pnpm pack` without `files` would include source files and devDependencies, bloating the tarball and production image.
+**Why:** Even though the workspace layout doesn't use `pnpm pack`, the `files` field documents intent and prevents accidentally including source in any future tarball operations.
 
 ## TypeScript Build Cache Management
 
@@ -72,12 +89,35 @@ RUN pnpm install --frozen-lockfile --filter @agentra/backend...
 
 **Why:** The `...` suffix automatically includes all dependencies of the specified package. Do NOT add separate `--filter` flags for workspace dependencies.
 
+## Sandbox Runtime (presentation-author-runtime only)
+
+Packages used only inside the sandbox subprocess (pptxgenjs, jszip, prismjs, mathjax-full) are installed separately in an isolated directory, NOT in the app's `node_modules`.
+
+```dockerfile
+# Sandbox runtime stage — npm flat node_modules for easy fs-read allow-listing
+FROM node:24-slim AS sandbox-runtime
+COPY packages/presentation-author/sandbox-runtime/package.json /opt/presentation-sandbox-runtime/package.json
+WORKDIR /opt/presentation-sandbox-runtime
+RUN npm install --omit=dev
+
+# In production stage:
+COPY --from=sandbox-runtime /opt/presentation-sandbox-runtime /opt/presentation-sandbox-runtime
+ENV PRESENTATION_SANDBOX_RUNTIME_DIR=/opt/presentation-sandbox-runtime
+```
+
+**Why npm instead of pnpm for sandbox-runtime:**
+- npm's flat `node_modules` is simpler to add to `--allow-fs-read` as a single directory path
+- pnpm's virtual store with symlinks would require allowing multiple paths
+
+**Local development:** Run `pnpm --filter @agentra/presentation-author sandbox:install` to install the sandbox runtime into `.sandbox-runtime/` for local dogfooding.
+
 ## When Workspace Changes
 
 After modifying `pnpm-workspace.yaml`, package.json dependencies, or adding/removing workspace packages:
 - [ ] Verify all Dockerfiles include COPY for affected package source and package.json
 - [ ] Ensure the `files` field in affected workspace package.json files is correct
 - [ ] Check .dockerignore includes `**/*.tsbuildinfo`
+- [ ] Run `pnpm install` to update the lockfile
 - [ ] Test local build: `pnpm build:shared && pnpm --filter @agentra/backend build`
 - [ ] Test Docker build: `docker build -f apps/backend/Dockerfile .`
-- [ ] Verify smoke tests pass (no ERR_MODULE_NOT_FOUND in build output)
+- [ ] Verify container starts: `docker run --rm <image> node -e "import('./dist/...').then(()=>process.exit(0))"`

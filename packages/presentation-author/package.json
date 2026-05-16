@@ -20,7 +20,10 @@
     "build": "tsc -b",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
-    "dogfood": "tsx scripts/dogfood.ts"
+    "dogfood": "tsx scripts/dogfood.ts",
+    "sandbox:install": "node scripts/install-sandbox-runtime.mjs",
+    "sandbox:doctor": "node scripts/check-sandbox-runtime.mjs",
+    "sandbox:clean": "rm -rf .sandbox-runtime"
   },
   "dependencies": {
     "@agentra/shared": "workspace:*",
@@ -29,14 +32,12 @@
     "fontkit": "^2.0.2",
     "jszip": "^3.10.1",
     "linebreak": "^1.1.0",
-    "mathjax-full": "^3.2.2",
-    "pptxgenjs": "^3.12.0",
-    "prismjs": "^1.29.0",
     "skia-canvas": "^2.0.2",
     "uuidv7": "^1.2.1"
   },
   "devDependencies": {
     "@aws-sdk/client-bedrock-runtime": "^3.1038.0",
+    "pptxgenjs": "^3.12.0",
     "typescript": "latest"
   }
 }

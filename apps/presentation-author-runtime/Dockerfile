@@ -15,7 +15,7 @@ COPY packages/shared/package.json packages/shared/package.json
 COPY packages/presentation-author/package.json packages/presentation-author/package.json
 COPY apps/presentation-author-runtime/package.json apps/presentation-author-runtime/package.json
 
-# Full install — populates pnpm store so the later production install can run offline
+# Full install — populates pnpm store
 RUN pnpm install --frozen-lockfile --filter @agentra/presentation-author-runtime...
 
 # Copy source (tsconfig.base.json copied here so install cache is unaffected by type changes)
@@ -29,42 +29,14 @@ RUN pnpm --filter @agentra/shared build && \
     pnpm --filter @agentra/presentation-author exec tsc -b --force && \
     pnpm --filter @agentra/presentation-author-runtime build
 
-# Pack @agentra/shared — files field (["dist"]) ensures only built output is included
-RUN mkdir -p /tarballs && \
-    cd packages/shared && pnpm pack --pack-destination /tarballs && \
-    mv /tarballs/agentra-shared-*.tgz /tarballs/shared.tgz
-
-# Replace workspace:* with file: in presentation-author before packing so that
-# when the tarball is installed in a standalone directory pnpm can resolve @agentra/shared.
-# NOTE: this mutates the in-container package.json only — no subsequent build step reads it.
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('packages/presentation-author/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}}fs.writeFileSync('packages/presentation-author/package.json',JSON.stringify(p,null,2));"
-
-# Pack @agentra/presentation-author — files field (["dist","vendor","templates","assets"])
-# ensures all runtime assets are included in the tarball
-RUN cd packages/presentation-author && pnpm pack --pack-destination /tarballs && \
-    mv /tarballs/agentra-presentation-author-*.tgz /tarballs/presentation-author.tgz
-
-# Build production package.json: workspace:* → file: tarball, registry ranges → exact installed
-# versions read from node_modules so pnpm can resolve fully offline from the store
-RUN node -e "const fs=require('fs');const p=JSON.parse(fs.readFileSync('apps/presentation-author-runtime/package.json','utf8'));for(const [k,v] of Object.entries(p.dependencies||{})){if(String(v).startsWith('workspace:')){p.dependencies[k]='file:/tarballs/'+k.replace('@agentra/','')+'.tgz';}else{try{const ins=JSON.parse(fs.readFileSync('node_modules/'+k+'/package.json','utf8'));p.dependencies[k]=ins.version;}catch(e){}}}delete p.devDependencies;fs.mkdirSync('/deploy',{recursive:true});fs.writeFileSync('/deploy/package.json',JSON.stringify(p,null,2));"
-
-# Production install: shamefully-hoist ensures transitive deps of packed workspace packages
-# (e.g. jszip, pptxgenjs) are accessible from the runtime's top-level node_modules
-WORKDIR /deploy
-RUN echo "shamefully-hoist=true" > .npmrc && pnpm install --prefer-offline
-
-# Copy built application dist
-RUN cp -r /app/apps/presentation-author-runtime/dist ./dist
-
-# Smoke tests: verify all runtime modules resolve correctly from the production install
-RUN node -e "import('@agentra/shared').then(()=>console.log('shared ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
-    node -e "import('@agentra/presentation-author').then(()=>console.log('presentation-author ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
-    node -e "import('@aws-sdk/client-secrets-manager').then(()=>console.log('secrets-manager ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
-    node -e "import('pptxgenjs').then(()=>console.log('pptxgenjs ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
-    node -e "import('jszip').then(()=>console.log('jszip ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
-    node -e "import('mathjax-full/js/mathjax.js').then(()=>console.log('mathjax ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
-    node -e "import('prismjs').then(()=>console.log('prismjs ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})" && \
-    node -e "import('@resvg/resvg-js').then(()=>console.log('resvg ok')).catch(e=>{process.stderr.write(e.message+'\n');process.exit(1);})"
+# --- Sandbox runtime stage (runs in parallel with build) ---
+# Install sandbox deps (pptxgenjs, jszip, prismjs, mathjax-full) via npm into a
+# dedicated directory. npm flat node_modules makes these easier to read from the
+# sandbox subprocess than pnpm's symlinked virtual store.
+FROM node:24-slim AS sandbox-runtime
+COPY packages/presentation-author/sandbox-runtime/package.json /opt/presentation-sandbox-runtime/package.json
+WORKDIR /opt/presentation-sandbox-runtime
+RUN npm install --omit=dev
 
 # --- Python venv stage (runs in parallel with build) ---
 FROM python:3.11-slim-bookworm AS python
@@ -97,16 +69,39 @@ ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 WORKDIR /app
 
+RUN npm install -g pnpm@10
+
+# Minimal workspace layout — package.json files only, no source
+COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
+COPY packages/shared/package.json packages/shared/package.json
+COPY packages/presentation-author/package.json packages/presentation-author/package.json
+COPY apps/presentation-author-runtime/package.json apps/presentation-author-runtime/package.json
+
+# Built dist from build stage; pnpm workspace symlinks resolve through these directories
+COPY --from=build /app/packages/shared/dist packages/shared/dist
+COPY --from=build /app/packages/presentation-author/dist packages/presentation-author/dist
+
+# Runtime assets: vendor helpers, templates, and assets are required at runtime
+# (not generated by tsc, so they come from the source tree directly)
+COPY packages/presentation-author/vendor packages/presentation-author/vendor
+COPY packages/presentation-author/templates packages/presentation-author/templates
+COPY packages/presentation-author/assets packages/presentation-author/assets
+
+COPY --from=build /app/apps/presentation-author-runtime/dist apps/presentation-author-runtime/dist
+
+# Production install — pnpm links workspace packages to their local dist directories
+RUN pnpm install --prod --frozen-lockfile --filter @agentra/presentation-author-runtime...
+
+# Sandbox runtime: isolated node_modules for pptxgenjs/jszip/prismjs/mathjax-full
+COPY --from=sandbox-runtime /opt/presentation-sandbox-runtime /opt/presentation-sandbox-runtime
+ENV PRESENTATION_SANDBOX_RUNTIME_DIR=/opt/presentation-sandbox-runtime
+
 # Ensure HOME is writable for LibreOffice profile
 ENV HOME=/tmp
 
-# Copy the production install (node_modules built from tarballs + dist)
-# vendor, templates, and assets are included via the @agentra/presentation-author tarball
-COPY --from=build /deploy ./
-
 # Copy skill definitions (SKILL.md files read at runtime by AgentSkills plugin)
-COPY apps/presentation-author-runtime/skills/ ./skills/
+COPY apps/presentation-author-runtime/skills/ apps/presentation-author-runtime/skills/
 
+WORKDIR /app/apps/presentation-author-runtime
 EXPOSE 8080
-
 CMD ["node", "dist/agent.js"]

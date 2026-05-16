@@ -30,6 +30,8 @@ describe('prepareSandboxRuntime', () => {
       workDir,
       pptxgenjsBundlePath,
       jszipBundlePath,
+      prismjsMainPath: '/path/to/prism.js',
+      mathjaxFullDir: '/path/to/mathjax-full',
     });
 
     expect(result.bundlePath).toBeDefined();
@@ -51,6 +53,8 @@ describe('prepareSandboxRuntime', () => {
         workDir,
         pptxgenjsBundlePath,
         jszipBundlePath,
+        prismjsMainPath: '/path/to/prism.js',
+        mathjaxFullDir: '/path/to/mathjax-full',
       }),
     ).rejects.toThrow();
   });
@@ -72,6 +76,8 @@ describe('prepareSandboxRuntime', () => {
         workDir,
         pptxgenjsBundlePath,
         jszipBundlePath,
+        prismjsMainPath: '/path/to/prism.js',
+        mathjaxFullDir: '/path/to/mathjax-full',
       }),
     ).rejects.toThrow();
   });
