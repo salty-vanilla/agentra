@@ -390,7 +390,7 @@ export class ObservationCollector {
     const logEntry = {
       timestamp,
       level: 'error',
-      message: 'invocation_error_summary',
+      message: 'agent_request_error_summary',
       traceId: this.traceId,
       observationSummary: summary,
     };

@@ -157,6 +157,7 @@ const app = new BedrockAgentCoreApp({
       );
       const modelId = resolveConfig(effectivePreset, request.length).modelId;
       const logger = new RuntimeLogger(traceId, threadId, modelId);
+      const toolStartTimes = new Map<string, { name: string; startedAt: number }>();
 
       logger.logInvocationStart({
         userId,
@@ -206,10 +207,10 @@ const app = new BedrockAgentCoreApp({
             event.event.type === 'modelContentBlockStartEvent' &&
             event.event.start?.type === 'toolUseStart'
           ) {
-            observability.onModelToolUseStart(
-              event.event.start.toolUseId,
-              event.event.start.name,
-            );
+            const { toolUseId, name } = event.event.start;
+            toolStartTimes.set(toolUseId, { name, startedAt: Date.now() });
+            observability.onModelToolUseStart(toolUseId, name);
+            logger.logToolCallStart(toolUseId, name);
             continue;
           }
 
@@ -255,11 +256,18 @@ const app = new BedrockAgentCoreApp({
           }
 
           if (event.type === 'toolResultEvent') {
-            observability.onToolResult(
-              event.result.toolUseId,
-              event.result.status === 'error' ? 'error' : 'success',
-              event.result.content,
-            );
+            const { toolUseId } = event.result;
+            const toolInfo = toolStartTimes.get(toolUseId);
+            toolStartTimes.delete(toolUseId);
+            const toolDuration = toolInfo ? Date.now() - toolInfo.startedAt : 0;
+            const toolName = toolInfo?.name ?? 'unknown_tool';
+            const toolStatus = event.result.status === 'error' ? 'error' : 'success';
+            observability.onToolResult(toolUseId, toolStatus, event.result.content);
+            if (toolStatus === 'error') {
+              logger.logToolCallError(toolUseId, toolName, toolDuration);
+            } else {
+              logger.logToolCallEnd(toolUseId, toolName, toolDuration);
+            }
             yield {
               event: 'message',
               data: {

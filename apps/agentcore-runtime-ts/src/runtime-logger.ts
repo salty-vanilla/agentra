@@ -105,14 +105,14 @@ export class RuntimeLogger {
   }
 
   logInvocationStart(data?: LogData): void {
-    structureLog('info', 'invocation_start', this.context, {
+    structureLog('info', 'agent_request_start', this.context, {
       timestamp: new Date().toISOString(),
       ...data,
     });
   }
 
   logInvocationEnd(durationMs: number, data?: LogData): void {
-    structureLog('info', 'invocation_end', this.context, {
+    structureLog('info', 'agent_request_end', this.context, {
       durationMs,
       ...data,
     });
@@ -120,8 +120,44 @@ export class RuntimeLogger {
 
   logInvocationError(error: unknown, data?: LogData): void {
     const sanitized = sanitizeError(error);
-    structureLog('error', 'invocation_error', this.context, {
+    structureLog('error', 'agent_request_error', this.context, {
       error: sanitized,
+      ...data,
+    });
+  }
+
+  logToolCallStart(toolUseId: string, toolName: string, data?: LogData): void {
+    structureLog('info', 'tool_call_start', this.context, {
+      toolUseId,
+      toolName,
+      ...data,
+    });
+  }
+
+  logToolCallEnd(
+    toolUseId: string,
+    toolName: string,
+    durationMs: number,
+    data?: LogData,
+  ): void {
+    structureLog('info', 'tool_call_end', this.context, {
+      toolUseId,
+      toolName,
+      durationMs,
+      ...data,
+    });
+  }
+
+  logToolCallError(
+    toolUseId: string,
+    toolName: string,
+    durationMs: number,
+    data?: LogData,
+  ): void {
+    structureLog('error', 'tool_call_error', this.context, {
+      toolUseId,
+      toolName,
+      durationMs,
       ...data,
     });
   }
