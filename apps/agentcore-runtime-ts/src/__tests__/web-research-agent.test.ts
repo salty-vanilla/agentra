@@ -7,28 +7,24 @@ describe('Web Research Agent module', () => {
   it('keeps public web research, citations, and freshness guidance in its prompt', () => {
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('Web Research Agent');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('public web search');
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('source extraction');
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('tavily_search');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('web_research');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('tavily_extract');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('tavily_crawl');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('tavily_map');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('date_resolver');
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('normalize_evidence_source');
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('build_citations');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('create_brief');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('freshness');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('caveats');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('manufacturing-line');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('Structured output rules');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('strands_structured_output');
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('at most 5');
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('omit the snippet field');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('omit snippet from each entry');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain(
-      'do NOT call normalize_evidence_source or build_citations again',
+      'web_research returns normalized sources and citations',
     );
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain(
-      'Only call normalize_evidence_source and build_citations when using tavily_search or tavily_extract directly',
-    );
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).not.toContain('normalize_evidence_source');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).not.toContain('build_citations');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).not.toContain('tavily_search');
   });
 
   it('builds a web research tool set with date normalization and direct Tavily tools enabled', async () => {
@@ -41,12 +37,9 @@ describe('Web Research Agent module', () => {
 
     expect(names).toEqual([
       'date_resolver',
-      'normalize_evidence_source',
-      'build_citations',
       'create_brief',
       'merge_briefs',
       'web_research',
-      'tavily_search',
       'tavily_extract',
       'tavily_crawl',
       'tavily_map',

@@ -447,12 +447,9 @@ describe('tool registry', () => {
 
     expect(names).toEqual([
       'date_resolver',
-      'normalize_evidence_source',
-      'build_citations',
       'create_brief',
       'merge_briefs',
       'web_research',
-      'tavily_search',
       'tavily_extract',
       'tavily_crawl',
       'tavily_map',
@@ -482,8 +479,6 @@ describe('tool registry', () => {
 
     expect(buildWebResearchTools().map((entry) => entry.name)).toEqual([
       'date_resolver',
-      'normalize_evidence_source',
-      'build_citations',
       'create_brief',
       'merge_briefs',
     ]);
