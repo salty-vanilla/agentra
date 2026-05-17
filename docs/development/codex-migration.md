@@ -36,6 +36,13 @@ compatibility with Claude Code concepts.
   review.
 - `.github/codex/prompts/smoke-runtime.md` guides AgentCore runtime smoke and
   log interpretation.
+- `.codex/config.toml` keeps repo-local Codex hook configuration and shared MCP
+  server definitions.
+- `docs/development/codex-config.md` documents Codex config, MCP, and local
+  environment assumptions.
+- `.codex/skills/github-issue-to-pr` and `.codex/skills/github-pr-review-close`
+  are retained as small Agentra workflow skills aligned with `AGENTS.md` and the
+  Codex prompt files.
 
 Existing references remain important:
 
@@ -72,11 +79,11 @@ Existing references remain important:
 | `.claude/rules/aws.md` | migrate to `AGENTS.md` + `smoke-runtime.md` | IaC-first and no accidental deploy guidance preserved. |
 | `.claude/rules/performance.md` | needs human decision | Claude model guidance was not ported into Codex rules. |
 | `.claude/rules/agents.md` | deprecate/delete later | Claude subagent orchestration is not Codex-native repo guidance. |
-| `.claude/skills/github-*` | partially migrated already | Existing `.codex/skills` kept; prompts add repo-specific detail. |
-| `.claude/skills/domain skills` | keep Claude-only helper | Large vendor references remain local helpers. |
+| `.claude/skills/github-*` | partially migrated already | Existing `.codex/skills` kept and aligned with Agentra prompts. |
+| `.claude/skills/domain skills` | keep Claude-only helper | Large vendor references remain local helpers; additional Codex skill ports are Phase 4 or later. |
 | `.claude/scripts/hooks/*` | migrate to shared script later | Guardrail intent reserved for Phase 4. |
-| `.mcp.json` | needs human decision | Do not copy secrets or local permissions into Codex config. |
-| `.codex/config.toml` | Phase 3 | Existing config should be refined later, not replaced in this phase. |
+| `.mcp.json` | migrate to Codex config | Reusable MCP definitions ported without literal secrets. |
+| `.codex/config.toml` | Phase 3 | Refined as repo-local Codex config with hooks and MCP. |
 | `.codex/hooks/stop_quality_gate.py` | Phase 4 | Existing hook should be reconciled with future guardrails. |
 | `docs/dev/live-agentcore-smoke.md` | migrate to Codex prompt | Source for `smoke-runtime.md`. |
 | `justfile` AgentCore recipes | migrate to prompt/docs | Referenced for smoke/log workflows. |
@@ -86,13 +93,13 @@ Existing references remain important:
 
 1. Phase 1: expand `AGENTS.md` as canonical guidance.
 2. Phase 2: add Codex prompts and this migration document.
-3. Phase 3: refine `.codex/config.toml`, safe MCP/env documentation, sandbox and
-   approval assumptions.
+3. Phase 3: refine `.codex/config.toml`, port safe MCP definitions, document
+   MCP/env assumptions, and avoid new guardrail scripts.
 4. Phase 4: add Codex hooks and shared guardrail scripts.
 
 Phase 3 should treat the current `.codex/config.toml` as an existing asset.
 Phase 4 should decide whether to use `.codex/hooks.json`, TOML hook declarations,
-or both.
+or both. `.codex/hooks.json` is intentionally deferred until that phase.
 
 ## Validation Expectations
 
@@ -116,7 +123,8 @@ requests them and provides the required AWS environment.
 ## Open Decisions For Later Phases
 
 - Whether Codex should use `.codex/hooks.json`, current TOML hooks, or both.
-- Which MCP servers should be documented as safe defaults for Codex.
-- Whether any Claude domain skill should be ported into a smaller Codex-native
-  reference.
+- Whether any MCP servers added in Phase 3 should be removed or narrowed after
+  real-world use.
+- Which additional workflow/domain skills should be ported into smaller
+  Codex-native skills after the current GitHub workflow skills.
 - Which guardrail scripts should also run in CI versus only during Codex work.

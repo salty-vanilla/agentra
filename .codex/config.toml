@@ -1,6 +1,53 @@
+# Agentra repo-local Codex configuration.
+#
+# Keep this file portable and safe for every contributor. Do not add personal
+# tokens, literal AWS credentials, production deployment defaults, user-local
+# server paths, or plugin state here. Secrets are referenced by environment
+# variable names only; real values belong in local environment files.
+#
+# Phase 3 of Issue #221 ports safe MCP definitions and documents the local
+# assumptions. Phase 4 will decide whether to add .codex/hooks.json and broader
+# guardrail scripts.
+
 [features]
 codex_hooks = true
 
+[mcp_servers.github]
+url = "https://api.githubcopilot.com/mcp/"
+bearer_token_env_var = "GITHUB_PAT"
+
+[mcp_servers.context7]
+command = "npx"
+args = ["-y", "@upstash/context7-mcp@2.1.4"]
+
+[mcp_servers.exa]
+url = "https://mcp.exa.ai/mcp"
+
+[mcp_servers.memory]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-memory@2026.1.26"]
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["-y", "@playwright/mcp@0.0.69", "--extension"]
+
+[mcp_servers.sequential-thinking]
+command = "npx"
+args = ["-y", "@modelcontextprotocol/server-sequential-thinking@2025.12.18"]
+
+[mcp_servers.aws-mcp]
+command = "uvx"
+args = ["mcp-proxy-for-aws@latest", "https://aws-mcp.us-east-1.api.aws/mcp"]
+
+[mcp_servers.awsknowledge]
+url = "https://knowledge-mcp.global.api.aws"
+
+[mcp_servers.hono-docs]
+url = "https://hono-docs-mcp.yusukebe.workers.dev/mcp"
+
+# Stop hook: keep the existing repo quality gate enabled. This runs local
+# typecheck and Biome checks before Codex stops. Do not add deployment or
+# production-impacting commands to this hook.
 [[hooks.Stop]]
 [[hooks.Stop.hooks]]
 type = "command"

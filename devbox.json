@@ -6,6 +6,7 @@
     "just@1",
     "direnv@2",
     "awscli2@2",
+    "uv@latest",
     "jq@1",
     "yq-go@4",
     "gh@2"
