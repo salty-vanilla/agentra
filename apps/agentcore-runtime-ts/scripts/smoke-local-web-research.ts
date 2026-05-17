@@ -52,6 +52,7 @@ const RESEARCH_TOOL_NAMES = new Set([
 
 const FALLBACK_PATTERNS = [
   'web_research_agentにて技術的なエラー',
+  'Web検索エージェントにて技術的なエラー',
   'not_configured',
   'technical error',
   'no_results',
@@ -92,6 +93,7 @@ type SmokeSummary = {
   readonly outputTokens: number;
   readonly sources: number;
   readonly citations: number;
+  readonly toolErrors: number;
   readonly toolsObserved: readonly string[];
   readonly timeline: ReadonlyArray<{
     name: string;
@@ -221,6 +223,9 @@ function validateStrict(
   if (summary.status === 'timeout') {
     return { ok: false, reason: 'agent timed out' };
   }
+  if (summary.toolErrors > 0) {
+    return { ok: false, reason: `${summary.toolErrors} tool(s) returned error status` };
+  }
 
   const researchToolsFound = summary.toolsObserved.filter((t) =>
     RESEARCH_TOOL_NAMES.has(t),
@@ -333,6 +338,7 @@ async function main(): Promise<void> {
   }> = [];
   const toolsObserved = new Set<string>();
   const evidence: EvidenceAccumulator = { sources: 0, citations: 0 };
+  let toolErrorCount = 0;
   let responseText = '';
   let exitedWithError = false;
   let timedOut = false;
@@ -348,7 +354,7 @@ async function main(): Promise<void> {
   let agentResult: Awaited<ReturnType<typeof agent.invoke>> | undefined;
 
   try {
-    const stream = agent.stream(config.prompt);
+    const stream = agent.stream(config.prompt, { cancelSignal: controller.signal });
 
     while (true) {
       if (timedOut) break;
@@ -406,6 +412,7 @@ async function main(): Promise<void> {
         const entry = toolMap.get(toolUseId);
         const durationMs = entry ? Date.now() - entry.startedAt : undefined;
         const toolStatus = status === 'error' ? 'error' : 'complete';
+        if (toolStatus === 'error') toolErrorCount++;
 
         timeline.push({
           name: entry?.name ?? 'unknown',
@@ -454,6 +461,7 @@ async function main(): Promise<void> {
     outputTokens,
     sources: evidence.sources,
     citations: evidence.citations,
+    toolErrors: toolErrorCount,
     toolsObserved: [...toolsObserved],
     timeline,
   };
