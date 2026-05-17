@@ -23,6 +23,12 @@ describe('Web Research Agent module', () => {
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('strands_structured_output');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('at most 5');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('omit the snippet field');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain(
+      'do NOT call normalize_evidence_source or build_citations again',
+    );
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain(
+      'Only call normalize_evidence_source and build_citations when using tavily_search or tavily_extract directly',
+    );
   });
 
   it('builds a web research tool set with date normalization and direct Tavily tools enabled', async () => {

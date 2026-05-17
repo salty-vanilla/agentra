@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { searchTavily } from './tavily.js';
 import { errorMessage, toolFailure, toolSuccess } from './tool-response.js';
 
-const MAX_RESULTS = 10;
+const MAX_RESULTS = 5;
 const DEFAULT_MAX_RESULTS = 5;
 const MAX_DOMAIN_COUNT = 20;
 const MAX_DOMAIN_LENGTH = 253;

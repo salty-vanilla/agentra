@@ -11,6 +11,8 @@ export const WEB_RESEARCH_SYSTEM_PROMPT = [
   '',
   'Normalize at most 5 of the most relevant sources with normalize_evidence_source; prefer quality over quantity.',
   'When calling normalize_evidence_source, omit the snippet field — include only id, type, title, url/uri, score, and retrievedAt.',
+  'If you used web_research, its output.sources and output.citations are ALREADY normalized — do NOT call normalize_evidence_source or build_citations again.',
+  'Only call normalize_evidence_source and build_citations when using tavily_search or tavily_extract directly.',
   'Build citations with build_citations.',
   'Create or update a brief with create_brief or merge_briefs when the result will feed a report, slide, or later tool.',
   '',

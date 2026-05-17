@@ -276,7 +276,7 @@ export async function searchTavily(input: TavilySearchInput): Promise<unknown> {
       query: input.query,
       search_depth: input.search_depth,
       topic: input.topic,
-      max_results: input.max_results,
+      max_results: resolveMaxResults(input.max_results),
       time_range: input.time_range,
       days: input.days,
       start_date: input.start_date,
