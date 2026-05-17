@@ -11,6 +11,9 @@
     "yq-go@4",
     "gh@2"
   ],
+  "env": {
+    "PATH": "$PWD/.devbox/bin:$PATH"
+  },
   "shell": {
     "init_hook": ["corepack enable 2>/dev/null || true"],
     "scripts": {
