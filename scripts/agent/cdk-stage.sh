@@ -173,15 +173,31 @@ require_confirm_stage() {
 # Populates the global arrays CDK_CONTEXT and CDK_PARAMS based on the target
 # stack group, and validates that required environment variables are present.
 #
-# Always requires: THIRD_PARTY_API_KEY_SECRET_ARN
-# When deploying web/all: also AMPLIFY_URL, AMPLIFY_GITHUB_PAT,
-#                          AMPLIFY_GITHUB_REPOSITORY, AMPLIFY_GITHUB_BRANCH
+# Args: <group> <stage> [mode=deploy]
+#   mode = deploy   → full deploy semantics:
+#                       - web/all also require AMPLIFY_GITHUB_PAT/REPO/BRANCH
+#                       - CDK_PARAMS gets --parameters for AgentraWebHostingStack
+#   mode = destroy  → cdk destroy semantics:
+#                       - never require AMPLIFY_GITHUB_*
+#                       - never populate CDK_PARAMS (cdk destroy ignores them)
+#                       - URL context is still injected so app synthesis (which
+#                         runs before destroy) does not throw "Missing URLs".
 #
-# AMPLIFY_URL is also folded into Cognito callback / CORS context when set,
-# matching the existing cdk-deploy-all behavior.
+# Always requires: THIRD_PARTY_API_KEY_SECRET_ARN
+# AMPLIFY_URL is folded into Cognito callback / CORS context when set,
+# matching the existing cdk-deploy-all behavior. For ephemeral stages without
+# AMPLIFY_URL, localhost defaults are injected so synth succeeds.
 build_cdk_flags() {
     local group="${1:-}"
     local stage="${2:-}"
+    local mode="${3:-deploy}"
+    case "$mode" in
+        deploy|destroy) ;;
+        *)
+            echo "ERROR: build_cdk_flags mode must be 'deploy' or 'destroy' (got '$mode')" >&2
+            return 1
+            ;;
+    esac
     validate_stage "$stage" || return 1
 
     # shellcheck disable=SC2034  # exported via name for the caller
@@ -190,16 +206,18 @@ build_cdk_flags() {
     CDK_PARAMS=()
 
     local required=(THIRD_PARTY_API_KEY_SECRET_ARN)
-    case "$group" in
-        web|all)
-            required+=(AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BRANCH)
-            ;;
-    esac
+    if [[ "$mode" == "deploy" ]]; then
+        case "$group" in
+            web|all)
+                required+=(AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BRANCH)
+                ;;
+        esac
+    fi
 
     local var
     for var in "${required[@]}"; do
         if [[ -z "${!var:-}" ]]; then
-            echo "ERROR: required environment variable $var is not set (group=$group)" >&2
+            echo "ERROR: required environment variable $var is not set (group=$group, mode=$mode)" >&2
             return 1
         fi
     done
@@ -213,7 +231,8 @@ build_cdk_flags() {
     elif [[ "$stage" != "dev" ]]; then
         # bin/agentra-cdk.ts only auto-applies localhost defaults for stage=dev.
         # For ephemeral stages we inject the same defaults so the developer's
-        # local frontend can talk to the deployed Cognito + APIs.
+        # local frontend can talk to the deployed Cognito + APIs, and so
+        # `cdk destroy` synthesizes without throwing "Missing URLs".
         local local_urls="http://localhost:3000/,http://127.0.0.1:3000/"
         local local_origins="http://localhost:3000,http://127.0.0.1:3000"
         CDK_CONTEXT+=(-c "callbackUrls=${local_urls}")
@@ -221,13 +240,50 @@ build_cdk_flags() {
         CDK_CONTEXT+=(-c "corsOrigins=${local_origins}")
     fi
 
-    case "$group" in
-        web|all)
-            CDK_PARAMS+=(--parameters "AgentraWebHostingStack-${stage}:AmplifyGithubAccessToken=${AMPLIFY_GITHUB_PAT}")
-            CDK_PARAMS+=(--parameters "AgentraWebHostingStack-${stage}:AmplifyRepositoryUrl=${AMPLIFY_GITHUB_REPOSITORY}")
-            CDK_PARAMS+=(--parameters "AgentraWebHostingStack-${stage}:AmplifyBranchName=${AMPLIFY_GITHUB_BRANCH}")
-            ;;
-    esac
+    if [[ "$mode" == "deploy" ]]; then
+        case "$group" in
+            web|all)
+                CDK_PARAMS+=(--parameters "AgentraWebHostingStack-${stage}:AmplifyGithubAccessToken=${AMPLIFY_GITHUB_PAT}")
+                CDK_PARAMS+=(--parameters "AgentraWebHostingStack-${stage}:AmplifyRepositoryUrl=${AMPLIFY_GITHUB_REPOSITORY}")
+                CDK_PARAMS+=(--parameters "AgentraWebHostingStack-${stage}:AmplifyBranchName=${AMPLIFY_GITHUB_BRANCH}")
+                ;;
+        esac
+    fi
+}
+
+# Load AGENTCORE_RUNTIME_ARN from .agentra/outputs/<stage>.json so smoke recipes
+# work immediately after `just cdk-deploy-with-outputs` without manual env setup.
+# Silent no-op when the file or key is missing — the caller may have set
+# AGENTCORE_RUNTIME_ARN manually, which we never overwrite.
+#
+# Uses node -e for JSON parsing so there is no jq dependency. The file path is
+# passed as argv to keep stage names out of the inline JS (no injection risk).
+export_runtime_arn_from_outputs() {
+    local stage="${1:-}"
+    validate_stage "$stage" || return 1
+    if [[ -n "${AGENTCORE_RUNTIME_ARN:-}" ]]; then
+        return 0
+    fi
+    local outputs_file=".agentra/outputs/${stage}.json"
+    if [[ ! -f "$outputs_file" ]]; then
+        return 0
+    fi
+    local stack_id="AgentraAgentCoreRuntimeStack-${stage}"
+    local arn
+    arn=$(node -e '
+        const fs = require("fs");
+        // With `node -e <script> -- a b`, argv is [nodePath, a, b].
+        const [, file, stackId] = process.argv;
+        try {
+            const o = JSON.parse(fs.readFileSync(file, "utf8"));
+            const a = o?.[stackId]?.AgentCoreRuntimeArn;
+            if (typeof a === "string" && a.length > 0) process.stdout.write(a);
+        } catch { /* missing or malformed file: silent no-op */ }
+    ' -- "$outputs_file" "$stack_id" 2>/dev/null) || return 0
+    if [[ -n "$arn" ]]; then
+        export AGENTCORE_RUNTIME_ARN="$arn"
+        echo "Loaded AGENTCORE_RUNTIME_ARN from $outputs_file"
+    fi
 }
 
 # Probe whether the installed CDK CLI supports a given long flag.

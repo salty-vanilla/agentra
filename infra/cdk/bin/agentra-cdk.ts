@@ -8,14 +8,16 @@ import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';
 import { AgentraSlideRuntimeStack } from '../lib/agentra-slide-runtime-stack.js';
 import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
 
-const STAGE_PATTERN = /^[a-z0-9-]+$/;
+// Matches scripts/agent/cdk-stage.sh::validate_stage.
+// Lowercase alphanumeric and hyphens; may not start or end with a hyphen.
+const STAGE_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 const MAX_STAGE_LENGTH = 16;
 
 function validateStage(stage: string): void {
   if (!STAGE_PATTERN.test(stage)) {
     throw new Error(
-      `Invalid stage "${stage}": must contain only lowercase letters, numbers, and hyphens. ` +
-        'Example: "dev", "prod", "staging-v2"',
+      `Invalid stage "${stage}": must contain only lowercase letters, numbers, and hyphens, ` +
+        'and may not start or end with a hyphen. Examples: "dev", "prod", "staging-v2", "dev-issue-224"',
     );
   }
   if (stage.length > MAX_STAGE_LENGTH) {

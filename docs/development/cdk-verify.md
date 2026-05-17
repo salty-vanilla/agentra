@@ -54,7 +54,7 @@ exposes named groups that expand to the correct stack IDs for a given stage.
 | `THIRD_PARTY_API_KEY_SECRET_ARN` | Every CDK deploy/diff | Already an existing requirement. |
 | `AMPLIFY_URL` | `web` / `all` groups | When unset and stage is ephemeral, the helper auto-injects localhost callback / CORS URLs so worktree iteration works without Amplify. |
 | `AMPLIFY_GITHUB_PAT`, `AMPLIFY_GITHUB_REPOSITORY`, `AMPLIFY_GITHUB_BRANCH` | `web` / `all` groups (deploy) | CloudFormation parameters for `AgentraWebHostingStack`. |
-| `AGENTCORE_RUNTIME_ARN` | Smoke tests | Read from `.agentra/outputs/<stage>.json` after `cdk-deploy-with-outputs`, or set manually. |
+| `AGENTCORE_RUNTIME_ARN` | Smoke tests | `smoke-agentcore` / `smoke-slide` auto-load this from `.agentra/outputs/<stage>.json` when present (written by `cdk-deploy-with-outputs`). Set manually only when there is no outputs file. |
 | `CONFIRM_STAGE` | `cdk-destroy`, `cdk-cleanup-ephemeral` | Must equal the target stage. Forces a human to type the stage twice. |
 
 Per-worktree environment: keep `.env.local` in the main checkout and symlink it

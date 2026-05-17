@@ -156,6 +156,29 @@ build_cdk_flags agentcore dev >/dev/null 2>&1
 # stage=dev without AMPLIFY_URL: stage + arn only = 4 items (CDK app supplies the rest)
 assert_equal "stage=dev: no extra URL context" "4" "${#CDK_CONTEXT[@]}"
 
+echo "── build_cdk_flags mode=destroy ──────────────────────────────"
+export THIRD_PARTY_API_KEY_SECRET_ARN="arn:foo"
+unset AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BRANCH
+assert_pass "destroy + web + missing Amplify env: OK" build_cdk_flags web dev-issue-224 destroy
+build_cdk_flags web dev-issue-224 destroy >/dev/null 2>&1
+assert_equal "destroy: CDK_PARAMS stays empty"   "0"  "${#CDK_PARAMS[@]}"
+# stage + arn + 3 url contexts = 10 items
+assert_equal "destroy: URL context still injected" "10" "${#CDK_CONTEXT[@]}"
+
+build_cdk_flags agentcore dev destroy >/dev/null 2>&1
+assert_equal "destroy + stage=dev: 4 ctx, 0 params" "4|0" \
+             "${#CDK_CONTEXT[@]}|${#CDK_PARAMS[@]}"
+
+assert_fail "invalid mode rejected" build_cdk_flags agentcore dev-issue-224 bogus
+
+# Deploy + web still requires Amplify env (regression guard)
+unset AMPLIFY_GITHUB_PAT
+export AMPLIFY_URL="https://example.com"
+export AMPLIFY_GITHUB_REPOSITORY="https://github.com/example/repo"
+export AMPLIFY_GITHUB_BRANCH="main"
+assert_fail "deploy + web still requires AMPLIFY_GITHUB_PAT" build_cdk_flags web dev-issue-224 deploy
+unset AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BRANCH
+
 echo "── require_confirm_stage ─────────────────────────────────────"
 unset CONFIRM_STAGE
 assert_fail "missing CONFIRM_STAGE" require_confirm_stage dev-issue-224
@@ -163,6 +186,57 @@ export CONFIRM_STAGE=dev-issue-999
 assert_fail "wrong CONFIRM_STAGE" require_confirm_stage dev-issue-224
 export CONFIRM_STAGE=dev-issue-224
 assert_pass "matching CONFIRM_STAGE" require_confirm_stage dev-issue-224
+
+echo "── export_runtime_arn_from_outputs ───────────────────────────"
+# Run from a temp working dir so the helper's relative .agentra/outputs path is
+# isolated from the real repo state.
+saved_pwd="$PWD"
+tmpdir="$(mktemp -d -t cdk-stage-test.XXXXXX)"
+cd "$tmpdir"
+mkdir -p .agentra/outputs
+
+# Case 1: missing file → silent no-op
+unset AGENTCORE_RUNTIME_ARN
+assert_pass "missing outputs file: no-op"        export_runtime_arn_from_outputs dev-issue-224
+assert_equal "missing outputs file: arn unset"   ""    "${AGENTCORE_RUNTIME_ARN:-}"
+
+# Case 2: file present + key present → exports arn
+cat > .agentra/outputs/dev-issue-224.json <<'EOF'
+{
+  "AgentraAgentCoreRuntimeStack-dev-issue-224": {
+    "AgentCoreRuntimeArn": "arn:aws:bedrock-agentcore:us-east-1:000000000000:runtime/test",
+    "AgentCoreRuntimeId": "test-id"
+  }
+}
+EOF
+unset AGENTCORE_RUNTIME_ARN
+assert_pass "valid outputs file: load succeeds"  export_runtime_arn_from_outputs dev-issue-224
+assert_equal "valid outputs file: arn exported"  \
+    "arn:aws:bedrock-agentcore:us-east-1:000000000000:runtime/test" \
+    "${AGENTCORE_RUNTIME_ARN:-}"
+
+# Case 3: file present but stack key missing → no-op
+cat > .agentra/outputs/dev-issue-225.json <<'EOF'
+{"AgentraSlideRuntimeStack-dev-issue-225": {"SlideRuntimeArn": "arn:foo"}}
+EOF
+unset AGENTCORE_RUNTIME_ARN
+assert_pass "missing stack key: no-op"           export_runtime_arn_from_outputs dev-issue-225
+assert_equal "missing stack key: arn unset"      ""    "${AGENTCORE_RUNTIME_ARN:-}"
+
+# Case 4: existing AGENTCORE_RUNTIME_ARN must not be overwritten
+export AGENTCORE_RUNTIME_ARN="arn:preset"
+export_runtime_arn_from_outputs dev-issue-224 >/dev/null
+assert_equal "preset env value preserved"        "arn:preset"  "${AGENTCORE_RUNTIME_ARN:-}"
+
+# Case 5: malformed JSON → silent no-op
+echo "{not json" > .agentra/outputs/dev-issue-226.json
+unset AGENTCORE_RUNTIME_ARN
+assert_pass "malformed JSON: no-op"              export_runtime_arn_from_outputs dev-issue-226
+assert_equal "malformed JSON: arn unset"         ""    "${AGENTCORE_RUNTIME_ARN:-}"
+
+cd "$saved_pwd"
+rm -rf "$tmpdir"
+unset AGENTCORE_RUNTIME_ARN
 
 # Restore env so the script leaves the caller's shell clean (in case it's sourced).
 [[ -n "$saved_secret" ]]  && export THIRD_PARTY_API_KEY_SECRET_ARN="$saved_secret"  || unset THIRD_PARTY_API_KEY_SECRET_ARN

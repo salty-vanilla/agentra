@@ -2,7 +2,9 @@
 // Synth-time context validation script
 // Usage: pnpm exec tsx infra/cdk/validate-context.ts
 
-const STAGE_PATTERN = /^[a-z0-9-]+$/;
+// Matches scripts/agent/cdk-stage.sh::validate_stage.
+// Lowercase alphanumeric and hyphens; may not start or end with a hyphen.
+const STAGE_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 const MAX_STAGE_LENGTH = 16;
 
 interface TestCase {

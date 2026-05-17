@@ -205,6 +205,7 @@ cdk-destroy group="agentcore" stage=default_stage profile=aws_profile:
     source scripts/agent/cdk-stage.sh
     assert_ephemeral_stage '{{stage}}'
     require_confirm_stage '{{stage}}'
+    build_cdk_flags '{{group}}' '{{stage}}' destroy
     mapfile -t STACKS < <(resolve_stack_group '{{group}}' '{{stage}}')
     print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
     echo "⚠️  Destroying the stacks above. CloudFormation retention policies may"
@@ -213,8 +214,7 @@ cdk-destroy group="agentcore" stage=default_stage profile=aws_profile:
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     pnpm --filter @agentra/infra-cdk exec cdk destroy "${STACKS[@]}" \
       --force \
-      -c "stage={{stage}}" \
-      -c "thirdPartyApiKeysSecretArn=${THIRD_PARTY_API_KEY_SECRET_ARN:-unused}"
+      "${CDK_CONTEXT[@]}"
 
 # Destroy every stack for an ephemeral stage. Requires CONFIRM_STAGE=<stage>.
 cdk-cleanup-ephemeral stage=default_stage profile=aws_profile:
@@ -234,11 +234,14 @@ cdk-deploy-agentcore stage=default_stage profile=aws_profile:
 
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 
-# Run AgentCore chat smoke test (requires AGENTCORE_RUNTIME_ARN in env)
+# Run AgentCore chat smoke test. Auto-loads AGENTCORE_RUNTIME_ARN from
+# .agentra/outputs/<stage>.json when present; otherwise reads it from env.
 # Note: script files are added by PR #194 — guard exits cleanly if not yet merged
 smoke-agentcore stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    export_runtime_arn_from_outputs '{{stage}}' || true
     SCRIPT_ROOT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-chat.ts"
     SCRIPT_PKG="scripts/smoke-agentcore-chat.ts"
     if [[ ! -f "$SCRIPT_ROOT" ]]; then
@@ -249,11 +252,14 @@ smoke-agentcore stage=default_stage profile=aws_profile:
     aws sts get-caller-identity
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT_PKG"
 
-# Run slide generation smoke test (requires AGENTCORE_RUNTIME_ARN in env)
+# Run slide generation smoke test. Auto-loads AGENTCORE_RUNTIME_ARN from
+# .agentra/outputs/<stage>.json when present; otherwise reads it from env.
 # Note: script files are added by PR #194 — guard exits cleanly if not yet merged
 smoke-slide stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    export_runtime_arn_from_outputs '{{stage}}' || true
     SCRIPT_ROOT="apps/agentcore-runtime-ts/scripts/smoke-agentcore-slide.ts"
     SCRIPT_PKG="scripts/smoke-agentcore-slide.ts"
     if [[ ! -f "$SCRIPT_ROOT" ]]; then
