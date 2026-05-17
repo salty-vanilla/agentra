@@ -16,6 +16,7 @@ export type SubAgentProgressEvent = {
   stage: string;
   status: 'running' | 'complete' | 'error';
   durationMs?: number;
+  inputTokens?: number;
 };
 
 let cachedManufacturingLineAgent: ManufacturingLineAgentLike | undefined;

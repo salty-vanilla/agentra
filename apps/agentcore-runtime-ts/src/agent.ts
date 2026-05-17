@@ -259,6 +259,7 @@ const app = new BedrockAgentCoreApp({
                   progress.stage,
                   progress.status,
                   progress.durationMs,
+                  progress.inputTokens,
                 );
               }
               yield {

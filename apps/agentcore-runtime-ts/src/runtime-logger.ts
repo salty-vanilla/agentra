@@ -203,6 +203,7 @@ export class RuntimeLogger {
     stage: string,
     status: 'running' | 'complete' | 'error',
     durationMs?: number,
+    inputTokens?: number,
   ): void {
     structureLog(
       status === 'error' ? 'error' : 'info',
@@ -214,6 +215,7 @@ export class RuntimeLogger {
         stage,
         status,
         ...(durationMs !== undefined ? { durationMs } : {}),
+        ...(inputTokens !== undefined ? { inputTokens } : {}),
       },
       this.pinoLogger,
     );

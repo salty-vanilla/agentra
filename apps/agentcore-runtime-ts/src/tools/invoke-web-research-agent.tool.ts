@@ -100,6 +100,7 @@ export async function* streamInvokeWebResearchAgentTool(
     });
 
     const toolStarts = new Map<string, { name: string; startedAt: number }>();
+    let currentInputTokens: number | undefined;
 
     while (true) {
       const { value, done } = await agentStream.next();
@@ -112,12 +113,27 @@ export async function* streamInvokeWebResearchAgentTool(
 
       if (
         event.type === 'modelStreamUpdateEvent' &&
+        event.event.type === 'modelMetadataEvent' &&
+        event.event.usage?.inputTokens !== undefined
+      ) {
+        currentInputTokens = event.event.usage.inputTokens;
+        continue;
+      }
+
+      if (
+        event.type === 'modelStreamUpdateEvent' &&
         event.event.type === 'modelContentBlockStartEvent' &&
         event.event.start?.type === 'toolUseStart'
       ) {
         const { toolUseId, name } = event.event.start;
         toolStarts.set(toolUseId, { name, startedAt: Date.now() });
-        yield { stage: name, status: 'running' };
+        yield {
+          stage: name,
+          status: 'running',
+          ...(currentInputTokens !== undefined
+            ? { inputTokens: currentInputTokens }
+            : {}),
+        };
       } else if (
         event.type === 'contentBlockEvent' &&
         event.contentBlock.type === 'toolUseBlock'
@@ -125,7 +141,13 @@ export async function* streamInvokeWebResearchAgentTool(
         const { toolUseId, name } = event.contentBlock;
         if (!toolStarts.has(toolUseId)) {
           toolStarts.set(toolUseId, { name, startedAt: Date.now() });
-          yield { stage: name, status: 'running' };
+          yield {
+            stage: name,
+            status: 'running',
+            ...(currentInputTokens !== undefined
+              ? { inputTokens: currentInputTokens }
+              : {}),
+          };
         }
       } else if (event.type === 'toolResultEvent') {
         const start = toolStarts.get(event.result.toolUseId);
@@ -137,6 +159,9 @@ export async function* streamInvokeWebResearchAgentTool(
           status:
             event.result.status === 'error' ? ('error' as const) : ('complete' as const),
           ...(durationMs !== undefined ? { durationMs } : {}),
+          ...(currentInputTokens !== undefined
+            ? { inputTokens: currentInputTokens }
+            : {}),
         };
       }
     }
