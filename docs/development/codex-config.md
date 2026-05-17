@@ -45,6 +45,12 @@ MCP command servers assume `npx` and `uvx` are available on `PATH`. `npx` is
 available through the Node.js toolchain, and Devbox provides `uv` for `uvx`.
 Outside Devbox, install `uv` before using the AWS MCP server.
 
+Most command MCP servers are version-pinned in `.codex/config.toml`. The AWS MCP
+proxy keeps the existing `.mcp.json` behavior and uses `mcp-proxy-for-aws@latest`
+because the proxy tracks a remote AWS MCP endpoint. Devbox still pins the `uvx`
+runtime itself through `devbox.lock`; revisit the proxy package version when AWS
+publishes a stable pinning recommendation.
+
 ## Local Environment Variables
 
 Use `.env.example` as the source of truth for local environment names. Copy it to
