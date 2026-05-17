@@ -43,23 +43,41 @@ function buildHandoffOutput(
   }) as WebResearchAgentHandoffOutput;
 }
 
+const NOT_CONFIGURED_PATTERNS = ['TAVILY_API_KEY_SECRET_ID', 'TAVILY_API_KEY_SSM_NAME'];
+
+function classifyError(message: string): 'not_configured' | 'error' {
+  return NOT_CONFIGURED_PATTERNS.some((p) => message.includes(p))
+    ? 'not_configured'
+    : 'error';
+}
+
+const ERROR_USER_ANSWERS: Record<'not_configured' | 'error', string> = {
+  not_configured:
+    'Web検索機能が未設定のため、現在この依頼を処理できません。管理者に設定確認を依頼してください。',
+  error: 'Web Research Agentの処理中にエラーが発生しました。',
+};
+
 function buildErrorOutput(
-  message: string,
+  rawMessage: string,
   input: WebResearchAgentHandoffInput,
 ): WebResearchAgentHandoffOutput {
-  return normalizeSubAgentHandoffOutput({
-    value: undefined,
+  const detectedStatus = classifyError(rawMessage);
+  const handoffMode = input.freshnessRequired ? 'freshness_required' : 'standard';
+  return {
+    status: detectedStatus,
     agentKind: 'web_research',
     agentName: 'Web Research Agent',
-    handoffMode: input.freshnessRequired ? 'freshness_required' : 'standard',
-    fallbackErrorMessage: message,
+    handoffMode,
+    answer: ERROR_USER_ANSWERS[detectedStatus],
     metadata: {
       parentAgent: 'router-agent',
       childAgent: 'web-research-agent',
       handoffTool: 'invoke_web_research_agent',
-      handoffMode: input.freshnessRequired ? 'freshness_required' : 'standard',
+      handoffMode,
+      rawValueType: 'undefined',
+      rawError: rawMessage,
     },
-  }) as WebResearchAgentHandoffOutput;
+  };
 }
 
 export async function* streamInvokeWebResearchAgentTool(

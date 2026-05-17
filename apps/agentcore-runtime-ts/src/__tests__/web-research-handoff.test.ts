@@ -173,19 +173,21 @@ describe('Web Research Agent handoff', () => {
     // Tool must succeed so the Router reads the error reason from content
     // rather than treating it as a transient failure to retry.
     expect(response.status).toBe('success');
-    expect(JSON.parse(response.content[0].text)).toEqual({
-      status: 'error',
-      agentKind: 'web_research',
-      agentName: 'Web Research Agent',
+    const payload = JSON.parse(response.content[0].text);
+    // 'boom' does not match any not_configured pattern, so status is 'error'
+    expect(payload.status).toBe('error');
+    expect(payload.agentKind).toBe('web_research');
+    expect(payload.agentName).toBe('Web Research Agent');
+    expect(payload.handoffMode).toBe('standard');
+    // Raw error must not leak into the user-facing answer
+    expect(payload.answer).not.toBe('boom');
+    expect(payload.metadata).toMatchObject({
+      parentAgent: 'router-agent',
+      childAgent: 'web-research-agent',
+      handoffTool: 'invoke_web_research_agent',
       handoffMode: 'standard',
-      answer: 'boom',
-      metadata: {
-        parentAgent: 'router-agent',
-        childAgent: 'web-research-agent',
-        handoffTool: 'invoke_web_research_agent',
-        handoffMode: 'standard',
-        rawValueType: 'undefined',
-      },
+      rawValueType: 'undefined',
+      rawError: 'boom',
     });
   });
 });
@@ -321,6 +323,9 @@ describe('streamInvokeWebResearchAgentTool', () => {
     // Tool must succeed so the Router reads the error reason from content
     // rather than treating it as a transient failure to retry.
     expect(value.status).toBe('success');
-    expect(JSON.parse(value.content[0].text).answer).toContain('web research failure');
+    const streamPayload = JSON.parse(value.content[0].text);
+    // Raw error must not leak into the user-facing answer; it goes to metadata.rawError
+    expect(streamPayload.answer).not.toContain('web research failure');
+    expect(streamPayload.metadata?.rawError).toContain('web research failure');
   });
 });

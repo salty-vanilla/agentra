@@ -34,7 +34,7 @@ describe('executeInvokeWebResearchAgentTool', () => {
     expect(parsed).toMatchObject({ status: 'success', answer: expect.any(String) });
   });
 
-  it('returns success status with error handoff payload when agent throws', async () => {
+  it('returns success status with not_configured handoff payload when Tavily key is missing', async () => {
     const result = await executeInvokeWebResearchAgentTool(VALID_INPUT, {
       agentFactory: () => ({
         invoke: async () => {
@@ -46,13 +46,20 @@ describe('executeInvokeWebResearchAgentTool', () => {
     // Tool execution itself must succeed so the Router can read the error reason
     // from the content, rather than treating it as a transient retry-able failure.
     expect(result.status).toBe('success');
-    const parsed: unknown = JSON.parse(result.content[0]?.text ?? '{}');
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}') as {
+      status: string;
+      agentKind: string;
+      agentName: string;
+      answer: string;
+      metadata?: Record<string, unknown>;
+    };
     expect(parsed).toMatchObject({
-      status: 'error',
+      status: 'not_configured',
       agentKind: 'web_research',
       agentName: 'Web Research Agent',
-      answer: expect.stringContaining('TAVILY_API_KEY'),
     });
+    expect(parsed.answer).not.toMatch(/TAVILY_API_KEY|env var|SSM_NAME/);
+    expect(parsed.metadata?.rawError).toContain('TAVILY_API_KEY_SECRET_ID');
   });
 
   it('returns success status with error handoff payload when agent factory throws', async () => {
@@ -63,12 +70,15 @@ describe('executeInvokeWebResearchAgentTool', () => {
     });
 
     expect(result.status).toBe('success');
-    const parsed: unknown = JSON.parse(result.content[0]?.text ?? '{}');
-    expect(parsed).toMatchObject({
-      status: 'error',
-      agentKind: 'web_research',
-      answer: expect.stringContaining('Agent creation failed'),
-    });
+    const parsed = JSON.parse(result.content[0]?.text ?? '{}') as {
+      status: string;
+      agentKind: string;
+      answer: string;
+      metadata?: Record<string, unknown>;
+    };
+    expect(parsed).toMatchObject({ status: 'error', agentKind: 'web_research' });
+    expect(parsed.answer).not.toContain('Agent creation failed');
+    expect(parsed.metadata?.rawError).toContain('Agent creation failed');
   });
 
   it('sets freshnessRequired mode in handoff metadata', async () => {
