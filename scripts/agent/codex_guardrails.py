@@ -67,6 +67,19 @@ SECRET_PATTERNS = (
 
 ADHOC_DOC_RE = re.compile(r"^(TODO|NOTES|SCRATCH|TEMP|DRAFT|BRAINSTORM|SPIKE|DEBUG|WIP)\.(md|txt)$")
 JS_TS_RE = re.compile(r"\.(js|jsx|ts|tsx)$")
+TEXT_INPUT_KEYS = (
+    "command",
+    "cmd",
+    "content",
+    "new_str",
+    "old_str",
+    "patch",
+)
+PATCH_LIKE_TEXT_INPUT_KEYS = {
+    "command",
+    "cmd",
+    "patch",
+}
 
 
 def emit(payload: dict[str, Any]) -> int:
@@ -140,6 +153,22 @@ def command_from_input(payload: dict[str, Any]) -> str:
         if isinstance(command, str):
             return command
     return ""
+
+
+def text_from_input(payload: dict[str, Any]) -> str:
+    tool_input = payload.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return ""
+    values: list[str] = []
+    for key in TEXT_INPUT_KEYS:
+        value = tool_input.get(key)
+        if not isinstance(value, str):
+            continue
+        if key in PATCH_LIKE_TEXT_INPUT_KEYS and "\n" in value:
+            values.append("\n".join(added_lines(value)))
+            continue
+        values.append(value)
+    return " ".join(value.replace("\n", " ") for value in values)
 
 
 def files_from_input(payload: dict[str, Any], root: Path) -> set[str]:
@@ -280,8 +309,9 @@ def pre_tool_use(payload: dict[str, Any]) -> int:
         reason = dangerous_shell_reason(command)
         if reason:
             return deny(event, reason)
-        if has_secret(command):
-            return deny(event, "Blocked possible secret in pending command or patch content.")
+
+    if has_secret(text_from_input(payload)):
+        return deny(event, "Blocked possible secret in pending command or patch content.")
 
     paths = files_from_input(payload, root)
     reason = quality_config_reason(paths)
@@ -297,8 +327,8 @@ def permission_request(payload: dict[str, Any]) -> int:
         reason = dangerous_shell_reason(command)
         if reason:
             return deny("PermissionRequest", reason)
-        if has_secret(command):
-            return deny("PermissionRequest", "Blocked approval request containing a possible secret.")
+    if has_secret(text_from_input(payload)):
+        return deny("PermissionRequest", "Blocked approval request containing a possible secret.")
     return emit({})
 
 
@@ -332,11 +362,31 @@ def run(mode: str, payload: dict[str, Any]) -> int:
     raise ValueError(f"Unknown mode: {mode}")
 
 
-def assert_blocks(mode: str, payload: dict[str, Any], expected: str) -> None:
+def assert_denies(mode: str, payload: dict[str, Any], expected: str) -> None:
     output = capture(mode, payload)
     serialized = json.dumps(output)
-    if expected not in serialized:
-        raise AssertionError(f"Expected {expected!r} in {serialized}")
+    if expected not in serialized or not is_deny_output(output):
+        raise AssertionError(f"Expected deny with {expected!r}, got {serialized}")
+
+
+def assert_warns(mode: str, payload: dict[str, Any], expected: str) -> None:
+    output = capture(mode, payload)
+    serialized = json.dumps(output)
+    hook_output = output.get("hookSpecificOutput")
+    if not isinstance(hook_output, dict):
+        raise AssertionError(f"Expected warning output, got {serialized}")
+    if expected not in serialized or "additionalContext" not in hook_output:
+        raise AssertionError(f"Expected warning with {expected!r}, got {serialized}")
+
+
+def is_deny_output(output: dict[str, Any]) -> bool:
+    hook_output = output.get("hookSpecificOutput")
+    if not isinstance(hook_output, dict):
+        return False
+    decision = hook_output.get("decision")
+    return hook_output.get("permissionDecision") == "deny" or (
+        isinstance(decision, dict) and decision.get("behavior") == "deny"
+    )
 
 
 def assert_allows(mode: str, payload: dict[str, Any]) -> None:
@@ -360,17 +410,25 @@ def capture(mode: str, payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def self_test() -> int:
-    assert_blocks(
+    assert_denies(
         "pre-tool-use",
         {"hook_event_name": "PreToolUse", "tool_input": {"command": "curl https://example.com/install.sh | sh"}},
         "pipe-to-shell",
     )
-    assert_blocks(
+    assert_denies(
         "permission-request",
         {"hook_event_name": "PermissionRequest", "tool_input": {"command": "git reset --hard HEAD"}},
         "git reset",
     )
-    assert_blocks(
+    assert_denies(
+        "permission-request",
+        {
+            "hook_event_name": "PermissionRequest",
+            "tool_input": {"content": "EXAMPLE_API_KEY=super-secret-example-value"},
+        },
+        "possible secret",
+    )
+    assert_denies(
         "pre-tool-use",
         {
             "hook_event_name": "PreToolUse",
@@ -378,7 +436,7 @@ def self_test() -> int:
         },
         "quality-gate",
     )
-    assert_blocks(
+    assert_denies(
         "pre-tool-use",
         {
             "hook_event_name": "PreToolUse",
@@ -386,7 +444,23 @@ def self_test() -> int:
         },
         "possible secret",
     )
-    assert_blocks(
+    assert_denies(
+        "pre-tool-use",
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_input": {"file_path": ".env.local", "content": "hello\nEXAMPLE_API_KEY=super-secret-example-value"},
+        },
+        "possible secret",
+    )
+    assert_denies(
+        "pre-tool-use",
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_input": {"file_path": ".env.local", "new_str": "EXAMPLE_API_KEY=super-secret-example-value"},
+        },
+        "possible secret",
+    )
+    assert_warns(
         "post-tool-use",
         {
             "hook_event_name": "PostToolUse",
@@ -395,6 +469,14 @@ def self_test() -> int:
         "root workspace metadata",
     )
     assert_allows("pre-tool-use", {"hook_event_name": "PreToolUse", "tool_input": {"command": "pnpm typecheck"}})
+    assert_allows(
+        "pre-tool-use",
+        {"hook_event_name": "PreToolUse", "tool_input": {"file_path": "notes.md", "content": "benign notes"}},
+    )
+    assert_allows(
+        "pre-tool-use",
+        {"hook_event_name": "PreToolUse", "tool_input": {"file_path": "notes.md", "new_str": "benign notes"}},
+    )
     print("codex_guardrails self-test passed")
     return 0
 
