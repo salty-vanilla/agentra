@@ -181,6 +181,22 @@ export class RuntimeLogger {
     );
   }
 
+  logModelUsage(
+    usage: { inputTokens?: number; outputTokens?: number } | undefined,
+  ): void {
+    if (!usage) return;
+    structureLog(
+      'info',
+      'model_usage',
+      this.context,
+      {
+        ...(usage.inputTokens !== undefined ? { inputTokens: usage.inputTokens } : {}),
+        ...(usage.outputTokens !== undefined ? { outputTokens: usage.outputTokens } : {}),
+      },
+      this.pinoLogger,
+    );
+  }
+
   logSubAgentToolProgress(
     parentToolUseId: string,
     parentToolName: string,
