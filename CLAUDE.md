@@ -101,6 +101,7 @@ pnpm validate:openapi          # Validate OpenAPI schema
 | `composition-patterns` | Compound components, context providers, boolean props |
 | `amazon-bedrock` | Bedrock API, AgentCore, model invocation |
 | `aws-cdk` | CDK constructs, `cdk deploy/synth/diff` |
+| `agentra-cdk-verify` | Worktree-safe CDK + AgentCore verification (ephemeral stages, stack groups) |
 | `aws-serverless` | Lambda, API Gateway, EventBridge |
 | `aws-sdk-js-v3-usage` | `@aws-sdk/*` imports |
 | `aws-amplify` | Amplify Gen2, `@aws-amplify/*` imports |
@@ -117,6 +118,7 @@ pnpm validate:openapi          # Validate OpenAPI schema
 | `/build-fix` | Incrementally fix build/type errors |
 | `/checkpoint` | Git checkpoint after verified milestone |
 | `/learn` | Extract reusable patterns from the session |
+| `/cdk-verify` | Worktree-safe CDK diff/deploy/smoke for an ephemeral stage |
 
 ### MCP Servers
 

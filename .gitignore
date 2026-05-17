@@ -26,3 +26,7 @@ templates/components/
 .worktrees/
 everything-claude-code/
 .devbox/
+
+# Worktree-safe CDK verify outputs (per-stage CfnOutput JSON written by
+# `just cdk-deploy-with-outputs`). See docs/development/cdk-verify.md.
+.agentra/
