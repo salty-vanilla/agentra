@@ -276,6 +276,31 @@ describe('RuntimeLogger', () => {
     );
   });
 
+  it('logs model usage with inputTokens and outputTokens', () => {
+    const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
+
+    logger.logModelUsage({ inputTokens: 12345, outputTokens: 678 });
+
+    expect(consoleInfoSpy).toHaveBeenCalledOnce();
+    const parsed = JSON.parse(consoleInfoSpy.mock.calls[0][0] as string);
+
+    expect(parsed).toMatchObject({
+      level: 'info',
+      message: 'model_usage',
+      traceId: 'trace-123',
+      inputTokens: 12345,
+      outputTokens: 678,
+    });
+  });
+
+  it('skips logging when model usage is undefined', () => {
+    const logger = new RuntimeLogger('trace-123');
+
+    logger.logModelUsage(undefined);
+
+    expect(consoleInfoSpy).not.toHaveBeenCalled();
+  });
+
   it('logs sub-agent tool progress for running, complete, and error stages', () => {
     const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
 

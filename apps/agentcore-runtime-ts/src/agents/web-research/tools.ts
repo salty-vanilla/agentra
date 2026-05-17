@@ -7,12 +7,9 @@ import { buildToolsByName, type RegisteredToolName } from '../../tools/tool-sele
 const WEB_RESEARCH_TOOL_NAMES = [
   'date_resolver',
   'web_research',
-  'tavily_search',
   'tavily_extract',
   'tavily_crawl',
   'tavily_map',
-  'normalize_evidence_source',
-  'build_citations',
   'create_brief',
   'merge_briefs',
 ] as const satisfies readonly RegisteredToolName[];

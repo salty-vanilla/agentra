@@ -62,9 +62,35 @@ describe('Web Research Agent handoff', () => {
     expect(prompt).toContain('Freshness required: yes');
     expect(prompt).toContain('Require citations: yes');
     expect(prompt).toContain('Create brief: yes');
+    expect(prompt).toContain('Source limit: normalize at most 5 sources');
     expect(prompt).toContain('Allowed domains:');
     expect(prompt).toContain('Blocked domains:');
     expect(prompt).toContain('release');
+  });
+
+  it('respects maxSources in the handoff prompt', () => {
+    const promptDefault = buildWebResearchAgentHandoffPrompt({
+      question: 'Latest news?',
+    });
+    expect(promptDefault).toContain('Source limit: normalize at most 5 sources');
+
+    const promptCustom = buildWebResearchAgentHandoffPrompt({
+      question: 'Latest news?',
+      maxSources: 3,
+    });
+    expect(promptCustom).toContain('Source limit: normalize at most 3 sources');
+  });
+
+  it('rejects maxSources outside the 1–10 range', () => {
+    expect(() =>
+      webResearchAgentHandoffInputSchema.parse({ question: 'x', maxSources: 0 }),
+    ).toThrow();
+    expect(() =>
+      webResearchAgentHandoffInputSchema.parse({ question: 'x', maxSources: 11 }),
+    ).toThrow();
+    expect(() =>
+      webResearchAgentHandoffInputSchema.parse({ question: 'x', maxSources: 7 }),
+    ).not.toThrow();
   });
 
   it('invokes the Web Research Agent with the focused prompt and preserves structured output', async () => {
@@ -258,6 +284,61 @@ describe('streamInvokeWebResearchAgentTool', () => {
     expect(progress).toEqual([
       { stage: 'tavily_search', status: 'running' },
       { stage: 'tavily_search', status: 'complete', durationMs: expect.any(Number) },
+    ]);
+  });
+
+  it('includes inputTokens from modelMetadataEvent in subsequent progress events', async () => {
+    const toolUseId = 'tool-tok';
+    const agentResult = makeAgentResult({ status: 'success', answer: 'done' });
+
+    const streamEvents = [
+      {
+        type: 'modelStreamUpdateEvent',
+        event: {
+          type: 'modelMetadataEvent',
+          usage: { inputTokens: 42000, outputTokens: 300 },
+        },
+      },
+      {
+        type: 'modelStreamUpdateEvent',
+        event: {
+          type: 'modelContentBlockStartEvent',
+          start: { type: 'toolUseStart', toolUseId, name: 'strands_structured_output' },
+        },
+      },
+      {
+        type: 'toolResultEvent',
+        result: { toolUseId, status: 'success', content: [] },
+      },
+    ];
+
+    const stream = makeAgentStream(streamEvents, agentResult);
+    const progress: unknown[] = [];
+
+    const gen = streamInvokeWebResearchAgentTool(
+      { question: 'Token count test' },
+      {
+        agentFactory: () => ({
+          invoke: vi.fn(),
+          stream: vi.fn().mockReturnValue(stream),
+        }),
+      },
+    );
+
+    while (true) {
+      const { value, done } = await gen.next();
+      if (done) break;
+      progress.push(value);
+    }
+
+    expect(progress).toEqual([
+      { stage: 'strands_structured_output', status: 'running', inputTokens: 42000 },
+      {
+        stage: 'strands_structured_output',
+        status: 'complete',
+        durationMs: expect.any(Number),
+        inputTokens: 42000,
+      },
     ]);
   });
 

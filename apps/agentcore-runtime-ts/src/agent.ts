@@ -227,6 +227,7 @@ const app = new BedrockAgentCoreApp({
             event.event.type === 'modelMetadataEvent'
           ) {
             observability.onModelMetadataUsage(event.event.usage);
+            logger.logModelUsage(event.event.usage);
             yield {
               event: 'message',
               data: {
@@ -258,6 +259,7 @@ const app = new BedrockAgentCoreApp({
                   progress.stage,
                   progress.status,
                   progress.durationMs,
+                  progress.inputTokens,
                 );
               }
               yield {

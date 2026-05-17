@@ -21,6 +21,7 @@ export const webResearchAgentHandoffInputSchema = z
     blockedDomains: z.array(domainSchema).max(MAX_DOMAIN_COUNT).optional(),
     requireCitations: z.boolean().optional(),
     createBrief: z.boolean().optional(),
+    maxSources: z.number().int().min(1).max(10).optional(),
     metadata: z.record(z.string(), z.unknown()).optional(),
   })
   .superRefine((value, context) => {
@@ -70,6 +71,7 @@ export function buildWebResearchAgentHandoffPrompt(
     `Freshness required: ${input.freshnessRequired ? 'yes' : 'no'}`,
     `Require citations: ${input.requireCitations ? 'yes' : 'no'}`,
     `Create brief: ${input.createBrief ? 'yes' : 'no'}`,
+    `Source limit: normalize at most ${input.maxSources ?? 5} sources`,
     '',
     'User question:',
     input.question,

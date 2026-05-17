@@ -11,12 +11,12 @@ import { z } from 'zod';
 import { searchTavily } from './tavily.js';
 import { errorMessage, toolFailure, toolSuccess } from './tool-response.js';
 
-const MAX_RESULTS = 10;
+const MAX_RESULTS = 5;
 const DEFAULT_MAX_RESULTS = 5;
 const MAX_DOMAIN_COUNT = 20;
 const MAX_DOMAIN_LENGTH = 253;
 const MAX_QUERY_LENGTH = 1000;
-const MAX_SNIPPET_LENGTH = 2000;
+const MAX_SNIPPET_LENGTH = 300;
 const MAX_KEY_FACT_LENGTH = 280;
 const MAX_KEY_FACTS = 5;
 

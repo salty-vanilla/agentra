@@ -1,5 +1,26 @@
 import { describe, expect, it } from 'vitest';
 
+describe('resolveMaxResults', () => {
+  it('defaults to 5 when max_results is undefined', async () => {
+    const { resolveMaxResults } = await import('../../tools/tavily.js');
+    expect(resolveMaxResults(undefined)).toBe(5);
+  });
+
+  it('caps values above 5 to 5', async () => {
+    const { resolveMaxResults } = await import('../../tools/tavily.js');
+    expect(resolveMaxResults(10)).toBe(5);
+    expect(resolveMaxResults(8)).toBe(5);
+    expect(resolveMaxResults(6)).toBe(5);
+  });
+
+  it('preserves values at or below 5', async () => {
+    const { resolveMaxResults } = await import('../../tools/tavily.js');
+    expect(resolveMaxResults(5)).toBe(5);
+    expect(resolveMaxResults(3)).toBe(3);
+    expect(resolveMaxResults(1)).toBe(1);
+  });
+});
+
 describe('boundTavilyPayload', () => {
   it('passes through small payloads unchanged', async () => {
     const { boundTavilyPayload } = await import('../../tools/tavily.js');

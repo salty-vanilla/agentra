@@ -66,6 +66,11 @@ function errorMessage(error: unknown): string {
 
 const MAX_CONTENT_CHARS = 5000;
 const MAX_ANSWER_CHARS = 2000;
+const MAX_TAVILY_SEARCH_RESULTS = 5;
+
+export function resolveMaxResults(requested: number | undefined): number {
+  return Math.min(requested ?? MAX_TAVILY_SEARCH_RESULTS, MAX_TAVILY_SEARCH_RESULTS);
+}
 
 function compactPayload(payload: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
@@ -271,7 +276,7 @@ export async function searchTavily(input: TavilySearchInput): Promise<unknown> {
       query: input.query,
       search_depth: input.search_depth,
       topic: input.topic,
-      max_results: input.max_results,
+      max_results: resolveMaxResults(input.max_results),
       time_range: input.time_range,
       days: input.days,
       start_date: input.start_date,
@@ -341,6 +346,7 @@ const tavilySearchTool = tool({
         compactPayload({
           ...input,
           query,
+          max_results: resolveMaxResults(input.max_results),
         }),
       );
 
