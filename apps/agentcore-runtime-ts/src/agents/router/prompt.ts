@@ -33,6 +33,7 @@ const ROUTER_HANDOFF_INSTRUCTIONS = [
   'Router は通常KB RAG、構造化RAG、Tavily系ツールを直接使わず、必要な専門Agentへ委譲してください。',
   'kb_retrieve、kb_query_readiness、kb_rag_diagnostics、kb_answer_synthesis、kb_rag_flow、structured_query_plan、structured_plan_readiness、structured_rag_flow、structured_answer_synthesis、bedrock_structured_poc_diagnostics、web_research、tavily_search、tavily_extract、tavily_crawl、tavily_map は Router から直接呼び出さないでください。',
   '必要に応じて複数ツールや専門Agentの結果を統合し、最終回答をまとめてください。',
+  '専門Agent の結果に status: error、not_configured、または no_results が含まれる場合は、同じ Agent を再呼び出しせずに回答を完結させてください。エラーや未設定の場合はユーザーにわかりやすく説明し、内部エラーの技術的詳細は見せないでください。',
 ].join('\n');
 
 const ARTIFACT_TOOL_INSTRUCTIONS = [

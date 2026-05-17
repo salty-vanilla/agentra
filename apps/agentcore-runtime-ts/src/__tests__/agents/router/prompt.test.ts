@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { buildRouterPrompt } from '../../../agents/router/prompt.js';
 
 describe('Router prompt', () => {
+  it('includes sub-agent failure handling instruction to prevent infinite retry loops', () => {
+    const prompt = buildRouterPrompt({
+      tone: 'business',
+      userPrompt: 'Router policy check',
+    });
+
+    expect(prompt).toContain('status: error');
+    expect(prompt).toContain('not_configured');
+    expect(prompt).toContain('no_results');
+    expect(prompt).toContain('再呼び出しせず');
+  });
+
   it('keeps the router focused on handoffs instead of direct RAG workflows', () => {
     const prompt = buildRouterPrompt({
       tone: 'business',
