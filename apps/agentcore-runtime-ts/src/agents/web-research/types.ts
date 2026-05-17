@@ -20,6 +20,7 @@ export type WebResearchAgentConfig = {
   sessionManager?: SessionManager | undefined;
   plugins?: Plugin[] | undefined;
   toolConfig?: ToolRegistryConfig | undefined;
+  printer?: AgentConfig['printer'];
 };
 
 export type WebResearchAgentResult = {

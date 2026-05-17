@@ -36,5 +36,6 @@ export function createWebResearchAgent(config: WebResearchAgentConfig = {}): Age
     systemPrompt: WEB_RESEARCH_SYSTEM_PROMPT,
     plugins,
     tools: buildWebResearchTools(config.toolConfig),
+    ...(config.printer !== undefined ? { printer: config.printer } : {}),
   });
 }
