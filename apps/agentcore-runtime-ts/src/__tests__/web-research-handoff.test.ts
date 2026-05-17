@@ -170,7 +170,9 @@ describe('Web Research Agent handoff', () => {
       },
     );
 
-    expect(response.status).toBe('error');
+    // Tool must succeed so the Router reads the error reason from content
+    // rather than treating it as a transient failure to retry.
+    expect(response.status).toBe('success');
     expect(JSON.parse(response.content[0].text)).toEqual({
       status: 'error',
       agentKind: 'web_research',
@@ -296,7 +298,7 @@ describe('streamInvokeWebResearchAgentTool', () => {
     );
   });
 
-  it('returns error payload when the sub-agent stream throws', async () => {
+  it('returns success payload when the sub-agent stream throws', async () => {
     const failingStream = {
       next: () => Promise.reject(new Error('web research failure')),
       [Symbol.asyncIterator]() {
@@ -316,7 +318,9 @@ describe('streamInvokeWebResearchAgentTool', () => {
 
     const { value, done } = await gen.next();
     expect(done).toBe(true);
-    expect(value.status).toBe('error');
+    // Tool must succeed so the Router reads the error reason from content
+    // rather than treating it as a transient failure to retry.
+    expect(value.status).toBe('success');
     expect(JSON.parse(value.content[0].text).answer).toContain('web research failure');
   });
 });
