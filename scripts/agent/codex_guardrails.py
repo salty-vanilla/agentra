@@ -67,12 +67,11 @@ SECRET_PATTERNS = (
 
 ADHOC_DOC_RE = re.compile(r"^(TODO|NOTES|SCRATCH|TEMP|DRAFT|BRAINSTORM|SPIKE|DEBUG|WIP)\.(md|txt)$")
 JS_TS_RE = re.compile(r"\.(js|jsx|ts|tsx)$")
-TEXT_INPUT_KEYS = (
+INTRODUCED_TEXT_INPUT_KEYS = (
     "command",
     "cmd",
     "content",
     "new_str",
-    "old_str",
     "patch",
 )
 PATCH_LIKE_TEXT_INPUT_KEYS = {
@@ -155,12 +154,12 @@ def command_from_input(payload: dict[str, Any]) -> str:
     return ""
 
 
-def text_from_input(payload: dict[str, Any]) -> str:
+def introduced_text_from_input(payload: dict[str, Any]) -> str:
     tool_input = payload.get("tool_input")
     if not isinstance(tool_input, dict):
         return ""
     values: list[str] = []
-    for key in TEXT_INPUT_KEYS:
+    for key in INTRODUCED_TEXT_INPUT_KEYS:
         value = tool_input.get(key)
         if not isinstance(value, str):
             continue
@@ -310,7 +309,7 @@ def pre_tool_use(payload: dict[str, Any]) -> int:
         if reason:
             return deny(event, reason)
 
-    if has_secret(text_from_input(payload)):
+    if has_secret(introduced_text_from_input(payload)):
         return deny(event, "Blocked possible secret in pending command or patch content.")
 
     paths = files_from_input(payload, root)
@@ -327,7 +326,7 @@ def permission_request(payload: dict[str, Any]) -> int:
         reason = dangerous_shell_reason(command)
         if reason:
             return deny("PermissionRequest", reason)
-    if has_secret(text_from_input(payload)):
+    if has_secret(introduced_text_from_input(payload)):
         return deny("PermissionRequest", "Blocked approval request containing a possible secret.")
     return emit({})
 
@@ -460,6 +459,17 @@ def self_test() -> int:
         },
         "possible secret",
     )
+    assert_denies(
+        "pre-tool-use",
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_input": {
+                "file_path": ".env.local",
+                "patch": "*** Begin Patch\n*** Update File: .env.local\n@@\n+EXAMPLE_API_KEY=super-secret-example-value\n*** End Patch\n",
+            },
+        },
+        "possible secret",
+    )
     assert_warns(
         "post-tool-use",
         {
@@ -472,6 +482,17 @@ def self_test() -> int:
     assert_allows(
         "pre-tool-use",
         {"hook_event_name": "PreToolUse", "tool_input": {"file_path": "notes.md", "content": "benign notes"}},
+    )
+    assert_allows(
+        "pre-tool-use",
+        {
+            "hook_event_name": "PreToolUse",
+            "tool_input": {
+                "file_path": ".env.local",
+                "old_str": "EXAMPLE_API_KEY=super-secret-example-value",
+                "new_str": "EXAMPLE_API_KEY=REDACTED",
+            },
+        },
     )
     assert_allows(
         "pre-tool-use",
