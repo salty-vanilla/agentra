@@ -57,6 +57,39 @@ describe('AgentraAppStack', () => {
     expect(routeKeys).toContain('GET /threads/{threadId}/messages');
   });
 
+  it('does not register POST /chat on the HTTP API', () => {
+    const { template } = makeStacks();
+
+    const routes = template.findResources('AWS::ApiGatewayV2::Route');
+    const routeKeys = Object.values(routes).map(
+      (r) => (r as { Properties: { RouteKey: string } }).Properties.RouteKey,
+    );
+
+    expect(routeKeys).not.toContain('POST /chat');
+  });
+
+  it('REST API contains only the /chat resource', () => {
+    const { template } = makeStacks();
+
+    const resources = template.findResources('AWS::ApiGateway::Resource');
+    const pathParts = Object.values(resources).map(
+      (r) => (r as { Properties: { PathPart: string } }).Properties.PathPart,
+    );
+
+    expect(pathParts).toContain('chat');
+    expect(pathParts).not.toContain('health');
+    expect(pathParts).not.toContain('threads');
+    expect(pathParts).not.toContain('{threadId}');
+    expect(pathParts).not.toContain('messages');
+  });
+
+  it('outputs HttpApiUrl and StreamingApiUrl', () => {
+    const { template } = makeStacks();
+
+    template.hasOutput('HttpApiUrl', {});
+    template.hasOutput('StreamingApiUrl', {});
+  });
+
   it('creates two Lambda functions: one buffered and one streaming', () => {
     const { template } = makeStacks();
 
