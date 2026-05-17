@@ -62,9 +62,35 @@ describe('Web Research Agent handoff', () => {
     expect(prompt).toContain('Freshness required: yes');
     expect(prompt).toContain('Require citations: yes');
     expect(prompt).toContain('Create brief: yes');
+    expect(prompt).toContain('Source limit: normalize at most 5 sources');
     expect(prompt).toContain('Allowed domains:');
     expect(prompt).toContain('Blocked domains:');
     expect(prompt).toContain('release');
+  });
+
+  it('respects maxSources in the handoff prompt', () => {
+    const promptDefault = buildWebResearchAgentHandoffPrompt({
+      question: 'Latest news?',
+    });
+    expect(promptDefault).toContain('Source limit: normalize at most 5 sources');
+
+    const promptCustom = buildWebResearchAgentHandoffPrompt({
+      question: 'Latest news?',
+      maxSources: 3,
+    });
+    expect(promptCustom).toContain('Source limit: normalize at most 3 sources');
+  });
+
+  it('rejects maxSources outside the 1–10 range', () => {
+    expect(() =>
+      webResearchAgentHandoffInputSchema.parse({ question: 'x', maxSources: 0 }),
+    ).toThrow();
+    expect(() =>
+      webResearchAgentHandoffInputSchema.parse({ question: 'x', maxSources: 11 }),
+    ).toThrow();
+    expect(() =>
+      webResearchAgentHandoffInputSchema.parse({ question: 'x', maxSources: 7 }),
+    ).not.toThrow();
   });
 
   it('invokes the Web Research Agent with the focused prompt and preserves structured output', async () => {
