@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentra Runtime Smoke"
+  short_description: "Guide AgentCore smoke tests and log diagnosis"
+  default_prompt: "Use $agentra-runtime-smoke to guide Agentra runtime smoke checks, collect trace data, inspect logs, and avoid deployment automation."

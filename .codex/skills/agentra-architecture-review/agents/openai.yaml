@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentra Architecture Review"
+  short_description: "Review Agentra architecture and boundaries"
+  default_prompt: "Use $agentra-architecture-review to review Agentra diffs or designs for runtime responsibility, package boundaries, shared contracts, and deployment safety."

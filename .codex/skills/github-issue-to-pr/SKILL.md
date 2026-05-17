@@ -13,6 +13,7 @@ Use this skill for GitHub issues that should be handled in one pass from plannin
 - Use `.github/codex/prompts/implement-issue.md` for issue workflow details.
 - Use `.github/codex/prompts/review-package-boundary.md` when the change touches workspace packages, shared contracts, Dockerfiles, or root metadata.
 - Keep `docs/development/codex-migration.md` and `docs/development/codex-config.md` in mind for Codex workflow and MCP/config work.
+- Phase 4 guardrails live in `.codex/hooks.json` and `scripts/agent/codex_guardrails.py`; treat a guardrail block as a signal to narrow the change or ask for explicit confirmation.
 
 ## Scope guards
 
@@ -66,6 +67,7 @@ This skill does not:
 - Code changes: run the affected workspace tests, then broaden to `pnpm biome check .` and `pnpm typecheck` before handoff.
 - Shared contract changes: run `pnpm generate:api`, `pnpm build:shared`, and dependent workspace tests.
 - Live AgentCore smoke tests are manual and require explicit user request plus local AWS environment.
+- If hook guardrails warn about root metadata, Docker, workflow, CDK, runtime, or console logging changes, inspect the warning before pushing and mention the intentional reason in the PR when relevant.
 
 ## Review checklist
 

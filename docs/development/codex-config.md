@@ -1,7 +1,6 @@
 # Codex Project Configuration
 
-This document describes Agentra's Phase 3 Codex configuration posture for Issue
-#221.
+This document describes Agentra's Codex configuration posture for Issue #221.
 
 ## Configuration Posture
 
@@ -15,7 +14,7 @@ Repo config may include:
 - project-local Codex feature flags;
 - MCP server definitions that use public endpoints, `npx`/`uvx` launchers, or
   environment variable names for credentials;
-- repo-owned hooks that run local validation;
+- repo-owned hooks that run local validation and guardrails;
 - comments explaining safe operating assumptions.
 
 Repo config must not include:
@@ -31,15 +30,17 @@ config or local environment files. Those files must stay out of git.
 
 ## Current Repo Config
 
-`.codex/config.toml` currently defines shared MCP servers, enables Codex hooks,
-and keeps the existing Stop quality gate:
+`.codex/config.toml` currently defines shared MCP servers and enables Codex
+hooks. Hook declarations live in `.codex/hooks.json` instead of inline TOML so
+the repo has one hook surface per Codex config layer.
+
+The existing Stop quality gate still runs:
 
 - `pnpm typecheck`
 - `pnpm biome check .`
 
-The Stop hook lives at `.codex/hooks/stop_quality_gate.py`. Phase 3 does not
-change its behavior. Broader policy hooks and guardrail scripts are Phase 4
-work.
+The Stop hook implementation lives at `.codex/hooks/stop_quality_gate.py`.
+Additional policy guardrails live in `scripts/agent/codex_guardrails.py`.
 
 MCP command servers assume `npx` and `uvx` are available on `PATH`. `npx` is
 available through the Node.js toolchain, and Devbox provides `uv` for `uvx`.
@@ -110,8 +111,8 @@ Recommended Codex posture:
 
 ## Codex Skills
 
-Phase 3 keeps Codex skills focused on Agentra repository workflows rather than
-copying every Claude Code domain skill.
+Phase 4 migrates valuable Everything Claude Code and domain skills into
+repo-local Codex skills while avoiding Claude-specific execution mechanics.
 
 Repo-local Codex skills:
 
@@ -119,6 +120,15 @@ Repo-local Codex skills:
 |---|---|
 | `.codex/skills/github-issue-to-pr` | Issue implementation through PR creation, aligned with `AGENTS.md` and Codex prompts |
 | `.codex/skills/github-pr-review-close` | PR review, safe merge, issue close, and local `main` refresh |
+| `.codex/skills/github-fix-ci` | GitHub Actions and local quality gate diagnosis |
+| `.codex/skills/github-address-comments` | PR review comment handling |
+| `.codex/skills/agentra-runtime-smoke` | AgentCore smoke and log interpretation |
+| `.codex/skills/agentra-architecture-review` | Runtime responsibility and package-boundary review |
+| `.codex/skills/agentra-e2e-testing` | Browser-level Agentra journey validation |
+
+Selected domain skills are also available under `.codex/skills/` for AWS,
+Bedrock, Hono, API design, React, composition, TDD, vectors, secrets, and web
+interface review work.
 
 These skills should stay small and refer to:
 
@@ -126,19 +136,23 @@ These skills should stay small and refer to:
 - `.github/codex/prompts/*` for detailed prompt workflows;
 - this document for Codex config and MCP assumptions.
 
-Large Claude Code domain skills under `.claude/skills/` remain useful local
-reference material, but they should not be bulk-copied into `.codex/skills/`.
-Porting additional Codex skills, such as CI fixing, comment handling, runtime
-smoke/log inspection, or selected AWS/domain helpers, is Phase 4 or a later
-focused PR.
+When a domain skill contains version-sensitive vendor guidance, prefer the
+configured MCP documentation servers or current official docs before relying on
+static reference files.
 
-## Phase 4 Boundary
+## Hooks And Guardrails
 
-Phase 4 will decide how to represent Codex hooks and guardrails, including
-whether to add `.codex/hooks.json` in addition to or instead of TOML hook
-declarations.
+`.codex/hooks.json` defines the repo's Codex hooks:
 
-Phase 4 guardrails should focus on preventing:
+- `PreToolUse`: blocks high-risk shell commands, quality-gate config edits, and
+  obvious secret-bearing patches before execution.
+- `PermissionRequest`: blocks approval requests for the same high-risk shell
+  patterns.
+- `PostToolUse`: provides warning-only feedback for root metadata, Docker,
+  workflow, CDK, runtime-adjacent, ad-hoc docs, and `console.log` changes.
+- `Stop`: runs the existing quality gate.
+
+Guardrails focus on preventing:
 
 - root package metadata rewrites used to bypass errors;
 - unnecessary dependency additions;
@@ -147,3 +161,8 @@ Phase 4 guardrails should focus on preventing:
 - runtime/package responsibility leaks;
 - unsafe shell patterns;
 - accidental deployment commands.
+
+These hooks are guardrails, not a complete security boundary. They should reduce
+common agent mistakes while preserving normal Agentra development. If a guardrail
+blocks a legitimate task, narrow the change or ask the user for an explicit
+decision rather than bypassing the hook silently.
