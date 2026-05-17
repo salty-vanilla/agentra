@@ -134,6 +134,8 @@ pnpm validate:openapi          # Validate OpenAPI schema
 
 ## Issue-Driven Parallel Development
 
+For manual worktree creation, prefer `git gtr new <N>-<slug>` over `git worktree add` — the `.gtrconfig` `postCreate` hook bootstraps `.env`, `.env.worktree`, `direnv`, and `pnpm install` automatically. See [`docs/development/worktree.md`](docs/development/worktree.md). The `github-issue-to-pr` skill continues to work with both flows.
+
 ### Workflow overview
 
 ```

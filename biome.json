@@ -3,6 +3,7 @@
     "includes": [
       "**",
       "!**/.claude",
+      "!**/.devbox",
       "!**/.tmp",
       "!**/.next",
       "!**/dist",

@@ -1,0 +1,17 @@
+[worktrees]
+    dir = .worktrees
+
+[copy]
+    include = .envrc
+    include = .env.example
+    include = .env
+    include = .env.local
+    include = .envrc.local
+    include = .npmrc
+    exclude = .env.worktree
+    exclude = .artifacts
+    exclude = .tmp
+
+[hooks]
+    postCreate = bash scripts/worktree/setup.sh
+    preRemove = bash scripts/worktree/cleanup.sh "$WORKTREE_PATH"
