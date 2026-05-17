@@ -8,6 +8,8 @@ import {
   ResponseTransferMode,
   RestApi,
 } from 'aws-cdk-lib/aws-apigateway';
+import { CorsHttpMethod, HttpApi, HttpMethod } from 'aws-cdk-lib/aws-apigatewayv2';
+import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations';
 import { Platform } from 'aws-cdk-lib/aws-ecr-assets';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import {
@@ -66,7 +68,7 @@ export class AgentraAppStack extends Stack {
       ),
     };
 
-    // REST Lambda — buffered mode, short timeout for CRUD endpoints
+    // HTTP API Lambda — buffered mode, short timeout for CRUD endpoints
     const restHandler = new DockerImageFunction(this, 'RestHandler', {
       code: backendImage,
       architecture: Architecture.ARM_64,
@@ -118,46 +120,57 @@ export class AgentraAppStack extends Stack {
       props.dataAuthStack.messagesTable.grantReadWriteData(handler);
     }
 
-    const corsOptions = {
-      allowOrigins: props.allowedCorsOrigins ?? ['http://localhost:3000'],
-      allowHeaders: ['content-type', 'authorization'],
-      allowMethods: Cors.ALL_METHODS,
-    };
+    const allowedOrigins = props.allowedCorsOrigins ?? ['http://localhost:3000'];
 
-    // REST API — explicit routes only, no /chat, buffered transfer mode
-    const restIntegration = new LambdaIntegration(restHandler);
-    const restApi = new RestApi(this, 'RestApi', {
-      endpointTypes: [EndpointType.REGIONAL],
-      defaultCorsPreflightOptions: corsOptions,
+    // HTTP API — normal CRUD routes (/health, /threads), lower cost + latency than REST API
+    const httpIntegration = new HttpLambdaIntegration('HttpIntegration', restHandler);
+    const httpApi = new HttpApi(this, 'HttpApi', {
+      corsPreflight: {
+        allowOrigins: allowedOrigins,
+        allowHeaders: ['content-type', 'authorization'],
+        allowMethods: [CorsHttpMethod.ANY],
+      },
     });
 
-    restApi.root.addResource('health').addMethod('GET', restIntegration);
+    httpApi.addRoutes({
+      path: '/health',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/threads',
+      methods: [HttpMethod.GET, HttpMethod.POST],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/threads/{threadId}',
+      methods: [HttpMethod.GET, HttpMethod.PATCH, HttpMethod.DELETE],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/threads/{threadId}/messages',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
 
-    const threads = restApi.root.addResource('threads');
-    threads.addMethod('GET', restIntegration);
-    threads.addMethod('POST', restIntegration);
-
-    const thread = threads.addResource('{threadId}');
-    thread.addMethod('GET', restIntegration);
-    thread.addMethod('PATCH', restIntegration);
-    thread.addMethod('DELETE', restIntegration);
-
-    thread.addResource('messages').addMethod('GET', restIntegration);
-
-    // Streaming API — /chat only, response_stream for SSE
+    // REST API — /chat only, response_stream for SSE (HTTP API does not support streaming)
     const streamingIntegration = new LambdaIntegration(streamingHandler, {
       responseTransferMode: ResponseTransferMode.STREAM,
     });
     const streamingApi = new RestApi(this, 'StreamingApi', {
       endpointTypes: [EndpointType.REGIONAL],
-      defaultCorsPreflightOptions: corsOptions,
+      defaultCorsPreflightOptions: {
+        allowOrigins: allowedOrigins,
+        allowHeaders: ['content-type', 'authorization'],
+        allowMethods: Cors.ALL_METHODS,
+      },
     });
     streamingApi.root.addResource('chat').addMethod('POST', streamingIntegration);
 
-    this.apiEndpoint = restApi.url.replace(/\/$/, '');
+    this.apiEndpoint = (httpApi.url ?? '').replace(/\/$/, '');
     this.streamingApiEndpoint = streamingApi.url.replace(/\/$/, '');
 
-    new CfnOutput(this, 'RestApiUrl', { value: this.apiEndpoint });
+    new CfnOutput(this, 'HttpApiUrl', { value: this.apiEndpoint });
     new CfnOutput(this, 'StreamingApiUrl', { value: this.streamingApiEndpoint });
   }
 }
