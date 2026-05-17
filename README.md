@@ -92,6 +92,8 @@ cp .env.example .env.local
 
 If you use `direnv`, run `direnv allow` once after editing `.envrc`. Devbox shell activation is explicit (`devbox shell`); `direnv` loads `.env.local` automatically.
 
+For parallel worktree development with `git-worktree-runner` and the Codex App's Local Environment, see [`docs/development/worktree.md`](docs/development/worktree.md).
+
 Frontend は `http://localhost:3000`、backend は `http://localhost:8787` を想定しています。
 
 Lambda 側では `apps/backend/Dockerfile` から web server を起動し、
