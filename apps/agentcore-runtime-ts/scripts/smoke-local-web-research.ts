@@ -165,7 +165,7 @@ function extractEvidenceFromToolResult(
   if (toolName !== 'web_research') return;
 
   for (const item of content) {
-    if (item.type !== 'text' || !item.text) continue;
+    if (!item.text) continue;
     try {
       const parsed: unknown = JSON.parse(item.text);
       if (!isRecord(parsed)) continue;
@@ -304,6 +304,7 @@ async function main(): Promise<void> {
       modelId: resolvedModelId,
       region: config.region,
     },
+    printer: false,
   });
 
   const toolMap = new Map<string, ToolEntry>();
