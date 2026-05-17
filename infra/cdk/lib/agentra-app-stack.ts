@@ -44,7 +44,7 @@ export class AgentraAppStack extends Stack {
       platform: Platform.LINUX_ARM64,
     });
 
-    const sharedEnv = {
+    const baseEnv = {
       NODE_OPTIONS: '--enable-source-maps',
       PORT: '8080',
       AWS_LWA_PORT: '8080',
@@ -58,14 +58,18 @@ export class AgentraAppStack extends Stack {
       COGNITO_USER_POOL_CLIENT_ID: props.dataAuthStack.userPoolClient.userPoolClientId,
       COGNITO_REGION: Stack.of(this).region,
       BEDROCK_REGION: Stack.of(this).region,
+      ALLOWED_CORS_ORIGINS: (props.allowedCorsOrigins ?? ['http://localhost:3000']).join(
+        ',',
+      ),
+    };
+
+    // AgentCore / slide runtime env vars — StreamingHandler only
+    const agentCoreEnv = {
       AGENTCORE_RUNTIME_ARN: props.agentCoreRuntimeArn ?? '',
       AGENTCORE_RUNTIME_QUALIFIER: props.agentCoreRuntimeQualifier ?? '',
       SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
       SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
       PRESENTATION_ARTIFACT_BUCKET_NAME: props.presentationArtifactsBucketName ?? '',
-      ALLOWED_CORS_ORIGINS: (props.allowedCorsOrigins ?? ['http://localhost:3000']).join(
-        ',',
-      ),
     };
 
     // HTTP API Lambda — buffered mode, short timeout for CRUD endpoints
@@ -75,7 +79,7 @@ export class AgentraAppStack extends Stack {
       timeout: Duration.seconds(30),
       memorySize: 512,
       environment: {
-        ...sharedEnv,
+        ...baseEnv,
         AWS_LWA_INVOKE_MODE: 'buffered',
       },
     });
@@ -87,34 +91,41 @@ export class AgentraAppStack extends Stack {
       timeout: Duration.minutes(15),
       memorySize: 512,
       environment: {
-        ...sharedEnv,
+        ...baseEnv,
+        ...agentCoreEnv,
         AWS_LWA_INVOKE_MODE: 'response_stream',
       },
     });
 
+    // AgentCore InvokeAgentRuntime — StreamingHandler only (RestHandler never calls AgentCore)
+    if (props.agentCoreRuntimeArn) {
+      streamingHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [
+            props.agentCoreRuntimeArn,
+            `${props.agentCoreRuntimeArn}/runtime-endpoint/*`,
+          ],
+        }),
+      );
+    }
+
+    if (props.slideRuntimeArn) {
+      streamingHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [
+            props.slideRuntimeArn,
+            `${props.slideRuntimeArn}/runtime-endpoint/*`,
+          ],
+        }),
+      );
+    }
+
+    // DynamoDB — both handlers need read/write
     for (const handler of [restHandler, streamingHandler]) {
-      if (props.agentCoreRuntimeArn) {
-        const runtimeEndpointArnPrefix = `${props.agentCoreRuntimeArn}/runtime-endpoint/*`;
-        handler.addToRolePolicy(
-          new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-            resources: [props.agentCoreRuntimeArn, runtimeEndpointArnPrefix],
-          }),
-        );
-      }
-
-      if (props.slideRuntimeArn) {
-        const slideRuntimeEndpointArnPrefix = `${props.slideRuntimeArn}/runtime-endpoint/*`;
-        handler.addToRolePolicy(
-          new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-            resources: [props.slideRuntimeArn, slideRuntimeEndpointArnPrefix],
-          }),
-        );
-      }
-
       props.dataAuthStack.usersTable.grantReadWriteData(handler);
       props.dataAuthStack.threadsTable.grantReadWriteData(handler);
       props.dataAuthStack.messagesTable.grantReadWriteData(handler);
