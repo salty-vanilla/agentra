@@ -106,6 +106,13 @@ the task.
   shortcuts that could affect live AWS resources.
 - When working with AWS, prefer infrastructure-as-code and verify uncertain AWS
   behavior against current documentation.
+- When CDK or AgentCore Runtime changes need a deploy from a worktree, use an
+  ephemeral stage (`dev-issue-<N>` or `dev-<agent>-<topic>`) and the
+  `just cdk-*` / `just verify-cdk` recipes documented in
+  `docs/development/cdk-verify.md`. Do not deploy from an arbitrary worktree to
+  the shared `dev` stage without explicit user direction. Destructive recipes
+  (`cdk-destroy`, `cdk-cleanup-ephemeral`) refuse stable stage names and
+  require `CONFIRM_STAGE=<stage>` in the environment.
 
 ## Agent Workflow
 

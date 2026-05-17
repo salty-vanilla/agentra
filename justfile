@@ -89,54 +89,148 @@ cdk-deploy-all stage=default_stage profile=aws_profile:
       --parameters "AgentraWebHostingStack-{{stage}}:AmplifyRepositoryUrl=${AMPLIFY_GITHUB_REPOSITORY}" \
       --parameters "AgentraWebHostingStack-{{stage}}:AmplifyBranchName=${AMPLIFY_GITHUB_BRANCH}"
 
+# ── Worktree-safe CDK helpers (see docs/development/cdk-verify.md) ───────────
+# These recipes use scripts/agent/cdk-stage.sh to enforce stage naming, named
+# stack groups, and destructive-command guards. Existing AgentCore recipes
+# below delegate to these wrappers so muscle memory still works.
+
+# Validate a stage name (pattern + length, mirrors infra/cdk/bin/agentra-cdk.ts)
+cdk-validate-stage stage:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    validate_stage '{{stage}}'
+    echo "stage '{{stage}}' is valid"
+
+# Print AWS identity, target stage, and resolved stack names for a group
+cdk-stage-info group="agentcore" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+
+# Groups: agentcore | runtime | kb | slide | api | web | data | gateway | all
+# Diff a named stack group for the given stage
+cdk-diff group="agentcore" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    build_cdk_flags '{{group}}' '{{stage}}'
+    mapfile -t STACKS < <(resolve_stack_group '{{group}}' '{{stage}}')
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    pnpm --filter @agentra/infra-cdk exec cdk diff "${STACKS[@]}" "${CDK_CONTEXT[@]}"
+
+# Deploy a named stack group for the given stage
+cdk-deploy group="agentcore" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    build_cdk_flags '{{group}}' '{{stage}}'
+    mapfile -t STACKS < <(resolve_stack_group '{{group}}' '{{stage}}')
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    pnpm --filter @agentra/infra-cdk exec cdk deploy "${STACKS[@]}" \
+      --require-approval never \
+      "${CDK_CONTEXT[@]}" \
+      "${CDK_PARAMS[@]}"
+
+# Deploy and write outputs to .agentra/outputs/<stage>.json for smoke scripts
+cdk-deploy-with-outputs group="agentcore" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    build_cdk_flags '{{group}}' '{{stage}}'
+    mapfile -t STACKS < <(resolve_stack_group '{{group}}' '{{stage}}')
+    OUTPUT_DIR=".agentra/outputs"
+    OUTPUT_FILE="${OUTPUT_DIR}/{{stage}}.json"
+    mkdir -p "$OUTPUT_DIR"
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    pnpm --filter @agentra/infra-cdk exec cdk deploy "${STACKS[@]}" \
+      --require-approval never \
+      --outputs-file "$OUTPUT_FILE" \
+      "${CDK_CONTEXT[@]}" \
+      "${CDK_PARAMS[@]}"
+    echo "CDK outputs written to: $OUTPUT_FILE"
+
+# Faster iteration via --hotswap-fallback; reject stable/prod stages. Run
+# `just cdk-reconcile` before opening a PR to revert any CloudFormation drift.
+# Hotswap deploy for ephemeral stages only (dev-issue-*, dev-<agent>-<topic>)
+cdk-deploy-dev group="runtime" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    assert_ephemeral_stage '{{stage}}'
+    build_cdk_flags '{{group}}' '{{stage}}'
+    mapfile -t STACKS < <(resolve_stack_group '{{group}}' '{{stage}}')
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+    echo "⚠️  Hotswap-fallback deploy. May introduce CloudFormation drift."
+    echo "    Run 'just cdk-reconcile {{group}} {{stage}} {{profile}}' before PR."
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    pnpm --filter @agentra/infra-cdk exec cdk deploy "${STACKS[@]}" \
+      --require-approval never \
+      --hotswap-fallback \
+      "${CDK_CONTEXT[@]}" \
+      "${CDK_PARAMS[@]}"
+
+# Uses --revert-drift when the installed CDK CLI supports it; falls back to
+# a plain deploy otherwise.
+# Reconcile a stack group after hotswap iterations
+cdk-reconcile group="agentcore" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    build_cdk_flags '{{group}}' '{{stage}}'
+    mapfile -t STACKS < <(resolve_stack_group '{{group}}' '{{stage}}')
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+    DRIFT_FLAG=()
+    if cdk_cli_supports_flag --revert-drift; then
+      DRIFT_FLAG=(--revert-drift)
+      echo "Using --revert-drift to reconcile post-hotswap drift."
+    else
+      echo "Installed CDK CLI does not support --revert-drift; running plain deploy."
+    fi
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    pnpm --filter @agentra/infra-cdk exec cdk deploy "${STACKS[@]}" \
+      --require-approval never \
+      "${DRIFT_FLAG[@]}" \
+      "${CDK_CONTEXT[@]}" \
+      "${CDK_PARAMS[@]}"
+
+# Destroy a stack group for an ephemeral stage. Requires CONFIRM_STAGE=<stage>.
+cdk-destroy group="agentcore" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    assert_ephemeral_stage '{{stage}}'
+    require_confirm_stage '{{stage}}'
+    mapfile -t STACKS < <(resolve_stack_group '{{group}}' '{{stage}}')
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+    echo "⚠️  Destroying the stacks above. CloudFormation retention policies may"
+    echo "    leave S3 buckets, log groups, DynamoDB tables, or OpenSearch"
+    echo "    collections behind. See docs/development/cdk-verify.md#retained-resources."
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    pnpm --filter @agentra/infra-cdk exec cdk destroy "${STACKS[@]}" \
+      --force \
+      -c "stage={{stage}}" \
+      -c "thirdPartyApiKeysSecretArn=${THIRD_PARTY_API_KEY_SECRET_ARN:-unused}"
+
+# Destroy every stack for an ephemeral stage. Requires CONFIRM_STAGE=<stage>.
+cdk-cleanup-ephemeral stage=default_stage profile=aws_profile:
+    just cdk-destroy all {{stage}} {{profile}}
+
 # ── AgentCore-focused dev workflows ──────────────────────────────────────────
+# Kept as delegates for backwards compatibility. New code should call the
+# generic wrappers above (cdk-diff / cdk-deploy with group=agentcore).
 
 # Diff AgentCore-related stacks only
 cdk-diff-agentcore stage=default_stage profile=aws_profile:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    required_vars=(THIRD_PARTY_API_KEY_SECRET_ARN)
-    for var in "${required_vars[@]}"; do
-      if [[ -z "${!var:-}" ]]; then
-        echo "ERROR: required environment variable $var is not set" >&2
-        exit 1
-      fi
-    done
-    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
-    aws sts get-caller-identity
-    STACKS=(
-      "AgentraSlideRuntimeStack-{{stage}}"
-      "AgentraBedrockKbStack-{{stage}}"
-      "AgentraDataAuthStack-{{stage}}"
-      "AgentraAgentCoreRuntimeStack-{{stage}}"
-    )
-    pnpm --filter @agentra/infra-cdk exec cdk diff "${STACKS[@]}" \
-      -c "stage={{stage}}" \
-      -c "thirdPartyApiKeysSecretArn=${THIRD_PARTY_API_KEY_SECRET_ARN}"
+    just cdk-diff agentcore {{stage}} {{profile}}
 
 # Deploy AgentCore-related stacks only (shorter cycle for AgentCore iteration)
 cdk-deploy-agentcore stage=default_stage profile=aws_profile:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    required_vars=(THIRD_PARTY_API_KEY_SECRET_ARN)
-    for var in "${required_vars[@]}"; do
-      if [[ -z "${!var:-}" ]]; then
-        echo "ERROR: required environment variable $var is not set" >&2
-        exit 1
-      fi
-    done
-    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
-    aws sts get-caller-identity
-    STACKS=(
-      "AgentraSlideRuntimeStack-{{stage}}"
-      "AgentraBedrockKbStack-{{stage}}"
-      "AgentraDataAuthStack-{{stage}}"
-      "AgentraAgentCoreRuntimeStack-{{stage}}"
-    )
-    pnpm --filter @agentra/infra-cdk exec cdk deploy "${STACKS[@]}" \
-      --require-approval never \
-      -c "stage={{stage}}" \
-      -c "thirdPartyApiKeysSecretArn=${THIRD_PARTY_API_KEY_SECRET_ARN}"
+    just cdk-deploy agentcore {{stage}} {{profile}}
 
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 
@@ -175,6 +269,62 @@ dev-deploy-agentcore-and-smoke stage=default_stage profile=aws_profile:
     just cdk-deploy-agentcore {{stage}} {{profile}}
     just smoke-agentcore {{stage}} {{profile}}
     just smoke-slide {{stage}} {{profile}}
+
+# ── Worktree-safe verification workflows (see docs/development/cdk-verify.md) ─
+
+# Run AgentCore chat + slide smoke tests and scan recent error logs
+verify-agentcore stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just cdk-stage-info agentcore '{{stage}}' '{{profile}}'
+    just smoke-agentcore '{{stage}}' '{{profile}}'
+    just smoke-slide '{{stage}}' '{{profile}}'
+    just agentcore-errors '{{stage}}' 15m '{{profile}}'
+    echo
+    echo "── verify-agentcore evidence ───────────────────────────────"
+    echo "stage:    {{stage}}"
+    echo "profile:  {{profile}}"
+    echo "commands: smoke-agentcore, smoke-slide, agentcore-errors (15m)"
+    echo "────────────────────────────────────────────────────────────"
+
+# Run slide smoke test and scan recent error logs
+verify-slide stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just cdk-stage-info slide '{{stage}}' '{{profile}}'
+    just smoke-slide '{{stage}}' '{{profile}}'
+    just agentcore-errors '{{stage}}' 15m '{{profile}}'
+    echo
+    echo "── verify-slide evidence ───────────────────────────────────"
+    echo "stage:    {{stage}}"
+    echo "profile:  {{profile}}"
+    echo "commands: smoke-slide, agentcore-errors (15m)"
+    echo "────────────────────────────────────────────────────────────"
+
+# Stage-info -> diff -> deploy-with-outputs -> smoke -> error log scan
+# Canonical agent verification command for any stack group
+verify-cdk group="agentcore" stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    source scripts/agent/cdk-stage.sh
+    print_stage_info '{{stage}}' '{{group}}' '{{profile}}'
+    just cdk-diff '{{group}}' '{{stage}}' '{{profile}}'
+    just cdk-deploy-with-outputs '{{group}}' '{{stage}}' '{{profile}}'
+    if group_includes_runtime '{{group}}'; then
+      just smoke-agentcore '{{stage}}' '{{profile}}'
+    fi
+    if group_includes_slide '{{group}}'; then
+      just smoke-slide '{{stage}}' '{{profile}}'
+    fi
+    just agentcore-errors '{{stage}}' 15m '{{profile}}'
+    echo
+    echo "── verify-cdk evidence ─────────────────────────────────────"
+    echo "stage:    {{stage}}"
+    echo "group:    {{group}}"
+    echo "profile:  {{profile}}"
+    echo "outputs:  .agentra/outputs/{{stage}}.json"
+    echo "commands: cdk-diff, cdk-deploy-with-outputs, smoke-*, agentcore-errors (15m)"
+    echo "────────────────────────────────────────────────────────────"
 
 # ── AgentCore Log Discovery ───────────────────────────────────────────────────
 
