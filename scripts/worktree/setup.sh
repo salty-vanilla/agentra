@@ -107,8 +107,6 @@ else
 fi
 
 # ── Node toolchain ───────────────────────────────────────────────────────────
-corepack enable >/dev/null 2>&1 || true
-
 if ! command -v pnpm >/dev/null 2>&1; then
   echo "error: pnpm is not available. Run 'corepack enable' or 'npm install -g pnpm@10.9.0'." >&2
   exit 1

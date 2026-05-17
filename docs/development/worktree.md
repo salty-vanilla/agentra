@@ -60,9 +60,9 @@ Use the issue number as the prefix (`<N>-<slug>`) so the generated `AGENTRA_STAG
 2. Writes a fresh `.env.worktree` with derived per-worktree values (see table below).
 3. Creates `.artifacts/` and `.tmp/`.
 4. Runs `direnv allow .` when `direnv` is available.
-5. Runs `corepack enable` and `pnpm install --frozen-lockfile`.
+5. Runs `pnpm install --frozen-lockfile`.
 
-If `direnv` is missing the script logs a warning and skips the allow step; if `pnpm` is missing it exits with a clear error pointing at `corepack enable` / `npm i -g pnpm@10.9.0`.
+If `direnv` is missing the script logs a warning and skips the allow step; if `pnpm` is missing it exits with a clear error pointing at `corepack enable` / `npm i -g pnpm@10.9.0` (devbox users get `pnpm` automatically via `devbox shell`).
 
 ## Env files and load order
 

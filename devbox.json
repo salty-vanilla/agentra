@@ -15,7 +15,7 @@
     "PATH": "$PWD/.devbox/bin:$PATH"
   },
   "shell": {
-    "init_hook": ["corepack enable 2>/dev/null || true"],
+    "init_hook": ["mkdir -p .devbox/bin .devbox/tools"],
     "scripts": {
       "install": "pnpm install",
       "check": "pnpm lint && pnpm typecheck && pnpm test",
