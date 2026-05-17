@@ -92,29 +92,35 @@ export class AgentraAppStack extends Stack {
       },
     });
 
+    // AgentCore InvokeAgentRuntime — StreamingHandler only (RestHandler never calls AgentCore)
+    if (props.agentCoreRuntimeArn) {
+      streamingHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [
+            props.agentCoreRuntimeArn,
+            `${props.agentCoreRuntimeArn}/runtime-endpoint/*`,
+          ],
+        }),
+      );
+    }
+
+    if (props.slideRuntimeArn) {
+      streamingHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+          resources: [
+            props.slideRuntimeArn,
+            `${props.slideRuntimeArn}/runtime-endpoint/*`,
+          ],
+        }),
+      );
+    }
+
+    // DynamoDB — both handlers need read/write
     for (const handler of [restHandler, streamingHandler]) {
-      if (props.agentCoreRuntimeArn) {
-        const runtimeEndpointArnPrefix = `${props.agentCoreRuntimeArn}/runtime-endpoint/*`;
-        handler.addToRolePolicy(
-          new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-            resources: [props.agentCoreRuntimeArn, runtimeEndpointArnPrefix],
-          }),
-        );
-      }
-
-      if (props.slideRuntimeArn) {
-        const slideRuntimeEndpointArnPrefix = `${props.slideRuntimeArn}/runtime-endpoint/*`;
-        handler.addToRolePolicy(
-          new PolicyStatement({
-            effect: Effect.ALLOW,
-            actions: ['bedrock-agentcore:InvokeAgentRuntime'],
-            resources: [props.slideRuntimeArn, slideRuntimeEndpointArnPrefix],
-          }),
-        );
-      }
-
       props.dataAuthStack.usersTable.grantReadWriteData(handler);
       props.dataAuthStack.threadsTable.grantReadWriteData(handler);
       props.dataAuthStack.messagesTable.grantReadWriteData(handler);
