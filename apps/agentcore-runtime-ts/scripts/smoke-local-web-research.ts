@@ -157,30 +157,48 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function tabulateEvidence(data: Record<string, unknown>, acc: EvidenceAccumulator): void {
+  if (Array.isArray(data.sources)) acc.sources += data.sources.length;
+  if (Array.isArray(data.citations)) acc.citations += data.citations.length;
+}
+
+function extractFromText(text: string, acc: EvidenceAccumulator): void {
+  try {
+    const parsed: unknown = JSON.parse(text);
+    if (isRecord(parsed)) tabulateEvidence(parsed, acc);
+  } catch {
+    // not JSON
+  }
+}
+
 function extractEvidenceFromToolResult(
   toolName: string,
-  content: ReadonlyArray<{ readonly type?: string; readonly text?: string }>,
+  content: ReadonlyArray<unknown>,
   acc: EvidenceAccumulator,
 ): void {
   if (toolName !== 'web_research') return;
 
   for (const item of content) {
-    if (!item.text) continue;
-    try {
-      const parsed: unknown = JSON.parse(item.text);
-      if (!isRecord(parsed)) continue;
+    if (!isRecord(item)) continue;
 
-      const payload =
-        parsed.status === 'success' && isRecord(parsed.data) ? parsed.data : parsed;
+    // JsonBlock (type: "jsonBlock"): SDK wraps toolSuccess({ status, content: [{ text }] }) here.
+    // Navigate into .json.content[0].text to reach the actual WebResearchToolOutput.
+    if (item.type === 'jsonBlock' && isRecord(item.json)) {
+      const innerContent = item.json.content;
+      if (Array.isArray(innerContent)) {
+        for (const inner of innerContent) {
+          if (isRecord(inner) && typeof inner.text === 'string') {
+            extractFromText(inner.text, acc);
+          }
+        }
+      }
+      tabulateEvidence(item.json, acc);
+      continue;
+    }
 
-      if (Array.isArray(payload.sources)) {
-        acc.sources += payload.sources.length;
-      }
-      if (Array.isArray(payload.citations)) {
-        acc.citations += payload.citations.length;
-      }
-    } catch {
-      // not JSON — skip
+    // TextBlock (type: "textBlock"): text is a JSON string
+    if (item.type === 'textBlock' && typeof item.text === 'string') {
+      extractFromText(item.text, acc);
     }
   }
 }
