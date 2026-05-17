@@ -13,6 +13,7 @@
     "smoke:mfg": "tsx scripts/smoke-agentcore-manufacturing-line.ts",
     "smoke:slide": "tsx scripts/smoke-agentcore-slide.ts",
     "smoke:research": "tsx scripts/smoke-agentcore-web-research.ts",
+    "smoke:local:research": "tsx scripts/smoke-local-web-research.ts",
     "agentcore-logs": "tsx scripts/agentcore-logs.ts",
     "test": "vitest run"
   },

@@ -170,6 +170,13 @@ smoke-slide stage=default_stage profile=aws_profile:
     aws sts get-caller-identity
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx "$SCRIPT_PKG"
 
+# Run local Web Research Agent smoke (no AgentCore Runtime deploy required)
+smoke-local-research profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AWS_REGION=ap-northeast-1 pnpm --filter @agentra/agentcore-runtime-ts smoke:local:research
+
 # Deploy AgentCore stacks then run chat + slide smoke tests
 dev-deploy-agentcore-and-smoke stage=default_stage profile=aws_profile:
     just cdk-deploy-agentcore {{stage}} {{profile}}

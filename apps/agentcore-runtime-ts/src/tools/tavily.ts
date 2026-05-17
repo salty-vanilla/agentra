@@ -199,6 +199,11 @@ async function getApiKeyFromSsm(parameterName: string): Promise<string> {
 }
 
 async function loadApiKey(): Promise<string> {
+  const directKey = process.env.TAVILY_API_KEY?.trim();
+  if (directKey) {
+    return directKey;
+  }
+
   const secretId = process.env.TAVILY_API_KEY_SECRET_ID?.trim();
   if (secretId) {
     return getApiKeyFromSecretsManager(secretId);
@@ -210,7 +215,7 @@ async function loadApiKey(): Promise<string> {
   }
 
   throw new Error(
-    'TAVILY_API_KEY_SECRET_ID or TAVILY_API_KEY_SSM_NAME env var is not set.' +
+    'TAVILY_API_KEY, TAVILY_API_KEY_SECRET_ID, or TAVILY_API_KEY_SSM_NAME env var is not set.' +
       ' The secret must be JSON: {"TAVILY_API_KEY": "tvly-..."}',
   );
 }
