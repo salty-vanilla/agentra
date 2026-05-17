@@ -148,10 +148,14 @@ group_includes_runtime() {
     esac
 }
 
-# Convenience: does this group touch slide rendering?
+# Slide smoke goes through main runtime -> create_slide_presentation tool ->
+# slide runtime (see apps/agentcore-runtime-ts/scripts/smoke-agentcore-slide.ts),
+# so it requires AgentCoreRuntimeArn from AgentraAgentCoreRuntimeStack. Only
+# groups that deploy the main runtime can drive smoke-slide automatically.
+# `slide` deploys SlideRuntimeStack only and is intentionally deploy-only here.
 group_includes_slide() {
     case "${1:-}" in
-        agentcore|slide|all) return 0 ;;
+        agentcore|all) return 0 ;;
         *) return 1 ;;
     esac
 }
@@ -253,8 +257,11 @@ build_cdk_flags() {
 
 # Load AGENTCORE_RUNTIME_ARN from .agentra/outputs/<stage>.json so smoke recipes
 # work immediately after `just cdk-deploy-with-outputs` without manual env setup.
-# Silent no-op when the file or key is missing — the caller may have set
-# AGENTCORE_RUNTIME_ARN manually, which we never overwrite.
+# Silent no-op when the file is missing or the env var is already set — the
+# caller may have set AGENTCORE_RUNTIME_ARN manually, which we never overwrite.
+# When the file is present but the AgentCore stack key is absent (typical for a
+# slide-only deploy), prints an actionable hint to stderr without changing the
+# exit status.
 #
 # Uses node -e for JSON parsing so there is no jq dependency. The file path is
 # passed as argv to keep stage names out of the inline JS (no injection risk).
@@ -269,21 +276,39 @@ export_runtime_arn_from_outputs() {
         return 0
     fi
     local stack_id="AgentraAgentCoreRuntimeStack-${stage}"
-    local arn
-    arn=$(node -e '
+    # status: "ok" (arn on stdout) | "missing-key" | "malformed"
+    local result
+    result=$(node -e '
         const fs = require("fs");
         // With `node -e <script> -- a b`, argv is [nodePath, a, b].
         const [, file, stackId] = process.argv;
         try {
             const o = JSON.parse(fs.readFileSync(file, "utf8"));
             const a = o?.[stackId]?.AgentCoreRuntimeArn;
-            if (typeof a === "string" && a.length > 0) process.stdout.write(a);
-        } catch { /* missing or malformed file: silent no-op */ }
+            if (typeof a === "string" && a.length > 0) {
+                process.stdout.write("ok:" + a);
+            } else {
+                process.stdout.write("missing-key:");
+            }
+        } catch {
+            process.stdout.write("malformed:");
+        }
     ' -- "$outputs_file" "$stack_id" 2>/dev/null) || return 0
-    if [[ -n "$arn" ]]; then
-        export AGENTCORE_RUNTIME_ARN="$arn"
-        echo "Loaded AGENTCORE_RUNTIME_ARN from $outputs_file"
-    fi
+    case "$result" in
+        ok:*)
+            export AGENTCORE_RUNTIME_ARN="${result#ok:}"
+            echo "Loaded AGENTCORE_RUNTIME_ARN from $outputs_file"
+            ;;
+        missing-key:*)
+            echo "Note: $outputs_file has no $stack_id.AgentCoreRuntimeArn entry." >&2
+            echo "      Deploy the 'agentcore' or 'runtime' group, or set AGENTCORE_RUNTIME_ARN manually." >&2
+            ;;
+        *)
+            # Malformed JSON or unexpected output — silent. The smoke script
+            # will surface its own AGENTCORE_RUNTIME_ARN-required error if it
+            # actually needs the ARN.
+            ;;
+    esac
 }
 
 # Probe whether the installed CDK CLI supports a given long flag.

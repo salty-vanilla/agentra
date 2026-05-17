@@ -31,6 +31,11 @@ the source of truth for any edge case).
 `agentcore` (default), `runtime`, `kb`, `slide`, `data`, `gateway`, `api`,
 `web`, `all`. Definitions in `scripts/agent/cdk-stage.sh::resolve_stack_group`.
 
+`verify-cdk agentcore` and `verify-cdk all` run the full smoke path (chat +
+slide). `verify-cdk slide` is **deploy + log scan only** — slide smoke goes
+through the main runtime, which the slide stack alone does not deploy. Use
+`verify-cdk agentcore` for end-to-end slide verification.
+
 ## Canonical sequence
 
 ```bash

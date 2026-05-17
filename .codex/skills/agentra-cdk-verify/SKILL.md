@@ -72,6 +72,13 @@ CONFIRM_STAGE=<stage> just cdk-cleanup-ephemeral <stage> <profile>
 `web`, `all`. Expansions are documented in `docs/development/cdk-verify.md` and
 implemented in `scripts/agent/cdk-stage.sh::resolve_stack_group`.
 
+`verify-cdk agentcore` (or `verify-cdk all`) is the canonical end-to-end smoke
+path — both deploy the main AgentCore runtime and so populate
+`AGENTCORE_RUNTIME_ARN`, which `smoke-agentcore` and `smoke-slide` both need.
+`verify-cdk slide` deploys the slide stack and scans logs but does **not** run
+slide smoke automatically, because the slide-only outputs file lacks the main
+runtime ARN. To end-to-end-verify slide rendering, use `verify-cdk agentcore`.
+
 ## Output
 
 Add the PR summary block from `docs/development/cdk-verify.md#pr-summary-template`

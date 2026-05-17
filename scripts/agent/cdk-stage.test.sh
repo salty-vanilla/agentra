@@ -111,8 +111,12 @@ assert_pass  "runtime includes runtime"   group_includes_runtime runtime
 assert_pass  "all includes runtime"       group_includes_runtime all
 assert_fail  "kb does not include runtime" group_includes_runtime kb
 assert_pass  "agentcore includes slide"   group_includes_slide agentcore
-assert_pass  "slide includes slide"       group_includes_slide slide
+assert_pass  "all includes slide"         group_includes_slide all
+# Slide smoke needs main-runtime ARN; deploying slide stack alone cannot
+# satisfy it, so the helper deliberately excludes the `slide` group.
+assert_fail  "slide group excludes slide smoke" group_includes_slide slide
 assert_fail  "runtime alone excludes slide" group_includes_slide runtime
+assert_fail  "kb excludes slide"          group_includes_slide kb
 
 # Save/restore env vars without subshells so counters stay in this shell.
 saved_secret="${THIRD_PARTY_API_KEY_SECRET_ARN:-}"
@@ -215,13 +219,30 @@ assert_equal "valid outputs file: arn exported"  \
     "arn:aws:bedrock-agentcore:us-east-1:000000000000:runtime/test" \
     "${AGENTCORE_RUNTIME_ARN:-}"
 
-# Case 3: file present but stack key missing → no-op
+# Case 3: file present but stack key missing → no-op + actionable hint to stderr
 cat > .agentra/outputs/dev-issue-225.json <<'EOF'
 {"AgentraSlideRuntimeStack-dev-issue-225": {"SlideRuntimeArn": "arn:foo"}}
 EOF
 unset AGENTCORE_RUNTIME_ARN
-assert_pass "missing stack key: no-op"           export_runtime_arn_from_outputs dev-issue-225
+hint_stderr=$(export_runtime_arn_from_outputs dev-issue-225 2>&1 >/dev/null)
 assert_equal "missing stack key: arn unset"      ""    "${AGENTCORE_RUNTIME_ARN:-}"
+if [[ "$hint_stderr" == *"AgentraAgentCoreRuntimeStack-dev-issue-225"* ]]; then
+    PASS=$((PASS + 1))
+    echo "  ok   missing stack key: hint printed to stderr"
+else
+    FAIL=$((FAIL + 1))
+    FAILED_NAMES+=("missing stack key: hint printed to stderr")
+    echo "  FAIL missing stack key: hint printed to stderr"
+    echo "       stderr was: $hint_stderr"
+fi
+if [[ "$hint_stderr" == *"agentcore"* && "$hint_stderr" == *"runtime"* ]]; then
+    PASS=$((PASS + 1))
+    echo "  ok   missing stack key: hint references agentcore/runtime groups"
+else
+    FAIL=$((FAIL + 1))
+    FAILED_NAMES+=("missing stack key: hint references agentcore/runtime groups")
+    echo "  FAIL missing stack key: hint references agentcore/runtime groups"
+fi
 
 # Case 4: existing AGENTCORE_RUNTIME_ARN must not be overwritten
 export AGENTCORE_RUNTIME_ARN="arn:preset"

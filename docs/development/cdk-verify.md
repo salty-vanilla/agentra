@@ -28,20 +28,28 @@ will refuse: `dev`, `prod`, `production`, `main`, `master`, `staging`, `release`
 Agents do not need to remember the full stack list. `scripts/agent/cdk-stage.sh`
 exposes named groups that expand to the correct stack IDs for a given stage.
 
-| Group | Expands to |
-|---|---|
-| `agentcore` | `AgentraSlideRuntimeStack`, `AgentraBedrockKbStack`, `AgentraDataAuthStack`, `AgentraAgentCoreRuntimeStack` |
-| `runtime` | `AgentraAgentCoreRuntimeStack` |
-| `kb` | `AgentraBedrockKbStack` |
-| `slide` | `AgentraSlideRuntimeStack` |
-| `data` | `AgentraDataAuthStack` |
-| `gateway` | `AgentraAgentCoreStack` |
-| `api` | `AgentraAppStack` |
-| `web` | `AgentraWebHostingStack` |
-| `all` | Every stack defined in `infra/cdk/bin/agentra-cdk.ts` |
+| Group | Expands to | `verify-cdk` auto-smoke |
+|---|---|---|
+| `agentcore` | `AgentraSlideRuntimeStack`, `AgentraBedrockKbStack`, `AgentraDataAuthStack`, `AgentraAgentCoreRuntimeStack` | chat + slide |
+| `runtime` | `AgentraAgentCoreRuntimeStack` | chat only |
+| `kb` | `AgentraBedrockKbStack` | none |
+| `slide` | `AgentraSlideRuntimeStack` | none (deploy + log scan only — see below) |
+| `data` | `AgentraDataAuthStack` | none |
+| `gateway` | `AgentraAgentCoreStack` | none |
+| `api` | `AgentraAppStack` | none |
+| `web` | `AgentraWebHostingStack` | none |
+| `all` | Every stack defined in `infra/cdk/bin/agentra-cdk.ts` | chat + slide |
 
 `agentcore` is the default for most just recipes — it matches the existing
-`cdk-diff-agentcore` / `cdk-deploy-agentcore` behavior.
+`cdk-diff-agentcore` / `cdk-deploy-agentcore` behavior, and is the canonical
+end-to-end smoke target.
+
+**Why `slide` is deploy-only.** `smoke-slide` exercises the full path
+`main runtime → create_slide_presentation tool → slide runtime`, which
+requires the main AgentCore runtime ARN. Deploying just `AgentraSlideRuntimeStack`
+(the `slide` group) does not populate that ARN in `.agentra/outputs/<stage>.json`,
+so `verify-cdk slide` intentionally runs only the deploy + log scan steps. To
+end-to-end-verify slide rendering, use `verify-cdk agentcore` (or `all`).
 
 ## Environment
 
