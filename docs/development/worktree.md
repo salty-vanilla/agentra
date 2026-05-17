@@ -10,13 +10,21 @@ Codex App ────┘
 
 ## One-time setup
 
-1. **Install GTR** (Homebrew):
+1. **Install GTR via devbox (recommended)**:
+   ```bash
+   devbox shell             # enter the reproducible dev shell
+   devbox run gtr:install   # clone GTR into .devbox/tools/ and link it
+   git gtr doctor           # verify
+   ```
+   `gtr:install` clones `git-worktree-runner` into `.devbox/tools/` (gitignored) and symlinks `git-gtr` into `.devbox/bin/`. Re-run `devbox run gtr:update` to update.
+
+   **Alternative — Homebrew**:
    ```bash
    brew tap coderabbitai/tap
    brew install git-gtr
    git gtr doctor
    ```
-2. **Trust this repo's `.gtrconfig`** (required for the `postCreate` / `postRemove` hooks):
+2. **Trust this repo's `.gtrconfig`** (required for the `postCreate` / `preRemove` hooks):
    ```bash
    git gtr trust
    ```
@@ -24,19 +32,23 @@ Codex App ────┘
 
 ## Create a worktree
 
+`.gtrconfig` does not set a shared default editor or AI tool — pass them explicitly so the repo stays neutral between Claude Code and Codex:
+
 ```bash
-# Plain worktree
+# Plain worktree (no editor, no AI)
 git gtr new 227-gtr-worktree-setup
 
-# Worktree + open in default editor (VS Code per .gtrconfig)
-git gtr new 227-gtr-worktree-setup --editor
+# Launch with Claude Code
+git gtr new 227-gtr-worktree-setup --ai claude
 
-# Worktree + Claude Code (default AI)
-git gtr new 227-gtr-worktree-setup --ai
-
-# Worktree + Codex CLI
+# Launch with Codex CLI
 git gtr new 227-gtr-worktree-setup --ai codex
+
+# Open an editor too (any editor that's on your PATH)
+git gtr new 227-gtr-worktree-setup --editor code   # or cursor, etc.
 ```
+
+Personal defaults can be set with local/global git config if you want them; keeping them out of `.gtrconfig` avoids biasing the shared repo workflow.
 
 Use the issue number as the prefix (`<N>-<slug>`) so the generated `AGENTRA_STAGE` becomes `dev-<N>` — that matches the rest of the issue/branch/worktree naming convention in [`CLAUDE.md`](../../CLAUDE.md).
 
@@ -99,7 +111,7 @@ The Codex App creates its own worktrees and does not invoke GTR. To make those w
    ```
 3. Save. The new Local Environment can now be selected when starting a Worktree thread.
 
-The Codex App is documented to expose `CODEX_SOURCE_TREE_PATH` and `CODEX_WORKTREE_PATH`; `setup.sh` uses them when present but falls back to `git rev-parse --git-common-dir` so the script still works in regular `git worktree`s and when those vars are absent.
+When present, `setup.sh` uses `CODEX_SOURCE_TREE_PATH` and `CODEX_WORKTREE_PATH`; otherwise it falls back to regular git worktree resolution via `git rev-parse --git-common-dir`. We have observed Codex App exposing these variables, but they are not part of an official documented contract, so the script doesn't depend on them.
 
 Verify inside the Codex App's integrated terminal:
 

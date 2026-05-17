@@ -15,7 +15,19 @@
     "init_hook": ["corepack enable 2>/dev/null || true"],
     "scripts": {
       "install": "pnpm install",
-      "check": "pnpm lint && pnpm typecheck && pnpm test"
+      "check": "pnpm lint && pnpm typecheck && pnpm test",
+      "gtr:install": [
+        "mkdir -p .devbox/bin .devbox/tools",
+        "if [ ! -d .devbox/tools/git-worktree-runner ]; then git clone --depth 1 https://github.com/coderabbitai/git-worktree-runner.git .devbox/tools/git-worktree-runner; fi",
+        "ln -sfn \"$PWD/.devbox/tools/git-worktree-runner/bin/git-gtr\" .devbox/bin/git-gtr",
+        "chmod +x .devbox/tools/git-worktree-runner/bin/git-gtr",
+        "git gtr version"
+      ],
+      "gtr:update": [
+        "git -C .devbox/tools/git-worktree-runner pull --ff-only",
+        "git gtr version"
+      ],
+      "gtr:doctor": "git gtr doctor"
     }
   }
 }

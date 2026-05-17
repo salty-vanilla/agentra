@@ -1,3 +1,6 @@
+[worktrees]
+    dir = .worktrees
+
 [copy]
     include = .envrc
     include = .env.example
@@ -11,8 +14,4 @@
 
 [hooks]
     postCreate = bash scripts/worktree/setup.sh
-    postRemove = bash scripts/worktree/cleanup.sh "$GTR_WORKTREE_PATH"
-
-[defaults]
-    editor = code
-    ai = claude
+    preRemove = bash scripts/worktree/cleanup.sh "$WORKTREE_PATH"

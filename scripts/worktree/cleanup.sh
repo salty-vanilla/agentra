@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # scripts/worktree/cleanup.sh
-# Optional GTR postRemove hook. Removes worktree-local generated artifacts
+# Optional GTR preRemove hook. Removes worktree-local generated artifacts
 # (.artifacts, .tmp, .env.worktree) before the worktree directory is deleted.
 #
 # Safety: refuses to run unless the target path lives under a ".worktrees/"
@@ -8,7 +8,7 @@
 
 set -euo pipefail
 
-TARGET="${1:-${GTR_WORKTREE_PATH:-$(pwd)}}"
+TARGET="${1:-${WORKTREE_PATH:-$(pwd)}}"
 
 if [ ! -d "$TARGET" ]; then
   echo "warning: cleanup target does not exist: $TARGET" >&2
