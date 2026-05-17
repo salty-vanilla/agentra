@@ -1,0 +1,55 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 \"$(git rev-parse --show-toplevel)/scripts/agent/codex_guardrails.py\" pre-tool-use",
+            "timeout": 30,
+            "statusMessage": "Checking Agentra guardrails"
+          }
+        ]
+      }
+    ],
+    "PermissionRequest": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 \"$(git rev-parse --show-toplevel)/scripts/agent/codex_guardrails.py\" permission-request",
+            "timeout": 30,
+            "statusMessage": "Checking Agentra approval guardrails"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|apply_patch|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 \"$(git rev-parse --show-toplevel)/scripts/agent/codex_guardrails.py\" post-tool-use",
+            "timeout": 30,
+            "statusMessage": "Reviewing Agentra guardrail warnings"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/usr/bin/env python3 \"$(git rev-parse --show-toplevel)/.codex/hooks/stop_quality_gate.py\"",
+            "timeout": 1800,
+            "statusMessage": "Running Agentra quality gate"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -5,6 +5,7 @@
       "!**/.claude",
       "!**/.devbox",
       "!**/.tmp",
+      "!**/.worktrees",
       "!**/.next",
       "!**/dist",
       "!**/cdk.out",

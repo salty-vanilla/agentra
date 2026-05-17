@@ -5,11 +5,14 @@
 # server paths, or plugin state here. Secrets are referenced by environment
 # variable names only; real values belong in local environment files.
 #
-# Phase 3 of Issue #221 ports safe MCP definitions and documents the local
-# assumptions. Phase 4 will decide whether to add .codex/hooks.json and broader
-# guardrail scripts.
+# Phase 3 of Issue #221 ported safe MCP definitions and documented the local
+# assumptions. Phase 4 moved hook declarations to .codex/hooks.json and keeps
+# this file focused on feature flags and MCP.
 
 [features]
+# `hooks` is the canonical feature key. `codex_hooks` remains for compatibility
+# with earlier Codex releases that used the old alias.
+hooks = true
 codex_hooks = true
 
 [mcp_servers.github]
@@ -48,12 +51,3 @@ url = "https://knowledge-mcp.global.api.aws"
 
 [mcp_servers.hono-docs]
 url = "https://hono-docs-mcp.yusukebe.workers.dev/mcp"
-
-# Stop hook: keep the existing repo quality gate enabled. This runs local
-# typecheck and Biome checks before Codex stops. Do not add deployment or
-# production-impacting commands to this hook.
-[[hooks.Stop]]
-[[hooks.Stop.hooks]]
-type = "command"
-command = '/usr/bin/env python3 "$(git rev-parse --show-toplevel)/.codex/hooks/stop_quality_gate.py"'
-timeout = 1800

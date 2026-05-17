@@ -13,6 +13,7 @@ Use this skill for PR-number-driven review work that should end in a merge, issu
 - Use `.github/codex/prompts/review-pr.md` for review discipline and output expectations.
 - Use `.github/codex/prompts/review-architecture.md` for runtime responsibility and architecture-fit checks.
 - Use `.github/codex/prompts/review-package-boundary.md` when package, Docker, shared contract, or root metadata files changed.
+- Use `docs/development/codex-config.md` when reviewing Codex hooks, MCP, or skill changes.
 
 ## Scope guards
 
@@ -36,6 +37,7 @@ This skill does not:
    - Check correctness, regressions, test coverage, and consistency with repository patterns.
    - Treat failing checks, missing requirements, unclear behavior, or unsafe changes as blockers.
    - Treat unexpected root `package.json`, `pnpm-lock.yaml`, `pnpm-workspace.yaml`, workspace package boundary, Codex hook, or deployment behavior changes as blockers unless the issue explicitly requires them.
+   - For hook/guardrail PRs, confirm the behavior blocks high-risk actions without turning warnings into noisy false positives for normal Agentra work.
    - If a blocker exists, stop and escalate a concise review summary to the user instead of merging.
 
 3. Merge when safe.

@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Fix CI"
+  short_description: "Diagnose and fix failing Agentra CI checks"
+  default_prompt: "Use $github-fix-ci to inspect failing GitHub Actions checks, reproduce narrowly, fix the root cause without weakening gates, and report validation."

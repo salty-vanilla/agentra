@@ -1,0 +1,4 @@
+interface:
+  display_name: "GitHub Address Comments"
+  short_description: "Handle actionable PR review feedback"
+  default_prompt: "Use $github-address-comments to inspect PR comments, address actionable feedback with scoped changes, validate, and push without resolving threads unless asked."

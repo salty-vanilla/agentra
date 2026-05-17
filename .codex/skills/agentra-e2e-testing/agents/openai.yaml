@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agentra E2E Testing"
+  short_description: "Plan and validate browser-level Agentra journeys"
+  default_prompt: "Use $agentra-e2e-testing to plan or run browser-level validation for Agentra auth, chat, streaming, and critical UI journeys."
