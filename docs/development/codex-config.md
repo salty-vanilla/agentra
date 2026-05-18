@@ -1,6 +1,7 @@
 # Codex Project Configuration
 
-This document describes Agentra's Codex configuration posture for Issue #221.
+This document describes Agentra's Codex configuration posture for Issues #221
+and #230.
 
 ## Configuration Posture
 
@@ -34,10 +35,13 @@ config or local environment files. Those files must stay out of git.
 hooks. Hook declarations live in `.codex/hooks.json` instead of inline TOML so
 the repo has one hook surface per Codex config layer.
 
-The existing Stop quality gate still runs:
+The Stop hook is now configurable by environment:
 
-- `pnpm typecheck`
-- `pnpm biome check .`
+- `AGENTRA_STOP_QUALITY_GATE=off` is the default local posture
+- `AGENTRA_STOP_QUALITY_GATE=changed` runs changed-file Biome checks and
+  guardrail self-tests when guardrail files changed
+- `AGENTRA_STOP_QUALITY_GATE=full` preserves full `pnpm typecheck` and
+  `pnpm biome check .`
 
 The Stop hook implementation lives at `.codex/hooks/stop_quality_gate.py`.
 Additional policy guardrails live in `scripts/agent/codex_guardrails.py`.
@@ -63,6 +67,8 @@ Common Codex-related variables:
 |---|---|---|
 | `AGENTRA_AWS_PROFILE` | Local `justfile` AWS profile selection | No |
 | `AGENTRA_STAGE` | Local stage selection, normally `dev` | No |
+| `AGENTRA_GUARDRAIL_MODE` | Guardrail strictness: `relaxed`/`local`/`strict` | No |
+| `AGENTRA_STOP_QUALITY_GATE` | Stop hook mode: `off`/`changed`/`full` | No |
 | `AWS_REGION` | AWS SDK and CLI region | No |
 | `AGENTCORE_RUNTIME_ARN` | Manual AgentCore smoke scripts | No |
 | `GITHUB_PAT` | GitHub MCP bearer token source | No |
@@ -144,25 +150,27 @@ static reference files.
 
 `.codex/hooks.json` defines the repo's Codex hooks:
 
-- `PreToolUse`: blocks high-risk shell commands, quality-gate config edits, and
-  obvious secret-bearing patches before execution.
-- `PermissionRequest`: blocks approval requests for the same high-risk shell
-  patterns.
-- `PostToolUse`: provides warning-only feedback for root metadata, Docker,
-  workflow, CDK, runtime-adjacent, ad-hoc docs, and `console.log` changes.
-- `Stop`: runs the existing quality gate.
+- `PreToolUse`: resolves `AGENTRA_GUARDRAIL_MODE`, blocks hard-safety commands
+  and real secrets in all modes, and only keeps dependency/config/deploy
+  strictness in `strict`.
+- `PermissionRequest`: applies the same high-risk command and secret checks to
+  approval requests.
+- `PostToolUse`: stays broad in `strict`, but suppresses routine local-dev noise
+  in `relaxed` and warns only for targeted cases such as workflow
+  trigger/permission edits.
+- `Stop`: resolves `AGENTRA_STOP_QUALITY_GATE` and defaults to `off` locally.
 
 Guardrails focus on preventing:
 
-- root package metadata rewrites used to bypass errors;
-- unnecessary dependency additions;
-- accidental `pnpm-lock.yaml` churn;
-- workspace boundary violations;
-- runtime/package responsibility leaks;
-- unsafe shell patterns;
-- accidental deployment commands.
+- real secret introduction and private key material;
+- destructive git/filesystem/cloud commands;
+- production-like deploys without explicit user intent;
+- accidental workflow permission/trigger changes in relaxed mode;
+- dependency/config/deploy bypasses when strict mode is enabled.
 
 These hooks are guardrails, not a complete security boundary. They should reduce
-common agent mistakes while preserving normal Agentra development. If a guardrail
-blocks a legitimate task, narrow the change or ask the user for an explicit
-decision rather than bypassing the hook silently.
+common agent mistakes while preserving normal Agentra development. The default
+local posture is intentionally relaxed: let the agent implement freely, keep the
+hard safety boundaries, and move most quality enforcement to CI and review. If a
+guardrail blocks a legitimate task, narrow the change or ask the user for an
+explicit decision rather than bypassing the hook silently.
