@@ -63,6 +63,10 @@ describe('Web Research Agent handoff', () => {
     expect(prompt).toContain('Require citations: yes');
     expect(prompt).toContain('Create brief: yes');
     expect(prompt).toContain('Source limit: normalize at most 5 sources');
+    expect(prompt).toContain(
+      'include usedSourceIds, caveats, nextActions, and metadataSummary',
+    );
+    expect(prompt).toContain('do not include sources, citations, or brief');
     expect(prompt).toContain('Allowed domains:');
     expect(prompt).toContain('Blocked domains:');
     expect(prompt).toContain('release');
@@ -98,6 +102,7 @@ describe('Web Research Agent handoff', () => {
       structuredOutput: {
         status: 'success' as const,
         answer: 'The latest release added router handoff support.',
+        usedSourceIds: ['source-1'],
         sources: [{ id: 'source-1' }],
         citations: [{ label: '[1]' }],
         metadata: { confidence: 'high' },
@@ -137,8 +142,12 @@ describe('Web Research Agent handoff', () => {
       agentName: 'Web Research Agent',
       handoffMode: 'freshness_required',
       answer: 'The latest release added router handoff support.',
+      usedSourceIds: ['source-1'],
       sources: [{ id: 'source-1' }],
       citations: [{ label: '[1]' }],
+      metadataSummary: {
+        selectedModelId: expect.any(String),
+      },
       metadata: {
         parentAgent: 'router-agent',
         childAgent: 'web-research-agent',
@@ -180,6 +189,7 @@ describe('Web Research Agent handoff', () => {
     expect(payload.status).toBe('success');
     expect(payload.sources).toHaveLength(1);
     expect(payload.citations).toHaveLength(1);
+    expect(payload.metadataSummary?.selectedModelId).toEqual(expect.any(String));
     expect(payload.caveats).toEqual(['Results as of today']);
     expect(payload.metadata?.rawValueType).toBe('string_json');
   });
@@ -215,6 +225,7 @@ describe('Web Research Agent handoff', () => {
       rawValueType: 'undefined',
       rawError: 'boom',
     });
+    expect(payload.metadataSummary?.selectedModelId).toEqual(expect.any(String));
   });
 });
 
@@ -241,8 +252,7 @@ describe('streamInvokeWebResearchAgentTool', () => {
     const agentResult = makeAgentResult({
       status: 'success' as const,
       answer: 'Tavily returned current web results.',
-      sources: [],
-      citations: [],
+      usedSourceIds: ['source-1'],
     });
 
     const streamEvents = [
@@ -250,12 +260,29 @@ describe('streamInvokeWebResearchAgentTool', () => {
         type: 'modelStreamUpdateEvent',
         event: {
           type: 'modelContentBlockStartEvent',
-          start: { type: 'toolUseStart', toolUseId, name: 'tavily_search' },
+          start: { type: 'toolUseStart', toolUseId, name: 'web_research' },
         },
       },
       {
         type: 'toolResultEvent',
-        result: { toolUseId, status: 'success', content: [] },
+        result: {
+          toolUseId,
+          status: 'success',
+          content: [
+            {
+              text: JSON.stringify({
+                query: 'latest AI trends',
+                sources: [{ id: 'source-1', title: 'Example source' }],
+                citations: [{ sourceId: 'source-1', label: '[1]' }],
+                rawResultSummary: {
+                  resultCount: 1,
+                  hasAnswer: true,
+                  hasRawContent: false,
+                },
+              }),
+            },
+          ],
+        },
       },
     ];
 
@@ -276,14 +303,24 @@ describe('streamInvokeWebResearchAgentTool', () => {
       const { value, done } = await gen.next();
       if (done) {
         expect(value.status).toBe('success');
+        const payload = JSON.parse(value.content[0].text);
+        expect(payload.sources).toEqual([{ id: 'source-1', title: 'Example source' }]);
+        expect(payload.citations).toEqual([{ sourceId: 'source-1', label: '[1]' }]);
+        expect(payload.usedSourceIds).toEqual(['source-1']);
+        expect(payload.metadataSummary).toMatchObject({
+          sourceCount: 1,
+          citationCount: 1,
+          resultCount: 1,
+          selectedModelId: expect.any(String),
+        });
         break;
       }
       progress.push(value);
     }
 
     expect(progress).toEqual([
-      { stage: 'tavily_search', status: 'running' },
-      { stage: 'tavily_search', status: 'complete', durationMs: expect.any(Number) },
+      { stage: 'web_research', status: 'running' },
+      { stage: 'web_research', status: 'complete', durationMs: expect.any(Number) },
     ]);
   });
 

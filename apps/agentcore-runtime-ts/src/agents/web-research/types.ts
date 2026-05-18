@@ -6,7 +6,11 @@ import type {
 } from '@strands-agents/sdk';
 import type { z } from 'zod';
 import type { ToolRegistryConfig } from '../../tools/registry.js';
-import type { SubAgentHandoffOutput, SubAgentKind } from '../handoff-types.js';
+import type {
+  SubAgentHandoffMetadataSummary,
+  SubAgentHandoffOutput,
+  SubAgentKind,
+} from '../handoff-types.js';
 import type { webResearchAgentHandoffInputSchema } from './handoff.js';
 
 export type WebResearchModelConfig = Pick<
@@ -25,11 +29,13 @@ export type WebResearchAgentConfig = {
 
 export type WebResearchAgentResult = {
   answer: string;
+  usedSourceIds?: string[];
   sources?: unknown[];
   citations?: unknown[];
   brief?: unknown;
   caveats?: string[];
   nextActions?: string[];
+  metadataSummary?: SubAgentHandoffMetadataSummary;
   metadata?: Record<string, unknown>;
 };
 

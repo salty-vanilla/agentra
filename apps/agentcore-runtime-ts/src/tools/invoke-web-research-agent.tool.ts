@@ -1,6 +1,10 @@
 import { type Agent, type AgentResult, tool } from '@strands-agents/sdk';
 import { normalizeSubAgentHandoffOutput } from '../agents/handoff-normalizer.js';
-import { createWebResearchAgent } from '../agents/web-research/agent.js';
+import type { SubAgentHandoffMetadataSummary } from '../agents/handoff-types.js';
+import {
+  createWebResearchAgent,
+  resolveWebResearchModelId,
+} from '../agents/web-research/agent.js';
 import {
   buildWebResearchAgentHandoffPrompt,
   type WebResearchAgentHandoffInput,
@@ -10,11 +14,20 @@ import {
 } from '../agents/web-research/handoff.js';
 import type { SubAgentProgressEvent } from './invoke-manufacturing-line-agent.tool.js';
 import { errorMessage, toolSuccess } from './tool-response.js';
+import type { WebResearchToolOutput } from './web-research.tool.js';
 
 type WebResearchAgentLike = Pick<Agent, 'invoke' | 'stream'>;
 type WebResearchAgentFactory = () => WebResearchAgentLike;
 
 let cachedWebResearchAgent: WebResearchAgentLike | undefined;
+
+type WebResearchDeterministicArtifacts = {
+  query?: string;
+  sources: unknown[];
+  citations: unknown[];
+  brief?: unknown;
+  rawResultSummary?: WebResearchToolOutput['rawResultSummary'];
+};
 
 function getWebResearchAgent(): WebResearchAgentLike {
   if (!cachedWebResearchAgent) {
@@ -24,11 +37,214 @@ function getWebResearchAgent(): WebResearchAgentLike {
   return cachedWebResearchAgent;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function parseJsonText(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
+function parseStructuredContent(content: unknown): unknown[] {
+  if (typeof content === 'string') {
+    const parsed = parseJsonText(content);
+    return parsed === undefined ? [] : [parsed];
+  }
+
+  if (Array.isArray(content)) {
+    return content.flatMap((entry) => parseStructuredContent(entry));
+  }
+
+  if (!isRecord(content)) {
+    return [];
+  }
+
+  const parsedNodes: unknown[] = [content];
+  if (typeof content.text === 'string') {
+    const parsed = parseJsonText(content.text);
+    if (parsed !== undefined) {
+      parsedNodes.push(parsed);
+    }
+  }
+  if ('json' in content) {
+    parsedNodes.push(...parseStructuredContent(content.json));
+  }
+  if ('content' in content) {
+    parsedNodes.push(...parseStructuredContent(content.content));
+  }
+
+  return parsedNodes;
+}
+
+function extractWebResearchToolOutput(
+  content: unknown,
+): WebResearchDeterministicArtifacts | undefined {
+  for (const candidate of parseStructuredContent(content)) {
+    if (!isRecord(candidate)) {
+      continue;
+    }
+
+    if (!Array.isArray(candidate.sources) || !Array.isArray(candidate.citations)) {
+      continue;
+    }
+
+    const output: WebResearchDeterministicArtifacts = {
+      sources: candidate.sources,
+      citations: candidate.citations,
+    };
+
+    if (typeof candidate.query === 'string') {
+      output.query = candidate.query;
+    }
+    if ('brief' in candidate) {
+      output.brief = candidate.brief;
+    }
+    if (isRecord(candidate.rawResultSummary)) {
+      output.rawResultSummary = {
+        resultCount:
+          typeof candidate.rawResultSummary.resultCount === 'number'
+            ? candidate.rawResultSummary.resultCount
+            : candidate.sources.length,
+        hasAnswer: Boolean(candidate.rawResultSummary.hasAnswer),
+        hasRawContent: Boolean(candidate.rawResultSummary.hasRawContent),
+      };
+    }
+
+    return output;
+  }
+
+  return undefined;
+}
+
+function getSourceId(value: unknown): string | undefined {
+  if (!isRecord(value) || typeof value.id !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.id.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function getCitationSourceId(value: unknown): string | undefined {
+  if (!isRecord(value) || typeof value.sourceId !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.sourceId.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+function uniqueSourceIds(ids: Iterable<string | undefined>): string[] {
+  const unique = new Set<string>();
+
+  for (const id of ids) {
+    if (typeof id !== 'string') {
+      continue;
+    }
+
+    const trimmed = id.trim();
+    if (trimmed) {
+      unique.add(trimmed);
+    }
+  }
+
+  return [...unique];
+}
+
+function buildMetadataSummary(
+  artifacts: WebResearchDeterministicArtifacts | undefined,
+): SubAgentHandoffMetadataSummary | undefined {
+  if (!artifacts) {
+    return {
+      selectedModelId: resolveWebResearchModelId(),
+    };
+  }
+
+  const summary: SubAgentHandoffMetadataSummary = {
+    selectedModelId: resolveWebResearchModelId(),
+    sourceCount: artifacts.sources.length,
+    citationCount: artifacts.citations.length,
+  };
+
+  if (artifacts.query) {
+    summary.query = artifacts.query;
+  }
+
+  if (artifacts.rawResultSummary) {
+    summary.resultCount = artifacts.rawResultSummary.resultCount;
+    summary.hasAnswer = artifacts.rawResultSummary.hasAnswer;
+    summary.hasRawContent = artifacts.rawResultSummary.hasRawContent;
+  }
+
+  return summary;
+}
+
+function mergeDeterministicArtifacts(
+  output: WebResearchAgentHandoffOutput,
+  artifacts: WebResearchDeterministicArtifacts | undefined,
+): WebResearchAgentHandoffOutput {
+  const metadataSummary = {
+    ...(output.metadataSummary ?? {}),
+    ...(buildMetadataSummary(artifacts) ?? {}),
+  };
+
+  if (!artifacts) {
+    return Object.keys(metadataSummary).length > 0
+      ? { ...output, metadataSummary }
+      : output;
+  }
+
+  const requestedSourceIds = uniqueSourceIds(
+    output.usedSourceIds ??
+      (Array.isArray(output.sources)
+        ? output.sources.map((source) => getSourceId(source))
+        : []),
+  );
+  const sourceIdSet =
+    requestedSourceIds.length > 0 ? new Set(requestedSourceIds) : undefined;
+
+  const sources = sourceIdSet
+    ? artifacts.sources.filter((source) => {
+        const sourceId = getSourceId(source);
+        return sourceId !== undefined && sourceIdSet.has(sourceId);
+      })
+    : artifacts.sources;
+  const citations = sourceIdSet
+    ? artifacts.citations.filter((citation) => {
+        const sourceId = getCitationSourceId(citation);
+        return sourceId !== undefined && sourceIdSet.has(sourceId);
+      })
+    : artifacts.citations;
+  const effectiveSources =
+    sourceIdSet && sources.length === 0 ? artifacts.sources : sources;
+  const effectiveCitations =
+    sourceIdSet && sources.length === 0 ? artifacts.citations : citations;
+  const fellBackToAllEvidence = sourceIdSet !== undefined && sources.length === 0;
+  const usedSourceIds =
+    requestedSourceIds.length > 0 && !fellBackToAllEvidence
+      ? requestedSourceIds
+      : uniqueSourceIds(effectiveSources.map((source) => getSourceId(source)));
+
+  return {
+    ...output,
+    usedSourceIds: usedSourceIds.length > 0 ? usedSourceIds : output.usedSourceIds,
+    sources: effectiveSources,
+    citations: effectiveCitations,
+    ...(artifacts.brief !== undefined ? { brief: artifacts.brief } : {}),
+    ...(Object.keys(metadataSummary).length > 0 ? { metadataSummary } : {}),
+  };
+}
+
 function buildHandoffOutput(
   result: AgentResult,
   input: WebResearchAgentHandoffInput,
+  artifacts?: WebResearchDeterministicArtifacts,
 ): WebResearchAgentHandoffOutput {
-  return normalizeSubAgentHandoffOutput({
+  const output = normalizeSubAgentHandoffOutput({
     value: result.structuredOutput ?? result.toString(),
     agentKind: 'web_research',
     agentName: 'Web Research Agent',
@@ -41,6 +257,8 @@ function buildHandoffOutput(
       handoffMode: input.freshnessRequired ? 'freshness_required' : 'standard',
     },
   }) as WebResearchAgentHandoffOutput;
+
+  return mergeDeterministicArtifacts(output, artifacts);
 }
 
 const NOT_CONFIGURED_PATTERNS = ['TAVILY_API_KEY_SECRET_ID', 'TAVILY_API_KEY_SSM_NAME'];
@@ -77,6 +295,9 @@ function buildErrorOutput(
       rawValueType: 'undefined',
       rawError: rawMessage,
     },
+    metadataSummary: {
+      selectedModelId: resolveWebResearchModelId(),
+    },
   };
 }
 
@@ -101,11 +322,12 @@ export async function* streamInvokeWebResearchAgentTool(
 
     const toolStarts = new Map<string, { name: string; startedAt: number }>();
     let currentInputTokens: number | undefined;
+    let latestResearchArtifacts: WebResearchDeterministicArtifacts | undefined;
 
     while (true) {
       const { value, done } = await agentStream.next();
       if (done) {
-        const output = buildHandoffOutput(value, input);
+        const output = buildHandoffOutput(value, input, latestResearchArtifacts);
         return { status: 'success', content: [{ text: JSON.stringify(output) }] };
       }
 
@@ -154,6 +376,10 @@ export async function* streamInvokeWebResearchAgentTool(
         toolStarts.delete(event.result.toolUseId);
         const stageName = start?.name ?? 'unknown';
         const durationMs = start ? Date.now() - start.startedAt : undefined;
+        if (event.result.status !== 'error' && stageName === 'web_research') {
+          latestResearchArtifacts =
+            extractWebResearchToolOutput(event.result.content) ?? latestResearchArtifacts;
+        }
         yield {
           stage: stageName,
           status:

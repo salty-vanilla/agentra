@@ -38,6 +38,13 @@ describe('observability collector', () => {
           agentName: 'Web Research Agent',
           handoffMode: 'standard',
           answer: 'Result',
+          usedSourceIds: ['source-1', 'source-2'],
+          metadataSummary: {
+            selectedModelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+            sourceCount: 2,
+            citationCount: 2,
+            resultCount: 2,
+          },
           metadata: {
             parentAgent: 'router-agent',
             childAgent: 'web-research-agent',
@@ -59,10 +66,15 @@ describe('observability collector', () => {
         agentKind: 'web_research',
         agentName: 'Web Research Agent',
         handoffMode: 'standard',
+        usedSourceCount: 2,
         parentAgent: 'router-agent',
         childAgent: 'web-research-agent',
         handoffTool: 'invoke_web_research_agent',
         threadId: 'thread-1',
+        selectedModelId: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+        sourceCount: 2,
+        citationCount: 2,
+        resultCount: 2,
       },
     });
   });

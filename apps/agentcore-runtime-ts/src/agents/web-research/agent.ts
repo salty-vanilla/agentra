@@ -13,9 +13,15 @@ const DEFAULT_MODEL_CONFIG: Required<WebResearchModelConfig> = {
   temperature: 0.3,
 };
 
+export function resolveWebResearchModelId(
+  config?: Pick<WebResearchModelConfig, 'modelId'>,
+): string {
+  return config?.modelId ?? DEFAULT_MODEL_CONFIG.modelId;
+}
+
 function createDefaultModel(config?: WebResearchModelConfig): BedrockModel {
   return new BedrockModel({
-    modelId: config?.modelId ?? DEFAULT_MODEL_CONFIG.modelId,
+    modelId: resolveWebResearchModelId(config),
     region: config?.region ?? DEFAULT_MODEL_CONFIG.region,
     maxTokens: config?.maxTokens ?? DEFAULT_MODEL_CONFIG.maxTokens,
     temperature: config?.temperature ?? DEFAULT_MODEL_CONFIG.temperature,

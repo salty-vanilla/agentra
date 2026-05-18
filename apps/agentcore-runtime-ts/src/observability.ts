@@ -149,12 +149,19 @@ function extractToolMetadata(content: unknown): Record<string, unknown> | undefi
     value.metadata && typeof value.metadata === 'object'
       ? (value.metadata as Record<string, unknown>)
       : undefined;
+  const metadataSummary =
+    value.metadataSummary && typeof value.metadataSummary === 'object'
+      ? (value.metadataSummary as Record<string, unknown>)
+      : undefined;
 
   const extracted = {
     ...(typeof value.status === 'string' ? { status: value.status } : {}),
     ...(typeof value.agentKind === 'string' ? { agentKind: value.agentKind } : {}),
     ...(typeof value.agentName === 'string' ? { agentName: value.agentName } : {}),
     ...(typeof value.handoffMode === 'string' ? { handoffMode: value.handoffMode } : {}),
+    ...(Array.isArray(value.usedSourceIds)
+      ? { usedSourceCount: value.usedSourceIds.length }
+      : {}),
     ...(metadata?.parentAgent ? { parentAgent: metadata.parentAgent } : {}),
     ...(metadata?.childAgent ? { childAgent: metadata.childAgent } : {}),
     ...(metadata?.handoffTool ? { handoffTool: metadata.handoffTool } : {}),
@@ -162,6 +169,18 @@ function extractToolMetadata(content: unknown): Record<string, unknown> | undefi
     ...(metadata?.sessionId ? { sessionId: metadata.sessionId } : {}),
     ...(metadata?.threadId ? { threadId: metadata.threadId } : {}),
     ...(metadata?.userId ? { userId: metadata.userId } : {}),
+    ...(typeof metadataSummary?.selectedModelId === 'string'
+      ? { selectedModelId: metadataSummary.selectedModelId }
+      : {}),
+    ...(typeof metadataSummary?.sourceCount === 'number'
+      ? { sourceCount: metadataSummary.sourceCount }
+      : {}),
+    ...(typeof metadataSummary?.citationCount === 'number'
+      ? { citationCount: metadataSummary.citationCount }
+      : {}),
+    ...(typeof metadataSummary?.resultCount === 'number'
+      ? { resultCount: metadataSummary.resultCount }
+      : {}),
   };
 
   return Object.keys(extracted).length > 0
