@@ -96,6 +96,7 @@ PATCH_LIKE_TEXT_INPUT_KEYS = {
 WORKFLOW_SENSITIVE_LINE_RE = re.compile(r"^\s*(permissions|on)\s*:")
 EPHEMERAL_STAGE_RE = re.compile(r"^(dev-[a-z0-9][a-z0-9-]*|test(?:-[a-z0-9][a-z0-9-]*)?)$")
 STAGE_TOKEN_RE = re.compile(r"^(dev(?:-[a-z0-9][a-z0-9-]*)?|test(?:-[a-z0-9][a-z0-9-]*)?)$")
+SECRET_FILE_RE = re.compile(r"(^|/)\.(env|env\.local|envrc\.local)$")
 
 
 def emit(payload: dict[str, Any]) -> int:
@@ -320,12 +321,48 @@ def relaxed_warning(message: str) -> str:
     return f"Agentra relaxed guardrail: {message}"
 
 
+def reads_secret_file(words: list[str]) -> bool:
+    for index, word in enumerate(words):
+        lowered = word.lower()
+        if lowered in {"cat", "less", "more", "head", "tail", "sed", "awk", "grep", "rg"}:
+            for candidate in words[index + 1 :]:
+                if candidate.startswith("-"):
+                    continue
+                stripped = candidate.strip("\"'")
+                if SECRET_FILE_RE.search(stripped):
+                    return True
+    return False
+
+
+def broad_env_dump(words: list[str]) -> bool:
+    if not words:
+        return False
+    command = words[0].lower()
+    if command in {"env", "printenv"} and len(words) == 1:
+        return True
+    if command == "set" and len(words) == 1:
+        return True
+    if command == "export" and len(words) == 1:
+        return True
+    return False
+
+
+def secret_value_retrieval(words: list[str]) -> bool:
+    lowered_words = [word.lower() for word in words]
+    if lowered_words[:3] == ["aws", "secretsmanager", "get-secret-value"]:
+        return True
+    if lowered_words[:3] == ["aws", "ssm", "get-parameter"] and "--with-decryption" in lowered_words:
+        return True
+    return False
+
+
 def dangerous_shell_reason(command: str, guardrail_mode: str) -> tuple[str | None, str | None]:
     warnings: list[str] = []
 
     for segment in split_shell_segments(command):
         compact = re.sub(r"\s+", " ", segment.strip())
         lowered = compact.lower()
+        words = shell_words(segment)
 
         if re.search(r"\b(curl|wget)\b.*\|\s*(sh|bash|zsh)\b", lowered):
             return "Blocked pipe-to-shell installer. Download and inspect scripts before running them.", None
@@ -341,6 +378,15 @@ def dangerous_shell_reason(command: str, guardrail_mode: str) -> tuple[str | Non
 
         if re.search(r"\brm\s+-[^\s]*r[^\s]*f[^\s]*(?:\s+(?:/|\*|\.|~|\$HOME)(?:\s|$))", lowered):
             return "Blocked broad rm -rf pattern. Use targeted cleanup only after approval.", None
+
+        if reads_secret_file(words):
+            return "Blocked raw secret-file read. Do not print local secret files to stdout.", None
+
+        if broad_env_dump(words):
+            return "Blocked broad environment dump. Do not print all environment variables to stdout.", None
+
+        if secret_value_retrieval(words):
+            return "Blocked secret-value retrieval command. Do not print secret material to stdout.", None
 
         if re.search(r"\bcdk\s+destroy\b", lowered) or re.search(r"\baws\s+cloudformation\s+delete-stack\b", lowered):
             return "Blocked destructive cloud command. Destroying stacks requires explicit user request.", None
@@ -598,6 +644,24 @@ def self_test() -> int:
         "pre-tool-use",
         {"hook_event_name": "PreToolUse", "tool_input": {"command": "cdk destroy --force"}},
         "Destroying stacks",
+        "relaxed",
+    )
+    assert_denies(
+        "pre-tool-use",
+        {"hook_event_name": "PreToolUse", "tool_input": {"command": "cat .env.local"}},
+        "secret-file read",
+        "relaxed",
+    )
+    assert_denies(
+        "pre-tool-use",
+        {"hook_event_name": "PreToolUse", "tool_input": {"command": "printenv"}},
+        "environment dump",
+        "relaxed",
+    )
+    assert_denies(
+        "pre-tool-use",
+        {"hook_event_name": "PreToolUse", "tool_input": {"command": "aws secretsmanager get-secret-value --secret-id prod/app"}},
+        "secret-value retrieval",
         "relaxed",
     )
     assert_denies(
