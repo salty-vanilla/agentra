@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import type { PresentationDiagnosticsResult } from '../diagnostics.js';
 import { buildSingleRevisionPrompt } from '../revision-prompts.js';
 import { runPresentationAuthor } from '../runner.js';
+import { isSandboxRuntimeAvailable } from '../test-utils.js';
 import type { PresentationAuthorDeps } from '../types.js';
 
 const INITIAL_SCRIPT = `
@@ -116,144 +117,162 @@ afterEach(async () => {
   cleanupDirs.length = 0;
 });
 
-describe('revision disabled preserves PA-3 behavior', () => {
-  it('revision undefined — no revision result', async () => {
-    const outputDir = join(tmpdir(), 'pa-rev-disabled');
-    cleanupDirs.push(outputDir);
+describe.skipIf(!isSandboxRuntimeAvailable())(
+  'revision disabled preserves PA-3 behavior',
+  () => {
+    it('revision undefined — no revision result', async () => {
+      const outputDir = join(tmpdir(), 'pa-rev-disabled');
+      cleanupDirs.push(outputDir);
 
-    const deps = makeDeps([INITIAL_SCRIPT]);
-    const result = await runPresentationAuthor({ prompt: 'test', outputDir }, deps);
+      const deps = makeDeps([INITIAL_SCRIPT]);
+      const result = await runPresentationAuthor({ prompt: 'test', outputDir }, deps);
 
-    expect(result.revision).toBeUndefined();
-    expect(deps.callCount()).toBe(1);
-    expect(result.execution.success).toBe(true);
-  }, 30_000);
-});
+      expect(result.revision).toBeUndefined();
+      expect(deps.callCount()).toBe(1);
+      expect(result.execution.success).toBe(true);
+    }, 30_000);
+  },
+);
 
-describe('revision skipped when diagnostics pass', () => {
-  it('returns attempted=false, reason diagnostics-pass', async () => {
-    const outputDir = join(tmpdir(), 'pa-rev-pass');
-    cleanupDirs.push(outputDir);
+describe.skipIf(!isSandboxRuntimeAvailable())(
+  'revision skipped when diagnostics pass',
+  () => {
+    it('returns attempted=false, reason diagnostics-pass', async () => {
+      const outputDir = join(tmpdir(), 'pa-rev-pass');
+      cleanupDirs.push(outputDir);
 
-    const deps = makeDeps([INITIAL_SCRIPT], [diagPass()]);
-    const result = await runPresentationAuthor(
-      { prompt: 'test', outputDir, revision: true },
-      deps,
-    );
+      const deps = makeDeps([INITIAL_SCRIPT], [diagPass()]);
+      const result = await runPresentationAuthor(
+        { prompt: 'test', outputDir, revision: true },
+        deps,
+      );
 
-    expect(result.revision).toBeDefined();
-    const revision = result.revision;
-    if (!revision) throw new Error('Expected revision result.');
-    expect(revision.attempted).toBe(false);
-    expect(revision.reason).toBe('diagnostics-pass');
-    expect(deps.callCount()).toBe(1);
-  }, 30_000);
-});
+      expect(result.revision).toBeDefined();
+      const revision = result.revision;
+      if (!revision) throw new Error('Expected revision result.');
+      expect(revision.attempted).toBe(false);
+      expect(revision.reason).toBe('diagnostics-pass');
+      expect(deps.callCount()).toBe(1);
+    }, 30_000);
+  },
+);
 
-describe('revision runs when diagnostics warn', () => {
-  it('revises and succeeds', async () => {
-    const outputDir = join(tmpdir(), 'pa-rev-warn');
-    cleanupDirs.push(outputDir);
+describe.skipIf(!isSandboxRuntimeAvailable())(
+  'revision runs when diagnostics warn',
+  () => {
+    it('revises and succeeds', async () => {
+      const outputDir = join(tmpdir(), 'pa-rev-warn');
+      cleanupDirs.push(outputDir);
 
-    const deps = makeDeps([INITIAL_SCRIPT, REVISED_SCRIPT], [diagWarn(), diagPass()]);
+      const deps = makeDeps([INITIAL_SCRIPT, REVISED_SCRIPT], [diagWarn(), diagPass()]);
 
-    const result = await runPresentationAuthor(
-      { prompt: 'test', outputDir, revision: true },
-      deps,
-    );
+      const result = await runPresentationAuthor(
+        { prompt: 'test', outputDir, revision: true },
+        deps,
+      );
 
-    expect(deps.callCount()).toBe(2);
-    expect(result.revision).toBeDefined();
-    const revision = result.revision;
-    if (!revision) throw new Error('Expected revision result.');
-    expect(revision.attempted).toBe(true);
-    expect(revision.succeeded).toBe(true);
-    expect(revision.reason).toBe('revision-succeeded');
-    expect(existsSync(result.pptxPath)).toBe(true);
+      expect(deps.callCount()).toBe(2);
+      expect(result.revision).toBeDefined();
+      const revision = result.revision;
+      if (!revision) throw new Error('Expected revision result.');
+      expect(revision.attempted).toBe(true);
+      expect(revision.succeeded).toBe(true);
+      expect(revision.reason).toBe('revision-succeeded');
+      expect(existsSync(result.pptxPath)).toBe(true);
 
-    // Root presentation.js should contain revised content
-    const rootCode = await readFile(result.sourceJsPath, 'utf-8');
-    expect(rootCode).toContain('Revised');
-  }, 30_000);
-});
+      // Root presentation.js should contain revised content
+      const rootCode = await readFile(result.sourceJsPath, 'utf-8');
+      expect(rootCode).toContain('Revised');
+    }, 30_000);
+  },
+);
 
-describe('revision validation failure keeps initial', () => {
-  it('returns succeeded=false, reason revision-validation-failed', async () => {
-    const outputDir = join(tmpdir(), 'pa-rev-valfail');
-    cleanupDirs.push(outputDir);
+describe.skipIf(!isSandboxRuntimeAvailable())(
+  'revision validation failure keeps initial',
+  () => {
+    it('returns succeeded=false, reason revision-validation-failed', async () => {
+      const outputDir = join(tmpdir(), 'pa-rev-valfail');
+      cleanupDirs.push(outputDir);
 
-    const deps = makeDeps([INITIAL_SCRIPT, BAD_SCRIPT_DANGEROUS], [diagWarn()]);
+      const deps = makeDeps([INITIAL_SCRIPT, BAD_SCRIPT_DANGEROUS], [diagWarn()]);
 
-    const result = await runPresentationAuthor(
-      { prompt: 'test', outputDir, revision: true },
-      deps,
-    );
+      const result = await runPresentationAuthor(
+        { prompt: 'test', outputDir, revision: true },
+        deps,
+      );
 
-    expect(result.revision).toBeDefined();
-    const revision = result.revision;
-    if (!revision) throw new Error('Expected revision result.');
-    expect(revision.attempted).toBe(true);
-    expect(revision.succeeded).toBe(false);
-    expect(revision.reason).toBe('revision-validation-failed');
+      expect(result.revision).toBeDefined();
+      const revision = result.revision;
+      if (!revision) throw new Error('Expected revision result.');
+      expect(revision.attempted).toBe(true);
+      expect(revision.succeeded).toBe(false);
+      expect(revision.reason).toBe('revision-validation-failed');
 
-    // Initial deck preserved
-    expect(existsSync(result.pptxPath)).toBe(true);
-    const rootCode = await readFile(result.sourceJsPath, 'utf-8');
-    expect(rootCode).toContain('Initial');
-  }, 30_000);
-});
+      // Initial deck preserved
+      expect(existsSync(result.pptxPath)).toBe(true);
+      const rootCode = await readFile(result.sourceJsPath, 'utf-8');
+      expect(rootCode).toContain('Initial');
+    }, 30_000);
+  },
+);
 
-describe('revision execution failure keeps initial', () => {
-  it('returns succeeded=false, reason revision-execution-failed', async () => {
-    const outputDir = join(tmpdir(), 'pa-rev-execfail');
-    cleanupDirs.push(outputDir);
+describe.skipIf(!isSandboxRuntimeAvailable())(
+  'revision execution failure keeps initial',
+  () => {
+    it('returns succeeded=false, reason revision-execution-failed', async () => {
+      const outputDir = join(tmpdir(), 'pa-rev-execfail');
+      cleanupDirs.push(outputDir);
 
-    const deps = makeDeps([INITIAL_SCRIPT, BAD_SCRIPT_RUNTIME], [diagWarn()]);
+      const deps = makeDeps([INITIAL_SCRIPT, BAD_SCRIPT_RUNTIME], [diagWarn()]);
 
-    const result = await runPresentationAuthor(
-      { prompt: 'test', outputDir, revision: true },
-      deps,
-    );
+      const result = await runPresentationAuthor(
+        { prompt: 'test', outputDir, revision: true },
+        deps,
+      );
 
-    expect(result.revision).toBeDefined();
-    const revision = result.revision;
-    if (!revision) throw new Error('Expected revision result.');
-    expect(revision.attempted).toBe(true);
-    expect(revision.succeeded).toBe(false);
-    expect(revision.reason).toBe('revision-execution-failed');
+      expect(result.revision).toBeDefined();
+      const revision = result.revision;
+      if (!revision) throw new Error('Expected revision result.');
+      expect(revision.attempted).toBe(true);
+      expect(revision.succeeded).toBe(false);
+      expect(revision.reason).toBe('revision-execution-failed');
 
-    // Initial deck preserved
-    expect(existsSync(result.pptxPath)).toBe(true);
-    const rootCode = await readFile(result.sourceJsPath, 'utf-8');
-    expect(rootCode).toContain('Initial');
-  }, 30_000);
-});
+      // Initial deck preserved
+      expect(existsSync(result.pptxPath)).toBe(true);
+      const rootCode = await readFile(result.sourceJsPath, 'utf-8');
+      expect(rootCode).toContain('Initial');
+    }, 30_000);
+  },
+);
 
-describe('revision output missing keeps initial', () => {
-  it('returns succeeded=false, reason revision-output-missing', async () => {
-    const outputDir = join(tmpdir(), 'pa-rev-nomissing');
-    cleanupDirs.push(outputDir);
+describe.skipIf(!isSandboxRuntimeAvailable())(
+  'revision output missing keeps initial',
+  () => {
+    it('returns succeeded=false, reason revision-output-missing', async () => {
+      const outputDir = join(tmpdir(), 'pa-rev-nomissing');
+      cleanupDirs.push(outputDir);
 
-    const deps = makeDeps([INITIAL_SCRIPT, NO_OUTPUT_SCRIPT], [diagWarn()]);
+      const deps = makeDeps([INITIAL_SCRIPT, NO_OUTPUT_SCRIPT], [diagWarn()]);
 
-    const result = await runPresentationAuthor(
-      { prompt: 'test', outputDir, revision: true },
-      deps,
-    );
+      const result = await runPresentationAuthor(
+        { prompt: 'test', outputDir, revision: true },
+        deps,
+      );
 
-    expect(result.revision).toBeDefined();
-    const revision = result.revision;
-    if (!revision) throw new Error('Expected revision result.');
-    expect(revision.attempted).toBe(true);
-    expect(revision.succeeded).toBe(false);
-    expect(revision.reason).toBe('revision-output-missing');
+      expect(result.revision).toBeDefined();
+      const revision = result.revision;
+      if (!revision) throw new Error('Expected revision result.');
+      expect(revision.attempted).toBe(true);
+      expect(revision.succeeded).toBe(false);
+      expect(revision.reason).toBe('revision-output-missing');
 
-    // Initial deck preserved
-    expect(existsSync(result.pptxPath)).toBe(true);
-    const rootCode = await readFile(result.sourceJsPath, 'utf-8');
-    expect(rootCode).toContain('Initial');
-  }, 30_000);
-});
+      // Initial deck preserved
+      expect(existsSync(result.pptxPath)).toBe(true);
+      const rootCode = await readFile(result.sourceJsPath, 'utf-8');
+      expect(rootCode).toContain('Initial');
+    }, 30_000);
+  },
+);
 
 describe('buildSingleRevisionPrompt', () => {
   it('contains required constraints', () => {

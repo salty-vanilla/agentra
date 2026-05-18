@@ -10,6 +10,7 @@ import {
   mapErrorToToolError,
 } from '../create-presentation-tool.js';
 import type { PresentationDiagnosticsResult } from '../diagnostics.js';
+import { isSandboxRuntimeAvailable } from '../test-utils.js';
 import type { LlmClient, PresentationAuthorDeps } from '../types.js';
 
 const FAKE_PPTX_SCRIPT = `
@@ -64,7 +65,7 @@ afterEach(async () => {
   cleanupDirs.length = 0;
 });
 
-describe('createPresentation', () => {
+describe.skipIf(!isSandboxRuntimeAvailable())('createPresentation', () => {
   it('returns successful tool output with pptx and artifacts', async () => {
     const outputDir = join(tmpdir(), 'pa-tool-success');
     cleanupDirs.push(outputDir);

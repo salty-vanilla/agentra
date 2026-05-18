@@ -10,6 +10,7 @@ import {
 } from '../authoring-script.js';
 import { checkContentTypesIntegrity } from '../pptx-repair.js';
 import { runPresentationAuthor } from '../runner.js';
+import { isSandboxRuntimeAvailable } from '../test-utils.js';
 import type { LlmClient, PresentationAuthorDeps } from '../types.js';
 import { createPresentationWorkspace } from '../workspace.js';
 
@@ -102,7 +103,7 @@ describe('workspace resources', () => {
   });
 });
 
-describe('runPresentationAuthor', () => {
+describe.skipIf(!isSandboxRuntimeAvailable())('runPresentationAuthor', () => {
   it('executes script with helpers and produces deck.pptx', async () => {
     const outputDir = join(tmpdir(), 'pa-test-runner');
     cleanupDirs.push(outputDir);
