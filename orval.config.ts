@@ -19,6 +19,17 @@ export default defineConfig({
           path: './apps/frontend/lib/api-error.ts',
           name: 'fetchMutator',
         },
+        operations: {
+          // /chat lives on the Streaming API, not the REST API base used by
+          // every other route. Route postChat through a dedicated mutator so
+          // the generated client targets the correct backend.
+          postChat: {
+            mutator: {
+              path: './apps/frontend/lib/api-error.ts',
+              name: 'chatFetchMutator',
+            },
+          },
+        },
         fetch: {
           includeHttpResponseReturnType: false,
         },

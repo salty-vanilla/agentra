@@ -2,7 +2,8 @@ pre-commit:
   parallel: true
   commands:
     biome:
-      run: pnpm biome check .
+      glob: "*.{js,ts,jsx,tsx,mjs,cjs,json,jsonc,css,md}"
+      run: pnpm biome check {staged_files}
 
 pre-push:
   parallel: true
