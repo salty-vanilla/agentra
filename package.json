@@ -8,7 +8,7 @@
   },
   "scripts": {
     "prepare": "if git rev-parse --git-dir > /dev/null 2>&1; then lefthook install; fi",
-    "prepare:workspace": "pnpm generate:api && pnpm build:shared",
+    "prepare:workspace": "pnpm generate:api && pnpm build:shared && pnpm --filter ./packages/presentation-author build && pnpm --filter ./packages/agent-tools build",
     "dev:frontend": "pnpm prepare:workspace && pnpm --filter @agentra/frontend dev",
     "dev:backend": "pnpm build:shared && pnpm --filter @agentra/backend dev",
     "generate:api": "node ./scripts/generate/run-generate-api.mjs",
