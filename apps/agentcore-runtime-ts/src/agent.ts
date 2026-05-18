@@ -1,10 +1,10 @@
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
-import { z } from 'zod';
 import { buildRouterPrompt, createRouterAgent } from './agents/router/index.js';
 import { buildLoggerOptions } from './logging.js';
 import { createRuntimeSessionManager } from './memory/session-manager-factory.js';
 import { ObservationCollector } from './observability.js';
+import { RequestSchema } from './request-schema.js';
 import { RuntimeLogger } from './runtime-logger.js';
 import type { SubAgentProgressEvent } from './tools/invoke-manufacturing-line-agent.tool.js';
 
@@ -32,7 +32,6 @@ export { createWebResearchAgent } from './agents/web-research/index.js';
 
 type ModelKey = 'opus' | 'sonnet' | 'haiku';
 type ResponsePreset = 'fast' | 'balanced' | 'deep';
-type ToneKey = 'business' | 'engineer';
 type LengthKey = 'short' | 'normal' | 'detailed';
 
 const MODEL_IDS: Record<ModelKey, string> = {
@@ -45,9 +44,6 @@ const MODEL_IDS: Record<ModelKey, string> = {
 
 const DEFAULT_REGION = process.env.AWS_REGION ?? 'us-east-1';
 const OBSERVABILITY_DEBUG_LOG = process.env.OBSERVABILITY_DEBUG_LOG === 'true';
-const DEFAULT_PRESET: ResponsePreset = 'balanced';
-const DEFAULT_TONE: ToneKey = 'business';
-const DEFAULT_LENGTH: LengthKey = 'normal';
 
 type GenerationConfig = {
   model: ModelKey;
@@ -80,18 +76,6 @@ const LENGTH_CONFIG: Record<LengthKey, { maxTokens: number }> = {
   normal: { maxTokens: 4096 },
   detailed: { maxTokens: 8192 },
 };
-
-const RequestSchema = z.object({
-  prompt: z.string().trim().min(1).default('Hello! How can I help you today?'),
-  model: z.enum(['opus', 'sonnet', 'haiku']).optional(),
-  preset: z.enum(['fast', 'balanced', 'deep']).default(DEFAULT_PRESET),
-  tone: z.enum(['business', 'engineer']).default(DEFAULT_TONE),
-  length: z.enum(['short', 'normal', 'detailed']).default(DEFAULT_LENGTH),
-  commandDirective: z.string().optional(),
-  traceId: z.string().trim().min(1).optional(),
-  userId: z.string().trim().min(1).optional(),
-  threadId: z.string().trim().min(1).optional(),
-});
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -157,8 +141,13 @@ const app = new BedrockAgentCoreApp({
       );
       const modelId = resolveConfig(effectivePreset, request.length).modelId;
       const logger = new RuntimeLogger(traceId, threadId, modelId, context.log);
-      if (context.requestId) {
-        logger.setRequestId(context.requestId);
+      // Prefer the API-generated requestId from the payload — it matches the
+      // value the client sees in the response and in DynamoDB. Fall back to
+      // the BedrockAgentCore-supplied context.requestId when the caller did
+      // not provide one.
+      const effectiveRequestId = request.requestId ?? context.requestId;
+      if (effectiveRequestId) {
+        logger.setRequestId(effectiveRequestId);
       }
       const toolStartTimes = new Map<string, { name: string; startedAt: number }>();
       let currentStreamingToolUseId: string | undefined;
