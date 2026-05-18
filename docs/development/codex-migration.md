@@ -38,8 +38,8 @@ compatibility with Claude Code concepts.
   log interpretation.
 - `.codex/config.toml` keeps repo-local Codex feature flags and shared MCP
   server definitions.
-- `.codex/hooks.json` declares Codex hooks for guardrails and the existing Stop
-  quality gate.
+- `.codex/hooks.json` declares Codex hooks for guardrails and the configurable
+  Stop quality gate.
 - `scripts/agent/codex_guardrails.py` implements dependency-light guardrails
   that can also be exercised outside Codex.
 - `docs/development/codex-config.md` documents Codex config, MCP, and local
@@ -91,7 +91,7 @@ Existing references remain important:
 | `.claude/scripts/hooks/*` | migrate to shared script | Guardrail intent ported into `scripts/agent/codex_guardrails.py`. |
 | `.mcp.json` | migrate to Codex config | Reusable MCP definitions ported without literal secrets. |
 | `.codex/config.toml` | Phase 3/4 | Keeps feature flags and MCP; inline hooks moved to `.codex/hooks.json`. |
-| `.codex/hooks/stop_quality_gate.py` | Phase 4 | Existing Stop quality gate preserved and invoked from `.codex/hooks.json`. |
+| `.codex/hooks/stop_quality_gate.py` | Phase 4 | Stop quality gate preserved, then relaxed-by-default in Issue #230 while staying configurable from `.codex/hooks.json`. |
 | `docs/dev/live-agentcore-smoke.md` | migrate to Codex prompt | Source for `smoke-runtime.md`. |
 | `justfile` AgentCore recipes | migrate to prompt/docs | Referenced for smoke/log workflows. |
 | package scripts / CI workflows | migrate to `AGENTS.md` validation | Used as validation source of truth. |
@@ -120,6 +120,7 @@ For config, guardrail, or skill changes, run:
 
 ```bash
 python3 scripts/agent/codex_guardrails.py --self-test
+python3 .codex/hooks/stop_quality_gate.py --self-test
 pnpm biome check .
 pnpm typecheck
 pnpm test
