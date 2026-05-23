@@ -358,7 +358,7 @@ export function AgentraWorkspace() {
         setSlideCommandActive(false);
 
         if (isMockApiMode) {
-          // Simulate sub_agent_progress events while waiting for mock response
+          // Simulate sub_agent_progress events sequentially with realistic delays
           handleSubAgentProgressEvent({
             type: 'sub_agent_progress',
             stage: 'router',
@@ -380,6 +380,7 @@ export function AgentraWorkspace() {
             },
           );
 
+          await mockSleep(350);
           handleSubAgentProgressEvent({
             type: 'sub_agent_progress',
             stage: 'router',
@@ -389,16 +390,25 @@ export function AgentraWorkspace() {
           });
 
           if (response.observabilitySummary) {
-            for (const tool of response.observabilitySummary.toolCalls) {
-              if (tool.toolName !== 'router') {
-                handleSubAgentProgressEvent({
-                  type: 'sub_agent_progress',
-                  stage: tool.toolName,
-                  status: tool.status === 'success' ? 'complete' : 'error',
-                  durationMs: tool.durationMs,
-                  timestamp: new Date().toISOString(),
-                });
-              }
+            const nonRouterTools = response.observabilitySummary.toolCalls.filter(
+              (tc) => tc.toolName !== 'router',
+            );
+            for (const tool of nonRouterTools) {
+              await mockSleep(200);
+              handleSubAgentProgressEvent({
+                type: 'sub_agent_progress',
+                stage: tool.toolName,
+                status: 'running',
+                timestamp: new Date().toISOString(),
+              });
+              await mockSleep(600);
+              handleSubAgentProgressEvent({
+                type: 'sub_agent_progress',
+                stage: tool.toolName,
+                status: tool.status === 'success' ? 'complete' : 'error',
+                durationMs: tool.durationMs,
+                timestamp: new Date().toISOString(),
+              });
             }
             setLiveObservabilitySummary(response.observabilitySummary);
           }
@@ -762,6 +772,10 @@ export function AgentraWorkspace() {
       </SidebarProvider>
     </AssistantRuntimeProviderCore>
   );
+}
+
+function mockSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
