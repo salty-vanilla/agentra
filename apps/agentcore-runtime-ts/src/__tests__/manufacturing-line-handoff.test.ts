@@ -170,29 +170,14 @@ describe('streamInvokeManufacturingLineAgentTool', () => {
     return result;
   }
 
-  it('yields running then complete progress events for each sub-agent tool call', async () => {
-    const toolUseId = 'tool-1';
+  it('yields running then complete for the manufacturing_line stage', async () => {
     const agentResult = makeAgentResult({
       status: 'success' as const,
       answer: 'KB result',
       citations: [],
     });
 
-    const streamEvents = [
-      {
-        type: 'modelStreamUpdateEvent',
-        event: {
-          type: 'modelContentBlockStartEvent',
-          start: { type: 'toolUseStart', toolUseId, name: 'kb_retrieve' },
-        },
-      },
-      {
-        type: 'toolResultEvent',
-        result: { toolUseId, status: 'success', content: [] },
-      },
-    ];
-
-    const stream = makeAgentStream(streamEvents, agentResult);
+    const stream = makeAgentStream([], agentResult);
     const progress: unknown[] = [];
 
     const gen = streamInvokeManufacturingLineAgentTool(
@@ -215,27 +200,19 @@ describe('streamInvokeManufacturingLineAgentTool', () => {
     }
 
     expect(progress).toEqual([
-      { stage: 'kb_retrieve', status: 'running' },
-      { stage: 'kb_retrieve', status: 'complete', durationMs: expect.any(Number) },
+      { stage: 'manufacturing_line', status: 'running' },
+      { stage: 'manufacturing_line', status: 'complete', durationMs: expect.any(Number) },
     ]);
   });
 
-  it('yields error status when sub-agent tool returns error', async () => {
-    const toolUseId = 'tool-err';
-    const agentResult = makeAgentResult({ status: 'success', answer: 'done' });
-
-    const streamEvents = [
-      {
-        type: 'contentBlockEvent',
-        contentBlock: { type: 'toolUseBlock', toolUseId, name: 'structured_rag_flow' },
+  it('yields error for the manufacturing_line stage when the agent stream throws', async () => {
+    const failingStream = {
+      next: () => Promise.reject(new Error('stream error')),
+      [Symbol.asyncIterator]() {
+        return this;
       },
-      {
-        type: 'toolResultEvent',
-        result: { toolUseId, status: 'error', content: [] },
-      },
-    ];
+    };
 
-    const stream = makeAgentStream(streamEvents, agentResult);
     const progress: unknown[] = [];
 
     const gen = streamInvokeManufacturingLineAgentTool(
@@ -243,19 +220,22 @@ describe('streamInvokeManufacturingLineAgentTool', () => {
       {
         agentFactory: () => ({
           invoke: vi.fn(),
-          stream: vi.fn().mockReturnValue(stream),
+          stream: vi.fn().mockReturnValue(failingStream),
         }),
       },
     );
 
     while (true) {
       const { value, done } = await gen.next();
-      if (done) break;
+      if (done) {
+        expect(value.status).toBe('error');
+        break;
+      }
       progress.push(value);
     }
 
     expect(progress).toContainEqual(
-      expect.objectContaining({ stage: 'structured_rag_flow', status: 'error' }),
+      expect.objectContaining({ stage: 'manufacturing_line', status: 'error' }),
     );
   });
 
@@ -277,9 +257,21 @@ describe('streamInvokeManufacturingLineAgentTool', () => {
       },
     );
 
-    const { value, done } = await gen.next();
-    expect(done).toBe(true);
-    expect(value.status).toBe('error');
-    expect(JSON.parse(value.content[0].text).answer).toContain('sub-agent failure');
+    const progress: unknown[] = [];
+    let finalValue: { status: string; content: [{ text: string }] } | undefined;
+
+    while (true) {
+      const { value, done } = await gen.next();
+      if (done) {
+        finalValue = value;
+        break;
+      }
+      progress.push(value);
+    }
+
+    expect(finalValue?.status).toBe('error');
+    expect(JSON.parse(finalValue?.content[0].text ?? '{}').answer).toContain(
+      'sub-agent failure',
+    );
   });
 });

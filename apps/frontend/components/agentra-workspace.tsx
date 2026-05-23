@@ -380,7 +380,11 @@ export function AgentraWorkspace() {
             },
           );
 
-          await mockSleep(350);
+          await mockSleep(350, abortSignal);
+          if (abortSignal?.aborted) {
+            setSubAgentProgressEvents([]);
+            return;
+          }
           handleSubAgentProgressEvent({
             type: 'sub_agent_progress',
             stage: 'router',
@@ -394,14 +398,22 @@ export function AgentraWorkspace() {
               (tc) => tc.toolName !== 'router',
             );
             for (const tool of nonRouterTools) {
-              await mockSleep(200);
+              await mockSleep(200, abortSignal);
+              if (abortSignal?.aborted) {
+                setSubAgentProgressEvents([]);
+                return;
+              }
               handleSubAgentProgressEvent({
                 type: 'sub_agent_progress',
                 stage: tool.toolName,
                 status: 'running',
                 timestamp: new Date().toISOString(),
               });
-              await mockSleep(600);
+              await mockSleep(600, abortSignal);
+              if (abortSignal?.aborted) {
+                setSubAgentProgressEvents([]);
+                return;
+              }
               handleSubAgentProgressEvent({
                 type: 'sub_agent_progress',
                 stage: tool.toolName,
@@ -478,6 +490,7 @@ export function AgentraWorkspace() {
           }
         } catch (error: unknown) {
           stopProgressSimulation(true);
+          setSubAgentProgressEvents([]);
           const threadIdForInvalidation = selectedThreadId ?? streamThreadId;
           if (threadIdForInvalidation) {
             await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
@@ -776,8 +789,22 @@ export function AgentraWorkspace() {
   );
 }
 
-function mockSleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function mockSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+    const id = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(id);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 }
 
 function getErrorMessage(error: unknown, fallback: string) {
