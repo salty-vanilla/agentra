@@ -435,6 +435,7 @@ export function AgentraWorkspace() {
           } else {
             yield { content: [{ type: 'text', text: response.reply }] };
           }
+          setSubAgentProgressEvents([]);
           return;
         }
 
@@ -517,6 +518,7 @@ export function AgentraWorkspace() {
             ],
           };
         }
+        setSubAgentProgressEvents([]);
       },
     }),
     [
