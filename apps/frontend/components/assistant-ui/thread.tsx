@@ -31,7 +31,7 @@ import {
   WrenchIcon,
   XCircleIcon,
 } from 'lucide-react';
-import type { FC } from 'react';
+import { type FC, useState } from 'react';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -361,7 +361,6 @@ const AssistantMessage: FC = () => {
       >
         <BranchPicker />
         <AssistantActionBar />
-        <AssistantObservabilityButton />
       </div>
     </MessagePrimitive.Root>
   );
@@ -436,7 +435,8 @@ const AssistantObservabilityDetails: FC = () => {
   );
 };
 
-const AssistantObservabilityButton: FC = () => {
+const AssistantActionBar: FC = () => {
+  const [observabilityOpen, setObservabilityOpen] = useState(false);
   const hasSummary = useAuiState((s) => {
     const custom = s.message.metadata.custom as
       | { observabilitySummary?: ChatObservationSummary }
@@ -445,31 +445,10 @@ const AssistantObservabilityButton: FC = () => {
     return s.message.content.some((p) => p.type === 'data' && p.name === 'observability');
   });
 
-  if (!hasSummary) return null;
-
-  return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <TooltipIconButton tooltip="Observability" className="text-muted-foreground">
-          <FingerprintIcon />
-        </TooltipIconButton>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
-        side="bottom"
-        align="start"
-        className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
-      >
-        <AssistantObservabilityDetails />
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-};
-
-const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
-      autohide="not-last"
+      autohide={observabilityOpen ? 'never' : 'not-last'}
       className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground"
     >
       <ActionBarPrimitive.Copy render={<TooltipIconButton tooltip="Copy" />}>
@@ -483,6 +462,22 @@ const AssistantActionBar: FC = () => {
       <ActionBarPrimitive.Reload render={<TooltipIconButton tooltip="Refresh" />}>
         <RefreshCwIcon />
       </ActionBarPrimitive.Reload>
+      {hasSummary && (
+        <DropdownMenu onOpenChange={setObservabilityOpen}>
+          <DropdownMenuTrigger asChild>
+            <TooltipIconButton tooltip="Observability">
+              <FingerprintIcon />
+            </TooltipIconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="bottom"
+            align="start"
+            className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
+          >
+            <AssistantObservabilityDetails />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger
           className="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent data-[state=open]:bg-accent"
