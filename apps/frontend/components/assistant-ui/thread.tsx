@@ -445,10 +445,7 @@ const AssistantActionBar: FC = () => {
   });
 
   return (
-    <ActionBarPrimitive.Root
-      hideWhenRunning
-      className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground"
-    >
+    <ActionBarPrimitive.Root className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground">
       <ActionBarPrimitive.Copy render={<TooltipIconButton tooltip="Copy" />}>
         <AuiIf condition={(s) => s.message.isCopied}>
           <CheckIcon />
