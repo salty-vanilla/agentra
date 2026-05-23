@@ -32,6 +32,7 @@ export class AgentraDataAuthStack extends Stack {
   readonly usersTable: Table;
   readonly threadsTable: Table;
   readonly messagesTable: Table;
+  readonly observabilityTable: Table;
   readonly cognitoDomain: string;
 
   constructor(scope: Construct, id: string, props?: AgentraDataAuthStackProps) {
@@ -98,6 +99,37 @@ export class AgentraDataAuthStack extends Stack {
       removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
     });
 
+    this.observabilityTable = new Table(this, 'ObservabilityTable', {
+      partitionKey: { name: 'pk', type: AttributeType.STRING },
+      sortKey: { name: 'sk', type: AttributeType.STRING },
+      billingMode: BillingMode.PAY_PER_REQUEST,
+      removalPolicy: isDev ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
+    });
+
+    // GSI1: look up a single record by traceId
+    this.observabilityTable.addGlobalSecondaryIndex({
+      indexName: 'gsi1-index',
+      partitionKey: { name: 'gsi1pk', type: AttributeType.STRING },
+      sortKey: { name: 'gsi1sk', type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI2: list records by calendar day for cross-user aggregation
+    this.observabilityTable.addGlobalSecondaryIndex({
+      indexName: 'gsi2-index',
+      partitionKey: { name: 'gsi2pk', type: AttributeType.STRING },
+      sortKey: { name: 'gsi2sk', type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
+    // GSI3: list records by threadId
+    this.observabilityTable.addGlobalSecondaryIndex({
+      indexName: 'gsi3-index',
+      partitionKey: { name: 'gsi3pk', type: AttributeType.STRING },
+      sortKey: { name: 'gsi3sk', type: AttributeType.STRING },
+      projectionType: ProjectionType.ALL,
+    });
+
     this.cognitoDomain = `${cognitoDomainPrefix}.auth.${Stack.of(this).region}.amazoncognito.com`;
 
     new CfnOutput(this, 'UserPoolId', { value: this.userPool.userPoolId });
@@ -108,5 +140,8 @@ export class AgentraDataAuthStack extends Stack {
     new CfnOutput(this, 'UsersTableName', { value: this.usersTable.tableName });
     new CfnOutput(this, 'ThreadsTableName', { value: this.threadsTable.tableName });
     new CfnOutput(this, 'MessagesTableName', { value: this.messagesTable.tableName });
+    new CfnOutput(this, 'ObservabilityTableName', {
+      value: this.observabilityTable.tableName,
+    });
   }
 }

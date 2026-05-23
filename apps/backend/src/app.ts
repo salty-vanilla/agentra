@@ -6,6 +6,7 @@ import {
   GetThreadResponse,
   ListThreadMessagesResponse,
   ListThreadsResponse,
+  normalizeObservabilityRecord,
   type ThreadSummary,
   UpdateThreadBody,
 } from '@agentra/shared';
@@ -30,6 +31,7 @@ import {
   listThreads,
   updateThreadTitle,
 } from './store/index.js';
+import { putObservabilityRecord } from './store/observability-store.js';
 
 type HonoEnv = {
   Variables: {
@@ -106,6 +108,27 @@ function logObservabilityDebug(
   };
 
   console.info('[observability-debug]', JSON.stringify(payload));
+}
+
+async function persistObservabilityRecord(input: {
+  summary: ChatObservationSummary;
+  requestId: string;
+  threadId: string;
+  userId: string;
+  model: string;
+  modelKey: ModelKey;
+  assistantMessageId?: string;
+}): Promise<void> {
+  const record = normalizeObservabilityRecord({
+    summary: input.summary,
+    requestId: input.requestId,
+    threadId: input.threadId,
+    userId: input.userId,
+    model: input.model,
+    modelKey: input.modelKey,
+    ...(input.assistantMessageId ? { assistantMessageId: input.assistantMessageId } : {}),
+  });
+  await putObservabilityRecord(record);
 }
 
 const app = new Hono<HonoEnv>();
@@ -400,8 +423,23 @@ app.post('/chat', async (context) => {
           errorMessage: sanitizeErrorMessage(errorMessage),
           ...(sanitized ? { errorStack: sanitized } : {}),
         };
-        await appendMessage(errorRecord).catch((dbErr) => {
+        const errorMsg = await appendMessage(errorRecord).catch((dbErr) => {
           console.error('Failed to persist error record', {
+            traceId,
+            requestId,
+            dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
+          });
+        });
+        await persistObservabilityRecord({
+          summary: fallbackSummary,
+          requestId,
+          threadId: thread.threadId,
+          userId,
+          model: getModelId(modelKey),
+          modelKey,
+          ...(errorMsg?.messageId ? { assistantMessageId: errorMsg.messageId } : {}),
+        }).catch((dbErr) => {
+          console.error('Failed to persist error observability record', {
             traceId,
             requestId,
             dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
@@ -442,7 +480,7 @@ app.post('/chat', async (context) => {
         });
 
         // Persist cancellation record to database
-        await appendMessage({
+        const cancelMsg = await appendMessage({
           threadId: thread.threadId,
           role: 'assistant',
           content: '',
@@ -451,6 +489,21 @@ app.post('/chat', async (context) => {
           cancelledAt,
         }).catch((dbErr) => {
           console.error('Failed to persist cancellation record', {
+            traceId,
+            requestId,
+            dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
+          });
+        });
+        await persistObservabilityRecord({
+          summary: cancellationSummary,
+          requestId,
+          threadId: thread.threadId,
+          userId,
+          model: getModelId(modelKey),
+          modelKey,
+          ...(cancelMsg?.messageId ? { assistantMessageId: cancelMsg.messageId } : {}),
+        }).catch((dbErr) => {
+          console.error('Failed to persist cancellation observability record', {
             traceId,
             requestId,
             dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
@@ -473,12 +526,27 @@ app.post('/chat', async (context) => {
         });
       logObservabilityDebug('done', finalSummary, { threadId: thread.threadId });
 
-      await appendMessage({
+      const successMsg = await appendMessage({
         threadId: thread.threadId,
         role: 'assistant',
         content: fullReply,
         observabilitySummary: finalSummary,
         requestId,
+      });
+      await persistObservabilityRecord({
+        summary: finalSummary,
+        requestId,
+        threadId: thread.threadId,
+        userId,
+        model: getModelId(modelKey),
+        modelKey,
+        assistantMessageId: successMsg.messageId,
+      }).catch((dbErr) => {
+        console.error('Failed to persist success observability record', {
+          traceId,
+          requestId,
+          dbErr: dbErr instanceof Error ? dbErr.message : String(dbErr),
+        });
       });
 
       await stream.writeEvent({
