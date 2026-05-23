@@ -10,6 +10,7 @@ import {
   updateThread as updateThreadRequest,
 } from '@/lib/generated/agentra';
 import type {
+  ChatObservationSummary,
   ChatRequest,
   ChatStreamDoneEvent,
   ChatStreamErrorEvent,
@@ -47,6 +48,7 @@ export type MockChatResponse = {
   reply: string;
   model: string;
   createdAt: string;
+  observabilitySummary?: ChatObservationSummary;
 };
 
 async function getAuthHeaders(): Promise<HeadersInit> {

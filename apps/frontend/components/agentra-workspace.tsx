@@ -358,7 +358,14 @@ export function AgentraWorkspace() {
         setSlideCommandActive(false);
 
         if (isMockApiMode) {
-          // Mock mode: non-streaming, existing sendChat path
+          // Simulate sub_agent_progress events while waiting for mock response
+          handleSubAgentProgressEvent({
+            type: 'sub_agent_progress',
+            stage: 'router',
+            status: 'running',
+            timestamp: new Date().toISOString(),
+          });
+
           const response = await sendChat(finalRequest, { signal: abortSignal }).catch(
             (error: unknown) => {
               stopProgressSimulation(true);
@@ -372,11 +379,52 @@ export function AgentraWorkspace() {
               throw error;
             },
           );
+
+          handleSubAgentProgressEvent({
+            type: 'sub_agent_progress',
+            stage: 'router',
+            status: 'complete',
+            durationMs: 110,
+            timestamp: new Date().toISOString(),
+          });
+
+          if (response.observabilitySummary) {
+            for (const tool of response.observabilitySummary.toolCalls) {
+              if (tool.toolName !== 'router') {
+                handleSubAgentProgressEvent({
+                  type: 'sub_agent_progress',
+                  stage: tool.toolName,
+                  status: tool.status === 'success' ? 'complete' : 'error',
+                  durationMs: tool.durationMs,
+                  timestamp: new Date().toISOString(),
+                });
+              }
+            }
+            setLiveObservabilitySummary(response.observabilitySummary);
+          }
+
           await setSelectedThreadId(response.threadId);
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
           await queryClient.fetchQuery(threadMessagesQueryOptions(response.threadId));
           stopProgressSimulation();
-          yield { content: [{ type: 'text', text: response.reply }] };
+
+          if (response.observabilitySummary) {
+            yield {
+              content: [
+                { type: 'text', text: response.reply },
+                {
+                  type: 'data',
+                  name: 'observability',
+                  data: response.observabilitySummary,
+                },
+              ],
+              metadata: {
+                custom: { observabilitySummary: response.observabilitySummary },
+              },
+            };
+          } else {
+            yield { content: [{ type: 'text', text: response.reply }] };
+          }
           return;
         }
 
