@@ -51,7 +51,7 @@ describe('AgentraDataAuthStack', () => {
     expectRemovalPolicy(userPools[0], 'Delete');
 
     const tables = getResources(template, 'AWS::DynamoDB::Table');
-    expect(tables).toHaveLength(3);
+    expect(tables).toHaveLength(4);
     for (const table of tables) {
       expectRemovalPolicy(table, 'Delete');
     }
