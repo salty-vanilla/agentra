@@ -14,11 +14,17 @@ import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
+import {
+  deriveEnvironmentKind,
+  type EnvironmentKind,
+  isDestroyable,
+} from './environment.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   stage: string;
+  environmentKind?: EnvironmentKind;
   slideRuntimeArn?: string;
   slideRuntimeQualifier?: string;
   thirdPartyApiKeysSecretArn?: string;
@@ -36,6 +42,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
 
   constructor(scope: Construct, id: string, props: AgentraAgentCoreRuntimeStackProps) {
     super(scope, id, props);
+    const environmentKind = props.environmentKind ?? deriveEnvironmentKind(props.stage);
     const normalizedStage = props.stage.replace(/[^a-zA-Z0-9_]/g, '_');
     const runtimeNameSuffix =
       normalizedStage.length > 0
@@ -171,10 +178,13 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
         encryption: BucketEncryption.S3_MANAGED,
         enforceSSL: true,
-        removalPolicy:
-          props.stage === 'dev' ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
-        autoDeleteObjects: props.stage === 'dev',
-        lifecycleRules: props.stage === 'dev' ? [{ expiration: Duration.days(30) }] : [],
+        removalPolicy: isDestroyable(environmentKind)
+          ? RemovalPolicy.DESTROY
+          : RemovalPolicy.RETAIN,
+        autoDeleteObjects: isDestroyable(environmentKind),
+        lifecycleRules: isDestroyable(environmentKind)
+          ? [{ expiration: Duration.days(30) }]
+          : [],
       });
 
       // Grant least-privilege S3 access scoped to session prefix

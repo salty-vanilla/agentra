@@ -28,6 +28,27 @@ dev-frontend:
 dev-backend:
     pnpm dev:backend
 
+# ── Stage slug generation ─────────────────────────────────────────────────────
+
+# Generate a safe CDK stage slug from the current git branch
+stage-from-branch:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bash scripts/agent/stage-slug.sh
+
+# Generate a stage slug from an explicit branch string or --issue N
+# Examples:
+#   just stage-slug "fix/#252-env-kind"
+#   just stage-slug --issue 252
+stage-slug branch="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -z "{{branch}}" ]]; then
+        bash scripts/agent/stage-slug.sh
+    else
+        bash scripts/agent/stage-slug.sh "{{branch}}"
+    fi
+
 # ── Identity ──────────────────────────────────────────────────────────────────
 
 # Confirm the active AWS identity for the given profile

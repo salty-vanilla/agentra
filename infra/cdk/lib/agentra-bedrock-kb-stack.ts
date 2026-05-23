@@ -20,6 +20,11 @@ import { Queue, QueueEncryption } from 'aws-cdk-lib/aws-sqs';
 import type { Construct } from 'constructs';
 import { AossVectorStore } from './constructs/aoss-vector-store.js';
 import { S3VectorsStore } from './constructs/s3-vectors-store.js';
+import {
+  deriveEnvironmentKind,
+  type EnvironmentKind,
+  isDestroyable,
+} from './environment.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -30,6 +35,7 @@ export type VectorStoreType = 'opensearch-serverless' | 's3-vectors';
 
 export interface AgentraBedrockKbStackProps extends StackProps {
   stage: string;
+  environmentKind?: EnvironmentKind;
   /**
    * Which vector store backend to use for this Knowledge Base.
    *
@@ -51,7 +57,8 @@ export class AgentraBedrockKbStack extends Stack {
 
     const { stage } = props;
     const vectorStoreType = props.vectorStoreType ?? 's3-vectors';
-    const isDevStage = stage === 'dev';
+    const environmentKind = props.environmentKind ?? deriveEnvironmentKind(stage);
+    const isDevStage = isDestroyable(environmentKind);
 
     // --- S3 document source bucket ---
     // PoC lifecycle: transition non-current versions to cheaper storage after 30 days;

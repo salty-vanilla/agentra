@@ -7,6 +7,7 @@
 # Functions:
 #   validate_stage <stage>            Pattern + length check.
 #   assert_ephemeral_stage <stage>    validate_stage + reject stable/prod names.
+#   derive_environment_kind <stage>   Echo environmentKind for a stage.
 #   resolve_stack_group <group> <stage>
 #                                     Echo stack IDs (space-separated).
 #   list_stack_groups                 Echo the known group names.
@@ -56,10 +57,31 @@ assert_ephemeral_stage() {
         if [[ "$stage" == "$protected" ]]; then
             echo "ERROR: '$stage' is a stable/protected stage and cannot be used here." >&2
             echo "       This command only operates on ephemeral stages." >&2
-            echo "       Use a per-worktree stage like 'dev-issue-<N>' or 'dev-<agent>-<topic>'." >&2
+            echo "       Use a per-worktree stage like 'i<N>-<slug>' or '<feature>-<hash>'." >&2
             return 1
         fi
     done
+}
+
+# Derive environmentKind from stage name.
+# Mirrors the logic in infra/cdk/lib/environment.ts::deriveEnvironmentKind.
+#   prod/production/main/master/staging/release -> prod
+#   dev                                         -> shared-dev
+#   everything else                             -> ephemeral
+derive_environment_kind() {
+    local stage="${1:-}"
+    local protected
+    for protected in "${AGENTRA_PROTECTED_STAGES[@]}"; do
+        if [[ "$stage" == "$protected" ]]; then
+            echo "prod"
+            return 0
+        fi
+    done
+    if [[ "$stage" == "dev" ]]; then
+        echo "shared-dev"
+        return 0
+    fi
+    echo "ephemeral"
 }
 
 # ── stack groups ─────────────────────────────────────────────────────────────
@@ -226,17 +248,20 @@ build_cdk_flags() {
         fi
     done
 
+    local env_kind
+    env_kind="$(derive_environment_kind "$stage")"
+
     CDK_CONTEXT+=(-c "stage=$stage")
+    CDK_CONTEXT+=(-c "environmentKind=${env_kind}")
     CDK_CONTEXT+=(-c "thirdPartyApiKeysSecretArn=${THIRD_PARTY_API_KEY_SECRET_ARN}")
     if [[ -n "${AMPLIFY_URL:-}" ]]; then
         CDK_CONTEXT+=(-c "callbackUrls=${AMPLIFY_URL},${AMPLIFY_URL}/")
         CDK_CONTEXT+=(-c "logoutUrls=${AMPLIFY_URL},${AMPLIFY_URL}/")
         CDK_CONTEXT+=(-c "corsOrigins=${AMPLIFY_URL}")
-    elif [[ "$stage" != "dev" ]]; then
-        # bin/agentra-cdk.ts only auto-applies localhost defaults for stage=dev.
-        # For ephemeral stages we inject the same defaults so the developer's
-        # local frontend can talk to the deployed Cognito + APIs, and so
-        # `cdk destroy` synthesizes without throwing "Missing URLs".
+    elif [[ "$env_kind" != "shared-dev" && "$env_kind" != "local" ]]; then
+        # shared-dev and local kinds use localhost defaults auto-applied by the CDK app.
+        # For ephemeral/prod stages without AMPLIFY_URL, inject localhost defaults so
+        # synth succeeds for local development and cdk destroy works without a URL.
         local local_urls="http://localhost:3000/,http://127.0.0.1:3000/"
         local local_origins="http://localhost:3000,http://127.0.0.1:3000"
         CDK_CONTEXT+=(-c "callbackUrls=${local_urls}")

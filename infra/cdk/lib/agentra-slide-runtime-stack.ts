@@ -14,11 +14,17 @@ import { Effect, PolicyStatement, Role, ServicePrincipal } from 'aws-cdk-lib/aws
 import { BlockPublicAccess, Bucket, BucketEncryption } from 'aws-cdk-lib/aws-s3';
 import { type ISecret, Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import type { Construct } from 'constructs';
+import {
+  deriveEnvironmentKind,
+  type EnvironmentKind,
+  isDestroyable,
+} from './environment.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 export interface AgentraSlideRuntimeStackProps extends StackProps {
   stage: string;
+  environmentKind?: EnvironmentKind;
   thirdPartyApiKeysSecretArn?: string;
 }
 
@@ -34,7 +40,8 @@ export class AgentraSlideRuntimeStack extends Stack {
   constructor(scope: Construct, id: string, props: AgentraSlideRuntimeStackProps) {
     super(scope, id, props);
 
-    const isDev = props.stage === 'dev';
+    const environmentKind = props.environmentKind ?? deriveEnvironmentKind(props.stage);
+    const isDev = isDestroyable(environmentKind);
     const normalizedStage = props.stage.replace(/[^a-zA-Z0-9_]/g, '_');
     const runtimeNameSuffix =
       normalizedStage.length > 0
