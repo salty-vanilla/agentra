@@ -12,7 +12,7 @@ name: Live AWS smoke
 #   - See docs/development/live-smoke.md for the full trigger matrix.
 #
 # Prerequisites:
-#   - OIDC trust: github Actions role with CloudFormation/Lambda read + invoke,
+#   - OIDC trust: GitHub Actions role with CloudFormation read,
 #     CloudWatch Logs read, and API Gateway invoke permissions.
 #   - A deployed stage (run `just cdk-deploy-with-outputs <group> <stage>` first).
 
@@ -55,7 +55,6 @@ jobs:
     env:
       STAGE: ${{ github.event.inputs.stage || 'dev' }}
       AWS_REGION: ${{ github.event.inputs.aws_region || 'ap-northeast-1' }}
-      RUN_LOG_CORRELATION: ${{ github.event.inputs.run_log_correlation || 'true' }}
 
     steps:
       - uses: actions/checkout@v4
@@ -81,25 +80,32 @@ jobs:
       - name: Verify AWS identity
         run: aws sts get-caller-identity
 
-      - name: Load bff-smoke env from CDK outputs
+      - name: Get API URLs from CloudFormation
         run: |
-          OUTPUTS_FILE=".agentra/outputs/${STAGE}.json"
-          if [[ ! -f "$OUTPUTS_FILE" ]]; then
-            echo "ERROR: $OUTPUTS_FILE not found. Deploy the stage first." >&2
-            echo "  aws cloudformation list-stacks to check deployed stacks." >&2
+          STACK_NAME="AgentraAppStack-${STAGE}"
+          STREAMING_URL=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs[?OutputKey==`StreamingApiUrl`].OutputValue' \
+            --output text)
+          if [[ -z "$STREAMING_URL" ]]; then
+            echo "ERROR: StreamingApiUrl output not found in stack $STACK_NAME" >&2
+            echo "Deploy the stage first: just cdk-deploy-with-outputs agentcore ${STAGE}" >&2
             exit 1
           fi
-          pnpm --filter @agentra/infra-cdk exec tsx ../../scripts/agent/generate-env.ts \
-            --stage "$STAGE" --target bff-smoke
-          cat ".agentra/env/${STAGE}/bff-smoke.env" >> "$GITHUB_ENV"
+          echo "AGENTRA_STREAMING_API_BASE_URL=${STREAMING_URL}" >> "$GITHUB_ENV"
 
-      - name: BFF /chat SSE smoke
-        run: |
-          AGENTRA_STAGE="$STAGE" \
-            pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts
-
-      - name: requestId log correlation
-        if: env.RUN_LOG_CORRELATION == 'true'
+      # Run the all-in-one correlation script (includes BFF smoke internally).
+      # Default for PR label trigger and workflow_dispatch with run_log_correlation=true.
+      - name: BFF smoke + requestId log correlation
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_log_correlation }}
         run: |
           AGENTRA_STAGE="$STAGE" \
             pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat-log-correlation.ts
+
+      # Standalone BFF smoke only — skips the CloudWatch polling step.
+      # Only runs when explicitly disabled via workflow_dispatch input.
+      - name: BFF smoke (standalone, no log correlation)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_log_correlation == false }}
+        run: |
+          AGENTRA_STAGE="$STAGE" \
+            pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts

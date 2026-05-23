@@ -65,9 +65,10 @@ describe('postChat URL routing', () => {
     expect(calledUrl).toBe(`${REST}/chat`);
   });
 
-  it('uses the Streaming API URL when only NEXT_PUBLIC_STREAMING_API_BASE_URL is set', async () => {
-    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', REST);
+  it('uses the Streaming API URL when NEXT_PUBLIC_STREAMING_API_BASE_URL differs from the default REST URL', async () => {
+    // Only set streaming URL; REST falls back to the default 'http://127.0.0.1:8787'
     vi.stubEnv('NEXT_PUBLIC_STREAMING_API_BASE_URL', STREAM);
+    // Do NOT stub NEXT_PUBLIC_API_BASE_URL — let it use the default
 
     const fetchSpy = vi.fn().mockResolvedValue({
       ok: true,
@@ -80,8 +81,8 @@ describe('postChat URL routing', () => {
     await postChat({ message: 'test' }).catch(() => {});
 
     const [calledUrl] = fetchSpy.mock.calls[0] as [string, ...unknown[]];
-    expect(calledUrl).toContain('/chat');
     expect(calledUrl).toContain(STREAM);
+    expect(calledUrl).not.toContain('127.0.0.1');
   });
 
   it('postChat calls the /chat path', async () => {

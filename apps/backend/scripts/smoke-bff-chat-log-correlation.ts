@@ -43,7 +43,7 @@ import {
   type ResultField,
   StartQueryCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
-import { readBffSmokeConfig, runBffSmoke } from './smoke-bff-chat.js';
+import { readBffSmokeConfig, runBffSmoke } from './smoke-bff-chat-core.js';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

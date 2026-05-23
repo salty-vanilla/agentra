@@ -104,6 +104,8 @@ jobs:
             sandbox: false
           - workspace: '@agentra/presentation-author'
             sandbox: true
+          - workspace: '@agentra/frontend'
+            sandbox: false
           - workspace: '@agentra/backend'
             sandbox: false
           - workspace: '@agentra/agentcore-runtime-ts'
