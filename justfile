@@ -400,7 +400,7 @@ smoke-live-chat stage=default_stage profile=aws_profile:
     set -euo pipefail
     echo "── smoke-live-chat: stage={{stage}} profile={{profile}} ──────────────────"
     echo ""
-    echo "Step 1/2: BFF SSE smoke + requestId log correlation"
+    echo "BFF SSE smoke + requestId log correlation"
     just smoke-bff-chat-logs '{{stage}}' '{{profile}}'
     echo ""
     echo "── smoke-live-chat completed successfully ──────────────────────────────"

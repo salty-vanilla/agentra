@@ -98,7 +98,7 @@ The `.github/workflows/live-smoke.yml` workflow can be triggered manually via
 
 It requires:
 - `secrets.AWS_LIVE_SMOKE_ROLE_ARN` — IAM role with OIDC trust for GitHub Actions
-- A deployed stage with outputs at `.agentra/outputs/<stage>.json`
+- A deployed `AgentraAppStack-<stage>` CloudFormation stack with `StreamingApiUrl` output
 
 The workflow runs the BFF SSE smoke and optionally the log correlation step.
 It is intentionally excluded from the normal `ci.yml` workflow.
@@ -111,7 +111,7 @@ normal CI (ci.yml):
   - unit tests
   - build
   - cdk synth
-  - post-chat URL regression test (apps/frontend/lib/generated/__tests__)
+  - post-chat URL regression test (apps/frontend/lib/__tests__)
   - mock/fixture integration tests
 
 live smoke (live-smoke.yml / just smoke-*):

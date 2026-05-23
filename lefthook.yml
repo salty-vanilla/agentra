@@ -3,7 +3,7 @@ pre-commit:
   commands:
     biome:
       glob: "*.{js,ts,jsx,tsx,mjs,cjs,json,jsonc,css,md}"
-      run: pnpm biome check {staged_files}
+      run: pnpm biome check --no-errors-on-unmatched {staged_files}
 
 pre-push:
   parallel: true
