@@ -3,6 +3,9 @@ import type { ChatObservationSummary } from './chat.js';
 
 const SENSITIVE_KEY_RE = /token|secret|password|authorization|api[_-]?key/i;
 
+// Shallow redaction: runtime constructs metadata from known extracted fields
+// (agentName, agentKind, etc.), not from raw user input, so nested sensitive
+// values are not expected at this layer.
 export function sanitizeMetadata(
   metadata: Record<string, unknown>,
 ): Record<string, unknown> {
@@ -26,10 +29,13 @@ const SKILL_PATTERNS: Array<{ skillName: string; pattern: RegExp }> = [
   { skillName: 'thread_files', pattern: /thread[_-]?file|file[_-]?search/i },
 ];
 
-function detectSkillName(toolName: string): string | undefined {
+function detectSkillName(toolName: string, agentKind?: string): string | undefined {
   for (const { skillName, pattern } of SKILL_PATTERNS) {
-    if (pattern.test(toolName)) {
-      return skillName;
+    if (pattern.test(toolName)) return skillName;
+  }
+  if (agentKind) {
+    for (const { skillName, pattern } of SKILL_PATTERNS) {
+      if (pattern.test(agentKind)) return skillName;
     }
   }
   return undefined;
@@ -132,16 +138,11 @@ function extractAgentCalls(toolCalls: RawToolCall[]): ObservabilityAgentCall[] {
 
 function extractSkillCalls(toolCalls: RawToolCall[]): ObservabilitySkillCall[] {
   return toolCalls.flatMap((tc) => {
-    if (typeof tc.metadata?.agentName === 'string') return [];
-    const skillName = detectSkillName(tc.toolName);
+    const agentKind =
+      typeof tc.metadata?.agentKind === 'string' ? tc.metadata.agentKind : undefined;
+    const skillName = detectSkillName(tc.toolName, agentKind);
     if (!skillName) return [];
-    return [
-      {
-        skillName,
-        durationMs: tc.durationMs,
-        status: tc.status,
-      },
-    ];
+    return [{ skillName, durationMs: tc.durationMs, status: tc.status }];
   });
 }
 

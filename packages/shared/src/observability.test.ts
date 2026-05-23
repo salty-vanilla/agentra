@@ -339,7 +339,7 @@ describe('normalizeObservabilityRecord', () => {
       expect(sc?.skillName).toBe('kb_search');
     });
 
-    it('does not create skillCalls for agent calls (agentName in metadata)', () => {
+    it('creates both agentCall and skillCall when toolName matches a skill pattern and agentName is present', () => {
       const record = normalizeObservabilityRecord({
         ...baseInput,
         summary: {
@@ -360,7 +360,86 @@ describe('normalizeObservabilityRecord', () => {
       });
 
       expect(record.agentCalls).toHaveLength(1);
+      expect(record.skillCalls).toHaveLength(1);
+      expect(record.skillCalls[0]?.skillName).toBe('web_research');
+    });
+
+    it('creates both agentCall and skillCall for invoke_web_research_agent shape', () => {
+      const record = normalizeObservabilityRecord({
+        ...baseInput,
+        summary: {
+          ...baseSummary,
+          toolCalls: [
+            {
+              toolCallId: 'tc-1',
+              toolName: 'invoke_web_research_agent',
+              startedAt: '2026-01-01T00:00:01.000Z',
+              completedAt: '2026-01-01T00:00:04.000Z',
+              durationMs: 3000,
+              status: 'success',
+              metadata: { agentName: 'WebResearchAgent', agentKind: 'specialist' },
+            },
+          ],
+          toolCallCount: 1,
+          toolFailureCount: 0,
+        },
+      });
+
+      expect(record.agentCalls).toHaveLength(1);
+      expect(record.agentCalls[0]?.agentName).toBe('WebResearchAgent');
+      expect(record.skillCalls).toHaveLength(1);
+      expect(record.skillCalls[0]?.skillName).toBe('web_research');
+      expect(record.skillCallCount).toBe(1);
+    });
+
+    it('creates agentCall but no skillCall for invoke_manufacturing_line_agent shape', () => {
+      const record = normalizeObservabilityRecord({
+        ...baseInput,
+        summary: {
+          ...baseSummary,
+          toolCalls: [
+            {
+              toolCallId: 'tc-1',
+              toolName: 'invoke_manufacturing_line_agent',
+              startedAt: '2026-01-01T00:00:01.000Z',
+              durationMs: 2000,
+              status: 'success',
+              metadata: { agentName: 'ManufacturingAgent', agentKind: 'specialist' },
+            },
+          ],
+          toolCallCount: 1,
+          toolFailureCount: 0,
+        },
+      });
+
+      expect(record.agentCalls).toHaveLength(1);
       expect(record.skillCalls).toHaveLength(0);
+      expect(record.skillCallCount).toBe(0);
+    });
+
+    it('detects skill from agentKind when toolName does not match any pattern', () => {
+      const record = normalizeObservabilityRecord({
+        ...baseInput,
+        summary: {
+          ...baseSummary,
+          toolCalls: [
+            {
+              toolCallId: 'tc-1',
+              toolName: 'invoke_agent',
+              startedAt: '2026-01-01T00:00:01.000Z',
+              durationMs: 1500,
+              status: 'success',
+              metadata: { agentName: 'KbAgent', agentKind: 'kb_search' },
+            },
+          ],
+          toolCallCount: 1,
+          toolFailureCount: 0,
+        },
+      });
+
+      expect(record.agentCalls).toHaveLength(1);
+      expect(record.skillCalls).toHaveLength(1);
+      expect(record.skillCalls[0]?.skillName).toBe('kb_search');
     });
 
     it('returns empty skillCalls for unrecognized tool names', () => {
