@@ -18,6 +18,7 @@ import type {
 } from './model';
 
 import { fetchMutator } from '../api-error';
+import { chatFetchMutator } from '../api-error';
 /**
  * @summary Get backend health
  */
@@ -55,7 +56,7 @@ export const getPostChatUrl = () => {
 
 export const postChat = async (chatRequest: ChatRequest, options?: RequestInit): Promise<string> => {
 
-  return fetchMutator<string>(getPostChatUrl(),
+  return chatFetchMutator<string>(getPostChatUrl(),
   {
     ...options,
     method: 'POST',

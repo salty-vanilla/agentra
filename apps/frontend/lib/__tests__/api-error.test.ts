@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError, fetchMutator } from '../api-error';
 
 describe('ApiError', () => {
@@ -127,5 +127,90 @@ describe('fetchMutator', () => {
     expect(Array.isArray((apiErr.body as { details: unknown }).details)).toBe(true);
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe('chatFetchMutator', () => {
+  const REST = 'https://rest.example.com';
+  const STREAM = 'https://stream.example.com';
+
+  beforeEach(() => {
+    vi.resetModules();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.unstubAllEnvs();
+    vi.resetModules();
+  });
+
+  async function loadMutator() {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', REST);
+    vi.stubEnv('NEXT_PUBLIC_STREAMING_API_BASE_URL', STREAM);
+    const mod = await import('../api-error');
+    return mod.chatFetchMutator;
+  }
+
+  it('rewrites the REST base URL to the streaming base URL', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => '{}',
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const chatFetchMutator = await loadMutator();
+    await chatFetchMutator(`${REST}/chat`, { method: 'POST' });
+
+    expect(fetchSpy).toHaveBeenCalledWith(`${STREAM}/chat`, { method: 'POST' });
+  });
+
+  it('passes through URLs that do not start with the REST base URL', async () => {
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => '{}',
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const chatFetchMutator = await loadMutator();
+    const externalUrl = 'https://other.example.com/chat';
+    await chatFetchMutator(externalUrl);
+
+    expect(fetchSpy).toHaveBeenCalledWith(externalUrl, undefined);
+  });
+
+  it('does not rewrite when REST and streaming base URLs are identical', async () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', REST);
+    vi.stubEnv('NEXT_PUBLIC_STREAMING_API_BASE_URL', REST);
+    const fetchSpy = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: async () => '{}',
+    });
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const { chatFetchMutator } = await import('../api-error');
+    await chatFetchMutator(`${REST}/chat`);
+
+    expect(fetchSpy).toHaveBeenCalledWith(`${REST}/chat`, undefined);
+  });
+
+  it('propagates ApiError from the underlying fetchMutator', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+        text: async () => JSON.stringify({ error: 'boom' }),
+      }),
+    );
+
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', REST);
+    vi.stubEnv('NEXT_PUBLIC_STREAMING_API_BASE_URL', STREAM);
+    const mod = await import('../api-error');
+    await expect(mod.chatFetchMutator(`${REST}/chat`)).rejects.toBeInstanceOf(
+      mod.ApiError,
+    );
   });
 });
