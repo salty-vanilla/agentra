@@ -28,6 +28,24 @@ dev-frontend:
 dev-backend:
     pnpm dev:backend
 
+# Start the backend dev server sourcing api-local env from CDK outputs.
+# Automatically sets HOST=127.0.0.1, PORT=8080, and cloud DynamoDB/Cognito vars.
+# Run `just outputs-env <stage> api-local` first to generate the env file.
+dev-backend-local stage=default_stage:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ENV_FILE=".agentra/env/{{stage}}/api-local.env"
+    if [[ ! -f "$ENV_FILE" ]]; then
+      echo "ERROR: $ENV_FILE not found." >&2
+      echo "       Run: just outputs-env {{stage}} api-local" >&2
+      exit 1
+    fi
+    set -a
+    # shellcheck source=/dev/null
+    source "$ENV_FILE"
+    set +a
+    pnpm dev:backend
+
 # ── Stage slug generation ─────────────────────────────────────────────────────
 
 # Generate a safe CDK stage slug from the current git branch
@@ -306,6 +324,56 @@ dev-deploy-agentcore-and-smoke stage=default_stage profile=aws_profile:
     just cdk-deploy-agentcore {{stage}} {{profile}}
     just smoke-agentcore {{stage}} {{profile}}
     just smoke-slide {{stage}} {{profile}}
+
+# ── Env generation from CDK outputs ──────────────────────────────────────────
+# Targets: frontend-local | frontend-api-cloud | api-local | agent-local | kb-smoke | bff-smoke
+# Reads .agentra/outputs/<stage>.json (written by cdk-deploy-with-outputs).
+# Writes .agentra/env/<stage>/<target>.env (gitignored).
+# See docs/development/dev-modes.md for usage examples.
+outputs-env stage=default_stage target="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{target}}" ]] && {
+      echo "ERROR: target is required." >&2
+      echo "  Usage: just outputs-env [stage] <target>" >&2
+      echo "  Targets: frontend-local, frontend-api-cloud, api-local, agent-local, kb-smoke, bff-smoke" >&2
+      exit 1
+    }
+    pnpm --filter @agentra/infra-cdk exec tsx ../../scripts/agent/generate-env.ts \
+      --stage "{{stage}}" --target "{{target}}"
+
+# Run BFF /chat SSE smoke test against a deployed stage.
+# Auto-loads env from .agentra/env/<stage>/bff-smoke.env when present.
+# Run `just outputs-env <stage> bff-smoke` first to generate the env file.
+# Note: script file is added by #255 — guard exits cleanly if not yet merged.
+smoke-bff-chat stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    SCRIPT_ROOT="apps/backend/scripts/smoke-bff-chat.ts"
+    if [[ ! -f "$SCRIPT_ROOT" ]]; then
+      echo "ERROR: $SCRIPT_ROOT not found. Implement #255 first." >&2
+      exit 1
+    fi
+    ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
+    if [[ -f "$ENV_FILE" ]]; then
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
+      echo "Loaded env from $ENV_FILE"
+    fi
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    aws sts get-caller-identity
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts
+
+# Run BFF /chat smoke and scan recent AgentCore logs for the returned requestId.
+# Combines smoke-bff-chat with agentcore-errors to verify requestId propagation.
+# Note: requires smoke-bff-chat.ts from #255.
+smoke-bff-chat-logs stage=default_stage since="5m" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just smoke-bff-chat '{{stage}}' '{{profile}}'
+    just agentcore-errors '{{stage}}' '{{since}}' '{{profile}}'
 
 # ── Worktree-safe verification workflows (see docs/development/cdk-verify.md) ─
 
