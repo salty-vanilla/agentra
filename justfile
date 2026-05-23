@@ -327,9 +327,15 @@ outputs-env stage=default_stage target="":
 # Run BFF /chat SSE smoke test against a deployed stage.
 # Auto-loads env from .agentra/env/<stage>/bff-smoke.env when present.
 # Run `just outputs-env <stage> bff-smoke` first to generate the env file.
+# Note: script file is added by #255 — guard exits cleanly if not yet merged.
 smoke-bff-chat stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    SCRIPT_ROOT="apps/backend/scripts/smoke-bff-chat.ts"
+    if [[ ! -f "$SCRIPT_ROOT" ]]; then
+      echo "ERROR: $SCRIPT_ROOT not found. Merge #255 first." >&2
+      exit 1
+    fi
     ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
     if [[ -f "$ENV_FILE" ]]; then
       # shellcheck disable=SC2046
@@ -342,6 +348,7 @@ smoke-bff-chat stage=default_stage profile=aws_profile:
 
 # Run BFF /chat smoke and scan recent AgentCore logs for the returned requestId.
 # Combines smoke-bff-chat with agentcore-errors to verify requestId propagation.
+# Note: requires smoke-bff-chat.ts from #255.
 smoke-bff-chat-logs stage=default_stage since="5m" profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
