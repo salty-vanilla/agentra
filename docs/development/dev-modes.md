@@ -48,17 +48,21 @@ just cdk-deploy-with-outputs agentcore <stage>
 just outputs-env <stage> frontend-local
 just outputs-env <stage> api-local
 
-# 3. Copy generated files
+# 3. Copy frontend env
 cp .agentra/env/<stage>/frontend-local.env apps/frontend/.env.local
-cp .agentra/env/<stage>/api-local.env apps/backend/.env.local
 
 # 4. Start both servers
-just dev-backend   # http://localhost:8080
-just dev-frontend  # http://localhost:3000
+just dev-backend-local <stage>  # sources api-local.env; starts on http://localhost:8080
+just dev-frontend                # http://localhost:3000
 ```
 
-The frontend will talk to the local backend at `http://localhost:8080`.
-The backend will talk to cloud DynamoDB, Cognito, and AgentCore Runtime.
+`just dev-backend-local` sources `.agentra/env/<stage>/api-local.env` automatically,
+setting `HOST`, `PORT=8080`, `STORE_TYPE`, table names, Cognito vars, and
+`BEDROCK_REGION` before starting the server. No manual copying of the backend env
+is needed.
+
+The frontend talks to the local backend at `http://localhost:8080`.
+The backend talks to cloud DynamoDB, Cognito, and AgentCore Runtime.
 
 ---
 

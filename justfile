@@ -28,6 +28,24 @@ dev-frontend:
 dev-backend:
     pnpm dev:backend
 
+# Start the backend dev server sourcing api-local env from CDK outputs.
+# Automatically sets HOST=127.0.0.1, PORT=8080, and cloud DynamoDB/Cognito vars.
+# Run `just outputs-env <stage> api-local` first to generate the env file.
+dev-backend-local stage=default_stage:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ENV_FILE=".agentra/env/{{stage}}/api-local.env"
+    if [[ ! -f "$ENV_FILE" ]]; then
+      echo "ERROR: $ENV_FILE not found." >&2
+      echo "       Run: just outputs-env {{stage}} api-local" >&2
+      exit 1
+    fi
+    set -a
+    # shellcheck source=/dev/null
+    source "$ENV_FILE"
+    set +a
+    pnpm dev:backend
+
 # ── Stage slug generation ─────────────────────────────────────────────────────
 
 # Generate a safe CDK stage slug from the current git branch
@@ -333,13 +351,15 @@ smoke-bff-chat stage=default_stage profile=aws_profile:
     set -euo pipefail
     SCRIPT_ROOT="apps/backend/scripts/smoke-bff-chat.ts"
     if [[ ! -f "$SCRIPT_ROOT" ]]; then
-      echo "ERROR: $SCRIPT_ROOT not found. Merge #255 first." >&2
+      echo "ERROR: $SCRIPT_ROOT not found. Implement #255 first." >&2
       exit 1
     fi
     ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
     if [[ -f "$ENV_FILE" ]]; then
-      # shellcheck disable=SC2046
-      export $(grep -v '^#' "$ENV_FILE" | xargs)
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
       echo "Loaded env from $ENV_FILE"
     fi
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
