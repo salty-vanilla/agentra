@@ -1,0 +1,105 @@
+name: Live AWS smoke
+
+# This workflow is NOT part of the normal CI pipeline.
+# It hits real AWS resources (API Gateway, Lambda, AgentCore, CloudWatch Logs)
+# and is therefore flaky, slow, and cost-bearing.
+#
+# When to run:
+#   - Manual dispatch before merging changes to CDK stacks, API Gateway,
+#     Lambda Web Adapter, SSE transport, AgentCore Runtime invoke path,
+#     requestId/traceId propagation, or the generated postChat client.
+#   - Optionally on PRs with the `run-live-smoke` label.
+#   - See docs/development/live-smoke.md for the full trigger matrix.
+#
+# Prerequisites:
+#   - OIDC trust: github Actions role with CloudFormation/Lambda read + invoke,
+#     CloudWatch Logs read, and API Gateway invoke permissions.
+#   - A deployed stage (run `just cdk-deploy-with-outputs <group> <stage>` first).
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "CDK stage to smoke-test (e.g. dev, prod)"
+        required: true
+        default: dev
+      aws_region:
+        description: "AWS region"
+        required: true
+        default: ap-northeast-1
+      run_log_correlation:
+        description: "Run requestId log correlation (polls CloudWatch)"
+        type: boolean
+        required: false
+        default: true
+
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: live-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: live smoke (${{ github.event.inputs.stage || 'dev' }})
+    runs-on: ubuntu-latest
+    # Only run on workflow_dispatch or when the `run-live-smoke` label is added.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'run-live-smoke')
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      STAGE: ${{ github.event.inputs.stage || 'dev' }}
+      AWS_REGION: ${{ github.event.inputs.aws_region || 'ap-northeast-1' }}
+      RUN_LOG_CORRELATION: ${{ github.event.inputs.run_log_correlation || 'true' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_LIVE_SMOKE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Load bff-smoke env from CDK outputs
+        run: |
+          OUTPUTS_FILE=".agentra/outputs/${STAGE}.json"
+          if [[ ! -f "$OUTPUTS_FILE" ]]; then
+            echo "ERROR: $OUTPUTS_FILE not found. Deploy the stage first." >&2
+            echo "  aws cloudformation list-stacks to check deployed stacks." >&2
+            exit 1
+          fi
+          pnpm --filter @agentra/infra-cdk exec tsx ../../scripts/agent/generate-env.ts \
+            --stage "$STAGE" --target bff-smoke
+          cat ".agentra/env/${STAGE}/bff-smoke.env" >> "$GITHUB_ENV"
+
+      - name: BFF /chat SSE smoke
+        run: |
+          AGENTRA_STAGE="$STAGE" \
+            pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts
+
+      - name: requestId log correlation
+        if: env.RUN_LOG_CORRELATION == 'true'
+        run: |
+          AGENTRA_STAGE="$STAGE" \
+            pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat-log-correlation.ts

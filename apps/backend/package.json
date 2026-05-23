@@ -27,6 +27,7 @@
     "uuidv7": "^1.2.1"
   },
   "devDependencies": {
+    "@aws-sdk/client-cloudwatch-logs": "^3.1039.0",
     "@types/aws-lambda": "latest",
     "@types/node": "latest",
     "tsx": "latest",
