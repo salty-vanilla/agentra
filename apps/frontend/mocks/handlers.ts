@@ -12,6 +12,7 @@ import {
   getUpdateThreadMockHandler,
 } from '@/mocks/generated/agentra.msw';
 import type {
+  ChatObservationSummary,
   ChatRequest,
   CreateThreadRequest,
   HealthResponse,
@@ -190,11 +191,13 @@ export const handlers = [
     });
 
     const reply = buildDummyReply(message);
+    const observabilitySummary = buildDummyObservabilitySummary(message);
 
     appendMessage({
       threadId: thread.threadId,
       role: 'assistant',
       content: reply,
+      observabilitySummary,
     });
 
     return JSON.stringify({
@@ -202,6 +205,7 @@ export const handlers = [
       reply,
       model: 'msw-dummy-agent-v1',
       createdAt: now(),
+      observabilitySummary,
     });
   }),
 ];
@@ -241,7 +245,12 @@ function createThread(input: CreateThreadInput = {}) {
   return thread;
 }
 
-function appendMessage(input: { threadId: string; role: MessageRole; content: string }) {
+function appendMessage(input: {
+  threadId: string;
+  role: MessageRole;
+  content: string;
+  observabilitySummary?: ChatObservationSummary;
+}) {
   const timestamp = now();
   const message: PersistedChatMessage = {
     messageId: uuidv7(),
@@ -249,6 +258,9 @@ function appendMessage(input: { threadId: string; role: MessageRole; content: st
     role: input.role,
     content: input.content,
     createdAt: timestamp,
+    ...(input.observabilitySummary
+      ? { observabilitySummary: input.observabilitySummary }
+      : {}),
   };
 
   const currentMessages = messageStore.get(input.threadId) ?? [];
@@ -364,6 +376,87 @@ function parseChatRequest(payload: unknown) {
   };
 }
 
+function buildDummyObservabilitySummary(message?: string): ChatObservationSummary {
+  const normalized = (message ?? '').toLowerCase();
+  const ts = now();
+  const start = new Date(Date.now() - 1400).toISOString();
+
+  const toolCalls: ChatObservationSummary['toolCalls'] = [];
+
+  if (normalized.includes('製造') || normalized.includes('line')) {
+    toolCalls.push(
+      {
+        toolCallId: 'tc-r',
+        toolName: 'router',
+        startedAt: start,
+        durationMs: 120,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-ml',
+        toolName: 'manufacturing_line',
+        startedAt: start,
+        durationMs: 950,
+        status: 'success',
+      },
+    );
+  } else if (normalized.includes('エラー') || normalized.includes('error')) {
+    toolCalls.push(
+      {
+        toolCallId: 'tc-r',
+        toolName: 'router',
+        startedAt: start,
+        durationMs: 90,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-w',
+        toolName: 'web_research',
+        startedAt: start,
+        durationMs: 300,
+        status: 'error',
+        error: 'Search quota exceeded',
+      },
+      {
+        toolCallId: 'tc-kb',
+        toolName: 'kb_retrieve',
+        startedAt: start,
+        durationMs: 420,
+        status: 'success',
+      },
+    );
+  } else {
+    toolCalls.push(
+      {
+        toolCallId: 'tc-r',
+        toolName: 'router',
+        startedAt: start,
+        durationMs: 110,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-w',
+        toolName: 'web_research',
+        startedAt: start,
+        durationMs: 870,
+        status: 'success',
+      },
+    );
+  }
+
+  return {
+    traceId: `mock-trace-${uuidv7()}`,
+    startedAt: start,
+    completedAt: ts,
+    durationMs: 1380,
+    status: toolCalls.some((tc) => tc.status === 'error') ? 'error' : 'success',
+    tokenUsage: { inputTokens: 1240, outputTokens: 380, totalTokens: 1620 },
+    toolCalls,
+    toolCallCount: toolCalls.length,
+    toolFailureCount: toolCalls.filter((tc) => tc.status === 'error').length,
+  };
+}
+
 function buildDummyReply(message: string) {
   const normalized = message.toLowerCase();
 
@@ -420,6 +513,7 @@ function seedStore() {
       content:
         'MSW で API 契約を保ったままモックすれば、frontend 単体でも十分に進められます。',
       createdAt: '2026-04-18T00:05:32.000Z',
+      observabilitySummary: buildDummyObservabilitySummary(),
     },
   ]);
 }

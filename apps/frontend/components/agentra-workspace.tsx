@@ -358,7 +358,14 @@ export function AgentraWorkspace() {
         setSlideCommandActive(false);
 
         if (isMockApiMode) {
-          // Mock mode: non-streaming, existing sendChat path
+          // Simulate sub_agent_progress events sequentially with realistic delays
+          handleSubAgentProgressEvent({
+            type: 'sub_agent_progress',
+            stage: 'router',
+            status: 'running',
+            timestamp: new Date().toISOString(),
+          });
+
           const response = await sendChat(finalRequest, { signal: abortSignal }).catch(
             (error: unknown) => {
               stopProgressSimulation(true);
@@ -372,11 +379,78 @@ export function AgentraWorkspace() {
               throw error;
             },
           );
+
+          await mockSleep(350, abortSignal);
+          if (abortSignal?.aborted) {
+            stopProgressSimulation();
+            setSubAgentProgressEvents([]);
+            return;
+          }
+          handleSubAgentProgressEvent({
+            type: 'sub_agent_progress',
+            stage: 'router',
+            status: 'complete',
+            durationMs: 110,
+            timestamp: new Date().toISOString(),
+          });
+
+          if (response.observabilitySummary) {
+            const nonRouterTools = response.observabilitySummary.toolCalls.filter(
+              (tc) => tc.toolName !== 'router',
+            );
+            for (const tool of nonRouterTools) {
+              await mockSleep(200, abortSignal);
+              if (abortSignal?.aborted) {
+                stopProgressSimulation();
+                setSubAgentProgressEvents([]);
+                return;
+              }
+              handleSubAgentProgressEvent({
+                type: 'sub_agent_progress',
+                stage: tool.toolName,
+                status: 'running',
+                timestamp: new Date().toISOString(),
+              });
+              await mockSleep(600, abortSignal);
+              if (abortSignal?.aborted) {
+                stopProgressSimulation();
+                setSubAgentProgressEvents([]);
+                return;
+              }
+              handleSubAgentProgressEvent({
+                type: 'sub_agent_progress',
+                stage: tool.toolName,
+                status: tool.status === 'success' ? 'complete' : 'error',
+                durationMs: tool.durationMs,
+                timestamp: new Date().toISOString(),
+              });
+            }
+            setLiveObservabilitySummary(response.observabilitySummary);
+          }
+
           await setSelectedThreadId(response.threadId);
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
           await queryClient.fetchQuery(threadMessagesQueryOptions(response.threadId));
           stopProgressSimulation();
-          yield { content: [{ type: 'text', text: response.reply }] };
+
+          if (response.observabilitySummary) {
+            yield {
+              content: [
+                { type: 'text', text: response.reply },
+                {
+                  type: 'data',
+                  name: 'observability',
+                  data: response.observabilitySummary,
+                },
+              ],
+              metadata: {
+                custom: { observabilitySummary: response.observabilitySummary },
+              },
+            };
+          } else {
+            yield { content: [{ type: 'text', text: response.reply }] };
+          }
+          setSubAgentProgressEvents([]);
           return;
         }
 
@@ -419,6 +493,7 @@ export function AgentraWorkspace() {
           }
         } catch (error: unknown) {
           stopProgressSimulation(true);
+          setSubAgentProgressEvents([]);
           const threadIdForInvalidation = selectedThreadId ?? streamThreadId;
           if (threadIdForInvalidation) {
             await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
@@ -459,6 +534,7 @@ export function AgentraWorkspace() {
             ],
           };
         }
+        setSubAgentProgressEvents([]);
       },
     }),
     [
@@ -714,6 +790,24 @@ export function AgentraWorkspace() {
       </SidebarProvider>
     </AssistantRuntimeProviderCore>
   );
+}
+
+function mockSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+    const id = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(id);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 }
 
 function getErrorMessage(error: unknown, fallback: string) {

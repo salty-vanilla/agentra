@@ -90,6 +90,7 @@ export async function* streamInvokeWebResearchAgentTool(
   { status: 'success' | 'error'; content: [{ text: string }] },
   never
 > {
+  const startedAt = Date.now();
   try {
     const agent = dependencies.agentFactory
       ? dependencies.agentFactory()
@@ -99,73 +100,20 @@ export async function* streamInvokeWebResearchAgentTool(
       structuredOutputSchema: webResearchAgentHandoffOutputSchema,
     });
 
-    const toolStarts = new Map<string, { name: string; startedAt: number }>();
-    let currentInputTokens: number | undefined;
+    yield { stage: 'web_research', status: 'running' };
 
     while (true) {
       const { value, done } = await agentStream.next();
       if (done) {
+        const durationMs = Date.now() - startedAt;
         const output = buildHandoffOutput(value, input);
+        yield { stage: 'web_research', status: 'complete', durationMs };
         return { status: 'success', content: [{ text: JSON.stringify(output) }] };
-      }
-
-      const event = value;
-
-      if (
-        event.type === 'modelStreamUpdateEvent' &&
-        event.event.type === 'modelMetadataEvent' &&
-        event.event.usage?.inputTokens !== undefined
-      ) {
-        currentInputTokens = event.event.usage.inputTokens;
-        continue;
-      }
-
-      if (
-        event.type === 'modelStreamUpdateEvent' &&
-        event.event.type === 'modelContentBlockStartEvent' &&
-        event.event.start?.type === 'toolUseStart'
-      ) {
-        const { toolUseId, name } = event.event.start;
-        toolStarts.set(toolUseId, { name, startedAt: Date.now() });
-        yield {
-          stage: name,
-          status: 'running',
-          ...(currentInputTokens !== undefined
-            ? { inputTokens: currentInputTokens }
-            : {}),
-        };
-      } else if (
-        event.type === 'contentBlockEvent' &&
-        event.contentBlock.type === 'toolUseBlock'
-      ) {
-        const { toolUseId, name } = event.contentBlock;
-        if (!toolStarts.has(toolUseId)) {
-          toolStarts.set(toolUseId, { name, startedAt: Date.now() });
-          yield {
-            stage: name,
-            status: 'running',
-            ...(currentInputTokens !== undefined
-              ? { inputTokens: currentInputTokens }
-              : {}),
-          };
-        }
-      } else if (event.type === 'toolResultEvent') {
-        const start = toolStarts.get(event.result.toolUseId);
-        toolStarts.delete(event.result.toolUseId);
-        const stageName = start?.name ?? 'unknown';
-        const durationMs = start ? Date.now() - start.startedAt : undefined;
-        yield {
-          stage: stageName,
-          status:
-            event.result.status === 'error' ? ('error' as const) : ('complete' as const),
-          ...(durationMs !== undefined ? { durationMs } : {}),
-          ...(currentInputTokens !== undefined
-            ? { inputTokens: currentInputTokens }
-            : {}),
-        };
       }
     }
   } catch (error) {
+    const durationMs = Date.now() - startedAt;
+    yield { stage: 'web_research', status: 'error', durationMs };
     const message = error instanceof Error ? error.message : String(error);
     const output = buildErrorOutput(message, input);
     // Return success so the Router reads the error reason from content

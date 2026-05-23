@@ -29,6 +29,7 @@ import {
   RefreshCwIcon,
   SquareIcon,
   WrenchIcon,
+  XCircleIcon,
 } from 'lucide-react';
 import type { FC } from 'react';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
@@ -386,10 +387,6 @@ const AssistantObservabilityDetails: FC = () => {
     return <p className="text-muted-foreground">Observability data not available.</p>;
   }
 
-  const toolCallIds = summary.toolCalls
-    .map((tool) => tool.toolCallId)
-    .filter((toolCallId): toolCallId is string => typeof toolCallId === 'string');
-
   return (
     <div className="space-y-2.5">
       <div className="flex items-start justify-between gap-3">
@@ -414,23 +411,44 @@ const AssistantObservabilityDetails: FC = () => {
           <WrenchIcon className="size-3.5 text-muted-foreground" />
           tools: {summary.toolCallCount} (failed: {summary.toolFailureCount})
         </p>
-        {toolCallIds.length > 0 ? (
-          <p className="break-all text-muted-foreground">
-            tool ids: {toolCallIds.join(', ')}
-          </p>
-        ) : null}
       </div>
+      {summary.toolCalls.length > 0 && (
+        <div className="space-y-1 border-t pt-2">
+          {summary.toolCalls.map((tool) => (
+            <div key={tool.toolCallId} className="flex items-center gap-2">
+              {tool.status === 'success' ? (
+                <CheckIcon className="size-3 shrink-0 text-muted-foreground" />
+              ) : (
+                <XCircleIcon className="size-3 shrink-0 text-destructive" />
+              )}
+              <span className={tool.status === 'success' ? '' : 'text-destructive'}>
+                {tool.toolName}
+              </span>
+              <span className="ml-auto text-muted-foreground">
+                {formatDuration(tool.durationMs)}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
 
 const AssistantActionBar: FC = () => {
+  const isGenerating = useAuiState((s) => s.message.isLast && s.thread.isRunning);
+  const hasSummary = useAuiState((s) => {
+    const custom = s.message.metadata.custom as
+      | { observabilitySummary?: ChatObservationSummary }
+      | undefined;
+    if (custom?.observabilitySummary) return true;
+    return s.message.content.some((p) => p.type === 'data' && p.name === 'observability');
+  });
+
+  if (isGenerating) return null;
+
   return (
-    <ActionBarPrimitive.Root
-      hideWhenRunning
-      autohide="not-last"
-      className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground"
-    >
+    <ActionBarPrimitive.Root className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground">
       <ActionBarPrimitive.Copy render={<TooltipIconButton tooltip="Copy" />}>
         <AuiIf condition={(s) => s.message.isCopied}>
           <CheckIcon />
@@ -442,20 +460,22 @@ const AssistantActionBar: FC = () => {
       <ActionBarPrimitive.Reload render={<TooltipIconButton tooltip="Refresh" />}>
         <RefreshCwIcon />
       </ActionBarPrimitive.Reload>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <TooltipIconButton tooltip="Observability">
-            <FingerprintIcon />
-          </TooltipIconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          side="bottom"
-          align="start"
-          className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
-        >
-          <AssistantObservabilityDetails />
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {hasSummary && (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <TooltipIconButton tooltip="Observability">
+              <FingerprintIcon />
+            </TooltipIconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            side="bottom"
+            align="start"
+            className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
+          >
+            <AssistantObservabilityDetails />
+          </DropdownMenuContent>
+        </DropdownMenu>
+      )}
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger
           className="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent data-[state=open]:bg-accent"
