@@ -18,7 +18,10 @@ describe('Web Research Agent module', () => {
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('manufacturing-line');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('Structured output rules');
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('strands_structured_output');
-    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('omit snippet from each entry');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain('usedSourceIds');
+    expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain(
+      'runtime will attach them deterministically',
+    );
     expect(WEB_RESEARCH_SYSTEM_PROMPT).toContain(
       'web_research returns normalized sources and citations',
     );

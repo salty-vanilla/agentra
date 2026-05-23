@@ -3,7 +3,7 @@
  * Live AgentCore Web Research Agent smoke script.
  *
  * Calls the deployed AgentCore Runtime directly to verify the Web Research Agent
- * path: invoke_web_research_agent → tavily_search → build_citations.
+ * path: invoke_web_research_agent → web_research → strands_structured_output.
  *
  * This script specifically targets the failure mode seen in production where
  * invoke_web_research_agent / tavily_search / strands_structured_output fail
@@ -41,9 +41,9 @@ const DEFAULT_PROMPT =
 
 const RESEARCH_TOOL_NAMES = new Set([
   'invoke_web_research_agent',
+  'web_research',
   'tavily_search',
   'tavily_extract',
-  'build_citations',
 ]);
 
 const FALLBACK_PATTERNS = [
@@ -59,6 +59,50 @@ function detectFallback(text: string): string | undefined {
   return FALLBACK_PATTERNS.find((pattern) =>
     text.toLowerCase().includes(pattern.toLowerCase()),
   );
+}
+
+function parseStructuredSummary(responseText: string):
+  | {
+      usedSourceIds: string[];
+      selectedModelId?: string;
+      sourceCount?: number;
+      citationCount?: number;
+    }
+  | undefined {
+  try {
+    const parsed = JSON.parse(responseText) as Record<string, unknown>;
+    const metadataSummary =
+      parsed.metadataSummary && typeof parsed.metadataSummary === 'object'
+        ? (parsed.metadataSummary as Record<string, unknown>)
+        : undefined;
+    const usedSourceIds = Array.isArray(parsed.usedSourceIds)
+      ? parsed.usedSourceIds.filter((entry): entry is string => typeof entry === 'string')
+      : [];
+
+    if (
+      usedSourceIds.length === 0 &&
+      typeof metadataSummary?.selectedModelId !== 'string' &&
+      typeof metadataSummary?.sourceCount !== 'number' &&
+      typeof metadataSummary?.citationCount !== 'number'
+    ) {
+      return undefined;
+    }
+
+    return {
+      usedSourceIds,
+      ...(typeof metadataSummary?.selectedModelId === 'string'
+        ? { selectedModelId: metadataSummary.selectedModelId }
+        : {}),
+      ...(typeof metadataSummary?.sourceCount === 'number'
+        ? { sourceCount: metadataSummary.sourceCount }
+        : {}),
+      ...(typeof metadataSummary?.citationCount === 'number'
+        ? { citationCount: metadataSummary.citationCount }
+        : {}),
+    };
+  } catch {
+    return undefined;
+  }
 }
 
 async function main(): Promise<void> {
@@ -101,6 +145,7 @@ async function main(): Promise<void> {
     'strands_structured_output',
   );
   const fallbackPattern = detectFallback(responseText);
+  const structuredSummary = parseStructuredSummary(responseText);
 
   console.log('--- tool analysis ---');
   console.log(
@@ -112,6 +157,17 @@ async function main(): Promise<void> {
   console.log(
     `fallback/error pattern     : ${fallbackPattern ? `"${fallbackPattern}"` : '(none)'}`,
   );
+  if (structuredSummary) {
+    console.log(
+      `usedSourceIds             : ${structuredSummary.usedSourceIds.length > 0 ? structuredSummary.usedSourceIds.join(', ') : '(none)'}`,
+    );
+    console.log(
+      `selected model id         : ${structuredSummary.selectedModelId ?? '(unknown)'}`,
+    );
+    console.log(
+      `source/citation counts    : ${structuredSummary.sourceCount ?? '(unknown)'} / ${structuredSummary.citationCount ?? '(unknown)'}`,
+    );
+  }
 
   printSummary(config, stats);
 
@@ -127,7 +183,13 @@ async function main(): Promise<void> {
   if (config.strict) {
     if (noResearchTools) {
       console.error(
-        '[smoke] FAIL: strict mode - no research tools observed (invoke_web_research_agent / tavily_search / build_citations)',
+        '[smoke] FAIL: strict mode - no research tools observed (invoke_web_research_agent / web_research / tavily_search)',
+      );
+      process.exit(1);
+    }
+    if (!structuredSummary) {
+      console.error(
+        '[smoke] FAIL: strict mode - final response did not include metadataSummary/usedSourceIds payload',
       );
       process.exit(1);
     }

@@ -102,6 +102,13 @@ type SmokeSummary = {
   }>;
 };
 
+type FinalStructuredSummary = {
+  readonly usedSourceIds: readonly string[];
+  readonly selectedModelId?: string;
+  readonly sourceCount?: number;
+  readonly citationCount?: number;
+};
+
 // ---------------------------------------------------------------------------
 // Argument parsing
 // ---------------------------------------------------------------------------
@@ -294,6 +301,61 @@ function printEvidence(sources: number, citations: number): void {
   console.log(`citations : ${citations}`);
 }
 
+function extractFinalStructuredSummary(
+  value: unknown,
+): FinalStructuredSummary | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const metadataSummary = isRecord(value.metadataSummary)
+    ? value.metadataSummary
+    : undefined;
+  const usedSourceIds = Array.isArray(value.usedSourceIds)
+    ? value.usedSourceIds.filter((entry): entry is string => typeof entry === 'string')
+    : [];
+
+  const summary: FinalStructuredSummary = {
+    usedSourceIds,
+    ...(typeof metadataSummary?.selectedModelId === 'string'
+      ? { selectedModelId: metadataSummary.selectedModelId }
+      : {}),
+    ...(typeof metadataSummary?.sourceCount === 'number'
+      ? { sourceCount: metadataSummary.sourceCount }
+      : {}),
+    ...(typeof metadataSummary?.citationCount === 'number'
+      ? { citationCount: metadataSummary.citationCount }
+      : {}),
+  };
+
+  return usedSourceIds.length > 0 ||
+    summary.selectedModelId !== undefined ||
+    summary.sourceCount !== undefined ||
+    summary.citationCount !== undefined
+    ? summary
+    : undefined;
+}
+
+function printStructuredSummary(summary: FinalStructuredSummary | undefined): void {
+  if (!summary) {
+    return;
+  }
+
+  console.log('--- structured output ---');
+  console.log(
+    `usedSourceIds : ${summary.usedSourceIds.length > 0 ? summary.usedSourceIds.join(', ') : '(none)'}`,
+  );
+  if (summary.selectedModelId) {
+    console.log(`selectedModel : ${summary.selectedModelId}`);
+  }
+  if (summary.sourceCount !== undefined) {
+    console.log(`sourceCount   : ${summary.sourceCount}`);
+  }
+  if (summary.citationCount !== undefined) {
+    console.log(`citationCount : ${summary.citationCount}`);
+  }
+}
+
 function printSummary(config: LocalSmokeConfig, summary: SmokeSummary): void {
   console.log('--- summary ---');
   console.log(`runId     : ${config.runId}`);
@@ -451,6 +513,9 @@ async function main(): Promise<void> {
   const accUsage = agentResult?.metrics?.accumulatedUsage;
   const inputTokens = accUsage?.inputTokens ?? 0;
   const outputTokens = accUsage?.outputTokens ?? 0;
+  const finalStructuredSummary = extractFinalStructuredSummary(
+    agentResult?.structuredOutput,
+  );
 
   const status = timedOut ? 'timeout' : exitedWithError ? 'error' : 'success';
 
@@ -471,6 +536,8 @@ async function main(): Promise<void> {
   printUsage(inputTokens, outputTokens);
   console.log('');
   printEvidence(evidence.sources, evidence.citations);
+  console.log('');
+  printStructuredSummary(finalStructuredSummary);
   console.log('');
   printSummary(config, summary);
 
