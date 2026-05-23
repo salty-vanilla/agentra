@@ -37,7 +37,7 @@ describe('postChat URL routing', () => {
     });
     vi.stubGlobal('fetch', fetchSpy);
 
-    const { postChat } = await import('../agentra.js');
+    const { postChat } = await import('../generated/agentra.js');
     await postChat({ message: 'hello' }).catch(() => {});
 
     expect(fetchSpy).toHaveBeenCalledOnce();
@@ -57,7 +57,7 @@ describe('postChat URL routing', () => {
     });
     vi.stubGlobal('fetch', fetchSpy);
 
-    const { postChat } = await import('../agentra.js');
+    const { postChat } = await import('../generated/agentra.js');
     await postChat({ message: 'hello' }).catch(() => {});
 
     expect(fetchSpy).toHaveBeenCalledOnce();
@@ -76,7 +76,7 @@ describe('postChat URL routing', () => {
     });
     vi.stubGlobal('fetch', fetchSpy);
 
-    const { postChat } = await import('../agentra.js');
+    const { postChat } = await import('../generated/agentra.js');
     await postChat({ message: 'test' }).catch(() => {});
 
     const [calledUrl] = fetchSpy.mock.calls[0] as [string, ...unknown[]];
@@ -95,7 +95,7 @@ describe('postChat URL routing', () => {
     });
     vi.stubGlobal('fetch', fetchSpy);
 
-    const { postChat } = await import('../agentra.js');
+    const { postChat } = await import('../generated/agentra.js');
     await postChat({ message: 'hello' }).catch(() => {});
 
     const [calledUrl] = fetchSpy.mock.calls[0] as [string, ...unknown[]];
