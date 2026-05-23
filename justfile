@@ -307,6 +307,47 @@ dev-deploy-agentcore-and-smoke stage=default_stage profile=aws_profile:
     just smoke-agentcore {{stage}} {{profile}}
     just smoke-slide {{stage}} {{profile}}
 
+# ── Env generation from CDK outputs ──────────────────────────────────────────
+# Targets: frontend-local | frontend-api-cloud | api-local | agent-local | kb-smoke | bff-smoke
+# Reads .agentra/outputs/<stage>.json (written by cdk-deploy-with-outputs).
+# Writes .agentra/env/<stage>/<target>.env (gitignored).
+# See docs/development/dev-modes.md for usage examples.
+outputs-env stage=default_stage target="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{target}}" ]] && {
+      echo "ERROR: target is required." >&2
+      echo "  Usage: just outputs-env [stage] <target>" >&2
+      echo "  Targets: frontend-local, frontend-api-cloud, api-local, agent-local, kb-smoke, bff-smoke" >&2
+      exit 1
+    }
+    pnpm --filter @agentra/infra-cdk exec tsx ../../scripts/agent/generate-env.ts \
+      --stage "{{stage}}" --target "{{target}}"
+
+# Run BFF /chat SSE smoke test against a deployed stage.
+# Auto-loads env from .agentra/env/<stage>/bff-smoke.env when present.
+# Run `just outputs-env <stage> bff-smoke` first to generate the env file.
+smoke-bff-chat stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
+    if [[ -f "$ENV_FILE" ]]; then
+      # shellcheck disable=SC2046
+      export $(grep -v '^#' "$ENV_FILE" | xargs)
+      echo "Loaded env from $ENV_FILE"
+    fi
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    aws sts get-caller-identity
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts
+
+# Run BFF /chat smoke and scan recent AgentCore logs for the returned requestId.
+# Combines smoke-bff-chat with agentcore-errors to verify requestId propagation.
+smoke-bff-chat-logs stage=default_stage since="5m" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    just smoke-bff-chat '{{stage}}' '{{profile}}'
+    just agentcore-errors '{{stage}}' '{{since}}' '{{profile}}'
+
 # ── Worktree-safe verification workflows (see docs/development/cdk-verify.md) ─
 
 # Run AgentCore chat + slide smoke tests and scan recent error logs
