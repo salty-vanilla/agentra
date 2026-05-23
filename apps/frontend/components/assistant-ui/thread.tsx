@@ -31,7 +31,7 @@ import {
   WrenchIcon,
   XCircleIcon,
 } from 'lucide-react';
-import { type FC, useState } from 'react';
+import type { FC } from 'react';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -436,7 +436,6 @@ const AssistantObservabilityDetails: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
-  const [observabilityOpen, setObservabilityOpen] = useState(false);
   const hasSummary = useAuiState((s) => {
     const custom = s.message.metadata.custom as
       | { observabilitySummary?: ChatObservationSummary }
@@ -448,7 +447,6 @@ const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
       hideWhenRunning
-      autohide={observabilityOpen ? 'never' : 'not-last'}
       className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground"
     >
       <ActionBarPrimitive.Copy render={<TooltipIconButton tooltip="Copy" />}>
@@ -463,7 +461,7 @@ const AssistantActionBar: FC = () => {
         <RefreshCwIcon />
       </ActionBarPrimitive.Reload>
       {hasSummary && (
-        <DropdownMenu onOpenChange={setObservabilityOpen}>
+        <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <TooltipIconButton tooltip="Observability">
               <FingerprintIcon />
