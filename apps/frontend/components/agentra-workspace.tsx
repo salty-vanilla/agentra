@@ -382,6 +382,7 @@ export function AgentraWorkspace() {
 
           await mockSleep(350, abortSignal);
           if (abortSignal?.aborted) {
+            stopProgressSimulation(true);
             setSubAgentProgressEvents([]);
             return;
           }
@@ -400,6 +401,7 @@ export function AgentraWorkspace() {
             for (const tool of nonRouterTools) {
               await mockSleep(200, abortSignal);
               if (abortSignal?.aborted) {
+                stopProgressSimulation(true);
                 setSubAgentProgressEvents([]);
                 return;
               }
@@ -411,6 +413,7 @@ export function AgentraWorkspace() {
               });
               await mockSleep(600, abortSignal);
               if (abortSignal?.aborted) {
+                stopProgressSimulation(true);
                 setSubAgentProgressEvents([]);
                 return;
               }
