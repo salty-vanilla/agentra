@@ -436,6 +436,7 @@ const AssistantObservabilityDetails: FC = () => {
 };
 
 const AssistantActionBar: FC = () => {
+  const isGenerating = useAuiState((s) => s.message.isLast && s.thread.isRunning);
   const hasSummary = useAuiState((s) => {
     const custom = s.message.metadata.custom as
       | { observabilitySummary?: ChatObservationSummary }
@@ -443,6 +444,8 @@ const AssistantActionBar: FC = () => {
     if (custom?.observabilitySummary) return true;
     return s.message.content.some((p) => p.type === 'data' && p.name === 'observability');
   });
+
+  if (isGenerating) return null;
 
   return (
     <ActionBarPrimitive.Root className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground">
