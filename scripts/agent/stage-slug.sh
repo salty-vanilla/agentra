@@ -36,9 +36,17 @@ normalize_slug() {
 }
 
 # 4-char hash from the input string (deterministic).
+# Supports both sha256sum (Linux/GNU) and shasum -a 256 (macOS).
 short_hash() {
     local input="${1:-}"
-    printf '%s' "$input" | sha256sum | cut -c1-4
+    if command -v sha256sum >/dev/null 2>&1; then
+        printf '%s' "$input" | sha256sum | cut -c1-4
+    elif command -v shasum >/dev/null 2>&1; then
+        printf '%s' "$input" | shasum -a 256 | cut -c1-4
+    else
+        echo "ERROR: sha256sum or shasum is required" >&2
+        return 1
+    fi
 }
 
 # Trim a slug to at most max_len chars, preferring clean hyphen boundaries.
@@ -198,6 +206,7 @@ main() {
     slug="${slug:0:$MAX_SLUG_LENGTH}"
     slug="$(echo "$slug" | sed 's/-$//')"
 
+    validate_slug "$slug"
     echo "$slug"
 }
 

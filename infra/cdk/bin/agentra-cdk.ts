@@ -7,19 +7,16 @@ import { AgentraBedrockKbStack } from '../lib/agentra-bedrock-kb-stack.js';
 import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';
 import { AgentraSlideRuntimeStack } from '../lib/agentra-slide-runtime-stack.js';
 import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
-import { deriveEnvironmentKind, type EnvironmentKind } from '../lib/environment.js';
+import {
+  deriveEnvironmentKind,
+  type EnvironmentKind,
+  validateEnvironmentKind,
+} from '../lib/environment.js';
 
 // Matches scripts/agent/cdk-stage.sh::validate_stage.
 // Lowercase alphanumeric and hyphens; may not start or end with a hyphen.
 const STAGE_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 const MAX_STAGE_LENGTH = 16;
-
-const VALID_ENVIRONMENT_KINDS: EnvironmentKind[] = [
-  'prod',
-  'shared-dev',
-  'ephemeral',
-  'local',
-];
 
 function validateStage(stage: string): void {
   if (!STAGE_PATTERN.test(stage)) {
@@ -42,14 +39,16 @@ const stageLabel = stage.toLowerCase();
 validateStage(stageLabel);
 
 // environmentKind drives RemovalPolicy and lifecycle duration, independent of stage name.
-// If not explicitly set, it is auto-derived from the stage.
+// Explicit values are validated and fail fast on typos; omitting auto-derives from stage.
 const rawEnvironmentKind = (
   app.node.tryGetContext('environmentKind') as string | undefined
 )?.trim();
-const environmentKind: EnvironmentKind =
-  rawEnvironmentKind && (VALID_ENVIRONMENT_KINDS as string[]).includes(rawEnvironmentKind)
-    ? (rawEnvironmentKind as EnvironmentKind)
-    : deriveEnvironmentKind(stageLabel);
+if (rawEnvironmentKind) {
+  validateEnvironmentKind(rawEnvironmentKind);
+}
+const environmentKind: EnvironmentKind = rawEnvironmentKind
+  ? (rawEnvironmentKind as EnvironmentKind)
+  : deriveEnvironmentKind(stageLabel);
 
 const thirdPartyApiKeysSecretArn = (
   app.node.tryGetContext('thirdPartyApiKeysSecretArn') as string | undefined
