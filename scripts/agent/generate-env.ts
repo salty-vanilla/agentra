@@ -125,8 +125,14 @@ function maybeStack(
 
 // ── env builders ──────────────────────────────────────────────────────────────
 
+// Single-quote a value for safe use with `set -a; source`.
+// Handles embedded single quotes via the '\'' idiom.
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, "'\\''")}'`;
+}
+
 function line(key: string, value: string | undefined): string {
-  return value ? `${key}=${value}` : `# ${key}=`;
+  return value ? `${key}=${shellQuote(value)}` : `# ${key}=`;
 }
 
 function requiredLine(key: string, value: string | undefined, stackName: string): string {
@@ -135,7 +141,7 @@ function requiredLine(key: string, value: string | undefined, stackName: string)
       `required output '${key}' is missing from ${stackName} stack outputs — stack may be out of date`,
     );
   }
-  return `${key}=${value}`;
+  return `${key}=${shellQuote(value)}`;
 }
 
 function header(stage: string, target: Target, usage: string): string {

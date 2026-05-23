@@ -173,7 +173,10 @@ CDK outputs.
 
 | Variable | Value | Source |
 |----------|-------|--------|
+| `HOST` | `127.0.0.1` | hardcoded |
+| `PORT` | `8080` | hardcoded |
 | `STORE_TYPE` | `dynamo` | hardcoded |
+| `BEDROCK_REGION` | `ap-northeast-1` | hardcoded |
 | `THREADS_TABLE_NAME` | table name | `AgentraDataAuthStack` |
 | `MESSAGES_TABLE_NAME` | table name | `AgentraDataAuthStack` |
 | `USERS_TABLE_NAME` | table name | `AgentraDataAuthStack` |
