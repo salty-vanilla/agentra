@@ -2,11 +2,15 @@
 
 import {
   CheckIcon,
+  CogIcon,
   DatabaseIcon,
+  GlobeIcon,
+  LayoutIcon,
   Loader2Icon,
   SearchIcon,
   WrenchIcon,
   XCircleIcon,
+  ZapIcon,
 } from 'lucide-react';
 import type { FC } from 'react';
 import type { SubAgentProgressEvent } from '@/lib/generated/model';
@@ -18,6 +22,10 @@ const STAGE_LABELS: Record<string, string> = {
   structured_query_execute_mock: '構造化クエリ実行',
   structured_answer_synthesis: '回答統合',
   kb_answer_synthesis: 'KB 回答統合',
+  web_research: 'Webリサーチ',
+  router: 'リクエスト処理',
+  manufacturing_line: '製造ラインデータ分析',
+  create_slide: 'スライド生成',
 };
 
 export const SubAgentProgressCard: FC<{
@@ -78,6 +86,18 @@ const StatusIcon: FC<{ status: SubAgentProgressEvent['status'] }> = ({ status })
 };
 
 const StageIcon: FC<{ stage: string }> = ({ stage }) => {
+  if (stage === 'web_research' || stage.includes('web')) {
+    return <GlobeIcon className="h-3.5 w-3.5" />;
+  }
+  if (stage === 'router') {
+    return <ZapIcon className="h-3.5 w-3.5" />;
+  }
+  if (stage === 'manufacturing_line') {
+    return <CogIcon className="h-3.5 w-3.5" />;
+  }
+  if (stage === 'create_slide' || stage.includes('slide')) {
+    return <LayoutIcon className="h-3.5 w-3.5" />;
+  }
   if (stage.includes('kb')) {
     return <SearchIcon className="h-3.5 w-3.5" />;
   }

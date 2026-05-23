@@ -17,8 +17,10 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CheckIcon,
+  ChevronDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  ChevronUpIcon,
   Clock3Icon,
   CoinsIcon,
   CopyIcon,
@@ -29,8 +31,9 @@ import {
   RefreshCwIcon,
   SquareIcon,
   WrenchIcon,
+  XCircleIcon,
 } from 'lucide-react';
-import type { FC } from 'react';
+import { type FC, useState } from 'react';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -40,6 +43,11 @@ import { SlideCommandBadge } from '@/components/slide-command-badge';
 import { SlideCommandDialog } from '@/components/slide-command-dialog';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -354,6 +362,8 @@ const AssistantMessage: FC = () => {
         <MessageError />
       </div>
 
+      <ToolExecutionSummaryPanel />
+
       <div
         data-slot="aui_assistant-message-footer"
         className={cn('ml-2 flex items-center', ACTION_BAR_HEIGHT)}
@@ -362,6 +372,71 @@ const AssistantMessage: FC = () => {
         <AssistantActionBar />
       </div>
     </MessagePrimitive.Root>
+  );
+};
+
+const ToolExecutionSummaryPanel: FC = () => {
+  const [open, setOpen] = useState(false);
+
+  const summary = useAuiState((s) => {
+    const custom = s.message.metadata.custom as
+      | { observabilitySummary?: ChatObservationSummary }
+      | undefined;
+    if (custom?.observabilitySummary) {
+      return custom.observabilitySummary;
+    }
+    for (const part of s.message.content) {
+      if (part.type === 'data' && part.name === 'observability') {
+        return part.data as ChatObservationSummary;
+      }
+    }
+    return undefined;
+  });
+
+  if (!summary || summary.toolCalls.length === 0) return null;
+
+  const hasFailure = summary.toolFailureCount > 0;
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-2 px-2">
+      <CollapsibleTrigger className="flex w-full items-center gap-1.5 rounded-md px-1 py-1 text-left text-muted-foreground text-xs hover:bg-muted/50 hover:text-foreground transition-colors">
+        <WrenchIcon className="h-3 w-3 shrink-0" />
+        <span>
+          {summary.toolCallCount} ツール
+          {summary.tokenUsage
+            ? ` • ${summary.tokenUsage.totalTokens.toLocaleString()} tokens`
+            : ''}
+          {summary.durationMs ? ` • ${formatDuration(summary.durationMs)}` : ''}
+          {hasFailure ? ` • ${summary.toolFailureCount} 件失敗` : ''}
+        </span>
+        {open ? (
+          <ChevronUpIcon className="ml-auto h-3 w-3 shrink-0" />
+        ) : (
+          <ChevronDownIcon className="ml-auto h-3 w-3 shrink-0" />
+        )}
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-1 space-y-1 px-1">
+        {summary.toolCalls.map((tool) => (
+          <div key={tool.toolCallId} className="flex items-center gap-2 py-0.5 text-xs">
+            {tool.status === 'success' ? (
+              <CheckIcon className="h-3 w-3 shrink-0 text-muted-foreground" />
+            ) : (
+              <XCircleIcon className="h-3 w-3 shrink-0 text-destructive" />
+            )}
+            <span
+              className={
+                tool.status === 'success' ? 'text-foreground' : 'text-destructive'
+              }
+            >
+              {tool.toolName}
+            </span>
+            <span className="ml-auto shrink-0 text-muted-foreground">
+              {formatDuration(tool.durationMs)}
+            </span>
+          </div>
+        ))}
+      </CollapsibleContent>
+    </Collapsible>
   );
 };
 
