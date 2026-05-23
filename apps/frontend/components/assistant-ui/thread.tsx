@@ -361,6 +361,7 @@ const AssistantMessage: FC = () => {
       >
         <BranchPicker />
         <AssistantActionBar />
+        <AssistantObservabilityButton />
       </div>
     </MessagePrimitive.Root>
   );
@@ -435,6 +436,35 @@ const AssistantObservabilityDetails: FC = () => {
   );
 };
 
+const AssistantObservabilityButton: FC = () => {
+  const hasSummary = useAuiState((s) => {
+    const custom = s.message.metadata.custom as
+      | { observabilitySummary?: ChatObservationSummary }
+      | undefined;
+    if (custom?.observabilitySummary) return true;
+    return s.message.content.some((p) => p.type === 'data' && p.name === 'observability');
+  });
+
+  if (!hasSummary) return null;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <TooltipIconButton tooltip="Observability" className="text-muted-foreground">
+          <FingerprintIcon />
+        </TooltipIconButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        side="bottom"
+        align="start"
+        className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
+      >
+        <AssistantObservabilityDetails />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
+
 const AssistantActionBar: FC = () => {
   return (
     <ActionBarPrimitive.Root
@@ -453,20 +483,6 @@ const AssistantActionBar: FC = () => {
       <ActionBarPrimitive.Reload render={<TooltipIconButton tooltip="Refresh" />}>
         <RefreshCwIcon />
       </ActionBarPrimitive.Reload>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <TooltipIconButton tooltip="Observability">
-            <FingerprintIcon />
-          </TooltipIconButton>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          side="bottom"
-          align="start"
-          className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
-        >
-          <AssistantObservabilityDetails />
-        </DropdownMenuContent>
-      </DropdownMenu>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger
           className="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent data-[state=open]:bg-accent"
