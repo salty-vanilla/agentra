@@ -301,7 +301,11 @@ app.post('/chat', async (context) => {
           thread.threadId,
           message,
           traceId,
-          { userId, ...(commandDirective ? { commandDirective } : {}) },
+          {
+            userId,
+            requestId,
+            ...(commandDirective ? { commandDirective } : {}),
+          },
           upstreamAbortController.signal,
         )) {
           if (runtimeEvent.type === 'text') {

@@ -66,6 +66,22 @@ describe('buildRuntimePayload', () => {
     expect(Object.keys(payload)).not.toContain('traceId');
   });
 
+  it('includes requestId when provided', () => {
+    const payload = buildRuntimePayload('sonnet', 'thread-1', 'Hi', 'trace-1', {
+      requestId: 'req-abc',
+    });
+
+    expect(payload.requestId).toBe('req-abc');
+  });
+
+  it('omits requestId when not provided', () => {
+    const payload = buildRuntimePayload('sonnet', 'thread-1', 'Hi', 'trace-1', {
+      userId: 'user-abc',
+    });
+
+    expect(Object.keys(payload)).not.toContain('requestId');
+  });
+
   it('sends all three model keys correctly', () => {
     for (const model of ['opus', 'sonnet', 'haiku'] as const) {
       const payload = buildRuntimePayload(model, 'thread-1', 'Hello');

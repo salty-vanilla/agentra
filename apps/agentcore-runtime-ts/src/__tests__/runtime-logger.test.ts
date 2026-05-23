@@ -152,6 +152,38 @@ describe('RuntimeLogger', () => {
     expect(parsed.requestId).toBe('request-xyz');
   });
 
+  it('includes requestId on every agent and tool log entry once set', () => {
+    const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
+    logger.setRequestId('req-propagated');
+
+    logger.logInvocationStart({ userId: 'user-1' });
+    logger.logInvocationEnd(100);
+    logger.logInvocationError(new Error('boom'));
+    logger.logToolCallStart('tu-1', 'search_web');
+    logger.logToolCallEnd('tu-1', 'search_web', 50);
+    logger.logToolCallError('tu-1', 'search_web', 50);
+
+    const expectedMessages = [
+      'agent_request_start',
+      'agent_request_end',
+      'agent_request_error',
+      'tool_call_start',
+      'tool_call_end',
+      'tool_call_error',
+    ];
+
+    expect(consoleInfoSpy).toHaveBeenCalledTimes(expectedMessages.length);
+
+    const parsedCalls = consoleInfoSpy.mock.calls.map((call) =>
+      JSON.parse(call[0] as string),
+    );
+
+    parsedCalls.forEach((parsed, index) => {
+      expect(parsed.message).toBe(expectedMessages[index]);
+      expect(parsed.requestId).toBe('req-propagated');
+    });
+  });
+
   it('truncates very long error messages and stacks', () => {
     const logger = new RuntimeLogger('trace-123', 'thread-456', 'sonnet');
     const longMessage = 'x'.repeat(1000);

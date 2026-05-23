@@ -245,7 +245,7 @@ export function buildRuntimePayload(
   sessionId: string,
   inputText: string,
   traceId?: string,
-  extra?: { userId?: string; commandDirective?: string },
+  extra?: { userId?: string; commandDirective?: string; requestId?: string },
 ): Record<string, unknown> {
   return {
     prompt: inputText,
@@ -254,6 +254,7 @@ export function buildRuntimePayload(
     ...(traceId ? { traceId } : {}),
     ...(extra?.userId ? { userId: extra.userId } : {}),
     ...(sessionId ? { threadId: sessionId } : {}),
+    ...(extra?.requestId ? { requestId: extra.requestId } : {}),
   };
 }
 
@@ -262,7 +263,7 @@ async function* invokeAgentCoreRuntimeStream(
   sessionId: string,
   inputText: string,
   traceId?: string,
-  extra?: { userId?: string; commandDirective?: string },
+  extra?: { userId?: string; commandDirective?: string; requestId?: string },
   abortSignal?: AbortSignal,
 ): AsyncGenerator<RuntimeStreamEvent> {
   if (!AGENTCORE_RUNTIME_ARN) {
@@ -348,7 +349,7 @@ export async function* invokeAgentStream(
   sessionId: string,
   inputText: string,
   traceId?: string,
-  extra?: { userId?: string; commandDirective?: string },
+  extra?: { userId?: string; commandDirective?: string; requestId?: string },
   abortSignal?: AbortSignal,
 ): AsyncGenerator<RuntimeStreamEvent> {
   yield* invokeAgentCoreRuntimeStream(

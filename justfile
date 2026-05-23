@@ -374,6 +374,14 @@ agentcore-logs-trace stage=default_stage traceId="" profile=aws_profile:
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "1h" "{{traceId}}"
 
+# Filter AgentCore logs by API requestId (matches the requestId field in structured logs / API response)
+agentcore-logs-request stage=default_stage requestId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{requestId}}" ]] && { echo "ERROR: requestId required. Usage: just agentcore-logs-request [stage] <requestId>" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "1h" "{{requestId}}"
+
 # Filter AgentCore logs by threadId (conversation/session identifier emitted in structured logs)
 agentcore-logs-session stage=default_stage sessionId="" profile=aws_profile:
     #!/usr/bin/env bash
@@ -411,6 +419,14 @@ agentcore-logs-follow-trace stage=default_stage traceId="" profile=aws_profile:
     [[ -z "{{traceId}}" ]] && { echo "ERROR: traceId required" >&2; exit 1; }
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "5m" "{{traceId}}" --follow
+
+# Follow AgentCore logs by API requestId in real time
+agentcore-logs-follow-request stage=default_stage requestId="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    [[ -z "{{requestId}}" ]] && { echo "ERROR: requestId required" >&2; exit 1; }
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/agentcore-runtime-ts exec tsx scripts/agentcore-logs.ts request "{{stage}}" "5m" "{{requestId}}" --follow
 
 # Follow AgentCore logs by threadId in real time
 agentcore-logs-follow-session stage=default_stage sessionId="" profile=aws_profile:
