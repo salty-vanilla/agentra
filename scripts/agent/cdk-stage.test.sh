@@ -126,6 +126,18 @@ saved_repo="${AMPLIFY_GITHUB_REPOSITORY:-}"
 saved_branch="${AMPLIFY_GITHUB_BRANCH:-}"
 saved_confirm="${CONFIRM_STAGE:-}"
 
+echo "── derive_environment_kind ───────────────────────────────────"
+assert_equal "dev -> shared-dev"          "shared-dev"  "$(derive_environment_kind dev)"
+assert_equal "prod -> prod"               "prod"         "$(derive_environment_kind prod)"
+assert_equal "production -> prod"         "prod"         "$(derive_environment_kind production)"
+assert_equal "main -> prod"               "prod"         "$(derive_environment_kind main)"
+assert_equal "master -> prod"             "prod"         "$(derive_environment_kind master)"
+assert_equal "staging -> prod"            "prod"         "$(derive_environment_kind staging)"
+assert_equal "release -> prod"            "prod"         "$(derive_environment_kind release)"
+assert_equal "i252-env-kind -> ephemeral" "ephemeral"    "$(derive_environment_kind i252-env-kind)"
+assert_equal "dev-issue-224 -> ephemeral" "ephemeral"    "$(derive_environment_kind dev-issue-224)"
+assert_equal "feature-a1b2 -> ephemeral"  "ephemeral"    "$(derive_environment_kind feature-a1b2)"
+
 echo "── build_cdk_flags ───────────────────────────────────────────"
 export THIRD_PARTY_API_KEY_SECRET_ARN="arn:aws:secretsmanager:us-east-1:000000000000:secret:foo"
 unset AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BRANCH
@@ -148,17 +160,41 @@ build_cdk_flags web dev-issue-224 >/dev/null 2>&1
 assert_equal "web group adds CFN parameters" "6" "${#CDK_PARAMS[@]}"
 
 build_cdk_flags agentcore dev-issue-224 >/dev/null 2>&1
-# 5 -c pairs = 10 items (stage, arn, callbackUrls, logoutUrls, corsOrigins)
-assert_equal "AMPLIFY_URL folds into context" "10" "${#CDK_CONTEXT[@]}"
+# 6 -c pairs = 12 items (stage, envKind, arn, callbackUrls, logoutUrls, corsOrigins)
+assert_equal "AMPLIFY_URL folds into context" "12" "${#CDK_CONTEXT[@]}"
 
 unset AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BRANCH
 build_cdk_flags agentcore dev-issue-224 >/dev/null 2>&1
-# Ephemeral stage without AMPLIFY_URL: stage + arn + 3 localhost url contexts = 10 items
-assert_equal "ephemeral stage: localhost defaults injected" "10" "${#CDK_CONTEXT[@]}"
+# Ephemeral stage without AMPLIFY_URL: stage + envKind + arn + 3 localhost url contexts = 12 items
+assert_equal "ephemeral stage: localhost defaults injected" "12" "${#CDK_CONTEXT[@]}"
 
 build_cdk_flags agentcore dev >/dev/null 2>&1
-# stage=dev without AMPLIFY_URL: stage + arn only = 4 items (CDK app supplies the rest)
-assert_equal "stage=dev: no extra URL context" "4" "${#CDK_CONTEXT[@]}"
+# stage=dev without AMPLIFY_URL: stage + envKind + arn = 6 items (CDK app supplies URL defaults)
+assert_equal "stage=dev: no extra URL context" "6" "${#CDK_CONTEXT[@]}"
+
+# Verify environmentKind is injected correctly for dev and ephemeral
+build_cdk_flags agentcore dev >/dev/null 2>&1
+env_kind_in_ctx=""
+for (( i=0; i<${#CDK_CONTEXT[@]}; i++ )); do
+    if [[ "${CDK_CONTEXT[$i]}" == "environmentKind=shared-dev" ]]; then
+        env_kind_in_ctx="shared-dev"
+        break
+    fi
+done
+assert_equal "stage=dev injects environmentKind=shared-dev" "shared-dev" "$env_kind_in_ctx"
+
+build_cdk_flags agentcore i252-env-kind >/dev/null 2>&1
+env_kind_in_ctx=""
+for (( i=0; i<${#CDK_CONTEXT[@]}; i++ )); do
+    if [[ "${CDK_CONTEXT[$i]}" == "environmentKind=ephemeral" ]]; then
+        env_kind_in_ctx="ephemeral"
+        break
+    fi
+done
+assert_equal "ephemeral stage injects environmentKind=ephemeral" "ephemeral" "$env_kind_in_ctx"
+
+export THIRD_PARTY_API_KEY_SECRET_ARN="arn:foo"
+unset AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BRANCH
 
 echo "── build_cdk_flags mode=destroy ──────────────────────────────"
 export THIRD_PARTY_API_KEY_SECRET_ARN="arn:foo"
@@ -166,11 +202,11 @@ unset AMPLIFY_URL AMPLIFY_GITHUB_PAT AMPLIFY_GITHUB_REPOSITORY AMPLIFY_GITHUB_BR
 assert_pass "destroy + web + missing Amplify env: OK" build_cdk_flags web dev-issue-224 destroy
 build_cdk_flags web dev-issue-224 destroy >/dev/null 2>&1
 assert_equal "destroy: CDK_PARAMS stays empty"   "0"  "${#CDK_PARAMS[@]}"
-# stage + arn + 3 url contexts = 10 items
-assert_equal "destroy: URL context still injected" "10" "${#CDK_CONTEXT[@]}"
+# stage + envKind + arn + 3 url contexts = 12 items
+assert_equal "destroy: URL context still injected" "12" "${#CDK_CONTEXT[@]}"
 
 build_cdk_flags agentcore dev destroy >/dev/null 2>&1
-assert_equal "destroy + stage=dev: 4 ctx, 0 params" "4|0" \
+assert_equal "destroy + stage=dev: 6 ctx, 0 params" "6|0" \
              "${#CDK_CONTEXT[@]}|${#CDK_PARAMS[@]}"
 
 assert_fail "invalid mode rejected" build_cdk_flags agentcore dev-issue-224 bogus

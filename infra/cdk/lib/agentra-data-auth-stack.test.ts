@@ -20,7 +20,7 @@ function expectRemovalPolicy(
 }
 
 describe('AgentraDataAuthStack', () => {
-  it('destroys data/auth resources in dev', () => {
+  it('destroys data/auth resources in dev (auto-derived shared-dev)', () => {
     const app = new App();
     const stack = new AgentraDataAuthStack(app, 'AgentraDataAuthStack-dev', {
       stage: 'dev',
@@ -38,7 +38,38 @@ describe('AgentraDataAuthStack', () => {
     }
   });
 
-  it('retains data/auth resources outside dev', () => {
+  it('destroys data/auth resources for ephemeral stage', () => {
+    const app = new App();
+    const stack = new AgentraDataAuthStack(app, 'AgentraDataAuthStack-i252-env-kind', {
+      stage: 'i252-env-kind',
+      environmentKind: 'ephemeral',
+    });
+    const template = Template.fromStack(stack);
+
+    const userPools = getResources(template, 'AWS::Cognito::UserPool');
+    expect(userPools).toHaveLength(1);
+    expectRemovalPolicy(userPools[0], 'Delete');
+
+    const tables = getResources(template, 'AWS::DynamoDB::Table');
+    expect(tables).toHaveLength(3);
+    for (const table of tables) {
+      expectRemovalPolicy(table, 'Delete');
+    }
+  });
+
+  it('auto-derives ephemeral for non-dev non-prod stage', () => {
+    const app = new App();
+    const stack = new AgentraDataAuthStack(app, 'AgentraDataAuthStack-i252', {
+      stage: 'i252-slug',
+    });
+    const template = Template.fromStack(stack);
+
+    const userPools = getResources(template, 'AWS::Cognito::UserPool');
+    expect(userPools).toHaveLength(1);
+    expectRemovalPolicy(userPools[0], 'Delete');
+  });
+
+  it('retains data/auth resources for prod', () => {
     const app = new App();
     const stack = new AgentraDataAuthStack(app, 'AgentraDataAuthStack-prod', {
       stage: 'prod',
@@ -54,6 +85,19 @@ describe('AgentraDataAuthStack', () => {
     for (const table of tables) {
       expectRemovalPolicy(table, 'Retain');
     }
+  });
+
+  it('retains data/auth resources when environmentKind=prod overrides stage', () => {
+    const app = new App();
+    const stack = new AgentraDataAuthStack(app, 'AgentraDataAuthStack-shared', {
+      stage: 'shared',
+      environmentKind: 'prod',
+    });
+    const template = Template.fromStack(stack);
+
+    const userPools = getResources(template, 'AWS::Cognito::UserPool');
+    expect(userPools).toHaveLength(1);
+    expectRemovalPolicy(userPools[0], 'Retain');
   });
 
   it('disables unused password auth flows in Cognito app client', () => {

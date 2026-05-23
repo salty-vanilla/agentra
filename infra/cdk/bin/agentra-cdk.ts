@@ -7,6 +7,11 @@ import { AgentraBedrockKbStack } from '../lib/agentra-bedrock-kb-stack.js';
 import { AgentraDataAuthStack } from '../lib/agentra-data-auth-stack.js';
 import { AgentraSlideRuntimeStack } from '../lib/agentra-slide-runtime-stack.js';
 import { AgentraWebHostingStack } from '../lib/agentra-web-hosting-stack.js';
+import {
+  deriveEnvironmentKind,
+  type EnvironmentKind,
+  validateEnvironmentKind,
+} from '../lib/environment.js';
 
 // Matches scripts/agent/cdk-stage.sh::validate_stage.
 // Lowercase alphanumeric and hyphens; may not start or end with a hyphen.
@@ -17,7 +22,7 @@ function validateStage(stage: string): void {
   if (!STAGE_PATTERN.test(stage)) {
     throw new Error(
       `Invalid stage "${stage}": must contain only lowercase letters, numbers, and hyphens, ` +
-        'and may not start or end with a hyphen. Examples: "dev", "prod", "staging-v2", "dev-issue-224"',
+        'and may not start or end with a hyphen. Examples: "dev", "prod", "staging-v2", "i252-env-kind"',
     );
   }
   if (stage.length > MAX_STAGE_LENGTH) {
@@ -32,6 +37,18 @@ const app = new cdk.App();
 const stage = (app.node.tryGetContext('stage') as string | undefined)?.trim() || 'dev';
 const stageLabel = stage.toLowerCase();
 validateStage(stageLabel);
+
+// environmentKind drives RemovalPolicy and lifecycle duration, independent of stage name.
+// Explicit values are validated and fail fast on typos; omitting auto-derives from stage.
+const rawEnvironmentKind = (
+  app.node.tryGetContext('environmentKind') as string | undefined
+)?.trim();
+if (rawEnvironmentKind) {
+  validateEnvironmentKind(rawEnvironmentKind);
+}
+const environmentKind: EnvironmentKind = rawEnvironmentKind
+  ? (rawEnvironmentKind as EnvironmentKind)
+  : deriveEnvironmentKind(stageLabel);
 
 const thirdPartyApiKeysSecretArn = (
   app.node.tryGetContext('thirdPartyApiKeysSecretArn') as string | undefined
@@ -53,14 +70,16 @@ const callbackUrls = parseCsvContext('callbackUrls');
 const logoutUrls = parseCsvContext('logoutUrls');
 const corsOrigins = parseCsvContext('corsOrigins');
 
+// Use localhost defaults for local development environments (shared-dev or local kind).
+const usesLocalDefaults = environmentKind === 'shared-dev' || environmentKind === 'local';
 const resolvedCallbackUrls =
-  callbackUrls.length > 0 ? callbackUrls : stageLabel === 'dev' ? defaultLocalUrls : [];
+  callbackUrls.length > 0 ? callbackUrls : usesLocalDefaults ? defaultLocalUrls : [];
 const resolvedLogoutUrls =
-  logoutUrls.length > 0 ? logoutUrls : stageLabel === 'dev' ? defaultLocalUrls : [];
+  logoutUrls.length > 0 ? logoutUrls : usesLocalDefaults ? defaultLocalUrls : [];
 const resolvedCorsOrigins =
   corsOrigins.length > 0
     ? corsOrigins
-    : stageLabel === 'dev'
+    : usesLocalDefaults
       ? ['http://localhost:3000', 'http://127.0.0.1:3000']
       : [];
 
@@ -70,7 +89,8 @@ if (
   resolvedCorsOrigins.length === 0
 ) {
   throw new Error(
-    `Missing URLs for stage="${stageLabel}". Provide all of -c callbackUrls=... -c logoutUrls=... -c corsOrigins=...`,
+    `Missing URLs for stage="${stageLabel}" (environmentKind="${environmentKind}"). ` +
+      'Provide all of -c callbackUrls=... -c logoutUrls=... -c corsOrigins=...',
   );
 }
 
@@ -80,6 +100,7 @@ const dataAuthStack = new AgentraDataAuthStack(
   {
     description: `Agentra ${stageLabel} data/auth stack (Cognito and DynamoDB).`,
     stage: stageLabel,
+    environmentKind,
     cognitoDomainPrefix: `agentra-${stageLabel}-auth`,
     callbackUrls: resolvedCallbackUrls,
     logoutUrls: resolvedLogoutUrls,
@@ -97,6 +118,7 @@ const slideRuntimeStack = new AgentraSlideRuntimeStack(
   {
     description: `Agentra ${stageLabel} slide generation runtime stack.`,
     stage: stageLabel,
+    environmentKind,
     ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),
   },
 );
@@ -107,6 +129,7 @@ const bedrockKbStack = new AgentraBedrockKbStack(
   {
     description: `Agentra ${stageLabel} Bedrock Knowledge Base stack (normal document RAG for manufacturing line).`,
     stage: stageLabel,
+    environmentKind,
   },
 );
 
@@ -116,6 +139,7 @@ const agentCoreRuntimeStack = new AgentraAgentCoreRuntimeStack(
   {
     description: `Agentra ${stageLabel} AgentCore runtime stack (TypeScript runtime and endpoint).`,
     stage: stageLabel,
+    environmentKind,
     slideRuntimeArn: slideRuntimeStack.runtimeArn,
     slideRuntimeQualifier: 'prod',
     ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),

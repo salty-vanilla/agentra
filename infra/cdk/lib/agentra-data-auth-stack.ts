@@ -12,9 +12,15 @@ import {
   Table,
 } from 'aws-cdk-lib/aws-dynamodb';
 import type { Construct } from 'constructs';
+import {
+  deriveEnvironmentKind,
+  type EnvironmentKind,
+  isDestroyable,
+} from './environment.js';
 
 export interface AgentraDataAuthStackProps extends StackProps {
   stage: string;
+  environmentKind?: EnvironmentKind;
   cognitoDomainPrefix?: string;
   callbackUrls?: string[];
   logoutUrls?: string[];
@@ -31,7 +37,9 @@ export class AgentraDataAuthStack extends Stack {
   constructor(scope: Construct, id: string, props?: AgentraDataAuthStackProps) {
     super(scope, id, props);
 
-    const isDev = props?.stage === 'dev';
+    const environmentKind =
+      props?.environmentKind ?? deriveEnvironmentKind(props?.stage ?? 'dev');
+    const isDev = isDestroyable(environmentKind);
     const cognitoDomainPrefix = props?.cognitoDomainPrefix ?? 'agentra-auth';
     const callbackUrls = props?.callbackUrls ?? ['http://localhost:3000/'];
     const logoutUrls = props?.logoutUrls ?? ['http://localhost:3000/'];
