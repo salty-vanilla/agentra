@@ -14,6 +14,29 @@ export function sanitizeMetadata(
   );
 }
 
+// ── Tool call patterns for skill detection ────────────────────────────────────
+
+const SKILL_PATTERNS: Array<{ skillName: string; pattern: RegExp }> = [
+  { skillName: 'web_research', pattern: /web[_-]?(search|research)|search[_-]?web/i },
+  {
+    skillName: 'slide_generation',
+    pattern: /slide[_-]?(gen|creat|build)|creat[_-]?slide|presentation/i,
+  },
+  { skillName: 'kb_search', pattern: /kb[_-]?search|knowledge[_-]?base/i },
+  { skillName: 'thread_files', pattern: /thread[_-]?file|file[_-]?search/i },
+];
+
+function detectSkillName(toolName: string): string | undefined {
+  for (const { skillName, pattern } of SKILL_PATTERNS) {
+    if (pattern.test(toolName)) {
+      return skillName;
+    }
+  }
+  return undefined;
+}
+
+// ── Sub-schemas ───────────────────────────────────────────────────────────────
+
 const observabilityToolCallSchema = z.object({
   toolCallId: z.string().min(1),
   toolName: z.string().min(1),
@@ -22,6 +45,7 @@ const observabilityToolCallSchema = z.object({
   durationMs: z.number().int().min(0),
   status: z.enum(['success', 'error', 'cancelled']),
   error: z.string().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 const observabilityAgentCallSchema = z.object({
@@ -38,6 +62,8 @@ const observabilitySkillCallSchema = z.object({
   durationMs: z.number().int().min(0).optional(),
   status: z.enum(['success', 'error', 'cancelled']).optional(),
 });
+
+// ── Main schema ───────────────────────────────────────────────────────────────
 
 export const observabilityRecordSchema = z.object({
   traceId: z.string().min(1),
@@ -81,6 +107,46 @@ export type ObservabilityRecord = z.infer<typeof observabilityRecordSchema>;
 export type ObservabilityAgentCall = z.infer<typeof observabilityAgentCallSchema>;
 export type ObservabilitySkillCall = z.infer<typeof observabilitySkillCallSchema>;
 
+// ── Extraction helpers ────────────────────────────────────────────────────────
+
+type RawToolCall = ChatObservationSummary['toolCalls'][number];
+
+function extractAgentCalls(toolCalls: RawToolCall[]): ObservabilityAgentCall[] {
+  return toolCalls.flatMap((tc) => {
+    const agentName = tc.metadata?.agentName;
+    if (typeof agentName !== 'string') return [];
+
+    const agentKind = tc.metadata?.agentKind;
+    return [
+      {
+        agentName,
+        ...(typeof agentKind === 'string' ? { agentKind } : {}),
+        startedAt: tc.startedAt,
+        ...(tc.completedAt ? { completedAt: tc.completedAt } : {}),
+        durationMs: tc.durationMs,
+        status: tc.status,
+      },
+    ];
+  });
+}
+
+function extractSkillCalls(toolCalls: RawToolCall[]): ObservabilitySkillCall[] {
+  return toolCalls.flatMap((tc) => {
+    if (typeof tc.metadata?.agentName === 'string') return [];
+    const skillName = detectSkillName(tc.toolName);
+    if (!skillName) return [];
+    return [
+      {
+        skillName,
+        durationMs: tc.durationMs,
+        status: tc.status,
+      },
+    ];
+  });
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
 export type NormalizeObservabilityRecordInput = {
   summary: ChatObservationSummary;
   requestId: string;
@@ -105,7 +171,11 @@ export function normalizeObservabilityRecord(
     durationMs: tc.durationMs,
     status: tc.status,
     ...(tc.error ? { error: tc.error } : {}),
+    ...(tc.metadata ? { metadata: sanitizeMetadata(tc.metadata) } : {}),
   }));
+
+  const agentCalls = extractAgentCalls(summary.toolCalls);
+  const skillCalls = extractSkillCalls(summary.toolCalls);
 
   return {
     traceId: summary.traceId,
@@ -125,13 +195,13 @@ export function normalizeObservabilityRecord(
     ...(summary.tokenUsage ? { tokenUsage: summary.tokenUsage } : {}),
 
     toolCalls,
-    agentCalls: [],
-    skillCalls: [],
+    agentCalls,
+    skillCalls,
 
     toolCallCount: summary.toolCallCount,
     toolFailureCount: summary.toolFailureCount,
-    agentCallCount: 0,
-    skillCallCount: 0,
+    agentCallCount: agentCalls.length,
+    skillCallCount: skillCalls.length,
 
     createdAt: new Date().toISOString(),
     schemaVersion: 1,

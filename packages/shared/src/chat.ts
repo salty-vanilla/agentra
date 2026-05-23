@@ -16,6 +16,7 @@ const chatObservationToolCallSchema = z.object({
   durationMs: z.number().int().min(0),
   status: z.enum(['success', 'error', 'cancelled']),
   error: z.string().min(1).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export const chatObservationSummarySchema = z.object({
