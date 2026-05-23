@@ -54,6 +54,7 @@ export class AgentraAppStack extends Stack {
       THREADS_TABLE_NAME: props.dataAuthStack.threadsTable.tableName,
       MESSAGES_TABLE_NAME: props.dataAuthStack.messagesTable.tableName,
       USERS_TABLE_NAME: props.dataAuthStack.usersTable.tableName,
+      OBSERVABILITY_TABLE_NAME: props.dataAuthStack.observabilityTable.tableName,
       COGNITO_USER_POOL_ID: props.dataAuthStack.userPool.userPoolId,
       COGNITO_USER_POOL_CLIENT_ID: props.dataAuthStack.userPoolClient.userPoolClientId,
       COGNITO_REGION: Stack.of(this).region,
@@ -129,6 +130,7 @@ export class AgentraAppStack extends Stack {
       props.dataAuthStack.usersTable.grantReadWriteData(handler);
       props.dataAuthStack.threadsTable.grantReadWriteData(handler);
       props.dataAuthStack.messagesTable.grantReadWriteData(handler);
+      props.dataAuthStack.observabilityTable.grantReadWriteData(handler);
     }
 
     const allowedOrigins = props.allowedCorsOrigins ?? ['http://localhost:3000'];
