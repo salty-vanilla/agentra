@@ -19,6 +19,7 @@ export * from './chatObservationSummaryReasoning';
 export * from './chatObservationSummaryStatus';
 export * from './chatObservationSummaryTokenUsage';
 export * from './chatObservationToolCall';
+export * from './chatObservationToolCallMetadata';
 export * from './chatObservationToolCallStatus';
 export * from './chatRequest';
 export * from './chatRequestModel';

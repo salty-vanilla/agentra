@@ -245,7 +245,8 @@ export const ListThreadMessagesResponse = zod.object({
   "completedAt": zod.string().datetime({}).optional(),
   "durationMs": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallsItemDurationMsMin),
   "status": zod.enum(['success', 'error', 'cancelled']),
-  "error": zod.string().min(1).optional()
+  "error": zod.string().min(1).optional(),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional()
 })),
   "toolCallCount": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallCountMin),
   "toolFailureCount": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolFailureCountMin)

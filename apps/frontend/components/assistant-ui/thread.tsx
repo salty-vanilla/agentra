@@ -16,6 +16,7 @@ import { cva } from 'class-variance-authority';
 import {
   ArrowDownIcon,
   ArrowUpIcon,
+  BotIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -30,6 +31,7 @@ import {
   SquareIcon,
   WrenchIcon,
   XCircleIcon,
+  XIcon,
 } from 'lucide-react';
 import type { FC } from 'react';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
@@ -52,6 +54,12 @@ import type {
   ProgressSummaryEvent,
   SubAgentProgressEvent,
 } from '@/lib/generated/model';
+import {
+  extractAgentInfo,
+  formatDuration,
+  formatToolLabel,
+  sanitizeToolError,
+} from '@/lib/observability-format';
 import { cn } from '@/lib/utils';
 
 const threadMessageRootVariants = cva(
@@ -366,6 +374,24 @@ const AssistantMessage: FC = () => {
   );
 };
 
+const STATUS_CONFIG = {
+  success: {
+    icon: CheckIcon,
+    label: '成功',
+    className: 'text-green-600 dark:text-green-400',
+  },
+  error: {
+    icon: XCircleIcon,
+    label: 'エラー',
+    className: 'text-destructive',
+  },
+  cancelled: {
+    icon: XIcon,
+    label: 'キャンセル',
+    className: 'text-muted-foreground',
+  },
+} as const;
+
 const AssistantObservabilityDetails: FC = () => {
   const summary = useAuiState((s) => {
     const custom = s.message.metadata.custom as
@@ -387,6 +413,18 @@ const AssistantObservabilityDetails: FC = () => {
     return <p className="text-muted-foreground">Observability data not available.</p>;
   }
 
+  const toolCalls = summary.toolCalls ?? [];
+  const statusConfig = STATUS_CONFIG[summary.status] ?? STATUS_CONFIG.success;
+  const StatusIcon = statusConfig.icon;
+
+  const agentInfoList = toolCalls.flatMap((tc) => {
+    const info = extractAgentInfo(tc.metadata as Record<string, unknown> | undefined);
+    return info ? [info] : [];
+  });
+  const uniqueAgents = agentInfoList.filter(
+    (agent, i, arr) => arr.findIndex((a) => a.agentName === agent.agentName) === i,
+  );
+
   return (
     <div className="space-y-2.5">
       <div className="flex items-start justify-between gap-3">
@@ -394,39 +432,81 @@ const AssistantObservabilityDetails: FC = () => {
           <FingerprintIcon className="size-3.5" />
           Observability
         </div>
-        <p className="text-muted-foreground break-all text-right">
-          trace: {summary.traceId}
+        <p
+          className="max-w-[10rem] truncate text-muted-foreground"
+          title={summary.traceId}
+        >
+          {summary.traceId}
         </p>
       </div>
+
+      <div className={cn('inline-flex items-center gap-1.5', statusConfig.className)}>
+        <StatusIcon className="size-3 shrink-0" />
+        <span>{statusConfig.label}</span>
+      </div>
+
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
         <p className="inline-flex items-center gap-2">
           <Clock3Icon className="size-3.5 text-muted-foreground" />
           {formatDuration(summary.durationMs)}
           <span className="inline-flex items-center gap-1">
             <CoinsIcon className="size-3.5 text-muted-foreground" />
-            tokens: {summary.tokenUsage?.totalTokens ?? 'n/a'}
+            {summary.tokenUsage != null
+              ? summary.tokenUsage.totalTokens.toLocaleString()
+              : 'n/a'}
           </span>
         </p>
         <p className="inline-flex items-center gap-2">
           <WrenchIcon className="size-3.5 text-muted-foreground" />
-          tools: {summary.toolCallCount} (failed: {summary.toolFailureCount})
+          {summary.toolCallCount} ツール
+          {summary.toolFailureCount > 0 && (
+            <span className="text-destructive">({summary.toolFailureCount} 失敗)</span>
+          )}
         </p>
       </div>
-      {summary.toolCalls.length > 0 && (
+
+      {toolCalls.length > 0 && (
+        <div className="space-y-1.5 border-t pt-2">
+          {toolCalls.map((tool) => {
+            const errorText = sanitizeToolError(tool.error);
+            return (
+              <div key={tool.toolCallId} className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  {tool.status === 'success' ? (
+                    <CheckIcon className="size-3 shrink-0 text-muted-foreground" />
+                  ) : tool.status === 'cancelled' ? (
+                    <XIcon className="size-3 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <XCircleIcon className="size-3 shrink-0 text-destructive" />
+                  )}
+                  <span className={tool.status === 'error' ? 'text-destructive' : ''}>
+                    {formatToolLabel(tool.toolName)}
+                  </span>
+                  <span className="ml-auto text-muted-foreground">
+                    {formatDuration(tool.durationMs)}
+                  </span>
+                </div>
+                {errorText && (
+                  <p className="pl-5 text-destructive/80 leading-tight">{errorText}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {uniqueAgents.length > 0 && (
         <div className="space-y-1 border-t pt-2">
-          {summary.toolCalls.map((tool) => (
-            <div key={tool.toolCallId} className="flex items-center gap-2">
-              {tool.status === 'success' ? (
-                <CheckIcon className="size-3 shrink-0 text-muted-foreground" />
-              ) : (
-                <XCircleIcon className="size-3 shrink-0 text-destructive" />
+          <p className="flex items-center gap-1.5 text-muted-foreground">
+            <BotIcon className="size-3.5" />
+            エージェント
+          </p>
+          {uniqueAgents.map((agent) => (
+            <div key={agent.agentName} className="pl-5">
+              <span className="text-foreground">{agent.agentName}</span>
+              {agent.agentKind && (
+                <span className="ml-1.5 text-muted-foreground">({agent.agentKind})</span>
               )}
-              <span className={tool.status === 'success' ? '' : 'text-destructive'}>
-                {tool.toolName}
-              </span>
-              <span className="ml-auto text-muted-foreground">
-                {formatDuration(tool.durationMs)}
-              </span>
             </div>
           ))}
         </div>
@@ -461,7 +541,7 @@ const AssistantActionBar: FC = () => {
         <RefreshCwIcon />
       </ActionBarPrimitive.Reload>
       {hasSummary && (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
           <DropdownMenuTrigger asChild>
             <TooltipIconButton tooltip="Observability">
               <FingerprintIcon />
@@ -470,7 +550,9 @@ const AssistantActionBar: FC = () => {
           <DropdownMenuContent
             side="bottom"
             align="start"
-            className="z-50 min-w-64 space-y-2 rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
+            sideOffset={4}
+            collisionPadding={8}
+            className="z-50 w-[min(calc(100vw-2rem),22rem)] max-h-80 overflow-y-auto rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
           >
             <AssistantObservabilityDetails />
           </DropdownMenuContent>
@@ -598,13 +680,3 @@ const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest
     </BranchPickerPrimitive.Root>
   );
 };
-
-function formatDuration(durationMs: number): string {
-  if (!Number.isFinite(durationMs) || durationMs < 0) {
-    return '0ms';
-  }
-  if (durationMs < 1000) {
-    return `${durationMs}ms`;
-  }
-  return `${(durationMs / 1000).toFixed(2)}s`;
-}
