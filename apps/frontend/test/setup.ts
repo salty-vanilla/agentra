@@ -1,4 +1,10 @@
 import { cleanup } from '@testing-library/react';
-import { afterEach } from 'vitest';
+import { afterAll, afterEach, beforeAll } from 'vitest';
+import { mswServer } from './msw-server';
 
-afterEach(cleanup);
+beforeAll(() => mswServer.listen({ onUnhandledRequest: 'warn' }));
+afterEach(() => {
+  cleanup();
+  mswServer.resetHandlers();
+});
+afterAll(() => mswServer.close());
