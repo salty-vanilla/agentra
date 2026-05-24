@@ -131,8 +131,8 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
                 className="border-t hover:bg-muted/50 cursor-pointer"
                 onClick={() => onSelectTrace(t.traceId)}
               >
-                <td className="px-3 py-2 font-mono text-xs">{t.traceId.slice(0, 12)}…</td>
-                <td className="px-3 py-2 font-mono text-xs">{t.userId.slice(0, 12)}…</td>
+                <td className="px-3 py-2 font-mono text-xs">{t.traceId.slice(0, 16)}…</td>
+                <td className="px-3 py-2 font-mono text-xs">{t.userId.slice(0, 16)}…</td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">
                   {new Date(t.startedAt).toLocaleString()}
                 </td>
