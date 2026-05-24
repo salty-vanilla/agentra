@@ -92,7 +92,7 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
           <option value="cancelled">Cancelled</option>
         </select>
         <Input
-          placeholder="Filter by user ID (partial)..."
+          placeholder="Search by trace ID or user ID..."
           value={draftUserId}
           onChange={(e) => setDraftUserId(e.target.value)}
           onKeyDown={handleKeyDown}

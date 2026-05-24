@@ -548,7 +548,7 @@ export const handlers = [
     const filtered = MOCK_TRACES.filter(
       (t) =>
         (status === '' || t.status === status) &&
-        (userId === '' || t.userId.includes(userId)),
+        (userId === '' || t.userId.includes(userId) || t.traceId.includes(userId)),
     );
 
     return { traces: filtered };
