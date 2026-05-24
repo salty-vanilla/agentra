@@ -21,11 +21,10 @@ function statusVariant(status: string): 'default' | 'destructive' | 'secondary' 
 }
 
 export function TracesTab({ from, to, onSelectTrace }: Props) {
-  // draft: what's typed in the inputs
-  const [draftStatus, setDraftStatus] = useState('');
+  // status: applied immediately on select change
+  const [statusFilter, setStatusFilter] = useState('');
+  // userId: draft/apply pattern (Apply button or Enter)
   const [draftUserId, setDraftUserId] = useState('');
-  // applied: what's actually sent to the API (only changes on Apply)
-  const [appliedStatus, setAppliedStatus] = useState('');
   const [appliedUserId, setAppliedUserId] = useState('');
 
   const [cursor, setCursor] = useState<string | undefined>(undefined);
@@ -36,7 +35,7 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
     to,
     limit: 50,
     ...(cursor !== undefined ? { cursor } : {}),
-    ...(appliedStatus ? { status: appliedStatus } : {}),
+    ...(statusFilter ? { status: statusFilter } : {}),
     ...(appliedUserId ? { userId: appliedUserId } : {}),
   };
 
@@ -48,15 +47,20 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
   const traces =
     cursor === undefined ? (data?.traces ?? []) : [...allTraces, ...(data?.traces ?? [])];
 
-  function applyFilter() {
-    setAppliedStatus(draftStatus);
+  function handleStatusChange(value: string) {
+    setStatusFilter(value);
+    setAllTraces([]);
+    setCursor(undefined);
+  }
+
+  function applyUserIdFilter() {
     setAppliedUserId(draftUserId);
     setAllTraces([]);
     setCursor(undefined);
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter') applyFilter();
+    if (e.key === 'Enter') applyUserIdFilter();
   }
 
   function loadMore() {
@@ -79,8 +83,8 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
       <div className="flex items-center gap-2 flex-wrap">
         <select
           className="h-8 rounded border bg-background px-2 text-sm"
-          value={draftStatus}
-          onChange={(e) => setDraftStatus(e.target.value)}
+          value={statusFilter}
+          onChange={(e) => handleStatusChange(e.target.value)}
         >
           <option value="">All statuses</option>
           <option value="success">Success</option>
@@ -88,13 +92,13 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
           <option value="cancelled">Cancelled</option>
         </select>
         <Input
-          placeholder="Filter by user ID..."
+          placeholder="Filter by user ID (partial)..."
           value={draftUserId}
           onChange={(e) => setDraftUserId(e.target.value)}
           onKeyDown={handleKeyDown}
           className="h-8 w-52 text-sm"
         />
-        <Button variant="outline" size="sm" onClick={applyFilter}>
+        <Button variant="outline" size="sm" onClick={applyUserIdFilter}>
           Apply
         </Button>
       </div>

@@ -147,7 +147,7 @@ adminObservabilityRouter.get('/traces', async (c) => {
     filtered = filtered.filter((r) => r.status === statusFilter);
   }
   if (userIdFilter) {
-    filtered = filtered.filter((r) => r.userId === userIdFilter);
+    filtered = filtered.filter((r) => r.userId.includes(userIdFilter));
   }
 
   const traceItems = filtered.map(toTraceListItem);
