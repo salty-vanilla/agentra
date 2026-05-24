@@ -4,6 +4,13 @@ import { uuidv7 } from 'uuidv7';
 import {
   getCreateThreadMockHandler,
   getDeleteThreadMockHandler,
+  getGetAdminAgentsMockHandler,
+  getGetAdminOverviewMockHandler,
+  getGetAdminSkillsMockHandler,
+  getGetAdminToolsMockHandler,
+  getGetAdminTraceDetailMockHandler,
+  getGetAdminTracesMockHandler,
+  getGetAdminUsersMockHandler,
   getGetHealthMockHandler,
   getGetThreadMockHandler,
   getListThreadMessagesMockHandler,
@@ -12,6 +19,8 @@ import {
   getUpdateThreadMockHandler,
 } from '@/mocks/generated/agentra.msw';
 import type {
+  AdminTraceDetail,
+  AdminTraceListItem,
   ChatObservationSummary,
   ChatRequest,
   CreateThreadRequest,
@@ -34,6 +43,365 @@ const threadStore = new Map<string, ThreadSummary>();
 const messageStore = new Map<string, PersistedChatMessage[]>();
 
 seedStore();
+
+// ─── Admin observability mock data ───────────────────────────────────────────
+
+const MOCK_TRACES: AdminTraceListItem[] = [
+  {
+    traceId: 'trace-mock-001',
+    userId: 'user-mock-001',
+    startedAt: '2026-05-24T09:12:00.000Z',
+    completedAt: '2026-05-24T09:12:02.340Z',
+    durationMs: 2340,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 3120,
+    estimatedCostUsd: 0.0094,
+    toolCallCount: 3,
+    agentCallCount: 1,
+    skillCallCount: 0,
+  },
+  {
+    traceId: 'trace-mock-002',
+    userId: 'user-mock-002',
+    startedAt: '2026-05-24T09:08:45.000Z',
+    completedAt: '2026-05-24T09:08:47.800Z',
+    durationMs: 2800,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 4850,
+    estimatedCostUsd: 0.0146,
+    toolCallCount: 2,
+    agentCallCount: 1,
+    skillCallCount: 1,
+  },
+  {
+    traceId: 'trace-mock-003',
+    userId: 'user-mock-001',
+    startedAt: '2026-05-24T08:55:10.000Z',
+    completedAt: '2026-05-24T08:55:11.200Z',
+    durationMs: 1200,
+    status: 'error',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 980,
+    estimatedCostUsd: 0.003,
+    toolCallCount: 1,
+    agentCallCount: 1,
+    skillCallCount: 0,
+  },
+  {
+    traceId: 'trace-mock-004',
+    userId: 'user-mock-003',
+    startedAt: '2026-05-24T08:40:00.000Z',
+    completedAt: '2026-05-24T08:40:06.100Z',
+    durationMs: 6100,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 8200,
+    estimatedCostUsd: 0.0246,
+    toolCallCount: 5,
+    agentCallCount: 2,
+    skillCallCount: 1,
+  },
+  {
+    traceId: 'trace-mock-005',
+    userId: 'user-mock-002',
+    startedAt: '2026-05-24T08:30:22.000Z',
+    completedAt: '2026-05-24T08:30:24.500Z',
+    durationMs: 2500,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 3400,
+    estimatedCostUsd: 0.0102,
+    toolCallCount: 2,
+    agentCallCount: 1,
+    skillCallCount: 0,
+  },
+];
+
+const MOCK_TRACE_DETAILS: Record<string, AdminTraceDetail> = {
+  'trace-mock-001': {
+    traceId: 'trace-mock-001',
+    userId: 'user-mock-001',
+    requestId: 'req-mock-001',
+    threadId: 'thread-mock-001',
+    startedAt: '2026-05-24T09:12:00.000Z',
+    completedAt: '2026-05-24T09:12:02.340Z',
+    durationMs: 2340,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 3120,
+    estimatedCostUsd: 0.0094,
+    toolCallCount: 3,
+    agentCallCount: 1,
+    skillCallCount: 0,
+    tokenUsage: { inputTokens: 2480, outputTokens: 640, totalTokens: 3120 },
+    agentCalls: [
+      {
+        agentName: 'GeneralAgent',
+        agentKind: 'bedrock-inline',
+        startedAt: '2026-05-24T09:12:00.050Z',
+        completedAt: '2026-05-24T09:12:02.300Z',
+        durationMs: 2250,
+        status: 'success',
+      },
+    ],
+    toolCalls: [
+      {
+        toolCallId: 'tc-001-1',
+        toolName: 'router',
+        startedAt: '2026-05-24T09:12:00.100Z',
+        completedAt: '2026-05-24T09:12:00.185Z',
+        durationMs: 85,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-001-2',
+        toolName: 'web_research',
+        startedAt: '2026-05-24T09:12:00.200Z',
+        completedAt: '2026-05-24T09:12:01.150Z',
+        durationMs: 950,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-001-3',
+        toolName: 'kb_retrieve',
+        startedAt: '2026-05-24T09:12:01.200Z',
+        completedAt: '2026-05-24T09:12:01.620Z',
+        durationMs: 420,
+        status: 'success',
+      },
+    ],
+    skillCalls: [],
+  },
+  'trace-mock-002': {
+    traceId: 'trace-mock-002',
+    userId: 'user-mock-002',
+    requestId: 'req-mock-002',
+    threadId: 'thread-mock-002',
+    startedAt: '2026-05-24T09:08:45.000Z',
+    completedAt: '2026-05-24T09:08:47.800Z',
+    durationMs: 2800,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 4850,
+    estimatedCostUsd: 0.0146,
+    toolCallCount: 2,
+    agentCallCount: 1,
+    skillCallCount: 1,
+    tokenUsage: { inputTokens: 3600, outputTokens: 1250, totalTokens: 4850 },
+    agentCalls: [
+      {
+        agentName: 'ManufacturingAgent',
+        agentKind: 'bedrock-inline',
+        startedAt: '2026-05-24T09:08:45.050Z',
+        completedAt: '2026-05-24T09:08:47.750Z',
+        durationMs: 2700,
+        status: 'success',
+      },
+    ],
+    toolCalls: [
+      {
+        toolCallId: 'tc-002-1',
+        toolName: 'router',
+        startedAt: '2026-05-24T09:08:45.100Z',
+        completedAt: '2026-05-24T09:08:45.185Z',
+        durationMs: 85,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-002-2',
+        toolName: 'manufacturing_line',
+        startedAt: '2026-05-24T09:08:45.200Z',
+        completedAt: '2026-05-24T09:08:46.300Z',
+        durationMs: 1100,
+        status: 'success',
+      },
+    ],
+    skillCalls: [
+      {
+        skillName: 'manufacturing_qa',
+        durationMs: 3100,
+        status: 'success',
+      },
+    ],
+  },
+  'trace-mock-003': {
+    traceId: 'trace-mock-003',
+    userId: 'user-mock-001',
+    requestId: 'req-mock-003',
+    threadId: 'thread-mock-001',
+    startedAt: '2026-05-24T08:55:10.000Z',
+    completedAt: '2026-05-24T08:55:11.200Z',
+    durationMs: 1200,
+    status: 'error',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 980,
+    estimatedCostUsd: 0.003,
+    toolCallCount: 1,
+    agentCallCount: 1,
+    skillCallCount: 0,
+    tokenUsage: { inputTokens: 820, outputTokens: 160, totalTokens: 980 },
+    agentCalls: [
+      {
+        agentName: 'GeneralAgent',
+        agentKind: 'bedrock-inline',
+        startedAt: '2026-05-24T08:55:10.050Z',
+        completedAt: '2026-05-24T08:55:11.150Z',
+        durationMs: 1100,
+        status: 'error',
+      },
+    ],
+    toolCalls: [
+      {
+        toolCallId: 'tc-003-1',
+        toolName: 'web_research',
+        startedAt: '2026-05-24T08:55:10.100Z',
+        completedAt: '2026-05-24T08:55:11.100Z',
+        durationMs: 1000,
+        status: 'error',
+        error: 'Search quota exceeded',
+      },
+    ],
+    skillCalls: [],
+  },
+  'trace-mock-004': {
+    traceId: 'trace-mock-004',
+    userId: 'user-mock-003',
+    requestId: 'req-mock-004',
+    threadId: 'thread-mock-003',
+    startedAt: '2026-05-24T08:40:00.000Z',
+    completedAt: '2026-05-24T08:40:06.100Z',
+    durationMs: 6100,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 8200,
+    estimatedCostUsd: 0.0246,
+    toolCallCount: 5,
+    agentCallCount: 2,
+    skillCallCount: 1,
+    tokenUsage: { inputTokens: 6100, outputTokens: 2100, totalTokens: 8200 },
+    agentCalls: [
+      {
+        agentName: 'GeneralAgent',
+        agentKind: 'bedrock-inline',
+        startedAt: '2026-05-24T08:40:00.050Z',
+        completedAt: '2026-05-24T08:40:03.000Z',
+        durationMs: 2950,
+        status: 'success',
+      },
+      {
+        agentName: 'ManufacturingAgent',
+        agentKind: 'bedrock-inline',
+        startedAt: '2026-05-24T08:40:03.100Z',
+        completedAt: '2026-05-24T08:40:06.000Z',
+        durationMs: 2900,
+        status: 'success',
+      },
+    ],
+    toolCalls: [
+      {
+        toolCallId: 'tc-004-1',
+        toolName: 'router',
+        startedAt: '2026-05-24T08:40:00.100Z',
+        completedAt: '2026-05-24T08:40:00.185Z',
+        durationMs: 85,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-004-2',
+        toolName: 'kb_retrieve',
+        startedAt: '2026-05-24T08:40:00.200Z',
+        completedAt: '2026-05-24T08:40:00.620Z',
+        durationMs: 420,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-004-3',
+        toolName: 'manufacturing_line',
+        startedAt: '2026-05-24T08:40:03.200Z',
+        completedAt: '2026-05-24T08:40:04.300Z',
+        durationMs: 1100,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-004-4',
+        toolName: 'web_research',
+        startedAt: '2026-05-24T08:40:04.400Z',
+        completedAt: '2026-05-24T08:40:05.350Z',
+        durationMs: 950,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-004-5',
+        toolName: 'kb_retrieve',
+        startedAt: '2026-05-24T08:40:05.400Z',
+        completedAt: '2026-05-24T08:40:05.820Z',
+        durationMs: 420,
+        status: 'success',
+      },
+    ],
+    skillCalls: [
+      {
+        skillName: 'manufacturing_qa',
+        durationMs: 3100,
+        status: 'success',
+      },
+    ],
+  },
+  'trace-mock-005': {
+    traceId: 'trace-mock-005',
+    userId: 'user-mock-002',
+    requestId: 'req-mock-005',
+    threadId: 'thread-mock-002',
+    startedAt: '2026-05-24T08:30:22.000Z',
+    completedAt: '2026-05-24T08:30:24.500Z',
+    durationMs: 2500,
+    status: 'success',
+    model: 'claude-sonnet-4-6',
+    totalTokens: 3400,
+    estimatedCostUsd: 0.0102,
+    toolCallCount: 2,
+    agentCallCount: 1,
+    skillCallCount: 0,
+    tokenUsage: { inputTokens: 2600, outputTokens: 800, totalTokens: 3400 },
+    agentCalls: [
+      {
+        agentName: 'GeneralAgent',
+        agentKind: 'bedrock-inline',
+        startedAt: '2026-05-24T08:30:22.050Z',
+        completedAt: '2026-05-24T08:30:24.450Z',
+        durationMs: 2400,
+        status: 'success',
+      },
+    ],
+    toolCalls: [
+      {
+        toolCallId: 'tc-005-1',
+        toolName: 'router',
+        startedAt: '2026-05-24T08:30:22.100Z',
+        completedAt: '2026-05-24T08:30:22.185Z',
+        durationMs: 85,
+        status: 'success',
+      },
+      {
+        toolCallId: 'tc-005-2',
+        toolName: 'kb_retrieve',
+        startedAt: '2026-05-24T08:30:22.200Z',
+        completedAt: '2026-05-24T08:30:22.620Z',
+        durationMs: 420,
+        status: 'success',
+      },
+    ],
+    skillCalls: [],
+  },
+};
+
+const FALLBACK_TRACE_DETAIL: AdminTraceDetail = MOCK_TRACE_DETAILS[
+  'trace-mock-001'
+] as AdminTraceDetail;
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export const handlers = [
   getGetHealthMockHandler(
@@ -166,6 +534,162 @@ export const handlers = [
       thread,
     };
   }),
+  getGetAdminOverviewMockHandler(() => ({
+    requestCount: 42,
+    activeUserCount: 8,
+    totalTokens: 124_800,
+    avgDurationMs: 2340,
+    p95DurationMs: 6100,
+    errorRate: 0.048,
+    totalToolCalls: 187,
+    toolFailureRate: 0.032,
+    estimatedCostUsd: 0.374,
+    period: {
+      from: new Date(Date.now() - 6 * 86400_000).toISOString().slice(0, 10),
+      to: new Date().toISOString().slice(0, 10),
+    },
+  })),
+
+  getGetAdminUsersMockHandler(() => ({
+    users: [
+      {
+        userId: 'user-mock-001',
+        requestCount: 18,
+        totalTokens: 56_000,
+        avgDurationMs: 2100,
+        errorRate: 0.0,
+        mostUsedAgent: 'GeneralAgent',
+        mostUsedTool: 'web_research',
+      },
+      {
+        userId: 'user-mock-002',
+        requestCount: 12,
+        totalTokens: 34_200,
+        avgDurationMs: 1800,
+        errorRate: 0.083,
+        mostUsedAgent: 'ManufacturingAgent',
+        mostUsedTool: 'manufacturing_line',
+      },
+      {
+        userId: 'user-mock-003',
+        requestCount: 7,
+        totalTokens: 21_000,
+        avgDurationMs: 2800,
+        errorRate: 0.0,
+        mostUsedAgent: 'GeneralAgent',
+        mostUsedTool: 'kb_retrieve',
+      },
+      {
+        userId: 'user-mock-004',
+        requestCount: 3,
+        totalTokens: 8_100,
+        avgDurationMs: 3200,
+        errorRate: 0.333,
+        mostUsedAgent: 'GeneralAgent',
+        mostUsedTool: 'router',
+      },
+      {
+        userId: 'user-mock-005',
+        requestCount: 2,
+        totalTokens: 5_500,
+        avgDurationMs: 1900,
+        errorRate: 0.0,
+      },
+    ],
+  })),
+
+  getGetAdminAgentsMockHandler(() => ({
+    agents: [
+      {
+        agentName: 'GeneralAgent',
+        callCount: 38,
+        successRate: 0.921,
+        errorRate: 0.079,
+        avgDurationMs: 2200,
+        totalTokens: 80_000,
+        relatedTools: ['router', 'web_research', 'kb_retrieve'],
+      },
+      {
+        agentName: 'ManufacturingAgent',
+        callCount: 12,
+        successRate: 1.0,
+        errorRate: 0.0,
+        avgDurationMs: 2800,
+        totalTokens: 44_800,
+        relatedTools: ['manufacturing_line', 'router'],
+      },
+    ],
+  })),
+
+  getGetAdminToolsMockHandler(() => ({
+    tools: [
+      {
+        toolName: 'router',
+        callCount: 187,
+        failureRate: 0.016,
+        avgDurationMs: 85,
+      },
+      {
+        toolName: 'web_research',
+        callCount: 95,
+        failureRate: 0.063,
+        avgDurationMs: 950,
+        lastError: 'Search quota exceeded',
+      },
+      {
+        toolName: 'kb_retrieve',
+        callCount: 62,
+        failureRate: 0.0,
+        avgDurationMs: 420,
+      },
+      {
+        toolName: 'manufacturing_line',
+        callCount: 12,
+        failureRate: 0.0,
+        avgDurationMs: 1100,
+      },
+    ],
+  })),
+
+  getGetAdminSkillsMockHandler(() => ({
+    skills: [
+      {
+        skillName: 'web_research',
+        requestCount: 22,
+        avgDurationMs: 1800,
+        totalTokens: 4200,
+        errorRate: 0.045,
+      },
+      {
+        skillName: 'manufacturing_qa',
+        requestCount: 8,
+        avgDurationMs: 3100,
+        totalTokens: 6500,
+        errorRate: 0.0,
+      },
+    ],
+  })),
+
+  getGetAdminTracesMockHandler(({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status') ?? '';
+    const userId = url.searchParams.get('userId') ?? '';
+
+    const filtered = MOCK_TRACES.filter(
+      (t) =>
+        (status === '' || t.status === status) &&
+        (userId === '' || t.userId.includes(userId) || t.traceId.includes(userId)),
+    );
+
+    return { traces: filtered };
+  }),
+
+  getGetAdminTraceDetailMockHandler(({ params }) => {
+    const traceId = String(params.traceId);
+    const detail = MOCK_TRACE_DETAILS[traceId] ?? FALLBACK_TRACE_DETAIL;
+    return { trace: detail };
+  }),
+
   getPostChatMockHandler(async ({ request }): Promise<string> => {
     const payload = await request.json().catch(() => null);
     const parsed = parseChatRequest(payload);

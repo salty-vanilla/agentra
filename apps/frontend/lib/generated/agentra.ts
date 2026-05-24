@@ -8,8 +8,21 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  AdminAgentsResponse,
+  AdminOverviewResponse,
+  AdminSkillsResponse,
+  AdminToolsResponse,
+  AdminTraceDetailResponse,
+  AdminTracesResponse,
+  AdminUsersResponse,
   ChatRequest,
   CreateThreadRequest,
+  GetAdminAgentsParams,
+  GetAdminOverviewParams,
+  GetAdminSkillsParams,
+  GetAdminToolsParams,
+  GetAdminTracesParams,
+  GetAdminUsersParams,
   HealthResponse,
   ThreadMessagesResponse,
   ThreadResponse,
@@ -205,6 +218,216 @@ export const getListThreadMessagesUrl = (threadId: string,) => {
 export const listThreadMessages = async (threadId: string, options?: RequestInit): Promise<ThreadMessagesResponse> => {
 
   return fetchMutator<ThreadMessagesResponse>(getListThreadMessagesUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get observability overview stats
+ */
+export const getGetAdminOverviewUrl = (params?: GetAdminOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/overview?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/overview`
+}
+
+export const getAdminOverview = async (params?: GetAdminOverviewParams, options?: RequestInit): Promise<AdminOverviewResponse> => {
+
+  return fetchMutator<AdminOverviewResponse>(getGetAdminOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-user observability stats
+ */
+export const getGetAdminUsersUrl = (params?: GetAdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/users?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/users`
+}
+
+export const getAdminUsers = async (params?: GetAdminUsersParams, options?: RequestInit): Promise<AdminUsersResponse> => {
+
+  return fetchMutator<AdminUsersResponse>(getGetAdminUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-agent observability stats
+ */
+export const getGetAdminAgentsUrl = (params?: GetAdminAgentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/agents?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/agents`
+}
+
+export const getAdminAgents = async (params?: GetAdminAgentsParams, options?: RequestInit): Promise<AdminAgentsResponse> => {
+
+  return fetchMutator<AdminAgentsResponse>(getGetAdminAgentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-tool observability stats
+ */
+export const getGetAdminToolsUrl = (params?: GetAdminToolsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/tools?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/tools`
+}
+
+export const getAdminTools = async (params?: GetAdminToolsParams, options?: RequestInit): Promise<AdminToolsResponse> => {
+
+  return fetchMutator<AdminToolsResponse>(getGetAdminToolsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-skill observability stats
+ */
+export const getGetAdminSkillsUrl = (params?: GetAdminSkillsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/skills?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/skills`
+}
+
+export const getAdminSkills = async (params?: GetAdminSkillsParams, options?: RequestInit): Promise<AdminSkillsResponse> => {
+
+  return fetchMutator<AdminSkillsResponse>(getGetAdminSkillsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List individual trace records
+ */
+export const getGetAdminTracesUrl = (params?: GetAdminTracesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/traces?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/traces`
+}
+
+export const getAdminTraces = async (params?: GetAdminTracesParams, options?: RequestInit): Promise<AdminTracesResponse> => {
+
+  return fetchMutator<AdminTracesResponse>(getGetAdminTracesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get full detail for a single trace
+ */
+export const getGetAdminTraceDetailUrl = (traceId: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/traces/${traceId}`
+}
+
+export const getAdminTraceDetail = async (traceId: string, options?: RequestInit): Promise<AdminTraceDetailResponse> => {
+
+  return fetchMutator<AdminTraceDetailResponse>(getGetAdminTraceDetailUrl(traceId),
   {
     ...options,
     method: 'GET'

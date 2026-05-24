@@ -3,6 +3,13 @@ import { ApiError } from '@/lib/api-error';
 import {
   createThread as createThreadRequest,
   deleteThread as deleteThreadRequest,
+  getAdminAgents as getAdminAgentsRequest,
+  getAdminOverview as getAdminOverviewRequest,
+  getAdminSkills as getAdminSkillsRequest,
+  getAdminTools as getAdminToolsRequest,
+  getAdminTraceDetail as getAdminTraceDetailRequest,
+  getAdminTraces as getAdminTracesRequest,
+  getAdminUsers as getAdminUsersRequest,
   getHealth as getHealthRequest,
   listThreadMessages as listThreadMessagesRequest,
   listThreads as listThreadsRequest,
@@ -10,6 +17,13 @@ import {
   updateThread as updateThreadRequest,
 } from '@/lib/generated/agentra';
 import type {
+  AdminAgentsResponse,
+  AdminOverviewResponse,
+  AdminSkillsResponse,
+  AdminToolsResponse,
+  AdminTraceDetailResponse,
+  AdminTracesResponse,
+  AdminUsersResponse,
   ChatObservationSummary,
   ChatRequest,
   ChatStreamDoneEvent,
@@ -21,6 +35,7 @@ import type {
   ChatStreamThreadStartedEvent,
   CreateThreadRequest,
   HealthResponse,
+  ObsStatusParameter,
   ThreadMessagesResponse,
   ThreadResponse,
   ThreadsResponse,
@@ -209,4 +224,64 @@ async function expectThreadResponse(
     throw new ApiError(502, { error: 'Unexpected response shape from thread API.' });
   }
   return response;
+}
+
+// ── Admin observability API ───────────────────────────────────────────────────
+
+export type AdminDateRange = { from?: string; to?: string };
+export type AdminPaginationParams = AdminDateRange & { limit?: number; cursor?: string };
+
+export async function fetchAdminOverview(
+  params: AdminDateRange = {},
+): Promise<AdminOverviewResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminOverviewRequest(params, { headers });
+}
+
+export async function fetchAdminUsers(
+  params: AdminPaginationParams = {},
+): Promise<AdminUsersResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminUsersRequest(params, { headers });
+}
+
+export async function fetchAdminAgents(
+  params: AdminDateRange = {},
+): Promise<AdminAgentsResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminAgentsRequest(params, { headers });
+}
+
+export async function fetchAdminTools(
+  params: AdminDateRange = {},
+): Promise<AdminToolsResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminToolsRequest(params, { headers });
+}
+
+export async function fetchAdminSkills(
+  params: AdminDateRange = {},
+): Promise<AdminSkillsResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminSkillsRequest(params, { headers });
+}
+
+export async function fetchAdminTraces(
+  params: AdminPaginationParams & { status?: string; userId?: string } = {},
+): Promise<AdminTracesResponse> {
+  const headers = await getAuthHeaders();
+  const { status, userId, ...rest } = params;
+  const tracesParams = {
+    ...rest,
+    ...(status ? { status: status as ObsStatusParameter } : {}),
+    ...(userId ? { userId } : {}),
+  };
+  return getAdminTracesRequest(tracesParams, { headers });
+}
+
+export async function fetchAdminTraceDetail(
+  traceId: string,
+): Promise<AdminTraceDetailResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminTraceDetailRequest(traceId, { headers });
 }

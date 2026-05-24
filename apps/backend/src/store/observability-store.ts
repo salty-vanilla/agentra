@@ -31,15 +31,56 @@ export interface ObservabilityStore {
     day: string,
     pagination?: PaginationOpts,
   ): Promise<PagedObservabilityResult>;
+  listObservabilityRecordsInRange(
+    range: DateRangeOpts,
+    pagination?: PaginationOpts,
+  ): Promise<PagedObservabilityResult>;
+}
+
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+function applyOffsetPagination(
+  sorted: ObservabilityRecord[],
+  pagination?: PaginationOpts,
+): PagedObservabilityResult {
+  const limit = pagination?.limit ?? 50;
+  const offset = pagination?.cursor
+    ? Number(Buffer.from(pagination.cursor, 'base64').toString())
+    : 0;
+  const page = sorted.slice(offset, offset + limit);
+  const nextOffset = offset + page.length;
+  const cursor =
+    nextOffset < sorted.length
+      ? Buffer.from(String(nextOffset)).toString('base64')
+      : undefined;
+  return { records: page, ...(cursor ? { cursor } : {}) };
+}
+
+function filterByRange(
+  records: ObservabilityRecord[],
+  range: DateRangeOpts,
+): ObservabilityRecord[] {
+  let filtered = records;
+  if (range.startDay) {
+    filtered = filtered.filter(
+      (r) => r.startedAt.slice(0, 10) >= (range.startDay as string),
+    );
+  }
+  if (range.endDay) {
+    filtered = filtered.filter(
+      (r) => r.startedAt.slice(0, 10) <= (range.endDay as string),
+    );
+  }
+  return filtered;
 }
 
 // ── Memory implementation ─────────────────────────────────────────────────────
 
 export class MemoryObservabilityStore implements ObservabilityStore {
-  private records: ObservabilityRecord[] = [];
+  records: ObservabilityRecord[] = [];
 
   async putObservabilityRecord(record: ObservabilityRecord): Promise<void> {
-    this.records.push(record);
+    this.records = [...this.records, record];
   }
 
   async getObservabilityRecordByTraceId(
@@ -54,30 +95,9 @@ export class MemoryObservabilityStore implements ObservabilityStore {
     pagination?: PaginationOpts,
   ): Promise<PagedObservabilityResult> {
     let filtered = this.records.filter((r) => r.userId === userId);
-
-    const startDay = range?.startDay;
-    if (startDay) {
-      filtered = filtered.filter((r) => r.startedAt.slice(0, 10) >= startDay);
-    }
-    const endDay = range?.endDay;
-    if (endDay) {
-      filtered = filtered.filter((r) => r.startedAt.slice(0, 10) <= endDay);
-    }
-
-    filtered.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
-
-    const limit = pagination?.limit ?? 50;
-    const offset = pagination?.cursor
-      ? Number(Buffer.from(pagination.cursor, 'base64').toString())
-      : 0;
-    const page = filtered.slice(offset, offset + limit);
-    const nextOffset = offset + page.length;
-    const cursor =
-      nextOffset < filtered.length
-        ? Buffer.from(String(nextOffset)).toString('base64')
-        : undefined;
-
-    return { records: page, ...(cursor ? { cursor } : {}) };
+    if (range) filtered = filterByRange(filtered, range);
+    const sorted = [...filtered].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    return applyOffsetPagination(sorted, pagination);
   }
 
   async listObservabilityRecordsByDay(
@@ -85,20 +105,17 @@ export class MemoryObservabilityStore implements ObservabilityStore {
     pagination?: PaginationOpts,
   ): Promise<PagedObservabilityResult> {
     const filtered = this.records.filter((r) => r.startedAt.startsWith(day));
-    filtered.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    const sorted = [...filtered].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    return applyOffsetPagination(sorted, pagination);
+  }
 
-    const limit = pagination?.limit ?? 50;
-    const offset = pagination?.cursor
-      ? Number(Buffer.from(pagination.cursor, 'base64').toString())
-      : 0;
-    const page = filtered.slice(offset, offset + limit);
-    const nextOffset = offset + page.length;
-    const cursor =
-      nextOffset < filtered.length
-        ? Buffer.from(String(nextOffset)).toString('base64')
-        : undefined;
-
-    return { records: page, ...(cursor ? { cursor } : {}) };
+  async listObservabilityRecordsInRange(
+    range: DateRangeOpts,
+    pagination?: PaginationOpts,
+  ): Promise<PagedObservabilityResult> {
+    const filtered = filterByRange(this.records, range);
+    const sorted = [...filtered].sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    return applyOffsetPagination(sorted, pagination);
   }
 }
 
@@ -120,6 +137,17 @@ function decodeCursor(cursor: string): Record<string, unknown> {
 
 function toRecord(item: Record<string, unknown>): ObservabilityRecord {
   return observabilityRecordSchema.parse(item);
+}
+
+function iterateDays(startDay: string, endDay: string): string[] {
+  const days: string[] = [];
+  const current = new Date(`${startDay}T00:00:00Z`);
+  const end = new Date(`${endDay}T00:00:00Z`);
+  while (current <= end) {
+    days.push(current.toISOString().slice(0, 10));
+    current.setUTCDate(current.getUTCDate() + 1);
+  }
+  return days;
 }
 
 export class DynamoObservabilityStore implements ObservabilityStore {
@@ -249,6 +277,34 @@ export class DynamoObservabilityStore implements ObservabilityStore {
 
     return { records, ...(cursor ? { cursor } : {}) };
   }
+
+  async listObservabilityRecordsInRange(
+    range: DateRangeOpts,
+    pagination?: PaginationOpts,
+  ): Promise<PagedObservabilityResult> {
+    const today = new Date().toISOString().slice(0, 10);
+    const startDay = range.startDay ?? today;
+    const endDay = range.endDay ?? today;
+
+    const days = iterateDays(startDay, endDay);
+
+    // Collect all records across days using GSI2 (acceptable at demo scale)
+    const allRecords: ObservabilityRecord[] = [];
+    for (const day of days) {
+      let cursor: string | undefined;
+      do {
+        const result = await this.listObservabilityRecordsByDay(
+          day,
+          cursor !== undefined ? { limit: 1000, cursor } : { limit: 1000 },
+        );
+        allRecords.push(...result.records);
+        cursor = result.cursor;
+      } while (cursor);
+    }
+
+    const sorted = allRecords.sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    return applyOffsetPagination(sorted, pagination);
+  }
 }
 
 // ── Factory ───────────────────────────────────────────────────────────────────
@@ -276,3 +332,14 @@ export const listObservabilityRecordsByUser = (
 
 export const listObservabilityRecordsByDay = (day: string, pagination?: PaginationOpts) =>
   activeObservabilityStore.listObservabilityRecordsByDay(day, pagination);
+
+export const listObservabilityRecordsInRange = (
+  range: DateRangeOpts,
+  pagination?: PaginationOpts,
+) => activeObservabilityStore.listObservabilityRecordsInRange(range, pagination);
+
+export function resetObservabilityStore(): void {
+  if (activeObservabilityStore instanceof MemoryObservabilityStore) {
+    activeObservabilityStore.records = [];
+  }
+}

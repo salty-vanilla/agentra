@@ -253,3 +253,336 @@ export const ListThreadMessagesResponse = zod.object({
 }).optional()
 }))
 })
+
+
+/**
+ * @summary Get observability overview stats
+ */
+export const getAdminOverviewQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminOverviewQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetAdminOverviewQueryParams = zod.object({
+  "from": zod.string().regex(getAdminOverviewQueryFromRegExp).optional(),
+  "to": zod.string().regex(getAdminOverviewQueryToRegExp).optional()
+})
+
+export const getAdminOverviewResponseRequestCountMin = 0;
+
+export const getAdminOverviewResponseActiveUserCountMin = 0;
+
+export const getAdminOverviewResponseTotalTokensMin = 0;
+
+export const getAdminOverviewResponseAvgDurationMsMin = 0;
+
+export const getAdminOverviewResponseP95DurationMsMin = 0;
+
+export const getAdminOverviewResponseErrorRateMin = 0;
+export const getAdminOverviewResponseErrorRateMax = 1;
+
+export const getAdminOverviewResponseTotalToolCallsMin = 0;
+
+export const getAdminOverviewResponseToolFailureRateMin = 0;
+export const getAdminOverviewResponseToolFailureRateMax = 1;
+
+export const getAdminOverviewResponseEstimatedCostUsdMin = 0;
+
+
+
+export const GetAdminOverviewResponse = zod.object({
+  "requestCount": zod.number().min(getAdminOverviewResponseRequestCountMin),
+  "activeUserCount": zod.number().min(getAdminOverviewResponseActiveUserCountMin),
+  "totalTokens": zod.number().min(getAdminOverviewResponseTotalTokensMin),
+  "avgDurationMs": zod.number().min(getAdminOverviewResponseAvgDurationMsMin),
+  "p95DurationMs": zod.number().min(getAdminOverviewResponseP95DurationMsMin),
+  "errorRate": zod.number().min(getAdminOverviewResponseErrorRateMin).max(getAdminOverviewResponseErrorRateMax),
+  "totalToolCalls": zod.number().min(getAdminOverviewResponseTotalToolCallsMin),
+  "toolFailureRate": zod.number().min(getAdminOverviewResponseToolFailureRateMin).max(getAdminOverviewResponseToolFailureRateMax),
+  "estimatedCostUsd": zod.number().min(getAdminOverviewResponseEstimatedCostUsdMin),
+  "period": zod.object({
+  "from": zod.string(),
+  "to": zod.string()
+})
+})
+
+
+/**
+ * @summary Get per-user observability stats
+ */
+export const getAdminUsersQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminUsersQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminUsersQueryLimitDefault = 50;
+export const getAdminUsersQueryLimitMax = 200;
+
+
+
+export const GetAdminUsersQueryParams = zod.object({
+  "from": zod.string().regex(getAdminUsersQueryFromRegExp).optional(),
+  "to": zod.string().regex(getAdminUsersQueryToRegExp).optional(),
+  "limit": zod.number().min(1).max(getAdminUsersQueryLimitMax).default(getAdminUsersQueryLimitDefault),
+  "cursor": zod.string().optional()
+})
+
+export const getAdminUsersResponseUsersItemRequestCountMin = 0;
+
+export const getAdminUsersResponseUsersItemTotalTokensMin = 0;
+
+export const getAdminUsersResponseUsersItemAvgDurationMsMin = 0;
+
+export const getAdminUsersResponseUsersItemErrorRateMin = 0;
+export const getAdminUsersResponseUsersItemErrorRateMax = 1;
+
+
+
+export const GetAdminUsersResponse = zod.object({
+  "users": zod.array(zod.object({
+  "userId": zod.string(),
+  "requestCount": zod.number().min(getAdminUsersResponseUsersItemRequestCountMin),
+  "totalTokens": zod.number().min(getAdminUsersResponseUsersItemTotalTokensMin),
+  "avgDurationMs": zod.number().min(getAdminUsersResponseUsersItemAvgDurationMsMin),
+  "errorRate": zod.number().min(getAdminUsersResponseUsersItemErrorRateMin).max(getAdminUsersResponseUsersItemErrorRateMax),
+  "mostUsedAgent": zod.string().optional(),
+  "mostUsedTool": zod.string().optional()
+})),
+  "cursor": zod.string().optional()
+})
+
+
+/**
+ * @summary Get per-agent observability stats
+ */
+export const getAdminAgentsQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminAgentsQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetAdminAgentsQueryParams = zod.object({
+  "from": zod.string().regex(getAdminAgentsQueryFromRegExp).optional(),
+  "to": zod.string().regex(getAdminAgentsQueryToRegExp).optional()
+})
+
+export const getAdminAgentsResponseAgentsItemCallCountMin = 0;
+
+export const getAdminAgentsResponseAgentsItemSuccessRateMin = 0;
+export const getAdminAgentsResponseAgentsItemSuccessRateMax = 1;
+
+export const getAdminAgentsResponseAgentsItemErrorRateMin = 0;
+export const getAdminAgentsResponseAgentsItemErrorRateMax = 1;
+
+export const getAdminAgentsResponseAgentsItemAvgDurationMsMin = 0;
+
+export const getAdminAgentsResponseAgentsItemTotalTokensMin = 0;
+
+
+
+export const GetAdminAgentsResponse = zod.object({
+  "agents": zod.array(zod.object({
+  "agentName": zod.string(),
+  "callCount": zod.number().min(getAdminAgentsResponseAgentsItemCallCountMin),
+  "successRate": zod.number().min(getAdminAgentsResponseAgentsItemSuccessRateMin).max(getAdminAgentsResponseAgentsItemSuccessRateMax),
+  "errorRate": zod.number().min(getAdminAgentsResponseAgentsItemErrorRateMin).max(getAdminAgentsResponseAgentsItemErrorRateMax),
+  "avgDurationMs": zod.number().min(getAdminAgentsResponseAgentsItemAvgDurationMsMin),
+  "totalTokens": zod.number().min(getAdminAgentsResponseAgentsItemTotalTokensMin),
+  "relatedTools": zod.array(zod.string())
+}))
+})
+
+
+/**
+ * @summary Get per-tool observability stats
+ */
+export const getAdminToolsQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminToolsQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetAdminToolsQueryParams = zod.object({
+  "from": zod.string().regex(getAdminToolsQueryFromRegExp).optional(),
+  "to": zod.string().regex(getAdminToolsQueryToRegExp).optional()
+})
+
+export const getAdminToolsResponseToolsItemCallCountMin = 0;
+
+export const getAdminToolsResponseToolsItemFailureRateMin = 0;
+export const getAdminToolsResponseToolsItemFailureRateMax = 1;
+
+export const getAdminToolsResponseToolsItemAvgDurationMsMin = 0;
+
+
+
+export const GetAdminToolsResponse = zod.object({
+  "tools": zod.array(zod.object({
+  "toolName": zod.string(),
+  "callCount": zod.number().min(getAdminToolsResponseToolsItemCallCountMin),
+  "failureRate": zod.number().min(getAdminToolsResponseToolsItemFailureRateMin).max(getAdminToolsResponseToolsItemFailureRateMax),
+  "avgDurationMs": zod.number().min(getAdminToolsResponseToolsItemAvgDurationMsMin),
+  "lastError": zod.string().optional()
+}))
+})
+
+
+/**
+ * @summary Get per-skill observability stats
+ */
+export const getAdminSkillsQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminSkillsQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+
+
+export const GetAdminSkillsQueryParams = zod.object({
+  "from": zod.string().regex(getAdminSkillsQueryFromRegExp).optional(),
+  "to": zod.string().regex(getAdminSkillsQueryToRegExp).optional()
+})
+
+export const getAdminSkillsResponseSkillsItemRequestCountMin = 0;
+
+export const getAdminSkillsResponseSkillsItemAvgDurationMsMin = 0;
+
+export const getAdminSkillsResponseSkillsItemTotalTokensMin = 0;
+
+export const getAdminSkillsResponseSkillsItemErrorRateMin = 0;
+export const getAdminSkillsResponseSkillsItemErrorRateMax = 1;
+
+
+
+export const GetAdminSkillsResponse = zod.object({
+  "skills": zod.array(zod.object({
+  "skillName": zod.string(),
+  "requestCount": zod.number().min(getAdminSkillsResponseSkillsItemRequestCountMin),
+  "avgDurationMs": zod.number().min(getAdminSkillsResponseSkillsItemAvgDurationMsMin),
+  "totalTokens": zod.number().min(getAdminSkillsResponseSkillsItemTotalTokensMin),
+  "errorRate": zod.number().min(getAdminSkillsResponseSkillsItemErrorRateMin).max(getAdminSkillsResponseSkillsItemErrorRateMax)
+}))
+})
+
+
+/**
+ * @summary List individual trace records
+ */
+export const getAdminTracesQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminTracesQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminTracesQueryLimitDefault = 50;
+export const getAdminTracesQueryLimitMax = 200;
+
+
+
+export const GetAdminTracesQueryParams = zod.object({
+  "from": zod.string().regex(getAdminTracesQueryFromRegExp).optional(),
+  "to": zod.string().regex(getAdminTracesQueryToRegExp).optional(),
+  "status": zod.enum(['success', 'error', 'cancelled']).optional(),
+  "userId": zod.string().optional(),
+  "limit": zod.number().min(1).max(getAdminTracesQueryLimitMax).default(getAdminTracesQueryLimitDefault),
+  "cursor": zod.string().optional()
+})
+
+export const getAdminTracesResponseTracesItemDurationMsMin = 0;
+
+export const getAdminTracesResponseTracesItemTotalTokensMin = 0;
+
+export const getAdminTracesResponseTracesItemEstimatedCostUsdMin = 0;
+
+export const getAdminTracesResponseTracesItemToolCallCountMin = 0;
+
+export const getAdminTracesResponseTracesItemAgentCallCountMin = 0;
+
+export const getAdminTracesResponseTracesItemSkillCallCountMin = 0;
+
+
+
+export const GetAdminTracesResponse = zod.object({
+  "traces": zod.array(zod.object({
+  "traceId": zod.string(),
+  "userId": zod.string(),
+  "startedAt": zod.string().datetime({}),
+  "completedAt": zod.string().datetime({}),
+  "durationMs": zod.number().min(getAdminTracesResponseTracesItemDurationMsMin),
+  "status": zod.enum(['success', 'error', 'cancelled']),
+  "model": zod.string().optional(),
+  "totalTokens": zod.number().min(getAdminTracesResponseTracesItemTotalTokensMin).optional(),
+  "estimatedCostUsd": zod.number().min(getAdminTracesResponseTracesItemEstimatedCostUsdMin).optional(),
+  "toolCallCount": zod.number().min(getAdminTracesResponseTracesItemToolCallCountMin),
+  "agentCallCount": zod.number().min(getAdminTracesResponseTracesItemAgentCallCountMin),
+  "skillCallCount": zod.number().min(getAdminTracesResponseTracesItemSkillCallCountMin)
+})),
+  "cursor": zod.string().optional()
+})
+
+
+/**
+ * @summary Get full detail for a single trace
+ */
+
+
+
+export const GetAdminTraceDetailParams = zod.object({
+  "traceId": zod.string().min(1)
+})
+
+export const getAdminTraceDetailResponseTraceDurationMsMin = 0;
+
+export const getAdminTraceDetailResponseTraceTotalTokensMin = 0;
+
+export const getAdminTraceDetailResponseTraceEstimatedCostUsdMin = 0;
+
+export const getAdminTraceDetailResponseTraceToolCallCountMin = 0;
+
+export const getAdminTraceDetailResponseTraceAgentCallCountMin = 0;
+
+export const getAdminTraceDetailResponseTraceSkillCallCountMin = 0;
+
+export const getAdminTraceDetailResponseTraceToolCallsItemDurationMsMin = 0;
+
+export const getAdminTraceDetailResponseTraceAgentCallsItemDurationMsMin = 0;
+
+export const getAdminTraceDetailResponseTraceSkillCallsItemDurationMsMin = 0;
+
+export const getAdminTraceDetailResponseTraceTokenUsageInputTokensMin = 0;
+
+export const getAdminTraceDetailResponseTraceTokenUsageOutputTokensMin = 0;
+
+export const getAdminTraceDetailResponseTraceTokenUsageTotalTokensMin = 0;
+
+
+
+export const GetAdminTraceDetailResponse = zod.object({
+  "trace": zod.object({
+  "traceId": zod.string(),
+  "userId": zod.string(),
+  "startedAt": zod.string().datetime({}),
+  "completedAt": zod.string().datetime({}),
+  "durationMs": zod.number().min(getAdminTraceDetailResponseTraceDurationMsMin),
+  "status": zod.enum(['success', 'error', 'cancelled']),
+  "model": zod.string().optional(),
+  "totalTokens": zod.number().min(getAdminTraceDetailResponseTraceTotalTokensMin).optional(),
+  "estimatedCostUsd": zod.number().min(getAdminTraceDetailResponseTraceEstimatedCostUsdMin).optional(),
+  "toolCallCount": zod.number().min(getAdminTraceDetailResponseTraceToolCallCountMin),
+  "agentCallCount": zod.number().min(getAdminTraceDetailResponseTraceAgentCallCountMin),
+  "skillCallCount": zod.number().min(getAdminTraceDetailResponseTraceSkillCallCountMin),
+  "requestId": zod.string(),
+  "threadId": zod.string(),
+  "toolCalls": zod.array(zod.object({
+  "toolCallId": zod.string(),
+  "toolName": zod.string(),
+  "startedAt": zod.string().datetime({}),
+  "completedAt": zod.string().datetime({}).optional(),
+  "durationMs": zod.number().min(getAdminTraceDetailResponseTraceToolCallsItemDurationMsMin),
+  "status": zod.enum(['success', 'error', 'cancelled']),
+  "error": zod.string().optional()
+})),
+  "agentCalls": zod.array(zod.object({
+  "agentName": zod.string(),
+  "agentKind": zod.string().optional(),
+  "startedAt": zod.string().datetime({}).optional(),
+  "completedAt": zod.string().datetime({}).optional(),
+  "durationMs": zod.number().min(getAdminTraceDetailResponseTraceAgentCallsItemDurationMsMin).optional(),
+  "status": zod.enum(['success', 'error', 'cancelled']).optional()
+})),
+  "skillCalls": zod.array(zod.object({
+  "skillName": zod.string(),
+  "durationMs": zod.number().min(getAdminTraceDetailResponseTraceSkillCallsItemDurationMsMin).optional(),
+  "status": zod.enum(['success', 'error', 'cancelled']).optional()
+})),
+  "tokenUsage": zod.object({
+  "inputTokens": zod.number().min(getAdminTraceDetailResponseTraceTokenUsageInputTokensMin),
+  "outputTokens": zod.number().min(getAdminTraceDetailResponseTraceTokenUsageOutputTokensMin),
+  "totalTokens": zod.number().min(getAdminTraceDetailResponseTraceTokenUsageTotalTokensMin)
+}).optional()
+})
+})
