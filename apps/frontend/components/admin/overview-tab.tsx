@@ -39,6 +39,7 @@ function ms(ms: number): string {
 }
 
 function usd(cost: number): string {
+  if (cost === 0) return '—';
   if (cost < 0.001) return `$${cost.toFixed(5)}`;
   return `$${cost.toFixed(3)}`;
 }
