@@ -15,7 +15,6 @@ import {
 import { cva } from 'class-variance-authority';
 import {
   ArrowDownIcon,
-  ArrowUpIcon,
   CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -25,17 +24,16 @@ import {
   MoreHorizontalIcon,
   PencilIcon,
   RefreshCwIcon,
-  SquareIcon,
 } from 'lucide-react';
 import type { FC } from 'react';
+import { ComposerView } from '@/components/assistant-ui/composer-view';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { ObservabilityDetailsView } from '@/components/assistant-ui/observability-details-view';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
-import { type ModelKey, ModelSelector } from '@/components/model-selector';
+import type { ModelKey } from '@/components/model-selector';
 import { ProgressSummaryCard } from '@/components/progress-summary-card';
 import { SlideCommandBadge } from '@/components/slide-command-badge';
-import { SlideCommandDialog } from '@/components/slide-command-dialog';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
 import {
@@ -43,7 +41,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { isMockApiMode } from '@/lib/api-config';
 import type {
   ChatCommand,
   ProgressSummaryEvent,
@@ -204,116 +201,9 @@ const Composer: FC<{
   onSlideCommandDeactivate?: () => void;
   slideDialogOpen?: boolean;
   onSlideDialogOpenChange?: (open: boolean) => void;
-}> = ({
-  modelValue,
-  onModelChange,
-  slideCommandActive,
-  onSlideCommandActivate,
-  onSlideCommandDeactivate,
-  slideDialogOpen,
-  onSlideDialogOpenChange,
-}) => {
-  // Detect /slide prefix in live composer text
+}> = (props) => {
   const hasSlidePrefix = useAuiState((s) => /^\/slide(\s|$)/.test(s.composer.text));
-  const showBadge = slideCommandActive || hasSlidePrefix;
-
-  return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
-      <div
-        data-slot="aui_composer-shell"
-        className="flex w-full flex-col gap-1.5 rounded-(--composer-radius) border bg-card/90 p-(--composer-padding) shadow-sm backdrop-blur-sm transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20"
-      >
-        {showBadge && (
-          <div className="px-1.5">
-            <SlideCommandBadge
-              {...(onSlideCommandDeactivate && slideCommandActive
-                ? { onRemove: onSlideCommandDeactivate }
-                : {})}
-            />
-          </div>
-        )}
-        <ComposerPrimitive.Input
-          placeholder={
-            showBadge
-              ? 'スライドの依頼内容を入力してください'
-              : '質問や次の実装指示を入力してください（/slide でスライド作成）'
-          }
-          className="aui-composer-input max-h-32 min-h-[1.75rem] w-full resize-none bg-transparent px-1.5 py-0.5 text-sm leading-6 outline-none placeholder:text-muted-foreground/80"
-          rows={1}
-          autoFocus
-          aria-label="Message input"
-        />
-        <ComposerAction
-          modelValue={modelValue}
-          onModelChange={onModelChange}
-          {...(onSlideCommandActivate ? { onSlideCommandActivate } : {})}
-          {...(slideDialogOpen != null ? { slideDialogOpen } : {})}
-          {...(onSlideDialogOpenChange ? { onSlideDialogOpenChange } : {})}
-        />
-      </div>
-    </ComposerPrimitive.Root>
-  );
-};
-
-const ComposerAction: FC<{
-  modelValue: ModelKey;
-  onModelChange: (m: ModelKey) => void;
-  onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
-  slideDialogOpen?: boolean;
-  onSlideDialogOpenChange?: (open: boolean) => void;
-}> = ({
-  modelValue,
-  onModelChange,
-  onSlideCommandActivate,
-  slideDialogOpen,
-  onSlideDialogOpenChange,
-}) => {
-  return (
-    <div className="aui-composer-action-wrapper relative flex items-center justify-between gap-3">
-      <div className="flex min-w-0 items-center gap-1">
-        <SlideCommandDialog
-          onSubmit={(params) => {
-            onSlideCommandActivate?.(params);
-          }}
-          {...(slideDialogOpen != null ? { externalOpen: slideDialogOpen } : {})}
-          {...(onSlideDialogOpenChange ? { onOpenChange: onSlideDialogOpenChange } : {})}
-        />
-        {!isMockApiMode && <ModelSelector value={modelValue} onChange={onModelChange} />}
-      </div>
-      <AuiIf condition={(s) => !s.thread.isRunning}>
-        <ComposerPrimitive.Send
-          render={
-            <TooltipIconButton
-              tooltip="Send message"
-              side="bottom"
-              type="button"
-              variant="default"
-              size="icon"
-              className="aui-composer-send size-8 rounded-full"
-              aria-label="Send message"
-            />
-          }
-        >
-          <ArrowUpIcon className="aui-composer-send-icon size-4" />
-        </ComposerPrimitive.Send>
-      </AuiIf>
-      <AuiIf condition={(s) => s.thread.isRunning}>
-        <ComposerPrimitive.Cancel
-          render={
-            <Button
-              type="button"
-              variant="default"
-              size="icon"
-              className="aui-composer-cancel size-8 rounded-full"
-              aria-label="Stop generating"
-            />
-          }
-        >
-          <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
-        </ComposerPrimitive.Cancel>
-      </AuiIf>
-    </div>
-  );
+  return <ComposerView {...props} hasSlidePrefix={hasSlidePrefix} />;
 };
 
 const MessageError: FC = () => {
