@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import type { AdminUserStats } from '@/lib/generated/model';
 import { adminUsersQueryOptions } from '@/lib/query-options';
+import { SearchToolbar } from './search-toolbar';
+import { UserDetailDrawer } from './user-detail-drawer';
 
 type Props = {
   from: string;
@@ -51,9 +53,22 @@ const columns = [
   }),
 ];
 
+function filterUsers(users: AdminUserStats[], query: string): AdminUserStats[] {
+  if (!query) return users;
+  const q = query.toLowerCase();
+  return users.filter(
+    (u) =>
+      u.userId.toLowerCase().includes(q) ||
+      (u.mostUsedAgent?.toLowerCase().includes(q) ?? false) ||
+      (u.mostUsedTool?.toLowerCase().includes(q) ?? false),
+  );
+}
+
 export function UsersTab({ from, to }: Props) {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allUsers, setAllUsers] = useState<AdminUserStats[]>([]);
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<AdminUserStats | null>(null);
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: from/to are intentional triggers — period change resets pagination
   useEffect(() => {
@@ -72,25 +87,36 @@ export function UsersTab({ from, to }: Props) {
   });
 
   const users = useMemo(
-    () =>
-      cursor === undefined ? (data?.users ?? []) : [...allUsers, ...(data?.users ?? [])],
-    [cursor, data?.users, allUsers],
+    () => [...allUsers, ...(data?.users ?? [])],
+    [allUsers, data?.users],
   );
+
+  const filteredUsers = useMemo(() => filterUsers(users, search), [users, search]);
 
   function loadMore() {
     if (data?.cursor) {
-      setAllUsers(users);
+      setAllUsers((prev) => [...prev, ...(data?.users ?? [])]);
       setCursor(data.cursor);
     }
   }
 
   return (
     <div className="flex flex-col min-h-0 flex-1 gap-3">
+      <div className="shrink-0">
+        <SearchToolbar
+          value={search}
+          onChange={setSearch}
+          placeholder="Search by user ID, top agent, or top tool..."
+          className="w-72"
+        />
+      </div>
       <DataTable
-        data={users}
+        data={filteredUsers}
         columns={columns}
         isLoading={isLoading}
         error={error ? 'Failed to load users.' : null}
+        emptyMessage={search ? 'No users match the search.' : 'No data for this period.'}
+        onRowClick={(user) => setSelected(user)}
         virtualized
         height="100%"
         resetSortingKey={`${from}-${to}`}
@@ -102,6 +128,7 @@ export function UsersTab({ from, to }: Props) {
           </Button>
         </div>
       )}
+      <UserDetailDrawer user={selected} onClose={() => setSelected(null)} />
     </div>
   );
 }
