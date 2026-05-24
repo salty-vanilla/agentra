@@ -12,6 +12,7 @@ tags:
   - name: health
   - name: threads
   - name: chat
+  - name: admin
 paths:
   /health:
     get:
@@ -185,6 +186,170 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [admin]
+      summary: Get observability overview stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Overview stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverviewResponse'
+        '400':
+          description: Invalid date format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: Get per-user observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+        - $ref: '#/components/parameters/ObsLimit'
+        - $ref: '#/components/parameters/ObsCursor'
+      responses:
+        '200':
+          description: Per-user stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsersResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/agents:
+    get:
+      operationId: getAdminAgents
+      tags: [admin]
+      summary: Get per-agent observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Per-agent stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAgentsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/tools:
+    get:
+      operationId: getAdminTools
+      tags: [admin]
+      summary: Get per-tool observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Per-tool stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminToolsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/skills:
+    get:
+      operationId: getAdminSkills
+      tags: [admin]
+      summary: Get per-skill observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Per-skill stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSkillsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/traces:
+    get:
+      operationId: getAdminTraces
+      tags: [admin]
+      summary: List individual trace records
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+        - $ref: '#/components/parameters/ObsStatus'
+        - $ref: '#/components/parameters/ObsUserId'
+        - $ref: '#/components/parameters/ObsLimit'
+        - $ref: '#/components/parameters/ObsCursor'
+      responses:
+        '200':
+          description: Trace list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTracesResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/traces/{traceId}:
+    get:
+      operationId: getAdminTraceDetail
+      tags: [admin]
+      summary: Get full detail for a single trace
+      parameters:
+        - $ref: '#/components/parameters/TraceId'
+      responses:
+        '200':
+          description: Trace detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTraceDetailResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Trace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
     ThreadId:
@@ -194,6 +359,58 @@ components:
       schema:
         type: string
         minLength: 1
+    TraceId:
+      name: traceId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ObsFrom:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+    ObsTo:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+    ObsLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    ObsCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    ObsStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - success
+          - error
+          - cancelled
+    ObsUserId:
+      name: userId
+      in: query
+      required: false
+      schema:
+        type: string
   schemas:
     ChatRole:
       type: string
@@ -730,3 +947,447 @@ components:
           minLength: 1
         details:
           type: object
+    AdminPeriod:
+      type: object
+      additionalProperties: false
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+    AdminOverviewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - requestCount
+        - activeUserCount
+        - totalTokens
+        - avgDurationMs
+        - p95DurationMs
+        - errorRate
+        - totalToolCalls
+        - toolFailureRate
+        - estimatedCostUsd
+        - period
+      properties:
+        requestCount:
+          type: integer
+          minimum: 0
+        activeUserCount:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        p95DurationMs:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        totalToolCalls:
+          type: integer
+          minimum: 0
+        toolFailureRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        estimatedCostUsd:
+          type: number
+          minimum: 0
+        period:
+          $ref: '#/components/schemas/AdminPeriod'
+    AdminUserStats:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - requestCount
+        - totalTokens
+        - avgDurationMs
+        - errorRate
+      properties:
+        userId:
+          type: string
+        requestCount:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        mostUsedAgent:
+          type: string
+        mostUsedTool:
+          type: string
+    AdminUsersResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserStats'
+        cursor:
+          type: string
+    AdminAgentStats:
+      type: object
+      additionalProperties: false
+      required:
+        - agentName
+        - callCount
+        - successRate
+        - errorRate
+        - avgDurationMs
+        - totalTokens
+        - relatedTools
+      properties:
+        agentName:
+          type: string
+        callCount:
+          type: integer
+          minimum: 0
+        successRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        relatedTools:
+          type: array
+          items:
+            type: string
+    AdminAgentsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - agents
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAgentStats'
+    AdminToolStats:
+      type: object
+      additionalProperties: false
+      required:
+        - toolName
+        - callCount
+        - failureRate
+        - avgDurationMs
+      properties:
+        toolName:
+          type: string
+        callCount:
+          type: integer
+          minimum: 0
+        failureRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        lastError:
+          type: string
+    AdminToolsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - tools
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminToolStats'
+    AdminSkillStats:
+      type: object
+      additionalProperties: false
+      required:
+        - skillName
+        - requestCount
+        - avgDurationMs
+        - totalTokens
+        - errorRate
+      properties:
+        skillName:
+          type: string
+        requestCount:
+          type: integer
+          minimum: 0
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+    AdminSkillsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - skills
+      properties:
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminSkillStats'
+    AdminTraceListItem:
+      type: object
+      additionalProperties: false
+      required:
+        - traceId
+        - userId
+        - startedAt
+        - completedAt
+        - durationMs
+        - status
+        - toolCallCount
+        - agentCallCount
+        - skillCallCount
+      properties:
+        traceId:
+          type: string
+        userId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        model:
+          type: string
+        totalTokens:
+          type: integer
+          minimum: 0
+        estimatedCostUsd:
+          type: number
+          minimum: 0
+        toolCallCount:
+          type: integer
+          minimum: 0
+        agentCallCount:
+          type: integer
+          minimum: 0
+        skillCallCount:
+          type: integer
+          minimum: 0
+    AdminTracesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - traces
+      properties:
+        traces:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceListItem'
+        cursor:
+          type: string
+    AdminTraceToolCall:
+      type: object
+      additionalProperties: false
+      required:
+        - toolCallId
+        - toolName
+        - startedAt
+        - durationMs
+        - status
+      properties:
+        toolCallId:
+          type: string
+        toolName:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        error:
+          type: string
+    AdminTraceAgentCall:
+      type: object
+      additionalProperties: false
+      required:
+        - agentName
+      properties:
+        agentName:
+          type: string
+        agentKind:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+    AdminTraceSkillCall:
+      type: object
+      additionalProperties: false
+      required:
+        - skillName
+      properties:
+        skillName:
+          type: string
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+    AdminTokenUsage:
+      type: object
+      additionalProperties: false
+      required:
+        - inputTokens
+        - outputTokens
+        - totalTokens
+      properties:
+        inputTokens:
+          type: integer
+          minimum: 0
+        outputTokens:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+    AdminTraceDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - traceId
+        - userId
+        - startedAt
+        - completedAt
+        - durationMs
+        - status
+        - toolCallCount
+        - agentCallCount
+        - skillCallCount
+        - requestId
+        - threadId
+        - toolCalls
+        - agentCalls
+        - skillCalls
+      properties:
+        traceId:
+          type: string
+        userId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        model:
+          type: string
+        totalTokens:
+          type: integer
+          minimum: 0
+        estimatedCostUsd:
+          type: number
+          minimum: 0
+        toolCallCount:
+          type: integer
+          minimum: 0
+        agentCallCount:
+          type: integer
+          minimum: 0
+        skillCallCount:
+          type: integer
+          minimum: 0
+        requestId:
+          type: string
+        threadId:
+          type: string
+        toolCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceToolCall'
+        agentCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceAgentCall'
+        skillCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceSkillCall'
+        tokenUsage:
+          $ref: '#/components/schemas/AdminTokenUsage'
+    AdminTraceDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - trace
+      properties:
+        trace:
+          $ref: '#/components/schemas/AdminTraceDetail'

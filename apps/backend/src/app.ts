@@ -20,8 +20,10 @@ import { buildRouterCommandDirective } from './lib/command-directive.js';
 import { sanitizeErrorMessage, sanitizeErrorStack } from './lib/error-sanitize.js';
 import { jsonWithValidation, readJsonBody, validateRequest } from './lib/openapi.js';
 import { createAbortableSleep, createSseResponse } from './lib/sse.js';
+import { adminAuthMiddleware } from './middleware/admin-auth.js';
 import { authMiddleware } from './middleware/auth.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
+import { adminObservabilityRouter } from './routes/admin-observability.js';
 import {
   appendMessage,
   createThread,
@@ -151,6 +153,9 @@ app.use(
 app.use('/chat', authMiddleware);
 app.use('/threads/*', authMiddleware);
 app.use('/threads', authMiddleware);
+app.use('/admin/*', authMiddleware);
+app.use('/admin/*', adminAuthMiddleware);
+app.route('/admin/observability', adminObservabilityRouter);
 
 app.get('/', (context) => {
   return context.json({
