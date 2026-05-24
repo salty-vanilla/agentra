@@ -23,6 +23,24 @@ describe('validateCognitoAccessTokenClaims', () => {
     });
   });
 
+  it('forwards cognito:groups when present in token', () => {
+    process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
+
+    expect(
+      validateCognitoAccessTokenClaims({
+        sub: 'user-123',
+        email: 'user@example.com',
+        token_use: 'access',
+        client_id: 'client-123',
+        'cognito:groups': ['agentra-admin', 'editors'],
+      }),
+    ).toEqual({
+      sub: 'user-123',
+      email: 'user@example.com',
+      groups: ['agentra-admin', 'editors'],
+    });
+  });
+
   it('rejects tokens issued for a different client', () => {
     process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
 
