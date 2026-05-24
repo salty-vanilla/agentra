@@ -100,6 +100,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          - workspace: '@agentra/frontend'
+            sandbox: false
           - workspace: '@agentra/agent-tools'
             sandbox: false
           - workspace: '@agentra/presentation-author'
