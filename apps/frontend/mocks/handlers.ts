@@ -540,9 +540,19 @@ export const handlers = [
     ],
   })),
 
-  getGetAdminTracesMockHandler(() => ({
-    traces: MOCK_TRACES,
-  })),
+  getGetAdminTracesMockHandler(({ request }) => {
+    const url = new URL(request.url);
+    const status = url.searchParams.get('status') ?? '';
+    const userId = url.searchParams.get('userId') ?? '';
+
+    const filtered = MOCK_TRACES.filter(
+      (t) =>
+        (status === '' || t.status === status) &&
+        (userId === '' || t.userId.includes(userId)),
+    );
+
+    return { traces: filtered };
+  }),
 
   getGetAdminTraceDetailMockHandler(({ params }) => {
     const traceId = String(params.traceId);

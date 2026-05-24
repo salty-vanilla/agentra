@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { type KeyboardEvent, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,8 +21,13 @@ function statusVariant(status: string): 'default' | 'destructive' | 'secondary' 
 }
 
 export function TracesTab({ from, to, onSelectTrace }: Props) {
-  const [statusFilter, setStatusFilter] = useState('');
-  const [userIdFilter, setUserIdFilter] = useState('');
+  // draft: what's typed in the inputs
+  const [draftStatus, setDraftStatus] = useState('');
+  const [draftUserId, setDraftUserId] = useState('');
+  // applied: what's actually sent to the API (only changes on Apply)
+  const [appliedStatus, setAppliedStatus] = useState('');
+  const [appliedUserId, setAppliedUserId] = useState('');
+
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allTraces, setAllTraces] = useState<AdminTraceListItem[]>([]);
 
@@ -31,8 +36,8 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
     to,
     limit: 50,
     ...(cursor !== undefined ? { cursor } : {}),
-    ...(statusFilter ? { status: statusFilter } : {}),
-    ...(userIdFilter ? { userId: userIdFilter } : {}),
+    ...(appliedStatus ? { status: appliedStatus } : {}),
+    ...(appliedUserId ? { userId: appliedUserId } : {}),
   };
 
   const { data, isLoading, error } = useQuery({
@@ -44,8 +49,14 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
     cursor === undefined ? (data?.traces ?? []) : [...allTraces, ...(data?.traces ?? [])];
 
   function applyFilter() {
+    setAppliedStatus(draftStatus);
+    setAppliedUserId(draftUserId);
     setAllTraces([]);
     setCursor(undefined);
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Enter') applyFilter();
   }
 
   function loadMore() {
@@ -68,18 +79,19 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
       <div className="flex items-center gap-2 flex-wrap">
         <select
           className="h-8 rounded border bg-background px-2 text-sm"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          value={draftStatus}
+          onChange={(e) => setDraftStatus(e.target.value)}
         >
           <option value="">All statuses</option>
           <option value="success">Success</option>
           <option value="error">Error</option>
-          <option value="running">Running</option>
+          <option value="cancelled">Cancelled</option>
         </select>
         <Input
           placeholder="Filter by user ID..."
-          value={userIdFilter}
-          onChange={(e) => setUserIdFilter(e.target.value)}
+          value={draftUserId}
+          onChange={(e) => setDraftUserId(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="h-8 w-52 text-sm"
         />
         <Button variant="outline" size="sm" onClick={applyFilter}>
