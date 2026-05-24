@@ -112,6 +112,8 @@ jobs:
             sandbox: true
           - workspace: '@agentra/infra-cdk'
             sandbox: false
+          - workspace: '@agentra/frontend'
+            sandbox: false
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -135,3 +137,26 @@ jobs:
           pnpm --filter @agentra/presentation-author sandbox:install
           pnpm --filter @agentra/presentation-author sandbox:doctor
       - run: pnpm --filter ${{ matrix.workspace }} test
+
+  storybook-build:
+    name: storybook-build
+    needs: [build-packages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-dist
+          path: .
+      - name: Extract package dist artifact
+        run: tar -xzf packages-dist.tar.gz
+      - run: pnpm --filter @agentra/frontend build-storybook

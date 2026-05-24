@@ -3,6 +3,7 @@ node_modules
 packages/presentation-author/.sandbox-runtime
 .next/
 out/
+storybook-static/
 .turbo/
 dist
 coverage
