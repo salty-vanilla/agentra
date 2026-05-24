@@ -156,4 +156,19 @@ For each component, ensure Storybook stories cover:
 
 ---
 
+## PR Acceptance Checklist
+
+新規・変更 UI コンポーネントを含む PR はレビュー前に以下を確認する。
+
+- [ ] UI コンポーネントは props で主要状態を再現できる (Presenter である)
+- [ ] `useAuiState` / runtime context / API fetch は Container 側にのみ存在する
+- [ ] loading / empty / error / long content の各状態を Story または test で確認した
+- [ ] formatter / mapper / sanitizer は pure function として `lib/` に分離した
+- [ ] raw prompt / raw response / secrets を UI や fixture に含めていない
+- [ ] Story がある場合、`pnpm --filter @agentra/frontend build-storybook` が通る
+- [ ] `pnpm --filter @agentra/frontend typecheck` が通る
+- [ ] `pnpm --filter @agentra/frontend test` が通る (既存テストのリグレッションなし)
+
+---
+
 関連ドキュメント: [testing-strategy.md](./testing-strategy.md)
