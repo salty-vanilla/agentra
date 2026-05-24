@@ -19,6 +19,7 @@ describe('validateCognitoAccessTokenClaims', () => {
     ).toEqual({
       sub: 'user-123',
       email: 'user@example.com',
+      groups: [],
     });
   });
 

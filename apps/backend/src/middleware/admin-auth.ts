@@ -6,14 +6,10 @@ export const adminAuthMiddleware: MiddlewareHandler<any> = async (c, next) => {
     return next();
   }
 
-  const userId = c.get('userId') as string;
-  const adminUserIds = process.env.ADMIN_USER_IDS ?? '';
-  const allowedIds = adminUserIds
-    .split(',')
-    .map((id) => id.trim())
-    .filter((id) => id.length > 0);
+  const adminGroupName = process.env.ADMIN_GROUP_NAME ?? 'agentra-admin';
+  const groups = c.get('userGroups') as string[] | undefined;
 
-  if (!allowedIds.includes(userId)) {
+  if (!groups?.includes(adminGroupName)) {
     return c.json({ error: 'Forbidden.' }, 403);
   }
 

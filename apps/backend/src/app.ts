@@ -39,6 +39,7 @@ type HonoEnv = {
   Variables: {
     userId: string;
     requestId: string;
+    userGroups: string[];
   };
 };
 

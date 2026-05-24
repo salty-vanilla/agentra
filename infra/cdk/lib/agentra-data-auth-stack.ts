@@ -1,5 +1,6 @@
 import { CfnOutput, RemovalPolicy, Stack, type StackProps } from 'aws-cdk-lib';
 import {
+  CfnUserPoolGroup,
   OAuthScope,
   UserPool,
   UserPoolClient,
@@ -29,6 +30,7 @@ export interface AgentraDataAuthStackProps extends StackProps {
 export class AgentraDataAuthStack extends Stack {
   readonly userPool: UserPool;
   readonly userPoolClient: UserPoolClient;
+  readonly adminGroupName = 'agentra-admin';
   readonly usersTable: Table;
   readonly threadsTable: Table;
   readonly messagesTable: Table;
@@ -71,6 +73,12 @@ export class AgentraDataAuthStack extends Stack {
         callbackUrls,
         logoutUrls,
       },
+    });
+
+    new CfnUserPoolGroup(this, 'AdminGroup', {
+      userPoolId: this.userPool.userPoolId,
+      groupName: this.adminGroupName,
+      description: 'Admin users with access to the observability dashboard',
     });
 
     this.usersTable = new Table(this, 'UsersTable', {
