@@ -1,9 +1,11 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { createColumnHelper } from '@tanstack/react-table';
 import { type KeyboardEvent, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { DataTable } from '@/components/ui/data-table';
 import { Input } from '@/components/ui/input';
 import type { AdminTraceListItem } from '@/lib/generated/model';
 import { adminTracesQueryOptions } from '@/lib/query-options';
@@ -20,10 +22,59 @@ function statusVariant(status: string): 'default' | 'destructive' | 'secondary' 
   return 'secondary';
 }
 
+const helper = createColumnHelper<AdminTraceListItem>();
+
+const columns = [
+  helper.accessor('traceId', {
+    header: 'Trace ID',
+    size: 140,
+    enableSorting: false,
+    cell: ({ getValue }) => (
+      <span className="font-mono text-xs">{getValue<string>().slice(0, 16)}…</span>
+    ),
+  }),
+  helper.accessor('userId', {
+    header: 'User',
+    size: 130,
+    enableSorting: false,
+    cell: ({ getValue }) => (
+      <span className="font-mono text-xs">{getValue<string>().slice(0, 16)}…</span>
+    ),
+  }),
+  helper.accessor('startedAt', {
+    header: 'Started',
+    size: 160,
+    cell: ({ getValue }) => (
+      <span className="text-xs text-muted-foreground">
+        {new Date(getValue<string>()).toLocaleString()}
+      </span>
+    ),
+  }),
+  helper.accessor('durationMs', {
+    header: 'Duration',
+    size: 100,
+    cell: ({ getValue }) => `${getValue<number>()}ms`,
+  }),
+  helper.accessor('status', {
+    header: 'Status',
+    size: 100,
+    cell: ({ getValue }) => {
+      const s = getValue<string>();
+      return <Badge variant={statusVariant(s)}>{s}</Badge>;
+    },
+  }),
+  helper.accessor('totalTokens', {
+    header: 'Tokens',
+    size: 90,
+    cell: ({ getValue }) => getValue<number | undefined>()?.toLocaleString() ?? '—',
+  }),
+  helper.accessor('toolCallCount', { header: 'Tools', size: 70 }),
+  helper.accessor('agentCallCount', { header: 'Agents', size: 70 }),
+  helper.accessor('skillCallCount', { header: 'Skills', size: 70 }),
+];
+
 export function TracesTab({ from, to, onSelectTrace }: Props) {
-  // status: applied immediately on select change
   const [statusFilter, setStatusFilter] = useState('');
-  // userId: draft/apply pattern (Apply button or Enter)
   const [draftUserId, setDraftUserId] = useState('');
   const [appliedUserId, setAppliedUserId] = useState('');
 
@@ -76,17 +127,9 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
     }
   }
 
-  if (isLoading && !cursor) {
-    return <div className="text-muted-foreground text-sm">Loading traces...</div>;
-  }
-
-  if (error) {
-    return <div className="text-destructive text-sm">Failed to load traces.</div>;
-  }
-
   return (
-    <div className="space-y-3">
-      <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex flex-col min-h-0 flex-1 gap-3">
+      <div className="flex items-center gap-2 flex-wrap shrink-0">
         <select
           className="h-8 rounded border bg-background px-2 text-sm"
           value={statusFilter}
@@ -109,64 +152,23 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
         </Button>
       </div>
 
-      <div className="overflow-x-auto rounded border">
-        <table className="w-full text-sm">
-          <thead className="bg-muted">
-            <tr>
-              {[
-                'Trace ID',
-                'User',
-                'Started',
-                'Duration',
-                'Status',
-                'Tokens',
-                'Tools',
-                'Agents',
-                'Skills',
-              ].map((h) => (
-                <th key={h} className="px-3 py-2 text-left font-medium">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {traces.map((t) => (
-              <tr
-                key={t.traceId}
-                className="border-t hover:bg-muted/50 cursor-pointer"
-                onClick={() => onSelectTrace(t.traceId)}
-              >
-                <td className="px-3 py-2 font-mono text-xs">{t.traceId.slice(0, 16)}…</td>
-                <td className="px-3 py-2 font-mono text-xs">{t.userId.slice(0, 16)}…</td>
-                <td className="px-3 py-2 text-xs text-muted-foreground">
-                  {new Date(t.startedAt).toLocaleString()}
-                </td>
-                <td className="px-3 py-2">{t.durationMs}ms</td>
-                <td className="px-3 py-2">
-                  <Badge variant={statusVariant(t.status)}>{t.status}</Badge>
-                </td>
-                <td className="px-3 py-2">{t.totalTokens?.toLocaleString() ?? '—'}</td>
-                <td className="px-3 py-2">{t.toolCallCount}</td>
-                <td className="px-3 py-2">{t.agentCallCount}</td>
-                <td className="px-3 py-2">{t.skillCallCount}</td>
-              </tr>
-            ))}
-            {traces.length === 0 && (
-              <tr>
-                <td colSpan={9} className="px-3 py-6 text-center text-muted-foreground">
-                  No data for this period.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        data={traces}
+        columns={columns}
+        isLoading={isLoading}
+        error={error ? 'Failed to load traces.' : null}
+        onRowClick={(t) => onSelectTrace(t.traceId)}
+        virtualized
+        height="100%"
+        resetSortingKey={`${from}-${to}-${statusFilter}-${appliedUserId}`}
+      />
 
       {data?.cursor && (
-        <Button variant="outline" size="sm" onClick={loadMore} disabled={isLoading}>
-          Load more
-        </Button>
+        <div className="shrink-0">
+          <Button variant="outline" size="sm" onClick={loadMore} disabled={isLoading}>
+            Load more
+          </Button>
+        </div>
       )}
     </div>
   );
