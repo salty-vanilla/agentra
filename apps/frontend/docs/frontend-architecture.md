@@ -153,3 +153,7 @@ For each component, ensure Storybook stories cover:
 - [ ] Error
 - [ ] Long content / edge data
 - [ ] Mobile viewport (use `parameters.viewport`)
+
+---
+
+関連ドキュメント: [testing-strategy.md](./testing-strategy.md)
