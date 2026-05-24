@@ -63,3 +63,36 @@ export const CreateSlide: Story = {
     events: [makeEvent('router', 'complete', 90), makeEvent('create_slide', 'running')],
   },
 };
+
+export const LongText: Story = {
+  args: {
+    events: [
+      makeEvent(
+        'very_long_stage_name_for_overflow_testing_structured_rag_retrieval_pipeline',
+        'complete',
+        1200,
+      ),
+      makeEvent(
+        'another_extremely_long_stage_identifier_that_exceeds_typical_display_width',
+        'running',
+      ),
+    ],
+  },
+};
+
+export const MobileWidth: Story = {
+  decorators: [
+    (Story) => (
+      <div style={{ width: '320px' }}>
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    events: [
+      makeEvent('router', 'complete', 90),
+      makeEvent('kb_retrieve', 'complete', 800),
+      makeEvent('structured_rag_flow', 'running'),
+    ],
+  },
+};
