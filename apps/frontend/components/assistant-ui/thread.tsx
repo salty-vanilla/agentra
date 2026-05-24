@@ -14,6 +14,7 @@ import {
 } from '@assistant-ui/react';
 import { cva } from 'class-variance-authority';
 import {
+  AlertTriangleIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   BotIcon,
@@ -380,6 +381,11 @@ const STATUS_CONFIG = {
     label: '成功',
     className: 'text-green-600 dark:text-green-400',
   },
+  partial_failure: {
+    icon: AlertTriangleIcon,
+    label: '一部失敗',
+    className: 'text-amber-600 dark:text-amber-400',
+  },
   error: {
     icon: XCircleIcon,
     label: 'エラー',
@@ -391,6 +397,15 @@ const STATUS_CONFIG = {
     className: 'text-muted-foreground',
   },
 } as const;
+
+type DisplayStatus = keyof typeof STATUS_CONFIG;
+
+function resolveDisplayStatus(summary: ChatObservationSummary): DisplayStatus {
+  if (summary.status === 'success' && summary.toolFailureCount > 0) {
+    return 'partial_failure';
+  }
+  return summary.status in STATUS_CONFIG ? (summary.status as DisplayStatus) : 'success';
+}
 
 const AssistantObservabilityDetails: FC = () => {
   const summary = useAuiState((s) => {
@@ -414,7 +429,7 @@ const AssistantObservabilityDetails: FC = () => {
   }
 
   const toolCalls = summary.toolCalls ?? [];
-  const statusConfig = STATUS_CONFIG[summary.status] ?? STATUS_CONFIG.success;
+  const statusConfig = STATUS_CONFIG[resolveDisplayStatus(summary)];
   const StatusIcon = statusConfig.icon;
 
   const agentInfoList = toolCalls.flatMap((tc) => {

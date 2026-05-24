@@ -22,12 +22,20 @@ export function formatDuration(durationMs: number): string {
   return `${(durationMs / 1000).toFixed(2)}s`;
 }
 
-const SENSITIVE_RE = /\b(?:api[_-]?key|token|secret|password|authorization)\S*/gi;
+// Detect any credential-like pattern in error text.
+// When found, replace the entire message with a safe fixed string rather than
+// attempting partial redaction, which risks leaving values exposed.
+const SENSITIVE_DETECT_RE =
+  /\b(?:bearer|api[_-]?key|token|secret|password|authorization)\b|\bsk-/i;
+
+const TOOL_ERROR_FALLBACK = 'ツール実行に失敗しました';
 
 export function sanitizeToolError(error: string | undefined): string | null {
   if (!error) return null;
-  const cleaned = error.replace(SENSITIVE_RE, '[redacted]').slice(0, 120);
-  return cleaned.trim() || null;
+  if (SENSITIVE_DETECT_RE.test(error)) {
+    return TOOL_ERROR_FALLBACK;
+  }
+  return error.slice(0, 120).trim() || null;
 }
 
 export type AgentInfo = {
