@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import {
   aggregateByAgent,
   aggregateBySkill,
+  aggregateByTimeBucket,
   aggregateByTool,
   aggregateByUser,
   aggregateOverview,
@@ -80,6 +81,22 @@ adminObservabilityRouter.get('/overview', async (c) => {
   const stats = aggregateOverview(records, period);
 
   return jsonWithValidation(c, 'getAdminOverview', 200, stats);
+});
+
+adminObservabilityRouter.get('/timeseries', async (c) => {
+  const range = parseDateRange(c.req.query('from'), c.req.query('to'));
+  if ('error' in range) return c.json({ error: range.error }, 400);
+
+  const rawBucket = c.req.query('bucket') ?? 'day';
+  if (rawBucket !== 'hour' && rawBucket !== 'day') {
+    return c.json({ error: "Invalid 'bucket': must be 'hour' or 'day'." }, 400);
+  }
+
+  const { records } = await listObservabilityRecordsInRange(range);
+  const buckets = aggregateByTimeBucket(records, rawBucket);
+  const period = { from: range.startDay, to: range.endDay };
+
+  return jsonWithValidation(c, 'getAdminTimeseries', 200, { buckets, period });
 });
 
 adminObservabilityRouter.get('/users', async (c) => {

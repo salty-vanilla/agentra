@@ -307,6 +307,65 @@ export const GetAdminOverviewResponse = zod.object({
 
 
 /**
+ * @summary Get time-bucketed observability metrics
+ */
+export const getAdminTimeseriesQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminTimeseriesQueryToRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');
+export const getAdminTimeseriesQueryBucketDefault = `day`;
+
+export const GetAdminTimeseriesQueryParams = zod.object({
+  "from": zod.string().regex(getAdminTimeseriesQueryFromRegExp).optional(),
+  "to": zod.string().regex(getAdminTimeseriesQueryToRegExp).optional(),
+  "bucket": zod.enum(['hour', 'day']).default(getAdminTimeseriesQueryBucketDefault)
+})
+
+export const getAdminTimeseriesResponseBucketsItemRequestCountMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemSuccessCountMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemErrorCountMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemCancelledCountMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemAvgDurationMsMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemP95DurationMsMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemTotalTokensMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemInputTokensMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemOutputTokensMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemToolCallCountMin = 0;
+
+export const getAdminTimeseriesResponseBucketsItemToolFailureCountMin = 0;
+
+
+
+export const GetAdminTimeseriesResponse = zod.object({
+  "buckets": zod.array(zod.object({
+  "bucketStart": zod.string().datetime({}),
+  "requestCount": zod.number().min(getAdminTimeseriesResponseBucketsItemRequestCountMin),
+  "successCount": zod.number().min(getAdminTimeseriesResponseBucketsItemSuccessCountMin),
+  "errorCount": zod.number().min(getAdminTimeseriesResponseBucketsItemErrorCountMin),
+  "cancelledCount": zod.number().min(getAdminTimeseriesResponseBucketsItemCancelledCountMin),
+  "avgDurationMs": zod.number().min(getAdminTimeseriesResponseBucketsItemAvgDurationMsMin),
+  "p95DurationMs": zod.number().min(getAdminTimeseriesResponseBucketsItemP95DurationMsMin),
+  "totalTokens": zod.number().min(getAdminTimeseriesResponseBucketsItemTotalTokensMin),
+  "inputTokens": zod.number().min(getAdminTimeseriesResponseBucketsItemInputTokensMin),
+  "outputTokens": zod.number().min(getAdminTimeseriesResponseBucketsItemOutputTokensMin),
+  "toolCallCount": zod.number().min(getAdminTimeseriesResponseBucketsItemToolCallCountMin),
+  "toolFailureCount": zod.number().min(getAdminTimeseriesResponseBucketsItemToolFailureCountMin)
+})),
+  "period": zod.object({
+  "from": zod.string(),
+  "to": zod.string()
+})
+})
+
+
+/**
  * @summary Get per-user observability stats
  */
 export const getAdminUsersQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');

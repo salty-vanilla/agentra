@@ -6,6 +6,7 @@ import {
   getAdminAgents as getAdminAgentsRequest,
   getAdminOverview as getAdminOverviewRequest,
   getAdminSkills as getAdminSkillsRequest,
+  getAdminTimeseries as getAdminTimeseriesRequest,
   getAdminTools as getAdminToolsRequest,
   getAdminTraceDetail as getAdminTraceDetailRequest,
   getAdminTraces as getAdminTracesRequest,
@@ -20,6 +21,7 @@ import type {
   AdminAgentsResponse,
   AdminOverviewResponse,
   AdminSkillsResponse,
+  AdminTimeseriesResponse,
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
@@ -284,4 +286,13 @@ export async function fetchAdminTraceDetail(
 ): Promise<AdminTraceDetailResponse> {
   const headers = await getAuthHeaders();
   return getAdminTraceDetailRequest(traceId, { headers });
+}
+
+export type AdminTimeseriesParams = AdminDateRange & { bucket?: 'hour' | 'day' };
+
+export async function fetchAdminTimeseries(
+  params: AdminTimeseriesParams = {},
+): Promise<AdminTimeseriesResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminTimeseriesRequest(params, { headers });
 }
