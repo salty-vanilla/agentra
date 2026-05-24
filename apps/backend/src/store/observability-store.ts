@@ -293,10 +293,10 @@ export class DynamoObservabilityStore implements ObservabilityStore {
     for (const day of days) {
       let cursor: string | undefined;
       do {
-        const result = await this.listObservabilityRecordsByDay(day, {
-          limit: 1000,
-          cursor,
-        });
+        const result = await this.listObservabilityRecordsByDay(
+          day,
+          cursor !== undefined ? { limit: 1000, cursor } : { limit: 1000 },
+        );
         allRecords.push(...result.records);
         cursor = result.cursor;
       } while (cursor);

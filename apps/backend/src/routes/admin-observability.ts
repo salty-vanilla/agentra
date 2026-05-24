@@ -56,7 +56,7 @@ function applyOffsetPagination<T>(
     nextOffset < items.length
       ? Buffer.from(String(nextOffset)).toString('base64')
       : undefined;
-  return { page, nextCursor };
+  return nextCursor !== undefined ? { page, nextCursor } : { page };
 }
 
 const adminObservabilityRouter = new Hono<HonoEnv>();

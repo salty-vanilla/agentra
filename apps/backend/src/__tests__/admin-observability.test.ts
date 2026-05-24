@@ -46,7 +46,8 @@ describe('Admin Observability API', () => {
     it('returns 200 with overview stats shape', async () => {
       const res = await app.request('/admin/observability/overview');
       expect(res.status).toBe(200);
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(body).toHaveProperty('requestCount');
       expect(body).toHaveProperty('activeUserCount');
       expect(body).toHaveProperty('totalTokens');
@@ -66,7 +67,8 @@ describe('Admin Observability API', () => {
       const res = await app.request(
         '/admin/observability/overview?from=2026-05-23&to=2026-05-23',
       );
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(body.requestCount).toBe(2);
       expect(body.errorRate).toBeCloseTo(0.5);
     });
@@ -86,7 +88,8 @@ describe('Admin Observability API', () => {
         '/admin/observability/users?from=2026-05-23&to=2026-05-23',
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(Array.isArray(body.users)).toBe(true);
       expect(body.users).toHaveLength(2);
     });
@@ -101,14 +104,16 @@ describe('Admin Observability API', () => {
       const res1 = await app.request(
         '/admin/observability/users?from=2026-05-23&to=2026-05-23&limit=3',
       );
-      const body1 = await res1.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body1 = (await res1.json()) as any;
       expect(body1.users).toHaveLength(3);
       expect(body1.cursor).toBeDefined();
 
       const res2 = await app.request(
         `/admin/observability/users?from=2026-05-23&to=2026-05-23&limit=3&cursor=${body1.cursor}`,
       );
-      const body2 = await res2.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body2 = (await res2.json()) as any;
       expect(body2.users).toHaveLength(2);
       expect(body2.cursor).toBeUndefined();
     });
@@ -128,7 +133,8 @@ describe('Admin Observability API', () => {
         '/admin/observability/agents?from=2026-05-23&to=2026-05-23',
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(Array.isArray(body.agents)).toBe(true);
       expect(body.agents[0]?.agentName).toBe('AgentAlpha');
     });
@@ -156,7 +162,8 @@ describe('Admin Observability API', () => {
         '/admin/observability/tools?from=2026-05-23&to=2026-05-23',
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(Array.isArray(body.tools)).toBe(true);
       expect(body.tools[0]?.toolName).toBe('search');
     });
@@ -178,7 +185,8 @@ describe('Admin Observability API', () => {
         '/admin/observability/skills?from=2026-05-23&to=2026-05-23',
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(Array.isArray(body.skills)).toBe(true);
       expect(body.skills[0]?.skillName).toBe('web_research');
     });
@@ -194,7 +202,8 @@ describe('Admin Observability API', () => {
         '/admin/observability/traces?from=2026-05-23&to=2026-05-23',
       );
       expect(res.status).toBe(200);
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(Array.isArray(body.traces)).toBe(true);
     });
 
@@ -205,7 +214,8 @@ describe('Admin Observability API', () => {
       const res = await app.request(
         '/admin/observability/traces?from=2026-05-23&to=2026-05-23&status=error',
       );
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(body.traces.every((t: { status: string }) => t.status === 'error')).toBe(
         true,
       );
@@ -219,7 +229,8 @@ describe('Admin Observability API', () => {
       const res = await app.request(
         '/admin/observability/traces?from=2026-05-23&to=2026-05-23&userId=user-A',
       );
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(body.traces.every((t: { userId: string }) => t.userId === 'user-A')).toBe(
         true,
       );
@@ -234,7 +245,8 @@ describe('Admin Observability API', () => {
       const res1 = await app.request(
         '/admin/observability/traces?from=2026-05-23&to=2026-05-23&limit=3',
       );
-      const body1 = await res1.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body1 = (await res1.json()) as any;
       expect(body1.traces).toHaveLength(3);
       expect(body1.cursor).toBeDefined();
     });
@@ -246,7 +258,8 @@ describe('Admin Observability API', () => {
 
       const res = await app.request('/admin/observability/traces/detail-trace-001');
       expect(res.status).toBe(200);
-      const body = await res.json();
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
       expect(body.trace.traceId).toBe('detail-trace-001');
       expect(body.trace).toHaveProperty('requestId');
       expect(body.trace).toHaveProperty('threadId');

@@ -329,7 +329,7 @@ describe('MemoryObservabilityStore', () => {
 
       const page2 = await store.listObservabilityRecordsInRange(
         { startDay: '2026-05-20', endDay: '2026-05-24' },
-        { limit: 3, cursor: page1.cursor },
+        { limit: 3, ...(page1.cursor ? { cursor: page1.cursor } : {}) },
       );
       expect(page2.records).toHaveLength(2);
       expect(page2.cursor).toBeUndefined();
