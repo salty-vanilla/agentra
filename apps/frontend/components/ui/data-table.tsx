@@ -110,6 +110,8 @@ export function DataTable<T>({
       <div
         className={cn(
           'flex flex-col min-h-0 rounded border overflow-hidden',
+          (height === '100%' || (isVirtualized && height === undefined)) &&
+            'h-full flex-1',
           containerClassName,
         )}
       >
