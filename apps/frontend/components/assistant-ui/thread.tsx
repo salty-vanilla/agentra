@@ -2,7 +2,6 @@
 
 import type { ChatObservationSummary } from '@agentra/shared';
 import {
-  ActionBarMorePrimitive,
   ActionBarPrimitive,
   AuiIf,
   BranchPickerPrimitive,
@@ -13,34 +12,30 @@ import {
   useAuiState,
 } from '@assistant-ui/react';
 import { cva } from 'class-variance-authority';
+import { ArrowDownIcon, PencilIcon } from 'lucide-react';
 import {
-  ArrowDownIcon,
-  CheckIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  CopyIcon,
-  DownloadIcon,
-  FingerprintIcon,
-  MoreHorizontalIcon,
-  PencilIcon,
-  RefreshCwIcon,
-} from 'lucide-react';
-import type { FC } from 'react';
+  type ButtonHTMLAttributes,
+  type FC,
+  forwardRef,
+  type MutableRefObject,
+  useRef,
+} from 'react';
 import { ComposerView } from '@/components/assistant-ui/composer-view';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
-import { ObservabilityDetailsView } from '@/components/assistant-ui/observability-details-view';
+import {
+  BranchPickerView,
+  MessageActionBarView,
+} from '@/components/assistant-ui/message-action-bar-view';
+import {
+  AssistantMessageView,
+  UserMessageView,
+} from '@/components/assistant-ui/message-view';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import type { ModelKey } from '@/components/model-selector';
 import { ProgressSummaryCard } from '@/components/progress-summary-card';
-import { SlideCommandBadge } from '@/components/slide-command-badge';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import type {
   ChatCommand,
   ProgressSummaryEvent,
@@ -61,10 +56,6 @@ const threadMessageRootVariants = cva(
       role: 'assistant',
     },
   },
-);
-
-const actionBarMoreItemVariants = cva(
-  'aui-action-bar-more-item flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground',
 );
 
 export const Thread: FC<{
@@ -216,22 +207,64 @@ const MessageError: FC = () => {
   );
 };
 
-const AssistantMessage: FC = () => {
-  // reserves space for action bar and compensates with `-mb` for consistent msg spacing
-  // keeps hovered action bar from shifting layout (autohide doesn't support absolute positioning well)
-  // for pt-[n] use -mb-[n + 6] & min-h-[n + 6] to preserve compensation
-  const ACTION_BAR_PT = 'pt-1.5';
-  const ACTION_BAR_HEIGHT = `-mb-7.5 min-h-7.5 ${ACTION_BAR_PT}`;
+// Derives observability summary from message state in a single selector so
+// hasSummary and summary are always consistent (same state snapshot).
+// biome-ignore lint/suspicious/noExplicitAny: state shape is typed by @assistant-ui/react
+const selectObservabilitySummary = (s: any): ChatObservationSummary | undefined => {
+  const custom = s.message.metadata.custom as
+    | { observabilitySummary?: ChatObservationSummary }
+    | undefined;
+  if (custom?.observabilitySummary) return custom.observabilitySummary;
+  for (const part of s.message.content as Array<{
+    type: string;
+    name?: string;
+    data?: unknown;
+  }>) {
+    if (part.type === 'data' && part.name === 'observability') {
+      return part.data as ChatObservationSummary;
+    }
+  }
+  return undefined;
+};
 
+// Invisible bridge button: captures the onClick injected by assistant-ui primitives
+// via the Radix Slot (render prop) mechanism and stores it in a mutable ref.
+// Used to extract runtime action callbacks into plain function refs.
+const CaptureButton = forwardRef<
+  HTMLButtonElement,
+  ButtonHTMLAttributes<HTMLButtonElement> & {
+    callbackRef: MutableRefObject<(() => void) | undefined>;
+  }
+>(({ callbackRef, onClick, ...rest }, ref) => {
+  callbackRef.current = onClick as (() => void) | undefined;
+  return (
+    <button
+      ref={ref}
+      type="button"
+      style={{ display: 'none' }}
+      aria-hidden="true"
+      tabIndex={-1}
+      {...rest}
+    />
+  );
+});
+CaptureButton.displayName = 'CaptureButton';
+
+const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
       data-role="assistant"
       className={threadMessageRootVariants({ role: 'assistant' })}
     >
-      <div
-        data-slot="aui_assistant-message-content"
-        className="wrap-break-word px-2 text-foreground leading-relaxed"
+      <AssistantMessageView
+        errorContent={<MessageError />}
+        footer={
+          <>
+            <BranchPicker />
+            <AssistantActionBar />
+          </>
+        }
       >
         <MessagePrimitive.Parts
           components={{
@@ -239,110 +272,102 @@ const AssistantMessage: FC = () => {
             tools: { Fallback: ToolFallback },
           }}
         />
-        <MessageError />
-      </div>
-
-      <div
-        data-slot="aui_assistant-message-footer"
-        className={cn('ml-2 flex items-center', ACTION_BAR_HEIGHT)}
-      >
-        <BranchPicker />
-        <AssistantActionBar />
-      </div>
+      </AssistantMessageView>
     </MessagePrimitive.Root>
   );
 };
 
-const AssistantObservabilityDetails: FC = () => {
-  const summary = useAuiState((s) => {
-    const custom = s.message.metadata.custom as
-      | { observabilitySummary?: ChatObservationSummary }
-      | undefined;
-    if (custom?.observabilitySummary) {
-      return custom.observabilitySummary;
-    }
-
-    for (const part of s.message.content) {
-      if (part.type === 'data' && part.name === 'observability') {
-        return part.data as ChatObservationSummary;
-      }
-    }
-    return undefined;
-  });
-
-  if (!summary) {
-    return <p className="text-muted-foreground">Observability data not available.</p>;
-  }
-
-  return <ObservabilityDetailsView summary={summary} />;
-};
-
 const AssistantActionBar: FC = () => {
   const isGenerating = useAuiState((s) => s.message.isLast && s.thread.isRunning);
-  const hasSummary = useAuiState((s) => {
-    const custom = s.message.metadata.custom as
-      | { observabilitySummary?: ChatObservationSummary }
-      | undefined;
-    if (custom?.observabilitySummary) return true;
-    return s.message.content.some((p) => p.type === 'data' && p.name === 'observability');
-  });
+  const isCopied = useAuiState((s) => s.message.isCopied);
+  const summary = useAuiState(selectObservabilitySummary);
+
+  const copyRef = useRef<(() => void) | undefined>(undefined);
+  const reloadRef = useRef<(() => void) | undefined>(undefined);
+  const exportRef = useRef<(() => void) | undefined>(undefined);
 
   if (isGenerating) return null;
 
   return (
-    <ActionBarPrimitive.Root className="aui-assistant-action-bar-root col-start-3 row-start-2 -ml-1 flex gap-1 text-muted-foreground">
-      <ActionBarPrimitive.Copy render={<TooltipIconButton tooltip="Copy" />}>
-        <AuiIf condition={(s) => s.message.isCopied}>
-          <CheckIcon />
-        </AuiIf>
-        <AuiIf condition={(s) => !s.message.isCopied}>
-          <CopyIcon />
-        </AuiIf>
-      </ActionBarPrimitive.Copy>
-      <ActionBarPrimitive.Reload render={<TooltipIconButton tooltip="Refresh" />}>
-        <RefreshCwIcon />
-      </ActionBarPrimitive.Reload>
-      {hasSummary && (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <TooltipIconButton tooltip="Observability">
-              <FingerprintIcon />
-            </TooltipIconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            side="bottom"
-            align="start"
-            sideOffset={4}
-            collisionPadding={8}
-            className="z-50 w-[min(calc(100vw-2rem),22rem)] max-h-80 overflow-y-auto rounded-md border bg-popover p-3 text-popover-foreground text-xs shadow-md"
-          >
-            <AssistantObservabilityDetails />
-          </DropdownMenuContent>
-        </DropdownMenu>
-      )}
-      <ActionBarMorePrimitive.Root>
-        <ActionBarMorePrimitive.Trigger
-          className="inline-flex size-8 items-center justify-center rounded-md hover:bg-accent data-[state=open]:bg-accent"
-          aria-label="More"
-        >
-          <MoreHorizontalIcon />
-        </ActionBarMorePrimitive.Trigger>
-        <ActionBarMorePrimitive.Content
-          side="bottom"
-          align="start"
-          className="aui-action-bar-more-content z-50 min-w-32 overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
-        >
-          <ActionBarPrimitive.ExportMarkdown
-            render={
-              <ActionBarMorePrimitive.Item className={actionBarMoreItemVariants()} />
+    <>
+      {/* Invisible bridge: ActionBarPrimitive.* writes onClick into refs via CaptureButton.
+          Copy/Reload/ExportMarkdown have no context dependency on ActionBarPrimitive.Root. */}
+      <div style={{ display: 'none' }} aria-hidden="true">
+        <ActionBarPrimitive.Copy render={<CaptureButton callbackRef={copyRef} />} />
+        <ActionBarPrimitive.Reload render={<CaptureButton callbackRef={reloadRef} />} />
+        <ActionBarPrimitive.ExportMarkdown
+          render={<CaptureButton callbackRef={exportRef} />}
+        />
+      </div>
+      <MessageActionBarView
+        isCopied={isCopied}
+        onCopy={() => {
+          copyRef.current?.();
+        }}
+        {...(reloadRef.current !== undefined
+          ? {
+              onReload: () => {
+                reloadRef.current?.();
+              },
             }
-          >
-            <DownloadIcon className="size-4" />
-            Export as Markdown
-          </ActionBarPrimitive.ExportMarkdown>
-        </ActionBarMorePrimitive.Content>
-      </ActionBarMorePrimitive.Root>
-    </ActionBarPrimitive.Root>
+          : {})}
+        hasSummary={summary !== undefined}
+        {...(summary !== undefined ? { observabilitySummary: summary } : {})}
+        {...(exportRef.current !== undefined
+          ? {
+              onExportMarkdown: () => {
+                exportRef.current?.();
+              },
+            }
+          : {})}
+      />
+    </>
+  );
+};
+
+const BranchPicker: FC<{ className?: string; 'data-slot'?: string }> = ({
+  className,
+  ...rest
+}) => {
+  const currentBranch = useAuiState((s) => s.message.branchNumber);
+  const totalBranches = useAuiState((s) => s.message.branchCount);
+
+  const prevRef = useRef<(() => void) | undefined>(undefined);
+  const nextRef = useRef<(() => void) | undefined>(undefined);
+
+  return (
+    <>
+      {/* Invisible bridge: Previous/Next have no context dependency on BranchPickerPrimitive.Root. */}
+      <div style={{ display: 'none' }} aria-hidden="true">
+        <BranchPickerPrimitive.Previous
+          render={<CaptureButton callbackRef={prevRef} />}
+        />
+        <BranchPickerPrimitive.Next render={<CaptureButton callbackRef={nextRef} />} />
+      </div>
+      <BranchPickerView
+        currentBranch={currentBranch}
+        totalBranches={totalBranches}
+        {...(prevRef.current !== undefined
+          ? {
+              onPrev: () => {
+                prevRef.current?.();
+              },
+            }
+          : {})}
+        {...(nextRef.current !== undefined
+          ? {
+              onNext: () => {
+                nextRef.current?.();
+              },
+            }
+          : {})}
+        className={cn(
+          'aui-branch-picker-root mr-2 -ml-2 inline-flex items-center text-muted-foreground text-xs',
+          className,
+        )}
+        {...rest}
+      />
+    </>
   );
 };
 
@@ -358,24 +383,18 @@ const UserMessage: FC = () => {
       className={threadMessageRootVariants({ role: 'user' })}
       data-role="user"
     >
-      <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-        <div className="aui-user-message-content wrap-break-word peer rounded-2xl bg-muted px-4 py-2.5 text-foreground empty:hidden">
-          {hasSlideCommand && (
-            <span className="mr-1.5">
-              <SlideCommandBadge />
-            </span>
-          )}
-          <MessagePrimitive.Parts />
-        </div>
-        <div className="aui-user-action-bar-wrapper absolute top-1/2 left-0 -translate-x-full -translate-y-1/2 pr-2 peer-empty:hidden">
-          <UserActionBar />
-        </div>
-      </div>
-
-      <BranchPicker
-        data-slot="aui_user-branch-picker"
-        className="col-span-full col-start-1 row-start-3 -mr-1 justify-end"
-      />
+      <UserMessageView
+        hasSlideCommand={hasSlideCommand}
+        actionBar={<UserActionBar />}
+        branchPicker={
+          <BranchPicker
+            data-slot="aui_user-branch-picker"
+            className="col-span-full col-start-1 row-start-3 -mr-1 justify-end"
+          />
+        }
+      >
+        <MessagePrimitive.Parts />
+      </UserMessageView>
     </MessagePrimitive.Root>
   );
 };
@@ -417,28 +436,5 @@ const EditComposer: FC = () => {
         </div>
       </ComposerPrimitive.Root>
     </MessagePrimitive.Root>
-  );
-};
-
-const BranchPicker: FC<BranchPickerPrimitive.Root.Props> = ({ className, ...rest }) => {
-  return (
-    <BranchPickerPrimitive.Root
-      hideWhenSingleBranch
-      className={cn(
-        'aui-branch-picker-root mr-2 -ml-2 inline-flex items-center text-muted-foreground text-xs',
-        className,
-      )}
-      {...rest}
-    >
-      <BranchPickerPrimitive.Previous render={<TooltipIconButton tooltip="Previous" />}>
-        <ChevronLeftIcon />
-      </BranchPickerPrimitive.Previous>
-      <span className="aui-branch-picker-state font-medium">
-        <BranchPickerPrimitive.Number /> / <BranchPickerPrimitive.Count />
-      </span>
-      <BranchPickerPrimitive.Next render={<TooltipIconButton tooltip="Next" />}>
-        <ChevronRightIcon />
-      </BranchPickerPrimitive.Next>
-    </BranchPickerPrimitive.Root>
   );
 };
