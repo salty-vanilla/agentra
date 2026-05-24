@@ -1,6 +1,9 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { createColumnHelper } from '@tanstack/react-table';
+import { DataTable } from '@/components/ui/data-table';
+import type { AdminToolStats } from '@/lib/generated/model';
 import { adminToolsQueryOptions } from '@/lib/query-options';
 
 type Props = {
@@ -8,46 +11,46 @@ type Props = {
   to: string;
 };
 
+const helper = createColumnHelper<AdminToolStats>();
+
+const columns = [
+  helper.accessor('toolName', { header: 'Tool', size: 180 }),
+  helper.accessor('callCount', { header: 'Calls', size: 80 }),
+  helper.accessor('failureRate', {
+    header: 'Failure Rate',
+    size: 110,
+    cell: ({ getValue }) => `${(getValue<number>() * 100).toFixed(1)}%`,
+  }),
+  helper.accessor('avgDurationMs', {
+    header: 'Avg Duration',
+    size: 110,
+    cell: ({ getValue }) => `${getValue<number>()}ms`,
+  }),
+  helper.accessor('lastError', {
+    header: 'Last Error',
+    size: 250,
+    enableSorting: false,
+    cell: ({ getValue }) => {
+      const err = getValue<string | undefined>();
+      return <span className="text-xs text-muted-foreground truncate">{err ?? '—'}</span>;
+    },
+  }),
+];
+
 export function ToolsTab({ from, to }: Props) {
   const { data, isLoading, error } = useQuery(adminToolsQueryOptions({ from, to }));
 
-  if (isLoading)
-    return <div className="text-muted-foreground text-sm">Loading tools...</div>;
-  if (error) return <div className="text-destructive text-sm">Failed to load tools.</div>;
-
   return (
-    <div className="overflow-x-auto rounded border">
-      <table className="w-full text-sm">
-        <thead className="bg-muted">
-          <tr>
-            {['Tool', 'Calls', 'Failure Rate', 'Avg Duration', 'Last Error'].map((h) => (
-              <th key={h} className="px-3 py-2 text-left font-medium">
-                {h}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {(data?.tools ?? []).map((t) => (
-            <tr key={t.toolName} className="border-t hover:bg-muted/50">
-              <td className="px-3 py-2 font-medium">{t.toolName}</td>
-              <td className="px-3 py-2">{t.callCount}</td>
-              <td className="px-3 py-2">{(t.failureRate * 100).toFixed(1)}%</td>
-              <td className="px-3 py-2">{t.avgDurationMs}ms</td>
-              <td className="px-3 py-2 text-xs text-muted-foreground max-w-xs truncate">
-                {t.lastError ?? '—'}
-              </td>
-            </tr>
-          ))}
-          {(data?.tools ?? []).length === 0 && (
-            <tr>
-              <td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">
-                No data for this period.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
+    <div className="flex flex-col min-h-0 flex-1">
+      <DataTable
+        data={data?.tools ?? []}
+        columns={columns}
+        isLoading={isLoading}
+        error={error ? 'Failed to load tools.' : null}
+        virtualized
+        height="100%"
+        resetSortingKey={`${from}-${to}`}
+      />
     </div>
   );
 }
