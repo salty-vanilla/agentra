@@ -7,6 +7,7 @@ This spec is the source of truth for frontend client generation and API mocks.
 
  * OpenAPI spec version: 0.1.0
  */
+import type { ChatObservationToolCallMetadata } from './chatObservationToolCallMetadata';
 import type { ChatObservationToolCallStatus } from './chatObservationToolCallStatus';
 
 export interface ChatObservationToolCall {
@@ -21,4 +22,5 @@ export interface ChatObservationToolCall {
   status: ChatObservationToolCallStatus;
   /** @minLength 1 */
   error?: string;
+  metadata?: ChatObservationToolCallMetadata;
 }

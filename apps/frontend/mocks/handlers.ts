@@ -264,8 +264,7 @@ function appendMessage(input: {
   };
 
   const currentMessages = messageStore.get(input.threadId) ?? [];
-  currentMessages.push(message);
-  messageStore.set(input.threadId, currentMessages);
+  messageStore.set(input.threadId, [...currentMessages, message]);
 
   const existingThread = threadStore.get(input.threadId);
   if (existingThread) {
@@ -381,6 +380,50 @@ function buildDummyObservabilitySummary(message?: string): ChatObservationSummar
   const ts = now();
   const start = new Date(Date.now() - 1400).toISOString();
 
+  // empty tools scenario
+  if (normalized.includes('空') || normalized.includes('empty tools')) {
+    return {
+      traceId: `mock-trace-${uuidv7()}`,
+      startedAt: start,
+      completedAt: ts,
+      durationMs: 210,
+      status: 'success',
+      tokenUsage: { inputTokens: 420, outputTokens: 180, totalTokens: 600 },
+      toolCalls: [],
+      toolCallCount: 0,
+      toolFailureCount: 0,
+    };
+  }
+
+  // cancelled scenario
+  if (normalized.includes('キャンセル') || normalized.includes('cancel')) {
+    return {
+      traceId: `mock-trace-${uuidv7()}`,
+      startedAt: start,
+      completedAt: ts,
+      durationMs: 450,
+      status: 'cancelled',
+      toolCalls: [
+        {
+          toolCallId: 'tc-r',
+          toolName: 'router',
+          startedAt: start,
+          durationMs: 90,
+          status: 'success',
+        },
+        {
+          toolCallId: 'tc-w',
+          toolName: 'web_research',
+          startedAt: start,
+          durationMs: 360,
+          status: 'cancelled',
+        },
+      ],
+      toolCallCount: 2,
+      toolFailureCount: 0,
+    };
+  }
+
   const toolCalls: ChatObservationSummary['toolCalls'] = [];
 
   if (normalized.includes('製造') || normalized.includes('line')) {
@@ -425,6 +468,33 @@ function buildDummyObservabilitySummary(message?: string): ChatObservationSummar
         status: 'success',
       },
     );
+  } else if (normalized.includes('エージェント') || normalized.includes('agent')) {
+    toolCalls.push(
+      {
+        toolCallId: 'tc-r',
+        toolName: 'router',
+        startedAt: start,
+        durationMs: 100,
+        status: 'success',
+        metadata: { agentName: 'OrchestratorAgent', agentKind: 'orchestrator' },
+      },
+      {
+        toolCallId: 'tc-s',
+        toolName: 'search_knowledge_base',
+        startedAt: start,
+        durationMs: 680,
+        status: 'success',
+        metadata: { agentName: 'SearchAgent', agentKind: 'search' },
+      },
+      {
+        toolCallId: 'tc-w',
+        toolName: 'web_research',
+        startedAt: start,
+        durationMs: 920,
+        status: 'success',
+        metadata: { agentName: 'SearchAgent', agentKind: 'search' },
+      },
+    );
   } else {
     toolCalls.push(
       {
@@ -444,13 +514,20 @@ function buildDummyObservabilitySummary(message?: string): ChatObservationSummar
     );
   }
 
+  // no tokenUsage scenario
+  const includeTokenUsage = !(
+    normalized.includes('トークン') || normalized.includes('no token')
+  );
+
   return {
     traceId: `mock-trace-${uuidv7()}`,
     startedAt: start,
     completedAt: ts,
     durationMs: 1380,
     status: toolCalls.some((tc) => tc.status === 'error') ? 'error' : 'success',
-    tokenUsage: { inputTokens: 1240, outputTokens: 380, totalTokens: 1620 },
+    ...(includeTokenUsage
+      ? { tokenUsage: { inputTokens: 1240, outputTokens: 380, totalTokens: 1620 } }
+      : {}),
     toolCalls,
     toolCallCount: toolCalls.length,
     toolFailureCount: toolCalls.filter((tc) => tc.status === 'error').length,
@@ -514,6 +591,81 @@ function seedStore() {
         'MSW で API 契約を保ったままモックすれば、frontend 単体でも十分に進められます。',
       createdAt: '2026-04-18T00:05:32.000Z',
       observabilitySummary: buildDummyObservabilitySummary(),
+    },
+  ]);
+
+  // Second seed thread: observability variation scenarios for UI testing
+  const thread2Id = 'thread-mock-002';
+  const t2Created = '2026-04-18T01:00:00.000Z';
+
+  threadStore.set(thread2Id, {
+    threadId: thread2Id,
+    title: 'Observability バリエーション',
+    createdAt: t2Created,
+    updatedAt: '2026-04-18T01:05:00.000Z',
+    preview: 'observability popover の各シナリオを確認するためのスレッドです。',
+  });
+
+  messageStore.set(thread2Id, [
+    {
+      messageId: 'msg-v-001',
+      threadId: thread2Id,
+      role: 'user',
+      content: '成功（ツール 0 件）のケースを見せてください',
+      createdAt: '2026-04-18T01:01:00.000Z',
+    },
+    {
+      messageId: 'msg-v-002',
+      threadId: thread2Id,
+      role: 'assistant',
+      content: 'ツール呼び出しなしで応答できる場合のサマリーです。',
+      createdAt: '2026-04-18T01:01:10.000Z',
+      observabilitySummary: buildDummyObservabilitySummary('空'),
+    },
+    {
+      messageId: 'msg-v-003',
+      threadId: thread2Id,
+      role: 'user',
+      content: 'エージェント情報を含むケース',
+      createdAt: '2026-04-18T01:02:00.000Z',
+    },
+    {
+      messageId: 'msg-v-004',
+      threadId: thread2Id,
+      role: 'assistant',
+      content: '複数エージェントが協調して回答を生成しました。',
+      createdAt: '2026-04-18T01:02:20.000Z',
+      observabilitySummary: buildDummyObservabilitySummary('エージェント'),
+    },
+    {
+      messageId: 'msg-v-005',
+      threadId: thread2Id,
+      role: 'user',
+      content: 'ツール失敗（エラー）のケース',
+      createdAt: '2026-04-18T01:03:00.000Z',
+    },
+    {
+      messageId: 'msg-v-006',
+      threadId: thread2Id,
+      role: 'assistant',
+      content: '一部ツールが失敗しましたが、他の手段で回答しました。',
+      createdAt: '2026-04-18T01:03:15.000Z',
+      observabilitySummary: buildDummyObservabilitySummary('エラー'),
+    },
+    {
+      messageId: 'msg-v-007',
+      threadId: thread2Id,
+      role: 'user',
+      content: 'tokenUsage なしのケース（トークン情報が取れない場合）',
+      createdAt: '2026-04-18T01:04:00.000Z',
+    },
+    {
+      messageId: 'msg-v-008',
+      threadId: thread2Id,
+      role: 'assistant',
+      content: 'トークン使用量が記録されていないモデルからの応答です。',
+      createdAt: '2026-04-18T01:04:12.000Z',
+      observabilitySummary: buildDummyObservabilitySummary('トークン'),
     },
   ]);
 }

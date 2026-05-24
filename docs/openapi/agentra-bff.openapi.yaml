@@ -525,6 +525,9 @@ components:
         error:
           type: string
           minLength: 1
+        metadata:
+          type: object
+          additionalProperties: true
     ChatObservationSummary:
       type: object
       additionalProperties: false
