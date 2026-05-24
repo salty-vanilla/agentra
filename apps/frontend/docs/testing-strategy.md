@@ -9,7 +9,9 @@
 | `pnpm --filter @agentra/frontend test --watch` | ウォッチモード (TDD サイクル) | ローカル開発時 |
 | `pnpm --filter @agentra/frontend build-storybook` | Story のコンパイル・ビルド検証 | CI (PR 毎) |
 | `pnpm dev:storybook` | ビジュアル確認 (ホットリロード) | ローカル開発時 |
-| `pnpm --filter @agentra/frontend e2e` | Playwright E2E テスト | リリース前・主要フロー確認時 |
+
+> **E2E テスト (Playwright) は現時点で未配線。** `apps/frontend/package.json` に `e2e` スクリプトは存在しない。
+> Playwright の導入・主要フローのテスト化は今後の Issue で対応予定。
 
 ## テスト種別と責務
 
@@ -30,13 +32,13 @@
   - Story が通らないコンポーネントは「Storybook 化できない = 過結合」のシグナル
   - ビジュアルの正しさは `dev:storybook` でローカル確認する
 
-### 3. E2E テスト (`e2e`)
+### 3. E2E テスト (Playwright — 将来対応)
 
 - **対象**: チャット送信→応答受信、スレッド作成・切り替えなど主要ユーザーフロー
-- **ツール**: Playwright
+- **ツール**: Playwright (未配線)
 - **方針**:
-  - リリース前に実行する回帰チェック
-  - CI では現在任意実行 (コスト・実行時間のトレードオフ)
+  - リリース前に実行する回帰チェックとして導入予定
+  - `apps/frontend/package.json` への `e2e` スクリプト追加と CI 組み込みは今後の Issue で対応
 
 ## VRT (Visual Regression Testing) オプション
 
