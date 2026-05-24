@@ -165,6 +165,11 @@ export class AgentraAppStack extends Stack {
       methods: [HttpMethod.GET],
       integration: httpIntegration,
     });
+    httpApi.addRoutes({
+      path: '/admin/{proxy+}',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
 
     // REST API — /chat only, response_stream for SSE (HTTP API does not support streaming)
     const streamingIntegration = new LambdaIntegration(streamingHandler, {

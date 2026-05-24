@@ -44,6 +44,14 @@ function parseDateRange(
   return { startDay, endDay };
 }
 
+function parseLimitParam(raw: string | undefined): number | { error: string } {
+  const n = raw === undefined ? 50 : Number(raw);
+  if (!Number.isInteger(n) || n < 1 || n > 200) {
+    return { error: `Invalid 'limit': must be an integer between 1 and 200.` };
+  }
+  return n;
+}
+
 function applyOffsetPagination<T>(
   items: T[],
   limit: number,
@@ -80,7 +88,11 @@ adminObservabilityRouter.get('/users', async (c) => {
     return c.json({ error: range.error }, 400);
   }
 
-  const limit = Math.min(Number(c.req.query('limit') ?? '50'), 200);
+  const limitResult = parseLimitParam(c.req.query('limit'));
+  if (typeof limitResult === 'object' && 'error' in limitResult) {
+    return c.json({ error: limitResult.error }, 400);
+  }
+  const limit = limitResult;
   const cursor = c.req.query('cursor');
 
   const { records } = await listObservabilityRecordsInRange(range);
@@ -137,7 +149,11 @@ adminObservabilityRouter.get('/traces', async (c) => {
 
   const statusFilter = c.req.query('status');
   const userIdFilter = c.req.query('userId');
-  const limit = Math.min(Number(c.req.query('limit') ?? '50'), 200);
+  const limitResult = parseLimitParam(c.req.query('limit'));
+  if (typeof limitResult === 'object' && 'error' in limitResult) {
+    return c.json({ error: limitResult.error }, 400);
+  }
+  const limit = limitResult;
   const cursor = c.req.query('cursor');
 
   const { records } = await listObservabilityRecordsInRange(range);

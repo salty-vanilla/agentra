@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { type KeyboardEvent, useState } from 'react';
+import { type KeyboardEvent, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +29,12 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
 
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allTraces, setAllTraces] = useState<AdminTraceListItem[]>([]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: from/to are intentional triggers — period change resets pagination
+  useEffect(() => {
+    setCursor(undefined);
+    setAllTraces([]);
+  }, [from, to]);
 
   const params = {
     from,

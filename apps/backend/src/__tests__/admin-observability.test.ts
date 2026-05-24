@@ -250,6 +250,36 @@ describe('Admin Observability API', () => {
       expect(body1.traces).toHaveLength(3);
       expect(body1.cursor).toBeDefined();
     });
+
+    it('returns 400 for limit=0', async () => {
+      const res = await app.request(
+        '/admin/observability/traces?from=2026-05-23&to=2026-05-23&limit=0',
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 for non-integer limit', async () => {
+      const res = await app.request(
+        '/admin/observability/traces?from=2026-05-23&to=2026-05-23&limit=abc',
+      );
+      expect(res.status).toBe(400);
+    });
+  });
+
+  describe('GET /admin/observability/users limit validation', () => {
+    it('returns 400 for limit=0', async () => {
+      const res = await app.request(
+        '/admin/observability/users?from=2026-05-23&to=2026-05-23&limit=0',
+      );
+      expect(res.status).toBe(400);
+    });
+
+    it('returns 400 for non-integer limit', async () => {
+      const res = await app.request(
+        '/admin/observability/users?from=2026-05-23&to=2026-05-23&limit=abc',
+      );
+      expect(res.status).toBe(400);
+    });
   });
 
   describe('GET /admin/observability/traces/:traceId', () => {

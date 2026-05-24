@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { AdminUserStats } from '@/lib/generated/model';
 import { adminUsersQueryOptions } from '@/lib/query-options';
@@ -14,6 +14,12 @@ type Props = {
 export function UsersTab({ from, to }: Props) {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allUsers, setAllUsers] = useState<AdminUserStats[]>([]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: from/to are intentional triggers — period change resets pagination
+  useEffect(() => {
+    setCursor(undefined);
+    setAllUsers([]);
+  }, [from, to]);
 
   const { data, isLoading, error } = useQuery({
     ...adminUsersQueryOptions({
