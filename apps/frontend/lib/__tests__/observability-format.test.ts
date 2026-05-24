@@ -50,6 +50,34 @@ describe('sanitizeToolError', () => {
     expect(sanitizeToolError('secret = mysecretvalue')).toBe('ツール実行に失敗しました');
   });
 
+  it('returns fixed message for UPPER_SNAKE_CASE env var with KEY suffix', () => {
+    expect(sanitizeToolError('OPENAI_API_KEY=abc123')).toBe('ツール実行に失敗しました');
+  });
+
+  it('returns fixed message for AWS_SECRET_ACCESS_KEY env var', () => {
+    expect(sanitizeToolError('AWS_SECRET_ACCESS_KEY=abc123')).toBe(
+      'ツール実行に失敗しました',
+    );
+  });
+
+  it('returns fixed message for AWS_ACCESS_KEY_ID env var', () => {
+    expect(sanitizeToolError('AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE')).toBe(
+      'ツール実行に失敗しました',
+    );
+  });
+
+  it('returns fixed message when AKIA-prefixed AWS key appears in message', () => {
+    expect(sanitizeToolError('Invalid credential AKIAIOSFODNN7EXAMPLE')).toBe(
+      'ツール実行に失敗しました',
+    );
+  });
+
+  it('returns fixed message when ASIA-prefixed AWS STS credential appears', () => {
+    expect(sanitizeToolError('Temporary credential ASIAIOSFODNN7EXAMPLE')).toBe(
+      'ツール実行に失敗しました',
+    );
+  });
+
   it('does not flag safe error messages', () => {
     expect(sanitizeToolError('Search quota exceeded')).toBe('Search quota exceeded');
   });

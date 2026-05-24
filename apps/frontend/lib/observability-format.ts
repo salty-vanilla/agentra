@@ -26,7 +26,7 @@ export function formatDuration(durationMs: number): string {
 // When found, replace the entire message with a safe fixed string rather than
 // attempting partial redaction, which risks leaving values exposed.
 const SENSITIVE_DETECT_RE =
-  /\b(?:bearer|api[_-]?key|token|secret|password|authorization)\b|\bsk-/i;
+  /\b(?:bearer|api[_-]?key|token|secret|password|authorization)\b|\bsk-|(?:key|secret|token|password|credential)[_a-z0-9]*=|\bAKIA[A-Z0-9]+|\bASIA[A-Z0-9]+/i;
 
 const TOOL_ERROR_FALLBACK = 'ツール実行に失敗しました';
 
