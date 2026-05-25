@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { CopyIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type {
@@ -35,19 +36,21 @@ function callLabel(entry: TimelineEntry): string {
 }
 
 function callStatus(entry: TimelineEntry): string | undefined {
-  if (entry.kind === 'tool') return entry.data.status;
-  if (entry.kind === 'agent') return entry.data.status;
   return entry.data.status;
 }
 
 function callDuration(entry: TimelineEntry): number | undefined {
-  if (entry.kind === 'tool') return entry.data.durationMs;
-  if (entry.kind === 'agent') return entry.data.durationMs;
   return entry.data.durationMs;
 }
 
 function callError(entry: TimelineEntry): string | undefined {
   if (entry.kind === 'tool') return entry.data.error;
+  return undefined;
+}
+
+function callStartedAt(entry: TimelineEntry): string | undefined {
+  if (entry.kind === 'tool') return entry.data.startedAt;
+  if (entry.kind === 'agent') return entry.data.startedAt;
   return undefined;
 }
 
@@ -57,6 +60,11 @@ function kindBadgeClass(kind: CallKind): string {
   if (kind === 'agent')
     return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
   return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
+}
+
+function formatRelativeMs(diffMs: number): string {
+  if (diffMs < 1000) return `+${diffMs}ms`;
+  return `+${(diffMs / 1000).toFixed(1)}s`;
 }
 
 function buildTimeline(
@@ -84,6 +92,23 @@ function buildTimeline(
   });
 }
 
+function CopyButton({ label, value }: { label: string; value: string }) {
+  return (
+    <button
+      type="button"
+      aria-label={`Copy ${label}`}
+      onClick={() => {
+        navigator.clipboard.writeText(value).catch((err) => {
+          console.warn(`Failed to copy ${label}`, err);
+        });
+      }}
+      className="ml-1 inline-flex items-center text-muted-foreground hover:text-foreground"
+    >
+      <CopyIcon className="size-3" />
+    </button>
+  );
+}
+
 export function TraceDetailDrawer({ traceId, onClose }: Props) {
   const { data, isLoading, error } = useQuery(adminTraceDetailQueryOptions(traceId));
 
@@ -107,13 +132,25 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
           <div className="px-4 space-y-4">
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <span className="text-muted-foreground">Trace ID</span>
-              <span className="font-mono text-xs break-all">{detail.traceId}</span>
+              <span className="font-mono text-xs break-all flex items-center">
+                {detail.traceId}
+                <CopyButton label="Trace ID" value={detail.traceId} />
+              </span>
               <span className="text-muted-foreground">User ID</span>
-              <span className="font-mono text-xs break-all">{detail.userId}</span>
+              <span className="font-mono text-xs break-all flex items-center">
+                {detail.userId}
+                <CopyButton label="User ID" value={detail.userId} />
+              </span>
               <span className="text-muted-foreground">Request ID</span>
-              <span className="font-mono text-xs break-all">{detail.requestId}</span>
+              <span className="font-mono text-xs break-all flex items-center">
+                {detail.requestId}
+                <CopyButton label="Request ID" value={detail.requestId} />
+              </span>
               <span className="text-muted-foreground">Thread ID</span>
-              <span className="font-mono text-xs break-all">{detail.threadId}</span>
+              <span className="font-mono text-xs break-all flex items-center">
+                {detail.threadId}
+                <CopyButton label="Thread ID" value={detail.threadId} />
+              </span>
               <span className="text-muted-foreground">Status</span>
               <Badge variant={statusVariant(detail.status)}>{detail.status}</Badge>
               <span className="text-muted-foreground">Duration</span>
@@ -149,23 +186,42 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
                   const status = callStatus(entry);
                   const duration = callDuration(entry);
                   const err = callError(entry);
+                  const entryStartedAt = callStartedAt(entry);
+                  const rawRelativeMs = entryStartedAt
+                    ? new Date(entryStartedAt).getTime() -
+                      new Date(detail.startedAt).getTime()
+                    : null;
+                  const relativeMs =
+                    rawRelativeMs !== null && Number.isFinite(rawRelativeMs)
+                      ? rawRelativeMs
+                      : null;
                   return (
                     <div
                       key={i}
                       className="flex items-start gap-2 text-sm border rounded px-3 py-2"
                     >
                       <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium ${kindBadgeClass(entry.kind)}`}
+                        className={`rounded px-1.5 py-0.5 text-xs font-medium shrink-0 ${kindBadgeClass(entry.kind)}`}
                       >
                         {entry.kind}
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{callLabel(entry)}</div>
                         {err && (
-                          <div className="text-xs text-destructive truncate">{err}</div>
+                          <div className="text-xs text-destructive break-words">
+                            {err}
+                          </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
+                        {relativeMs !== null && (
+                          <span className="text-xs text-muted-foreground">
+                            {formatRelativeMs(relativeMs)}
+                          </span>
+                        )}
+                        {relativeMs === null && entryStartedAt === undefined && (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                         {duration != null && (
                           <span className="text-xs text-muted-foreground">
                             {duration}ms

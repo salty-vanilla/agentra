@@ -2,13 +2,13 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { type KeyboardEvent, useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
-import { Input } from '@/components/ui/input';
 import type { AdminTraceListItem } from '@/lib/generated/model';
 import { adminTracesQueryOptions } from '@/lib/query-options';
+import { SearchToolbar } from './search-toolbar';
 
 type Props = {
   from: string;
@@ -73,10 +73,18 @@ const columns = [
   helper.accessor('skillCallCount', { header: 'Skills', size: 70 }),
 ];
 
+function filterTraces(traces: AdminTraceListItem[], query: string): AdminTraceListItem[] {
+  if (!query) return traces;
+  const q = query.toLowerCase();
+  return traces.filter(
+    (t) => t.traceId.toLowerCase().includes(q) || t.userId.toLowerCase().includes(q),
+  );
+}
+
 export function TracesTab({ from, to, onSelectTrace }: Props) {
   const [statusFilter, setStatusFilter] = useState('');
-  const [draftUserId, setDraftUserId] = useState('');
   const [appliedUserId, setAppliedUserId] = useState('');
+  const [traceSearch, setTraceSearch] = useState('');
 
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allTraces, setAllTraces] = useState<AdminTraceListItem[]>([]);
@@ -101,8 +109,15 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
     placeholderData: (prev) => prev,
   });
 
-  const traces =
-    cursor === undefined ? (data?.traces ?? []) : [...allTraces, ...(data?.traces ?? [])];
+  const traces = useMemo(
+    () => [...allTraces, ...(data?.traces ?? [])],
+    [allTraces, data?.traces],
+  );
+
+  const filteredTraces = useMemo(
+    () => filterTraces(traces, traceSearch),
+    [traces, traceSearch],
+  );
 
   function handleStatusChange(value: string) {
     setStatusFilter(value);
@@ -110,19 +125,24 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
     setCursor(undefined);
   }
 
-  function applyUserIdFilter() {
-    setAppliedUserId(draftUserId);
+  function handleTraceSearchChange(v: string) {
+    setTraceSearch(v);
+    if (v === '') {
+      setAppliedUserId('');
+      setAllTraces([]);
+      setCursor(undefined);
+    }
+  }
+
+  function handleTraceSearchEnter() {
+    setAppliedUserId(traceSearch);
     setAllTraces([]);
     setCursor(undefined);
   }
 
-  function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter') applyUserIdFilter();
-  }
-
   function loadMore() {
     if (data?.cursor) {
-      setAllTraces(traces);
+      setAllTraces((prev) => [...prev, ...(data?.traces ?? [])]);
       setCursor(data.cursor);
     }
   }
@@ -140,23 +160,23 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
           <option value="error">Error</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <Input
-          placeholder="Search by trace ID or user ID..."
-          value={draftUserId}
-          onChange={(e) => setDraftUserId(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="h-8 w-52 text-sm"
+        <SearchToolbar
+          value={traceSearch}
+          onChange={handleTraceSearchChange}
+          onEnter={handleTraceSearchEnter}
+          placeholder="Search trace ID or user ID…"
+          className="w-64"
         />
-        <Button variant="outline" size="sm" onClick={applyUserIdFilter}>
-          Apply
-        </Button>
       </div>
 
       <DataTable
-        data={traces}
+        data={filteredTraces}
         columns={columns}
         isLoading={isLoading}
         error={error ? 'Failed to load traces.' : null}
+        emptyMessage={
+          traceSearch ? 'No traces match the search.' : 'No data for this period.'
+        }
         onRowClick={(t) => onSelectTrace(t.traceId)}
         virtualized
         height="100%"
