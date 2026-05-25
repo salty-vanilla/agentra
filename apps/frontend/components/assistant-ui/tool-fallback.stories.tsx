@@ -61,7 +61,7 @@ export const SuccessCollapsed: Story = {
 
 export const WithError: Story = {
   render: () => (
-    <ToolFallbackRoot defaultOpen>
+    <ToolFallbackRoot defaultOpen className="border-destructive/40 bg-destructive/5">
       <ToolFallbackTrigger
         toolName="fetch_data"
         status={{

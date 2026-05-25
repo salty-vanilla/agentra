@@ -18,9 +18,9 @@ import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import {
+  classifyChatError,
   createThread,
   deleteThreadById,
-  PrematureSseEofError,
   sendChat,
   sendChatStream,
   updateThreadTitle,
@@ -501,14 +501,9 @@ export function AgentraWorkspace() {
               queryKey: agentraQueryKeys.threadMessages(threadIdForInvalidation),
             });
           }
-          const isPrematureEof = error instanceof PrematureSseEofError;
+          const classified = classifyChatError(error, doneObservabilitySummary);
           toast.error('メッセージ送信に失敗しました', {
-            description: getErrorMessage(
-              isPrematureEof
-                ? new Error('接続が予期せず切断されました。再試行してください。')
-                : error,
-              'バックエンドまたは AgentCore の状態を確認してください。',
-            ),
+            description: classified.userMessage,
             duration: 6000,
           });
           throw error;
@@ -833,18 +828,21 @@ function convertPersistedMessageToRuntimeMessage(
         ]
       : [{ type: 'text', text: message.content }];
 
+  const customMetadata: {
+    observabilitySummary?: ChatObservationSummary;
+    errorMessage?: string;
+    cancelledAt?: string;
+  } = {};
+  if (message.observabilitySummary)
+    customMetadata.observabilitySummary = message.observabilitySummary;
+  if (message.errorMessage) customMetadata.errorMessage = message.errorMessage;
+  if (message.cancelledAt) customMetadata.cancelledAt = message.cancelledAt;
+  const hasCustom = Object.keys(customMetadata).length > 0;
+
   return {
     role: message.role,
     content: contentParts,
-    ...(message.observabilitySummary
-      ? {
-          metadata: {
-            custom: {
-              observabilitySummary: message.observabilitySummary,
-            },
-          },
-        }
-      : {}),
+    ...(hasCustom ? { metadata: { custom: customMetadata } } : {}),
   };
 }
 

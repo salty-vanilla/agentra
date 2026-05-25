@@ -144,7 +144,16 @@ export async function* sendChatStream(
   });
 
   if (!response.ok || !response.body) {
-    throw new Error(`Chat request failed: ${response.status} ${response.statusText}`);
+    const bodyText = await response.text().catch(() => '');
+    let parsed: unknown = null;
+    if (bodyText) {
+      try {
+        parsed = JSON.parse(bodyText);
+      } catch {
+        parsed = bodyText;
+      }
+    }
+    throw new ApiError(response.status, parsed);
   }
 
   const reader = response.body.getReader();
@@ -295,4 +304,55 @@ export async function fetchAdminTimeseries(
 ): Promise<AdminTimeseriesResponse> {
   const headers = await getAuthHeaders();
   return getAdminTimeseriesRequest(params, { headers });
+}
+
+// ── Error classification ──────────────────────────────────────────────────────
+
+export type ChatErrorKind =
+  | 'network_disconnect'
+  | 'auth_error'
+  | 'timeout'
+  | 'server_error'
+  | 'tool_failure'
+  | 'unknown';
+
+export interface ClassifiedChatError {
+  kind: ChatErrorKind;
+  userMessage: string;
+}
+
+const ERROR_MESSAGES: Record<ChatErrorKind, string> = {
+  network_disconnect: '接続が切断されました。再試行してください',
+  auth_error: 'セッションが切れました。再ログインしてください',
+  timeout: '処理がタイムアウトしました。簡単な質問に分割して試してください',
+  server_error: 'サーバーエラーが発生しました。しばらく経ってから再試行してください',
+  tool_failure: '一部のツール呼び出しが失敗しました。回答が不完全な場合があります',
+  unknown:
+    'メッセージ送信に失敗しました。バックエンドまたは AgentCore の状態を確認してください',
+};
+
+export function classifyChatError(
+  error: unknown,
+  observabilitySummary?: { toolFailureCount?: number | null } | null,
+): ClassifiedChatError {
+  let kind: ChatErrorKind;
+
+  if (error instanceof PrematureSseEofError) {
+    kind = 'network_disconnect';
+  } else if (
+    error instanceof ApiError &&
+    (error.status === 401 || error.status === 403)
+  ) {
+    kind = 'auth_error';
+  } else if (error instanceof Error && /timeout/i.test(error.message)) {
+    kind = 'timeout';
+  } else if (error instanceof ApiError && error.status >= 500) {
+    kind = 'server_error';
+  } else if ((observabilitySummary?.toolFailureCount ?? 0) > 0) {
+    kind = 'tool_failure';
+  } else {
+    kind = 'unknown';
+  }
+
+  return { kind, userMessage: ERROR_MESSAGES[kind] };
 }
