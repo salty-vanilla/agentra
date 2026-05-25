@@ -20,7 +20,7 @@ import {
   type MutableRefObject,
   useRef,
 } from 'react';
-import { ComposerView } from '@/components/assistant-ui/composer-view';
+import { AssistantComposerAdapter } from '@/components/assistant-ui/assistant-composer-adapter';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import {
   BranchPickerView,
@@ -194,7 +194,7 @@ const Composer: FC<{
   onSlideDialogOpenChange?: (open: boolean) => void;
 }> = (props) => {
   const hasSlidePrefix = useAuiState((s) => /^\/slide(\s|$)/.test(s.composer.text));
-  return <ComposerView {...props} hasSlidePrefix={hasSlidePrefix} />;
+  return <AssistantComposerAdapter {...props} hasSlidePrefix={hasSlidePrefix} />;
 };
 
 const MessageError: FC = () => {
