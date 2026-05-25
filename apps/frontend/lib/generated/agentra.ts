@@ -19,6 +19,7 @@ import type {
   ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
+  DeleteKbDocumentParams,
   GetAdminAgentsParams,
   GetAdminOverviewParams,
   GetAdminSkillsParams,
@@ -27,6 +28,13 @@ import type {
   GetAdminTracesParams,
   GetAdminUsersParams,
   HealthResponse,
+  IngestionJobsResponse,
+  KbDocumentsResponse,
+  KbStatusResponse,
+  ListKbDocumentsParams,
+  PresignDocumentRequest,
+  PresignDocumentResponse,
+  SyncResponse,
   ThreadArtifactsResponse,
   ThreadMessagesResponse,
   ThreadResponse,
@@ -516,6 +524,165 @@ export const getAdminTraceDetail = async (traceId: string, options?: RequestInit
   {
     ...options,
     method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get Knowledge Base configuration status
+ */
+export const getGetKbStatusUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/status`
+}
+
+export const getKbStatus = async ( options?: RequestInit): Promise<KbStatusResponse> => {
+
+  return fetchMutator<KbStatusResponse>(getGetKbStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List documents in the KB S3 data source bucket
+ */
+export const getListKbDocumentsUrl = (params?: ListKbDocumentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents`
+}
+
+export const listKbDocuments = async (params?: ListKbDocumentsParams, options?: RequestInit): Promise<KbDocumentsResponse> => {
+
+  return fetchMutator<KbDocumentsResponse>(getListKbDocumentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Delete a document from the KB S3 data source bucket
+ */
+export const getDeleteKbDocumentUrl = (params: DeleteKbDocumentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents`
+}
+
+export const deleteKbDocument = async (params: DeleteKbDocumentParams, options?: RequestInit): Promise<void> => {
+
+  return fetchMutator<void>(getDeleteKbDocumentUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get a presigned S3 URL for uploading a document
+ */
+export const getPresignKbDocumentUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents/presign`
+}
+
+export const presignKbDocument = async (presignDocumentRequest: PresignDocumentRequest, options?: RequestInit): Promise<PresignDocumentResponse> => {
+
+  return fetchMutator<PresignDocumentResponse>(getPresignKbDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      presignDocumentRequest,)
+  }
+);}
+
+
+
+/**
+ * @summary List recent KB ingestion jobs (last 10)
+ */
+export const getListKbIngestionJobsUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/ingestion-jobs`
+}
+
+export const listKbIngestionJobs = async ( options?: RequestInit): Promise<IngestionJobsResponse> => {
+
+  return fetchMutator<IngestionJobsResponse>(getListKbIngestionJobsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Manually start a KB ingestion sync job
+ */
+export const getStartKbSyncUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/sync`
+}
+
+export const startKbSync = async ( options?: RequestInit): Promise<SyncResponse> => {
+
+  return fetchMutator<SyncResponse>(getStartKbSyncUrl(),
+  {
+    ...options,
+    method: 'POST'
 
 
   }

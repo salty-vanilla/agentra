@@ -14,9 +14,13 @@ import {
   fetchAdminTraces,
   fetchAdminUsers,
   fetchHealth,
+  fetchKbDocuments,
+  fetchKbIngestionJobs,
+  fetchKbStatus,
   fetchThreadMessages,
   fetchThreads,
 } from '@/lib/api';
+import type { IngestionJobSummary } from '@/lib/generated/model';
 
 const ADMIN_STALE_TIME = 60_000;
 
@@ -34,6 +38,9 @@ export const agentraQueryKeys = {
   adminTraces: (params: AdminPaginationParams & { status?: string; userId?: string }) =>
     ['admin-traces', params] as const,
   adminTraceDetail: (traceId: string) => ['admin-trace-detail', traceId] as const,
+  kbStatus: ['kb-status'] as const,
+  kbDocuments: (nextToken?: string) => ['kb-documents', nextToken] as const,
+  kbIngestionJobs: ['kb-ingestion-jobs'] as const,
 };
 
 export function healthQueryOptions() {
@@ -123,5 +130,40 @@ export function adminTraceDetailQueryOptions(traceId: string | null) {
     queryFn: () => fetchAdminTraceDetail(traceId as string),
     enabled: traceId !== null,
     staleTime: ADMIN_STALE_TIME,
+  });
+}
+
+const KB_STALE_TIME = 30_000;
+const KB_POLL_INTERVAL = 10_000;
+
+function isActiveIngestionJob(job: IngestionJobSummary): boolean {
+  return job.status === 'IN_PROGRESS' || job.status === 'STARTING';
+}
+
+export function kbStatusQueryOptions() {
+  return queryOptions({
+    queryKey: agentraQueryKeys.kbStatus,
+    queryFn: fetchKbStatus,
+    staleTime: KB_STALE_TIME,
+  });
+}
+
+export function kbDocumentsQueryOptions(nextToken?: string) {
+  return queryOptions({
+    queryKey: agentraQueryKeys.kbDocuments(nextToken),
+    queryFn: () => fetchKbDocuments(nextToken),
+    staleTime: KB_STALE_TIME,
+  });
+}
+
+export function kbIngestionJobsQueryOptions() {
+  return queryOptions({
+    queryKey: agentraQueryKeys.kbIngestionJobs,
+    queryFn: fetchKbIngestionJobs,
+    staleTime: KB_STALE_TIME,
+    refetchInterval: (query) => {
+      const jobs = query.state.data?.jobs ?? [];
+      return jobs.some(isActiveIngestionJob) ? KB_POLL_INTERVAL : false;
+    },
   });
 }

@@ -13,6 +13,7 @@ tags:
   - name: threads
   - name: chat
   - name: admin
+  - name: knowledge-base
 paths:
   /health:
     get:
@@ -431,6 +432,154 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '404':
           description: Trace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/status:
+    get:
+      operationId: getKbStatus
+      tags: [knowledge-base]
+      summary: Get Knowledge Base configuration status
+      responses:
+        '200':
+          description: KB status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KbStatusResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/documents:
+    get:
+      operationId: listKbDocuments
+      tags: [knowledge-base]
+      summary: List documents in the KB S3 data source bucket
+      parameters:
+        - name: nextToken
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Pagination token from a previous response
+      responses:
+        '200':
+          description: Document list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KbDocumentsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: deleteKbDocument
+      tags: [knowledge-base]
+      summary: Delete a document from the KB S3 data source bucket
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            description: URL-encoded S3 object key
+      responses:
+        '204':
+          description: Deleted successfully
+        '400':
+          description: Invalid or missing key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found or key outside allowed prefix
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/documents/presign:
+    post:
+      operationId: presignKbDocument
+      tags: [knowledge-base]
+      summary: Get a presigned S3 URL for uploading a document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignDocumentRequest'
+      responses:
+        '200':
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignDocumentResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/ingestion-jobs:
+    get:
+      operationId: listKbIngestionJobs
+      tags: [knowledge-base]
+      summary: List recent KB ingestion jobs (last 10)
+      responses:
+        '200':
+          description: Ingestion job list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionJobsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/sync:
+    post:
+      operationId: startKbSync
+      tags: [knowledge-base]
+      summary: Manually start a KB ingestion sync job
+      responses:
+        '200':
+          description: Sync job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Sync already in progress
           content:
             application/json:
               schema:
@@ -1667,3 +1816,143 @@ components:
             - artifact
         manifest:
           $ref: '#/components/schemas/ArtifactManifest'
+    KbStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - configured
+      properties:
+        configured:
+          type: boolean
+        kbId:
+          type: string
+        dataSourceId:
+          type: string
+        dataSourceBucketName:
+          type: string
+    KbDocument:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - name
+        - sizeBytes
+        - lastModified
+      properties:
+        key:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        sizeBytes:
+          type: integer
+          minimum: 0
+        lastModified:
+          type: string
+          format: date-time
+    KbDocumentsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - documents
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/KbDocument'
+        nextToken:
+          type: string
+    PresignDocumentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - fileName
+        - contentType
+        - sizeBytes
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+        contentType:
+          type: string
+          enum:
+            - application/pdf
+            - text/plain
+            - text/markdown
+            - application/msword
+            - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 52428800
+    PresignDocumentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - presignedUrl
+        - key
+        - expiresAt
+      properties:
+        presignedUrl:
+          type: string
+          format: uri
+        key:
+          type: string
+          minLength: 1
+        expiresAt:
+          type: string
+          format: date-time
+    IngestionJobSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - status
+        - startedAt
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - STARTING
+            - IN_PROGRESS
+            - COMPLETE
+            - FAILED
+            - STOPPING
+            - STOPPED
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        statistics:
+          type: object
+          nullable: true
+    IngestionJobsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - jobs
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngestionJobSummary'
+    SyncResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - status
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - STARTING

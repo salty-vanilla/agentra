@@ -1,9 +1,11 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { BarChart3, BookOpen, Bot, Settings, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { isAdminConsoleActive, isNavItemActive } from '@/lib/admin-routes';
+import { kbStatusQueryOptions } from '@/lib/query-options';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -13,7 +15,7 @@ interface NavItem {
   enabled: boolean;
 }
 
-const NAV_ITEMS: NavItem[] = [
+const STATIC_NAV_ITEMS: NavItem[] = [
   {
     label: 'Observability',
     href: '/admin/observability',
@@ -25,6 +27,14 @@ const NAV_ITEMS: NavItem[] = [
   { label: 'RAG / KB', href: '/admin/rag', icon: BookOpen, enabled: false },
   { label: 'Settings', href: '/admin/settings', icon: Settings, enabled: false },
 ];
+
+function useNavItems(): NavItem[] {
+  const { data } = useQuery({ ...kbStatusQueryOptions(), retry: false });
+  const kbEnabled = data?.configured ?? false;
+  return STATIC_NAV_ITEMS.map((item) =>
+    item.href === '/admin/rag' ? { ...item, enabled: kbEnabled } : item,
+  );
+}
 
 function AdminNavItem({ item, active }: { item: NavItem; active: boolean }) {
   const Icon = item.icon;
@@ -55,9 +65,13 @@ function AdminNavItem({ item, active }: { item: NavItem; active: boolean }) {
 
 export interface AdminSidebarViewProps {
   currentPath: string;
+  navItems?: NavItem[];
 }
 
-export function AdminSidebarView({ currentPath }: AdminSidebarViewProps) {
+export function AdminSidebarView({
+  currentPath,
+  navItems = STATIC_NAV_ITEMS,
+}: AdminSidebarViewProps) {
   const consoleActive = isAdminConsoleActive(currentPath);
 
   return (
@@ -73,7 +87,7 @@ export function AdminSidebarView({ currentPath }: AdminSidebarViewProps) {
       >
         Admin Console
       </Link>
-      {NAV_ITEMS.map((item) => (
+      {navItems.map((item) => (
         <AdminNavItem
           key={item.href}
           item={item}
@@ -86,5 +100,6 @@ export function AdminSidebarView({ currentPath }: AdminSidebarViewProps) {
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  return <AdminSidebarView currentPath={pathname} />;
+  const navItems = useNavItems();
+  return <AdminSidebarView currentPath={pathname} navItems={navItems} />;
 }

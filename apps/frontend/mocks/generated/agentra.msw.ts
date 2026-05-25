@@ -20,6 +20,7 @@ import type {
   ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
+  DeleteKbDocumentParams,
   ErrorResponse,
   GetAdminAgentsParams,
   GetAdminOverviewParams,
@@ -29,6 +30,13 @@ import type {
   GetAdminTracesParams,
   GetAdminUsersParams,
   HealthResponse,
+  IngestionJobsResponse,
+  KbDocumentsResponse,
+  KbStatusResponse,
+  ListKbDocumentsParams,
+  PresignDocumentRequest,
+  PresignDocumentResponse,
+  SyncResponse,
   ThreadArtifactsResponse,
   ThreadMessagesResponse,
   ThreadResponse,
@@ -1006,6 +1014,335 @@ export const getAdminTraceDetail = async (traceId: string, options?: RequestInit
 }
 
 
+
+/**
+ * @summary Get Knowledge Base configuration status
+ */
+export type getKbStatusResponse200 = {
+  data: KbStatusResponse
+  status: 200
+}
+
+export type getKbStatusResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getKbStatusResponseSuccess = (getKbStatusResponse200) & {
+  headers: Headers;
+};
+export type getKbStatusResponseError = (getKbStatusResponse403) & {
+  headers: Headers;
+};
+
+export type getKbStatusResponse = (getKbStatusResponseSuccess | getKbStatusResponseError)
+
+export const getGetKbStatusUrl = () => {
+
+
+
+
+  return `/knowledge-base/status`
+}
+
+export const getKbStatus = async ( options?: RequestInit): Promise<getKbStatusResponse> => {
+
+  const res = await fetch(getGetKbStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getKbStatusResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getKbStatusResponse
+}
+
+
+
+/**
+ * @summary List documents in the KB S3 data source bucket
+ */
+export type listKbDocumentsResponse200 = {
+  data: KbDocumentsResponse
+  status: 200
+}
+
+export type listKbDocumentsResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type listKbDocumentsResponseSuccess = (listKbDocumentsResponse200) & {
+  headers: Headers;
+};
+export type listKbDocumentsResponseError = (listKbDocumentsResponse403) & {
+  headers: Headers;
+};
+
+export type listKbDocumentsResponse = (listKbDocumentsResponseSuccess | listKbDocumentsResponseError)
+
+export const getListKbDocumentsUrl = (params?: ListKbDocumentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/knowledge-base/documents?${stringifiedParams}` : `/knowledge-base/documents`
+}
+
+export const listKbDocuments = async (params?: ListKbDocumentsParams, options?: RequestInit): Promise<listKbDocumentsResponse> => {
+
+  const res = await fetch(getListKbDocumentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listKbDocumentsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listKbDocumentsResponse
+}
+
+
+
+/**
+ * @summary Delete a document from the KB S3 data source bucket
+ */
+export type deleteKbDocumentResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteKbDocumentResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteKbDocumentResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type deleteKbDocumentResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type deleteKbDocumentResponseSuccess = (deleteKbDocumentResponse204) & {
+  headers: Headers;
+};
+export type deleteKbDocumentResponseError = (deleteKbDocumentResponse400 | deleteKbDocumentResponse403 | deleteKbDocumentResponse404) & {
+  headers: Headers;
+};
+
+export type deleteKbDocumentResponse = (deleteKbDocumentResponseSuccess | deleteKbDocumentResponseError)
+
+export const getDeleteKbDocumentUrl = (params: DeleteKbDocumentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/knowledge-base/documents?${stringifiedParams}` : `/knowledge-base/documents`
+}
+
+export const deleteKbDocument = async (params: DeleteKbDocumentParams, options?: RequestInit): Promise<deleteKbDocumentResponse> => {
+
+  const res = await fetch(getDeleteKbDocumentUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteKbDocumentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteKbDocumentResponse
+}
+
+
+
+/**
+ * @summary Get a presigned S3 URL for uploading a document
+ */
+export type presignKbDocumentResponse200 = {
+  data: PresignDocumentResponse
+  status: 200
+}
+
+export type presignKbDocumentResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type presignKbDocumentResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type presignKbDocumentResponseSuccess = (presignKbDocumentResponse200) & {
+  headers: Headers;
+};
+export type presignKbDocumentResponseError = (presignKbDocumentResponse400 | presignKbDocumentResponse403) & {
+  headers: Headers;
+};
+
+export type presignKbDocumentResponse = (presignKbDocumentResponseSuccess | presignKbDocumentResponseError)
+
+export const getPresignKbDocumentUrl = () => {
+
+
+
+
+  return `/knowledge-base/documents/presign`
+}
+
+export const presignKbDocument = async (presignDocumentRequest: PresignDocumentRequest, options?: RequestInit): Promise<presignKbDocumentResponse> => {
+
+  const res = await fetch(getPresignKbDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      presignDocumentRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: presignKbDocumentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as presignKbDocumentResponse
+}
+
+
+
+/**
+ * @summary List recent KB ingestion jobs (last 10)
+ */
+export type listKbIngestionJobsResponse200 = {
+  data: IngestionJobsResponse
+  status: 200
+}
+
+export type listKbIngestionJobsResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type listKbIngestionJobsResponseSuccess = (listKbIngestionJobsResponse200) & {
+  headers: Headers;
+};
+export type listKbIngestionJobsResponseError = (listKbIngestionJobsResponse403) & {
+  headers: Headers;
+};
+
+export type listKbIngestionJobsResponse = (listKbIngestionJobsResponseSuccess | listKbIngestionJobsResponseError)
+
+export const getListKbIngestionJobsUrl = () => {
+
+
+
+
+  return `/knowledge-base/ingestion-jobs`
+}
+
+export const listKbIngestionJobs = async ( options?: RequestInit): Promise<listKbIngestionJobsResponse> => {
+
+  const res = await fetch(getListKbIngestionJobsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listKbIngestionJobsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listKbIngestionJobsResponse
+}
+
+
+
+/**
+ * @summary Manually start a KB ingestion sync job
+ */
+export type startKbSyncResponse200 = {
+  data: SyncResponse
+  status: 200
+}
+
+export type startKbSyncResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type startKbSyncResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type startKbSyncResponseSuccess = (startKbSyncResponse200) & {
+  headers: Headers;
+};
+export type startKbSyncResponseError = (startKbSyncResponse403 | startKbSyncResponse409) & {
+  headers: Headers;
+};
+
+export type startKbSyncResponse = (startKbSyncResponseSuccess | startKbSyncResponseError)
+
+export const getStartKbSyncUrl = () => {
+
+
+
+
+  return `/knowledge-base/sync`
+}
+
+export const startKbSync = async ( options?: RequestInit): Promise<startKbSyncResponse> => {
+
+  const res = await fetch(getStartKbSyncUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: startKbSyncResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as startKbSyncResponse
+}
+
+
 export const getGetHealthResponseMock = (overrideResponse: Partial<Extract<HealthResponse, object>> = {}): HealthResponse => ({status: faker.helpers.arrayElement(['ok'] as const), service: faker.string.alpha({length: {min: 1, max: 20}}), version: faker.string.alpha({length: {min: 1, max: 20}}), timestamp: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
 
 export const getPostChatResponseMock = (): string => (faker.word.sample())
@@ -1041,6 +1378,16 @@ export const getGetAdminSkillsResponseMock = (overrideResponse: Partial<Extract<
 export const getGetAdminTracesResponseMock = (overrideResponse: Partial<Extract<AdminTracesResponse, object>> = {}): AdminTracesResponse => ({traces: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({traceId: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), model: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), estimatedCostUsd: faker.helpers.arrayElement([faker.number.float({min: 0, fractionDigits: 2}), undefined]), toolCallCount: faker.number.int({min: 0}), agentCallCount: faker.number.int({min: 0}), skillCallCount: faker.number.int({min: 0})})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
 export const getGetAdminTraceDetailResponseMock = (overrideResponse: Partial<Extract<AdminTraceDetailResponse, object>> = {}): AdminTraceDetailResponse => ({trace: {traceId: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), model: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), estimatedCostUsd: faker.helpers.arrayElement([faker.number.float({min: 0, fractionDigits: 2}), undefined]), toolCallCount: faker.number.int({min: 0}), agentCallCount: faker.number.int({min: 0}), skillCallCount: faker.number.int({min: 0}), requestId: faker.string.alpha({length: {min: 10, max: 20}}), threadId: faker.string.alpha({length: {min: 10, max: 20}}), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 10, max: 20}}), toolName: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), agentCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({agentName: faker.string.alpha({length: {min: 10, max: 20}}), agentKind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), startedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), skillCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({skillName: faker.string.alpha({length: {min: 10, max: 20}}), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined])}, ...overrideResponse})
+
+export const getGetKbStatusResponseMock = (overrideResponse: Partial<Extract<KbStatusResponse, object>> = {}): KbStatusResponse => ({configured: faker.datatype.boolean(), kbId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceBucketName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getListKbDocumentsResponseMock = (overrideResponse: Partial<Extract<KbDocumentsResponse, object>> = {}): KbDocumentsResponse => ({documents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({key: faker.string.alpha({length: {min: 1, max: 20}}), name: faker.string.alpha({length: {min: 1, max: 20}}), sizeBytes: faker.number.int({min: 0}), lastModified: faker.date.past().toISOString().slice(0, 19) + 'Z'})), nextToken: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getPresignKbDocumentResponseMock = (overrideResponse: Partial<Extract<PresignDocumentResponse, object>> = {}): PresignDocumentResponse => ({presignedUrl: faker.internet.url(), key: faker.string.alpha({length: {min: 1, max: 20}}), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getListKbIngestionJobsResponseMock = (overrideResponse: Partial<Extract<IngestionJobsResponse, object>> = {}): IngestionJobsResponse => ({jobs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({jobId: faker.string.alpha({length: {min: 1, max: 20}}), status: faker.helpers.arrayElement(['STARTING','IN_PROGRESS','COMPLETE','FAILED','STOPPING','STOPPED'] as const), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), statistics: faker.helpers.arrayElement([faker.helpers.arrayElement([null,]), undefined])})), ...overrideResponse})
+
+export const getStartKbSyncResponseMock = (overrideResponse: Partial<Extract<SyncResponse, object>> = {}): SyncResponse => ({jobId: faker.string.alpha({length: {min: 1, max: 20}}), status: faker.helpers.arrayElement(['STARTING'] as const), ...overrideResponse})
 
 
 export const getGetHealthMockHandler = (overrideResponse?: HealthResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<HealthResponse> | HealthResponse), options?: RequestHandlerOptions) => {
@@ -1259,6 +1606,76 @@ export const getGetAdminTraceDetailMockHandler = (overrideResponse?: AdminTraceD
       })
   }, options)
 }
+
+export const getGetKbStatusMockHandler = (overrideResponse?: KbStatusResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KbStatusResponse> | KbStatusResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/knowledge-base/status', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetKbStatusResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListKbDocumentsMockHandler = (overrideResponse?: KbDocumentsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KbDocumentsResponse> | KbDocumentsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/knowledge-base/documents', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListKbDocumentsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDeleteKbDocumentMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/knowledge-base/documents', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {await delay(200);
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
+export const getPresignKbDocumentMockHandler = (overrideResponse?: PresignDocumentResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<PresignDocumentResponse> | PresignDocumentResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/knowledge-base/documents/presign', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPresignKbDocumentResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListKbIngestionJobsMockHandler = (overrideResponse?: IngestionJobsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<IngestionJobsResponse> | IngestionJobsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/knowledge-base/ingestion-jobs', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListKbIngestionJobsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getStartKbSyncMockHandler = (overrideResponse?: SyncResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<SyncResponse> | SyncResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/knowledge-base/sync', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getStartKbSyncResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getAgentraBFFAPIMock = () => [
   getGetHealthMockHandler(),
   getPostChatMockHandler(),
@@ -1277,5 +1694,11 @@ export const getAgentraBFFAPIMock = () => [
   getGetAdminToolsMockHandler(),
   getGetAdminSkillsMockHandler(),
   getGetAdminTracesMockHandler(),
-  getGetAdminTraceDetailMockHandler()
+  getGetAdminTraceDetailMockHandler(),
+  getGetKbStatusMockHandler(),
+  getListKbDocumentsMockHandler(),
+  getDeleteKbDocumentMockHandler(),
+  getPresignKbDocumentMockHandler(),
+  getListKbIngestionJobsMockHandler(),
+  getStartKbSyncMockHandler()
 ]

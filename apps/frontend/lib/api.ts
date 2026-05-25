@@ -2,6 +2,7 @@ import { API_BASE_URL, isMockApiMode, STREAMING_API_BASE_URL } from '@/lib/api-c
 import { ApiError } from '@/lib/api-error';
 import {
   createThread as createThreadRequest,
+  deleteKbDocument as deleteKbDocumentRequest,
   deleteThread as deleteThreadRequest,
   getAdminAgents as getAdminAgentsRequest,
   getAdminOverview as getAdminOverviewRequest,
@@ -12,9 +13,14 @@ import {
   getAdminTraces as getAdminTracesRequest,
   getAdminUsers as getAdminUsersRequest,
   getHealth as getHealthRequest,
+  getKbStatus as getKbStatusRequest,
+  listKbDocuments as listKbDocumentsRequest,
+  listKbIngestionJobs as listKbIngestionJobsRequest,
   listThreadMessages as listThreadMessagesRequest,
   listThreads as listThreadsRequest,
   postChat as postChatRequest,
+  presignKbDocument as presignKbDocumentRequest,
+  startKbSync as startKbSyncRequest,
   updateThread as updateThreadRequest,
 } from '@/lib/generated/agentra';
 import type {
@@ -39,7 +45,13 @@ import type {
   ChatStreamThreadStartedEvent,
   CreateThreadRequest,
   HealthResponse,
+  IngestionJobsResponse,
+  KbDocumentsResponse,
+  KbStatusResponse,
   ObsStatusParameter,
+  PresignDocumentRequest,
+  PresignDocumentResponse,
+  SyncResponse,
   ThreadMessagesResponse,
   ThreadResponse,
   ThreadsResponse,
@@ -381,4 +393,39 @@ export function classifyChatError(
   }
 
   return { kind, userMessage: ERROR_MESSAGES[kind] };
+}
+
+// ── Knowledge Base API ────────────────────────────────────────────────────────
+
+export async function fetchKbStatus(): Promise<KbStatusResponse> {
+  const headers = await getAuthHeaders();
+  return getKbStatusRequest({ headers });
+}
+
+export async function fetchKbDocuments(nextToken?: string): Promise<KbDocumentsResponse> {
+  const headers = await getAuthHeaders();
+  return listKbDocumentsRequest(nextToken ? { nextToken } : undefined, { headers });
+}
+
+export async function removeKbDocument(key: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  // Pass raw key — the generated client uses URLSearchParams which encodes automatically
+  return deleteKbDocumentRequest({ key }, { headers });
+}
+
+export async function presignKbUpload(
+  request: PresignDocumentRequest,
+): Promise<PresignDocumentResponse> {
+  const headers = await getAuthHeaders();
+  return presignKbDocumentRequest(request, { headers });
+}
+
+export async function fetchKbIngestionJobs(): Promise<IngestionJobsResponse> {
+  const headers = await getAuthHeaders();
+  return listKbIngestionJobsRequest({ headers });
+}
+
+export async function triggerKbSync(): Promise<SyncResponse> {
+  const headers = await getAuthHeaders();
+  return startKbSyncRequest({ headers });
 }
