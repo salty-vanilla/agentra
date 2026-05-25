@@ -3,3 +3,4 @@ export type {
   ArtifactManifest,
   ArtifactRef,
 } from '@agentra/shared';
+export { artifactManifestSchema } from '@agentra/shared';

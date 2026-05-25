@@ -186,6 +186,58 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /threads/{threadId}/artifacts:
+    get:
+      operationId: listThreadArtifacts
+      tags: [threads]
+      summary: List artifact manifests for a thread
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          description: Artifact manifests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadArtifactsResponse'
+        '404':
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /threads/{threadId}/artifacts/{artifactId}/download-url:
+    get:
+      operationId: getArtifactDownloadUrl
+      tags: [threads]
+      summary: Get a fresh presigned download URL for an artifact
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Presigned download URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactDownloadUrlResponse'
+        '404':
+          description: Thread or artifact not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Artifact storage not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/observability/overview:
     get:
       operationId: getAdminOverview
@@ -531,6 +583,8 @@ components:
           description: ISO timestamp when chat was cancelled
         observabilitySummary:
           $ref: '#/components/schemas/ChatObservationSummary'
+        artifactManifest:
+          $ref: '#/components/schemas/ArtifactManifest'
     ChatCommand:
       type: object
       required:
@@ -1501,3 +1555,115 @@ components:
       properties:
         trace:
           $ref: '#/components/schemas/AdminTraceDetail'
+    ArtifactKind:
+      type: string
+      enum:
+        - pptx
+        - pdf
+        - html
+        - png
+        - jpg
+        - json
+        - text
+        - source-js
+        - contact-sheet
+        - rendered-slide
+        - render-dir
+        - work-dir
+        - diagnostics-json
+        - image-asset
+        - other
+    ArtifactRef:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - name
+        - createdAt
+      properties:
+        id:
+          type: string
+          minLength: 1
+        kind:
+          $ref: '#/components/schemas/ArtifactKind'
+        name:
+          type: string
+          minLength: 1
+        path:
+          type: string
+        url:
+          type: string
+          format: uri
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+        label:
+          type: string
+        exists:
+          type: boolean
+    ArtifactManifest:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - createdAt
+        - artifacts
+      properties:
+        id:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+        artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+        metadata:
+          type: object
+          additionalProperties: true
+    ThreadArtifactsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - manifests
+      properties:
+        manifests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactManifest'
+    ArtifactDownloadUrlResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+        - expiresAt
+      properties:
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+    ChatStreamArtifactEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - manifest
+      properties:
+        type:
+          type: string
+          enum:
+            - artifact
+        manifest:
+          $ref: '#/components/schemas/ArtifactManifest'

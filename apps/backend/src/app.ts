@@ -1,15 +1,20 @@
 import {
   APP_NAME,
   APP_VERSION,
+  type ArtifactManifest,
   type ChatObservationSummary,
+  GetArtifactDownloadUrlResponse,
   GetHealthResponse,
   GetThreadResponse,
+  ListThreadArtifactsResponse,
   ListThreadMessagesResponse,
   ListThreadsResponse,
   normalizeObservabilityRecord,
   type ThreadSummary,
   UpdateThreadBody,
 } from '@agentra/shared';
+import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { uuidv7 } from 'uuidv7';
@@ -240,6 +245,7 @@ app.post('/chat', async (context) => {
       const startedAt = nowIso();
       let fullReply = '';
       let latestObservabilitySummary: ChatObservationSummary | undefined;
+      let latestArtifactManifest: ArtifactManifest | undefined;
       const isSlideCommand = command?.type === 'create_slide_presentation';
       const heartbeatIntervalMs = getSseHeartbeatIntervalMs();
       const upstreamAbortController = new AbortController();
@@ -360,6 +366,15 @@ app.post('/chat', async (context) => {
                 type: 'observation',
                 observation: runtimeEvent.observation,
               },
+            });
+            continue;
+          }
+
+          if (runtimeEvent.type === 'artifact_manifest') {
+            latestArtifactManifest = runtimeEvent.manifest;
+            await stream.writeEvent({
+              event: 'artifact',
+              data: { type: 'artifact', manifest: runtimeEvent.manifest },
             });
             continue;
           }
@@ -537,6 +552,7 @@ app.post('/chat', async (context) => {
         role: 'assistant',
         content: fullReply,
         observabilitySummary: finalSummary,
+        ...(latestArtifactManifest ? { artifactManifest: latestArtifactManifest } : {}),
         requestId,
       });
       await persistObservabilityRecord({
@@ -649,6 +665,99 @@ app.get('/threads/:threadId/messages', async (context) => {
   });
 
   return jsonWithValidation(context, 'listThreadMessages', 200, response);
+});
+
+app.get('/threads/:threadId/artifacts', async (context) => {
+  const validationResponse = await validateRequest(context, 'listThreadArtifacts');
+  if (validationResponse) {
+    return validationResponse;
+  }
+
+  const threadId = context.req.param('threadId');
+  const thread = await getThread(threadId, context.get('userId'));
+
+  if (!thread) {
+    return jsonWithValidation(context, 'listThreadArtifacts', 404, {
+      error: 'Thread not found.',
+    });
+  }
+
+  const messages = await getThreadMessages(threadId);
+  const manifests = messages.flatMap((m) =>
+    m.artifactManifest != null ? [m.artifactManifest] : [],
+  );
+
+  const response = ListThreadArtifactsResponse.parse({ manifests });
+  return jsonWithValidation(context, 'listThreadArtifacts', 200, response);
+});
+
+const ARTIFACT_PRESIGN_EXPIRY_SECONDS = 900;
+
+app.get('/threads/:threadId/artifacts/:artifactId/download-url', async (context) => {
+  const validationResponse = await validateRequest(context, 'getArtifactDownloadUrl');
+  if (validationResponse) {
+    return validationResponse;
+  }
+
+  const threadId = context.req.param('threadId');
+  const artifactId = context.req.param('artifactId');
+  const userId = context.get('userId');
+
+  const thread = await getThread(threadId, userId);
+  if (!thread) {
+    return jsonWithValidation(context, 'getArtifactDownloadUrl', 404, {
+      error: 'Thread not found.',
+    });
+  }
+
+  const messages = await getThreadMessages(threadId);
+  let artifactPath: string | undefined;
+
+  outer: for (const message of messages) {
+    for (const artifact of message.artifactManifest?.artifacts ?? []) {
+      if (artifact.id === artifactId) {
+        if (!artifact.path || artifact.exists === false) {
+          return jsonWithValidation(context, 'getArtifactDownloadUrl', 404, {
+            error: 'Artifact not available.',
+          });
+        }
+        artifactPath = artifact.path;
+        break outer;
+      }
+    }
+  }
+
+  if (!artifactPath) {
+    return jsonWithValidation(context, 'getArtifactDownloadUrl', 404, {
+      error: 'Artifact not found.',
+    });
+  }
+
+  if (!artifactPath.startsWith('runs/')) {
+    return jsonWithValidation(context, 'getArtifactDownloadUrl', 404, {
+      error: 'Artifact not found.',
+    });
+  }
+
+  const bucketName = process.env.ARTIFACT_BUCKET_NAME;
+  if (!bucketName) {
+    return jsonWithValidation(context, 'getArtifactDownloadUrl', 503, {
+      error: 'Artifact storage not configured.',
+    });
+  }
+
+  const s3 = new S3Client({});
+  const url = await getSignedUrl(
+    s3,
+    new GetObjectCommand({ Bucket: bucketName, Key: artifactPath }),
+    { expiresIn: ARTIFACT_PRESIGN_EXPIRY_SECONDS },
+  );
+  const expiresAt = new Date(
+    Date.now() + ARTIFACT_PRESIGN_EXPIRY_SECONDS * 1000,
+  ).toISOString();
+
+  const response = GetArtifactDownloadUrlResponse.parse({ url, expiresAt });
+  return jsonWithValidation(context, 'getArtifactDownloadUrl', 200, response);
 });
 
 app.patch('/threads/:threadId', async (context) => {

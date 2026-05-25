@@ -205,6 +205,11 @@ export const listThreadMessagesResponseMessagesItemObservabilitySummaryToolFailu
 
 
 
+
+export const listThreadMessagesResponseMessagesItemArtifactManifestArtifactsItemSizeBytesMin = 0;
+
+
+
 export const ListThreadMessagesResponse = zod.object({
   "thread": zod.object({
   "threadId": zod.string().min(1),
@@ -250,8 +255,83 @@ export const ListThreadMessagesResponse = zod.object({
 })),
   "toolCallCount": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolCallCountMin),
   "toolFailureCount": zod.number().min(listThreadMessagesResponseMessagesItemObservabilitySummaryToolFailureCountMin)
+}).optional(),
+  "artifactManifest": zod.object({
+  "id": zod.string().min(1),
+  "createdAt": zod.string().datetime({}),
+  "artifacts": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "kind": zod.enum(['pptx', 'pdf', 'html', 'png', 'jpg', 'json', 'text', 'source-js', 'contact-sheet', 'rendered-slide', 'render-dir', 'work-dir', 'diagnostics-json', 'image-asset', 'other']),
+  "name": zod.string().min(1),
+  "path": zod.string().optional(),
+  "url": zod.string().url().optional(),
+  "mimeType": zod.string().optional(),
+  "sizeBytes": zod.number().min(listThreadMessagesResponseMessagesItemArtifactManifestArtifactsItemSizeBytesMin).optional(),
+  "createdAt": zod.string().datetime({}),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "label": zod.string().optional(),
+  "exists": zod.boolean().optional()
+})),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional()
 }).optional()
 }))
+})
+
+
+/**
+ * @summary List artifact manifests for a thread
+ */
+
+
+
+export const ListThreadArtifactsParams = zod.object({
+  "threadId": zod.string().min(1)
+})
+
+
+
+
+export const listThreadArtifactsResponseManifestsItemArtifactsItemSizeBytesMin = 0;
+
+
+
+export const ListThreadArtifactsResponse = zod.object({
+  "manifests": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "createdAt": zod.string().datetime({}),
+  "artifacts": zod.array(zod.object({
+  "id": zod.string().min(1),
+  "kind": zod.enum(['pptx', 'pdf', 'html', 'png', 'jpg', 'json', 'text', 'source-js', 'contact-sheet', 'rendered-slide', 'render-dir', 'work-dir', 'diagnostics-json', 'image-asset', 'other']),
+  "name": zod.string().min(1),
+  "path": zod.string().optional(),
+  "url": zod.string().url().optional(),
+  "mimeType": zod.string().optional(),
+  "sizeBytes": zod.number().min(listThreadArtifactsResponseManifestsItemArtifactsItemSizeBytesMin).optional(),
+  "createdAt": zod.string().datetime({}),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "label": zod.string().optional(),
+  "exists": zod.boolean().optional()
+})),
+  "metadata": zod.record(zod.string(), zod.unknown()).optional()
+}))
+})
+
+
+/**
+ * @summary Get a fresh presigned download URL for an artifact
+ */
+
+
+
+
+export const GetArtifactDownloadUrlParams = zod.object({
+  "threadId": zod.string().min(1),
+  "artifactId": zod.string().min(1)
+})
+
+export const GetArtifactDownloadUrlResponse = zod.object({
+  "url": zod.string().url(),
+  "expiresAt": zod.string().datetime({})
 })
 
 

@@ -6,9 +6,13 @@ import {
   FileIcon,
   FileTextIcon,
   ImageIcon,
+  Loader2Icon,
   PresentationIcon,
 } from 'lucide-react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import { fetchArtifactDownloadUrl } from '@/lib/api';
 import { cn } from '@/lib/utils';
 
 function formatBytes(bytes: number): string {
@@ -28,12 +32,33 @@ const KIND_ICON: Partial<Record<ArtifactRef['kind'], React.ElementType>> = {
 
 export interface ArtifactCardProps {
   artifact: ArtifactRef;
+  threadId: string;
   className?: string;
+  getDownloadUrl?: (threadId: string, artifactId: string) => Promise<{ url: string }>;
 }
 
-export function ArtifactCard({ artifact, className }: ArtifactCardProps) {
+export function ArtifactCard({
+  artifact,
+  threadId,
+  className,
+  getDownloadUrl,
+}: ArtifactCardProps) {
+  const [isDownloading, setIsDownloading] = useState(false);
   const Icon = KIND_ICON[artifact.kind] ?? FileIcon;
-  const hasDownload = !!artifact.url;
+  const isAvailable = !!artifact.path && artifact.exists !== false;
+
+  async function handleDownload() {
+    setIsDownloading(true);
+    try {
+      const resolver = getDownloadUrl ?? fetchArtifactDownloadUrl;
+      const { url } = await resolver(threadId, artifact.id);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch {
+      toast.error('ダウンロードに失敗しました');
+    } finally {
+      setIsDownloading(false);
+    }
+  }
 
   return (
     <div
@@ -52,24 +77,22 @@ export function ArtifactCard({ artifact, className }: ArtifactCardProps) {
           {artifact.sizeBytes != null && ` • ${formatBytes(artifact.sizeBytes)}`}
         </p>
       </div>
-      {hasDownload && (
-        <Button
-          asChild
-          variant="ghost"
-          size="icon"
-          className="shrink-0"
-          aria-label={`${artifact.name}をダウンロード`}
-        >
-          <a
-            href={artifact.url}
-            download={artifact.name}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <DownloadIcon className="size-4" />
-          </a>
-        </Button>
-      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="shrink-0"
+        disabled={!isAvailable || isDownloading}
+        aria-label={
+          isAvailable ? `${artifact.name}をダウンロード` : 'ファイルが利用できません'
+        }
+        onClick={() => void handleDownload()}
+      >
+        {isDownloading ? (
+          <Loader2Icon className="size-4 animate-spin" />
+        ) : (
+          <DownloadIcon className="size-4" />
+        )}
+      </Button>
     </div>
   );
 }

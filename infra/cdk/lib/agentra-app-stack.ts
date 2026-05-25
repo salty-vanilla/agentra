@@ -63,6 +63,7 @@ export class AgentraAppStack extends Stack {
       ALLOWED_CORS_ORIGINS: (props.allowedCorsOrigins ?? ['http://localhost:3000']).join(
         ',',
       ),
+      ARTIFACT_BUCKET_NAME: props.presentationArtifactsBucketName ?? '',
     };
 
     // AgentCore / slide runtime env vars — StreamingHandler only
@@ -134,6 +135,17 @@ export class AgentraAppStack extends Stack {
       props.dataAuthStack.observabilityTable.grantReadWriteData(handler);
     }
 
+    // S3 GetObject — restHandler serves presigned download-url endpoint
+    if (props.presentationArtifactsBucketName) {
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:GetObject'],
+          resources: [`arn:aws:s3:::${props.presentationArtifactsBucketName}/runs/*`],
+        }),
+      );
+    }
+
     const allowedOrigins = props.allowedCorsOrigins ?? ['http://localhost:3000'];
 
     // HTTP API — normal CRUD routes (/health, /threads), lower cost + latency than REST API
@@ -163,6 +175,16 @@ export class AgentraAppStack extends Stack {
     });
     httpApi.addRoutes({
       path: '/threads/{threadId}/messages',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/threads/{threadId}/artifacts',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/threads/{threadId}/artifacts/{artifactId}/download-url',
       methods: [HttpMethod.GET],
       integration: httpIntegration,
     });
