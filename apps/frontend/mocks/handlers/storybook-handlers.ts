@@ -1,5 +1,5 @@
 import { HttpResponse, http } from 'msw';
-import type { ThreadsResponse } from '@/mocks/generated/model';
+import type { AdminUsersResponse, ThreadsResponse } from '@/mocks/generated/model';
 
 const STORYBOOK_THREADS: ThreadsResponse = {
   threads: [
@@ -28,4 +28,48 @@ const STORYBOOK_THREADS: ThreadsResponse = {
 
 export const storybookThreadsHandler = http.get('*/threads', () =>
   HttpResponse.json(STORYBOOK_THREADS),
+);
+
+export const STORYBOOK_USERS_WITH_ROLES: AdminUsersResponse = {
+  users: [
+    {
+      userId: 'user-admin-001',
+      role: 'admin',
+      requestCount: 42,
+      totalTokens: 15000,
+      avgDurationMs: 1200,
+      errorRate: 0.02,
+      mostUsedAgent: 'research-agent',
+      mostUsedTool: 'web_search',
+    },
+    {
+      userId: 'user-regular-002',
+      role: 'user',
+      requestCount: 18,
+      totalTokens: 6200,
+      avgDurationMs: 850,
+      errorRate: 0.0,
+      mostUsedAgent: 'chat-agent',
+    },
+    {
+      userId: 'user-regular-003',
+      role: 'user',
+      requestCount: 7,
+      totalTokens: 2100,
+      avgDurationMs: 620,
+      errorRate: 0.14,
+      mostUsedTool: 'kb_retrieve',
+    },
+    {
+      userId: 'user-no-role-004',
+      requestCount: 3,
+      totalTokens: 900,
+      avgDurationMs: 500,
+      errorRate: 0.0,
+    },
+  ],
+};
+
+export const storybookUsersHandler = http.get('*/admin/observability/users', () =>
+  HttpResponse.json(STORYBOOK_USERS_WITH_ROLES),
 );

@@ -102,7 +102,7 @@ export const authMiddleware: MiddlewareHandler<any> = async (c, next) => {
       'cognito:groups': payload['cognito:groups'] as string[] | undefined,
     });
 
-    const user = await userStore.getOrCreateUser(sub, email);
+    const user = await userStore.getOrCreateUser(sub, email, groups);
     c.set('userId', user.userId);
     c.set('userGroups', groups);
   } catch {

@@ -1,16 +1,35 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb';
+import {
+  DynamoDBDocumentClient,
+  GetCommand,
+  PutCommand,
+  ScanCommand,
+  UpdateCommand,
+} from '@aws-sdk/lib-dynamodb';
 import { uuidv7 } from 'uuidv7';
+import { deriveUserRole, type UserRole } from '../lib/user-role.js';
 
 export type UserRecord = {
   userId: string;
   sub: string;
   email: string;
   createdAt: string;
+  role: UserRole;
 };
 
 export interface UserStore {
-  getOrCreateUser(sub: string, email: string): Promise<UserRecord>;
+  getOrCreateUser(sub: string, email: string, groups: string[]): Promise<UserRecord>;
+  listUsers(): Promise<UserRecord[]>;
+}
+
+export function normalizeUserRecord(item: Record<string, unknown>): UserRecord {
+  return {
+    userId: String(item.userId),
+    sub: String(item.sub),
+    email: String(item.email ?? ''),
+    createdAt: String(item.createdAt ?? ''),
+    role: item.role === 'admin' || item.role === 'user' ? item.role : 'user',
+  };
 }
 
 // ── DynamoDB implementation ──────────────────────────────────────────────────
@@ -28,13 +47,32 @@ export class DynamoUserStore implements UserStore {
     this.client = DynamoDBDocumentClient.from(new DynamoDBClient({}));
   }
 
-  async getOrCreateUser(sub: string, email: string): Promise<UserRecord> {
+  async getOrCreateUser(
+    sub: string,
+    email: string,
+    groups: string[],
+  ): Promise<UserRecord> {
+    const role = deriveUserRole(groups);
+
     const existing = await this.client.send(
       new GetCommand({ TableName: getUsersTable(), Key: { sub } }),
     );
 
     if (existing.Item) {
-      return existing.Item as UserRecord;
+      const normalized = normalizeUserRecord(existing.Item as Record<string, unknown>);
+      if (normalized.role === role) {
+        return normalized;
+      }
+      await this.client.send(
+        new UpdateCommand({
+          TableName: getUsersTable(),
+          Key: { sub },
+          UpdateExpression: 'SET #role = :role',
+          ExpressionAttributeNames: { '#role': 'role' },
+          ExpressionAttributeValues: { ':role': role },
+        }),
+      );
+      return { ...normalized, role };
     }
 
     const record: UserRecord = {
@@ -42,10 +80,31 @@ export class DynamoUserStore implements UserStore {
       userId: uuidv7(),
       email,
       createdAt: new Date().toISOString(),
+      role,
     };
 
     await this.client.send(new PutCommand({ TableName: getUsersTable(), Item: record }));
     return record;
+  }
+
+  async listUsers(): Promise<UserRecord[]> {
+    const items: Record<string, unknown>[] = [];
+    let lastKey: Record<string, unknown> | undefined;
+
+    do {
+      const result = await this.client.send(
+        new ScanCommand({
+          TableName: getUsersTable(),
+          ProjectionExpression: 'userId, sub, email, createdAt, #role',
+          ExpressionAttributeNames: { '#role': 'role' },
+          ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
+        }),
+      );
+      items.push(...((result.Items ?? []) as Record<string, unknown>[]));
+      lastKey = result.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastKey !== undefined);
+
+    return items.map(normalizeUserRecord);
   }
 }
 
@@ -56,23 +115,40 @@ const DEMO_USER: UserRecord = {
   userId: 'user-demo-001',
   email: 'demo.user@example.internal',
   createdAt: '2026-04-18T00:00:00.000Z',
+  role: 'user',
 };
 
 export class MemoryUserStore implements UserStore {
   private store = new Map<string, UserRecord>([[DEMO_USER.sub, DEMO_USER]]);
 
-  async getOrCreateUser(sub: string, email: string): Promise<UserRecord> {
+  async getOrCreateUser(
+    sub: string,
+    email: string,
+    groups: string[],
+  ): Promise<UserRecord> {
+    const role = deriveUserRole(groups);
     const existing = this.store.get(sub);
-    if (existing) return existing;
+
+    if (existing) {
+      if (existing.role === role) return existing;
+      const updated = { ...existing, role };
+      this.store.set(sub, updated);
+      return updated;
+    }
 
     const record: UserRecord = {
       sub,
       userId: uuidv7(),
       email,
       createdAt: new Date().toISOString(),
+      role,
     };
     this.store.set(sub, record);
     return record;
+  }
+
+  async listUsers(): Promise<UserRecord[]> {
+    return Array.from(this.store.values());
   }
 }
 
