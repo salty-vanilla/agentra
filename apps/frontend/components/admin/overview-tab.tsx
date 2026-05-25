@@ -396,22 +396,22 @@ export function OverviewTab({ from, to }: Props) {
     return <div className="text-destructive text-sm">Failed to load overview.</div>;
   }
 
-  const topAgents: RankingEntry[] = (agentsData?.agents ?? [])
+  const topAgents: RankingEntry[] = [...(agentsData?.agents ?? [])]
     .sort((a, b) => b.callCount - a.callCount)
     .slice(0, TOP_N)
     .map((a) => ({ name: a.agentName, value: a.callCount }));
 
-  const topTools: RankingEntry[] = (toolsData?.tools ?? [])
+  const topTools: RankingEntry[] = [...(toolsData?.tools ?? [])]
     .sort((a, b) => b.callCount - a.callCount)
     .slice(0, TOP_N)
     .map((t) => ({ name: t.toolName, value: t.callCount }));
 
-  const topSkills: RankingEntry[] = (skillsData?.skills ?? [])
+  const topSkills: RankingEntry[] = [...(skillsData?.skills ?? [])]
     .sort((a, b) => b.requestCount - a.requestCount)
     .slice(0, TOP_N)
     .map((s) => ({ name: s.skillName, value: s.requestCount }));
 
-  const topUsers: RankingEntry[] = (usersData?.users ?? [])
+  const topUsers: RankingEntry[] = [...(usersData?.users ?? [])]
     .sort((a, b) => b.requestCount - a.requestCount)
     .slice(0, TOP_N)
     .map((u) => ({ name: u.userId, value: u.requestCount }));
