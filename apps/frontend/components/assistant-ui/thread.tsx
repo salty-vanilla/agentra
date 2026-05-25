@@ -304,22 +304,14 @@ const AssistantActionBar: FC = () => {
         onCopy={() => {
           copyRef.current?.();
         }}
-        {...(reloadRef.current !== undefined
-          ? {
-              onReload: () => {
-                reloadRef.current?.();
-              },
-            }
-          : {})}
+        onReload={() => {
+          reloadRef.current?.();
+        }}
         hasSummary={summary !== undefined}
         {...(summary !== undefined ? { observabilitySummary: summary } : {})}
-        {...(exportRef.current !== undefined
-          ? {
-              onExportMarkdown: () => {
-                exportRef.current?.();
-              },
-            }
-          : {})}
+        onExportMarkdown={() => {
+          exportRef.current?.();
+        }}
       />
     </>
   );
@@ -347,20 +339,12 @@ const BranchPicker: FC<{ className?: string; 'data-slot'?: string }> = ({
       <BranchPickerView
         currentBranch={currentBranch}
         totalBranches={totalBranches}
-        {...(prevRef.current !== undefined
-          ? {
-              onPrev: () => {
-                prevRef.current?.();
-              },
-            }
-          : {})}
-        {...(nextRef.current !== undefined
-          ? {
-              onNext: () => {
-                nextRef.current?.();
-              },
-            }
-          : {})}
+        onPrev={() => {
+          prevRef.current?.();
+        }}
+        onNext={() => {
+          nextRef.current?.();
+        }}
         className={cn(
           'aui-branch-picker-root mr-2 -ml-2 inline-flex items-center text-muted-foreground text-xs',
           className,

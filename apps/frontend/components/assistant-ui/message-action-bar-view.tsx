@@ -110,9 +110,9 @@ export function MessageActionBarView({
 export interface BranchPickerViewProps {
   currentBranch: number;
   totalBranches: number;
-  /** Omit to disable the previous button */
+  /** Previous branch handler */
   onPrev?: () => void;
-  /** Omit to disable the next button */
+  /** Next branch handler */
   onNext?: () => void;
   className?: string;
 }
@@ -136,14 +136,18 @@ export function BranchPickerView({
       <TooltipIconButton
         tooltip="Previous"
         onClick={onPrev}
-        disabled={onPrev === undefined}
+        disabled={currentBranch === 1}
       >
         <ChevronLeftIcon />
       </TooltipIconButton>
       <span className="aui-branch-picker-state font-medium">
         {currentBranch} / {totalBranches}
       </span>
-      <TooltipIconButton tooltip="Next" onClick={onNext} disabled={onNext === undefined}>
+      <TooltipIconButton
+        tooltip="Next"
+        onClick={onNext}
+        disabled={currentBranch === totalBranches}
+      >
         <ChevronRightIcon />
       </TooltipIconButton>
     </div>
