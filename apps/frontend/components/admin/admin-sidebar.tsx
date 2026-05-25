@@ -3,6 +3,7 @@
 import { BarChart3, BookOpen, Bot, Settings, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { isAdminConsoleActive, isNavItemActive } from '@/lib/admin-routes';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -52,8 +53,12 @@ function AdminNavItem({ item, active }: { item: NavItem; active: boolean }) {
   );
 }
 
-export function AdminSidebar() {
-  const pathname = usePathname();
+export interface AdminSidebarViewProps {
+  currentPath: string;
+}
+
+export function AdminSidebarView({ currentPath }: AdminSidebarViewProps) {
+  const consoleActive = isAdminConsoleActive(currentPath);
 
   return (
     <aside className="w-56 shrink-0 border-r flex flex-col gap-0.5 p-3">
@@ -61,7 +66,7 @@ export function AdminSidebar() {
         href="/admin"
         className={cn(
           'px-3 py-2 mb-1 text-xs font-semibold uppercase tracking-wider transition-colors',
-          pathname === '/admin'
+          consoleActive
             ? 'text-primary bg-primary/10 rounded-md'
             : 'text-muted-foreground hover:text-foreground',
         )}
@@ -72,9 +77,14 @@ export function AdminSidebar() {
         <AdminNavItem
           key={item.href}
           item={item}
-          active={pathname.startsWith(item.href)}
+          active={isNavItemActive(currentPath, item.href)}
         />
       ))}
     </aside>
   );
+}
+
+export function AdminSidebar() {
+  const pathname = usePathname();
+  return <AdminSidebarView currentPath={pathname} />;
 }
