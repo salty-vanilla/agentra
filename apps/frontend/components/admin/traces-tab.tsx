@@ -2,11 +2,10 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
-import { type KeyboardEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
-import { Input } from '@/components/ui/input';
 import type { AdminTraceListItem } from '@/lib/generated/model';
 import { adminTracesQueryOptions } from '@/lib/query-options';
 import { SearchToolbar } from './search-toolbar';
@@ -84,7 +83,6 @@ function filterTraces(traces: AdminTraceListItem[], query: string): AdminTraceLi
 
 export function TracesTab({ from, to, onSelectTrace }: Props) {
   const [statusFilter, setStatusFilter] = useState('');
-  const [draftUserId, setDraftUserId] = useState('');
   const [appliedUserId, setAppliedUserId] = useState('');
   const [traceSearch, setTraceSearch] = useState('');
 
@@ -127,14 +125,19 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
     setCursor(undefined);
   }
 
-  function applyUserIdFilter() {
-    setAppliedUserId(draftUserId);
-    setAllTraces([]);
-    setCursor(undefined);
+  function handleTraceSearchChange(v: string) {
+    setTraceSearch(v);
+    if (v === '') {
+      setAppliedUserId('');
+      setAllTraces([]);
+      setCursor(undefined);
+    }
   }
 
-  function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Enter') applyUserIdFilter();
+  function handleTraceSearchEnter() {
+    setAppliedUserId(traceSearch);
+    setAllTraces([]);
+    setCursor(undefined);
   }
 
   function loadMore() {
@@ -157,21 +160,12 @@ export function TracesTab({ from, to, onSelectTrace }: Props) {
           <option value="error">Error</option>
           <option value="cancelled">Cancelled</option>
         </select>
-        <Input
-          placeholder="Search by trace ID or user ID..."
-          value={draftUserId}
-          onChange={(e) => setDraftUserId(e.target.value)}
-          onKeyDown={handleKeyDown}
-          className="h-8 w-52 text-sm"
-        />
-        <Button variant="outline" size="sm" onClick={applyUserIdFilter}>
-          Apply
-        </Button>
         <SearchToolbar
           value={traceSearch}
-          onChange={setTraceSearch}
-          placeholder="Filter loaded rows..."
-          className="w-48"
+          onChange={handleTraceSearchChange}
+          onEnter={handleTraceSearchEnter}
+          placeholder="Search trace ID or user ID…"
+          className="w-64"
         />
       </div>
 

@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 type SearchToolbarProps = {
   value: string;
   onChange: (value: string) => void;
+  onEnter?: () => void;
   placeholder?: string;
   className?: string;
 };
@@ -14,6 +15,7 @@ type SearchToolbarProps = {
 export function SearchToolbar({
   value,
   onChange,
+  onEnter,
   placeholder,
   className,
 }: SearchToolbarProps) {
@@ -22,6 +24,9 @@ export function SearchToolbar({
       <Input
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') onEnter?.();
+        }}
         placeholder={placeholder ?? 'Search...'}
         className="h-8 pr-8 text-sm"
       />

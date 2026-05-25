@@ -84,8 +84,7 @@ describe('TracesTab', () => {
   it('filters loaded rows by trace ID using the SearchToolbar', async () => {
     const user = userEvent.setup();
     setup();
-    // The SearchToolbar input has placeholder "Filter loaded rows..."
-    await user.type(screen.getByPlaceholderText('Filter loaded rows...'), 'alpha');
+    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'alpha');
     expect(screen.getByText(traceAlpha.traceId)).toBeInTheDocument();
     expect(screen.queryByText(traceBeta.traceId)).not.toBeInTheDocument();
   });
@@ -93,7 +92,7 @@ describe('TracesTab', () => {
   it('filters loaded rows by user ID using the SearchToolbar', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByPlaceholderText('Filter loaded rows...'), 'bob');
+    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'bob');
     expect(screen.queryByText(traceAlpha.traceId)).not.toBeInTheDocument();
     expect(screen.getByText(traceBeta.traceId)).toBeInTheDocument();
   });
@@ -101,7 +100,7 @@ describe('TracesTab', () => {
   it('restores all rows when SearchToolbar is cleared', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByPlaceholderText('Filter loaded rows...'), 'alpha');
+    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'alpha');
     await user.click(screen.getByRole('button', { name: /clear search/i }));
     expect(screen.getByText(traceAlpha.traceId)).toBeInTheDocument();
     expect(screen.getByText(traceBeta.traceId)).toBeInTheDocument();
@@ -110,7 +109,10 @@ describe('TracesTab', () => {
   it('shows empty state when no traces match the search', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByPlaceholderText('Filter loaded rows...'), 'zzznomatch');
+    await user.type(
+      screen.getByPlaceholderText('Search trace ID or user ID…'),
+      'zzznomatch',
+    );
     expect(screen.getByText('No traces match the search.')).toBeInTheDocument();
   });
 
@@ -126,8 +128,15 @@ describe('TracesTab', () => {
     expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 
-  it('renders the Apply button for server-side userId filter', () => {
+  it('triggers server-side refetch on Enter', async () => {
+    const user = userEvent.setup();
     setup();
-    expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument();
+    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'alice');
+    await user.keyboard('{Enter}');
+    expect(vi.mocked(useQuery)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        queryKey: ['admin-traces', expect.objectContaining({ userId: 'alice' })],
+      }),
+    );
   });
 });
