@@ -12,6 +12,7 @@ import type {
   AdminAgentsResponse,
   AdminOverviewResponse,
   AdminSkillsResponse,
+  AdminTimeseriesResponse,
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
@@ -22,6 +23,7 @@ import type {
   GetAdminAgentsParams,
   GetAdminOverviewParams,
   GetAdminSkillsParams,
+  GetAdminTimeseriesParams,
   GetAdminToolsParams,
   GetAdminTracesParams,
   GetAdminUsersParams,
@@ -503,6 +505,67 @@ export const getAdminOverview = async (params?: GetAdminOverviewParams, options?
 
 
 /**
+ * @summary Get time-bucketed observability metrics
+ */
+export type getAdminTimeseriesResponse200 = {
+  data: AdminTimeseriesResponse
+  status: 200
+}
+
+export type getAdminTimeseriesResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type getAdminTimeseriesResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminTimeseriesResponseSuccess = (getAdminTimeseriesResponse200) & {
+  headers: Headers;
+};
+export type getAdminTimeseriesResponseError = (getAdminTimeseriesResponse400 | getAdminTimeseriesResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminTimeseriesResponse = (getAdminTimeseriesResponseSuccess | getAdminTimeseriesResponseError)
+
+export const getGetAdminTimeseriesUrl = (params?: GetAdminTimeseriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/timeseries?${stringifiedParams}` : `/admin/observability/timeseries`
+}
+
+export const getAdminTimeseries = async (params?: GetAdminTimeseriesParams, options?: RequestInit): Promise<getAdminTimeseriesResponse> => {
+
+  const res = await fetch(getGetAdminTimeseriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminTimeseriesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminTimeseriesResponse
+}
+
+
+
+/**
  * @summary Get per-user observability stats
  */
 export type getAdminUsersResponse200 = {
@@ -853,6 +916,8 @@ export const getListThreadMessagesResponseMock = (overrideResponse: Partial<Extr
 
 export const getGetAdminOverviewResponseMock = (overrideResponse: Partial<Extract<AdminOverviewResponse, object>> = {}): AdminOverviewResponse => ({requestCount: faker.number.int({min: 0}), activeUserCount: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), avgDurationMs: faker.number.int({min: 0}), p95DurationMs: faker.number.int({min: 0}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), totalToolCalls: faker.number.int({min: 0}), toolFailureRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), estimatedCostUsd: faker.number.float({min: 0, fractionDigits: 2}), period: {from: faker.string.alpha({length: {min: 10, max: 20}}), to: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
 
+export const getGetAdminTimeseriesResponseMock = (overrideResponse: Partial<Extract<AdminTimeseriesResponse, object>> = {}): AdminTimeseriesResponse => ({buckets: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({bucketStart: faker.date.past().toISOString().slice(0, 19) + 'Z', requestCount: faker.number.int({min: 0}), successCount: faker.number.int({min: 0}), errorCount: faker.number.int({min: 0}), cancelledCount: faker.number.int({min: 0}), avgDurationMs: faker.number.float({min: 0, fractionDigits: 2}), p95DurationMs: faker.number.float({min: 0, fractionDigits: 2}), totalTokens: faker.number.int({min: 0}), inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), toolCallCount: faker.number.int({min: 0}), toolFailureCount: faker.number.int({min: 0})})), period: {from: faker.string.alpha({length: {min: 10, max: 20}}), to: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
+
 export const getGetAdminUsersResponseMock = (overrideResponse: Partial<Extract<AdminUsersResponse, object>> = {}): AdminUsersResponse => ({users: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({userId: faker.string.alpha({length: {min: 10, max: 20}}), requestCount: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), avgDurationMs: faker.number.int({min: 0}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), mostUsedAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), mostUsedTool: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
 export const getGetAdminAgentsResponseMock = (overrideResponse: Partial<Extract<AdminAgentsResponse, object>> = {}): AdminAgentsResponse => ({agents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({agentName: faker.string.alpha({length: {min: 10, max: 20}}), callCount: faker.number.int({min: 0}), successRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), avgDurationMs: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), relatedTools: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), ...overrideResponse})
@@ -975,6 +1040,18 @@ export const getGetAdminOverviewMockHandler = (overrideResponse?: AdminOverviewR
   }, options)
 }
 
+export const getGetAdminTimeseriesMockHandler = (overrideResponse?: AdminTimeseriesResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminTimeseriesResponse> | AdminTimeseriesResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/timeseries', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminTimeseriesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getGetAdminUsersMockHandler = (overrideResponse?: AdminUsersResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminUsersResponse> | AdminUsersResponse), options?: RequestHandlerOptions) => {
   return http.get('*/admin/observability/users', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
 
@@ -1056,6 +1133,7 @@ export const getAgentraBFFAPIMock = () => [
   getDeleteThreadMockHandler(),
   getListThreadMessagesMockHandler(),
   getGetAdminOverviewMockHandler(),
+  getGetAdminTimeseriesMockHandler(),
   getGetAdminUsersMockHandler(),
   getGetAdminAgentsMockHandler(),
   getGetAdminToolsMockHandler(),

@@ -365,6 +365,71 @@ export function aggregateBySkill(records: ObservabilityRecord[]): SkillStats[] {
   }));
 }
 
+// ── Time-series aggregation ───────────────────────────────────────────────────
+
+export type TimeBucket = 'hour' | 'day';
+
+export type TimeSeriesBucket = {
+  bucketStart: string;
+  requestCount: number;
+  successCount: number;
+  errorCount: number;
+  cancelledCount: number;
+  avgDurationMs: number;
+  p95DurationMs: number;
+  totalTokens: number;
+  inputTokens: number;
+  outputTokens: number;
+  toolCallCount: number;
+  toolFailureCount: number;
+};
+
+function bucketStartIso(startedAt: string, bucket: TimeBucket): string {
+  const date = new Date(startedAt);
+  if (Number.isNaN(date.getTime())) return startedAt;
+  if (bucket === 'hour') {
+    date.setUTCMinutes(0, 0, 0);
+  } else {
+    date.setUTCHours(0, 0, 0, 0);
+  }
+  return date.toISOString();
+}
+
+export function aggregateByTimeBucket(
+  records: ObservabilityRecord[],
+  bucket: TimeBucket,
+): TimeSeriesBucket[] {
+  const byBucket = new Map<string, ObservabilityRecord[]>();
+  for (const record of records) {
+    const key = bucketStartIso(record.startedAt, bucket);
+    const existing = byBucket.get(key);
+    if (existing) {
+      existing.push(record);
+    } else {
+      byBucket.set(key, [record]);
+    }
+  }
+  return Array.from(byBucket.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([bucketStart, recs]) => {
+      const durations = recs.map((r) => r.durationMs);
+      return {
+        bucketStart,
+        requestCount: recs.length,
+        successCount: recs.filter((r) => r.status === 'success').length,
+        errorCount: recs.filter((r) => r.status === 'error').length,
+        cancelledCount: recs.filter((r) => r.status === 'cancelled').length,
+        avgDurationMs: Math.round(avg(durations)),
+        p95DurationMs: p95(durations),
+        totalTokens: recs.reduce((s, r) => s + (r.tokenUsage?.totalTokens ?? 0), 0),
+        inputTokens: recs.reduce((s, r) => s + (r.tokenUsage?.inputTokens ?? 0), 0),
+        outputTokens: recs.reduce((s, r) => s + (r.tokenUsage?.outputTokens ?? 0), 0),
+        toolCallCount: recs.reduce((s, r) => s + r.toolCallCount, 0),
+        toolFailureCount: recs.reduce((s, r) => s + r.toolFailureCount, 0),
+      };
+    });
+}
+
 export function toTraceListItem(record: ObservabilityRecord): TraceListItem {
   return {
     traceId: record.traceId,

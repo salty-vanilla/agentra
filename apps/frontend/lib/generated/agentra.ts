@@ -11,6 +11,7 @@ import type {
   AdminAgentsResponse,
   AdminOverviewResponse,
   AdminSkillsResponse,
+  AdminTimeseriesResponse,
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
@@ -20,6 +21,7 @@ import type {
   GetAdminAgentsParams,
   GetAdminOverviewParams,
   GetAdminSkillsParams,
+  GetAdminTimeseriesParams,
   GetAdminToolsParams,
   GetAdminTracesParams,
   GetAdminUsersParams,
@@ -249,6 +251,37 @@ export const getGetAdminOverviewUrl = (params?: GetAdminOverviewParams,) => {
 export const getAdminOverview = async (params?: GetAdminOverviewParams, options?: RequestInit): Promise<AdminOverviewResponse> => {
 
   return fetchMutator<AdminOverviewResponse>(getGetAdminOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get time-bucketed observability metrics
+ */
+export const getGetAdminTimeseriesUrl = (params?: GetAdminTimeseriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/timeseries?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/timeseries`
+}
+
+export const getAdminTimeseries = async (params?: GetAdminTimeseriesParams, options?: RequestInit): Promise<AdminTimeseriesResponse> => {
+
+  return fetchMutator<AdminTimeseriesResponse>(getGetAdminTimeseriesUrl(params),
   {
     ...options,
     method: 'GET'

@@ -213,6 +213,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/timeseries:
+    get:
+      operationId: getAdminTimeseries
+      tags: [admin]
+      summary: Get time-bucketed observability metrics
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+        - name: bucket
+          in: query
+          schema:
+            type: string
+            enum: [hour, day]
+            default: day
+      responses:
+        '200':
+          description: Time-series buckets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTimeseriesResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/observability/users:
     get:
       operationId: getAdminUsers
@@ -961,6 +994,75 @@ components:
           type: string
         to:
           type: string
+    AdminTimeseriesResponse:
+      type: object
+      additionalProperties: false
+      required: [buckets, period]
+      properties:
+        buckets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - bucketStart
+              - requestCount
+              - successCount
+              - errorCount
+              - cancelledCount
+              - avgDurationMs
+              - p95DurationMs
+              - totalTokens
+              - inputTokens
+              - outputTokens
+              - toolCallCount
+              - toolFailureCount
+            properties:
+              bucketStart:
+                type: string
+                format: date-time
+              requestCount:
+                type: integer
+                minimum: 0
+              successCount:
+                type: integer
+                minimum: 0
+              errorCount:
+                type: integer
+                minimum: 0
+              cancelledCount:
+                type: integer
+                minimum: 0
+              avgDurationMs:
+                type: number
+                minimum: 0
+              p95DurationMs:
+                type: number
+                minimum: 0
+              totalTokens:
+                type: integer
+                minimum: 0
+              inputTokens:
+                type: integer
+                minimum: 0
+              outputTokens:
+                type: integer
+                minimum: 0
+              toolCallCount:
+                type: integer
+                minimum: 0
+              toolFailureCount:
+                type: integer
+                minimum: 0
+        period:
+          type: object
+          additionalProperties: false
+          required: [from, to]
+          properties:
+            from:
+              type: string
+            to:
+              type: string
     AdminOverviewResponse:
       type: object
       additionalProperties: false

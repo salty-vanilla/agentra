@@ -1,9 +1,14 @@
 import { queryOptions } from '@tanstack/react-query';
-import type { AdminDateRange, AdminPaginationParams } from '@/lib/api';
+import type {
+  AdminDateRange,
+  AdminPaginationParams,
+  AdminTimeseriesParams,
+} from '@/lib/api';
 import {
   fetchAdminAgents,
   fetchAdminOverview,
   fetchAdminSkills,
+  fetchAdminTimeseries,
   fetchAdminTools,
   fetchAdminTraceDetail,
   fetchAdminTraces,
@@ -20,6 +25,8 @@ export const agentraQueryKeys = {
   threads: ['threads'] as const,
   threadMessages: (threadId: string) => ['thread-messages', threadId] as const,
   adminOverview: (params: AdminDateRange) => ['admin-overview', params] as const,
+  adminTimeseries: (params: AdminTimeseriesParams) =>
+    ['admin-timeseries', params] as const,
   adminUsers: (params: AdminPaginationParams) => ['admin-users', params] as const,
   adminAgents: (params: AdminDateRange) => ['admin-agents', params] as const,
   adminTools: (params: AdminDateRange) => ['admin-tools', params] as const,
@@ -56,6 +63,14 @@ export function adminOverviewQueryOptions(params: AdminDateRange = {}) {
   return queryOptions({
     queryKey: agentraQueryKeys.adminOverview(params),
     queryFn: () => fetchAdminOverview(params),
+    staleTime: ADMIN_STALE_TIME,
+  });
+}
+
+export function adminTimeseriesQueryOptions(params: AdminTimeseriesParams = {}) {
+  return queryOptions({
+    queryKey: agentraQueryKeys.adminTimeseries(params),
+    queryFn: () => fetchAdminTimeseries(params),
     staleTime: ADMIN_STALE_TIME,
   });
 }
