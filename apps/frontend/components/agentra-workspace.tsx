@@ -18,15 +18,16 @@ import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import {
+  classifyChatError,
   createThread,
   deleteThreadById,
-  PrematureSseEofError,
   sendChat,
   sendChatStream,
   updateThreadTitle,
 } from '@/lib/api';
 import { isMockApiMode } from '@/lib/api-config';
 import type {
+  ArtifactManifest,
   ChatCommand,
   ChatRequest as FrontendChatRequest,
   ProgressSummaryEvent,
@@ -358,7 +359,14 @@ export function AgentraWorkspace() {
         setSlideCommandActive(false);
 
         if (isMockApiMode) {
-          // Mock mode: non-streaming, existing sendChat path
+          // Simulate sub_agent_progress events sequentially with realistic delays
+          handleSubAgentProgressEvent({
+            type: 'sub_agent_progress',
+            stage: 'router',
+            status: 'running',
+            timestamp: new Date().toISOString(),
+          });
+
           const response = await sendChat(finalRequest, { signal: abortSignal }).catch(
             (error: unknown) => {
               stopProgressSimulation(true);
@@ -372,11 +380,91 @@ export function AgentraWorkspace() {
               throw error;
             },
           );
+
+          await mockSleep(350, abortSignal);
+          if (abortSignal?.aborted) {
+            stopProgressSimulation();
+            setSubAgentProgressEvents([]);
+            return;
+          }
+          handleSubAgentProgressEvent({
+            type: 'sub_agent_progress',
+            stage: 'router',
+            status: 'complete',
+            durationMs: 110,
+            timestamp: new Date().toISOString(),
+          });
+
+          if (response.observabilitySummary) {
+            const nonRouterTools = response.observabilitySummary.toolCalls.filter(
+              (tc) => tc.toolName !== 'router',
+            );
+            for (const tool of nonRouterTools) {
+              await mockSleep(200, abortSignal);
+              if (abortSignal?.aborted) {
+                stopProgressSimulation();
+                setSubAgentProgressEvents([]);
+                return;
+              }
+              handleSubAgentProgressEvent({
+                type: 'sub_agent_progress',
+                stage: tool.toolName,
+                status: 'running',
+                timestamp: new Date().toISOString(),
+              });
+              await mockSleep(600, abortSignal);
+              if (abortSignal?.aborted) {
+                stopProgressSimulation();
+                setSubAgentProgressEvents([]);
+                return;
+              }
+              handleSubAgentProgressEvent({
+                type: 'sub_agent_progress',
+                stage: tool.toolName,
+                status: tool.status === 'success' ? 'complete' : 'error',
+                durationMs: tool.durationMs,
+                timestamp: new Date().toISOString(),
+              });
+            }
+            setLiveObservabilitySummary(response.observabilitySummary);
+          }
+
           await setSelectedThreadId(response.threadId);
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
           await queryClient.fetchQuery(threadMessagesQueryOptions(response.threadId));
           stopProgressSimulation();
-          yield { content: [{ type: 'text', text: response.reply }] };
+
+          {
+            const mockContent: Array<
+              | { type: 'text'; text: string }
+              | { type: 'data'; name: string; data: unknown }
+            > = [{ type: 'text', text: response.reply }];
+            if (response.observabilitySummary) {
+              mockContent.push({
+                type: 'data',
+                name: 'observability',
+                data: response.observabilitySummary,
+              });
+            }
+            if (response.artifactManifest) {
+              mockContent.push({
+                type: 'data',
+                name: 'artifact',
+                data: response.artifactManifest,
+              });
+            }
+            yield {
+              content: mockContent,
+              ...(response.observabilitySummary
+                ? {
+                    metadata: {
+                      custom: { observabilitySummary: response.observabilitySummary },
+                    },
+                  }
+                : {}),
+            };
+          }
+          setSubAgentProgressEvents([]);
           return;
         }
 
@@ -385,6 +473,7 @@ export function AgentraWorkspace() {
         let streamThreadId: string | null = null;
         let doneThreadId: string | null = null;
         let doneObservabilitySummary: ChatObservationSummary | null = null;
+        let latestArtifactManifest: ArtifactManifest | undefined;
 
         try {
           for await (const event of sendChatStream(finalRequest, abortSignal)) {
@@ -400,6 +489,8 @@ export function AgentraWorkspace() {
             } else if (event.type === 'observation') {
               doneObservabilitySummary = event.observation;
               setLiveObservabilitySummary(event.observation);
+            } else if (event.type === 'artifact') {
+              latestArtifactManifest = event.manifest;
             } else if (event.type === 'done') {
               doneThreadId = event.threadId;
               if (event.observabilitySummary) {
@@ -419,6 +510,7 @@ export function AgentraWorkspace() {
           }
         } catch (error: unknown) {
           stopProgressSimulation(true);
+          setSubAgentProgressEvents([]);
           const threadIdForInvalidation = selectedThreadId ?? streamThreadId;
           if (threadIdForInvalidation) {
             await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
@@ -426,14 +518,9 @@ export function AgentraWorkspace() {
               queryKey: agentraQueryKeys.threadMessages(threadIdForInvalidation),
             });
           }
-          const isPrematureEof = error instanceof PrematureSseEofError;
+          const classified = classifyChatError(error, doneObservabilitySummary);
           toast.error('メッセージ送信に失敗しました', {
-            description: getErrorMessage(
-              isPrematureEof
-                ? new Error('接続が予期せず切断されました。再試行してください。')
-                : error,
-              'バックエンドまたは AgentCore の状態を確認してください。',
-            ),
+            description: classified.userMessage,
             duration: 6000,
           });
           throw error;
@@ -446,19 +533,35 @@ export function AgentraWorkspace() {
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
           await queryClient.fetchQuery(threadMessagesQueryOptions(resolvedThreadId));
         }
-        if (doneObservabilitySummary) {
-          setLiveObservabilitySummary(doneObservabilitySummary);
+        if (doneObservabilitySummary || latestArtifactManifest) {
+          if (doneObservabilitySummary) {
+            setLiveObservabilitySummary(doneObservabilitySummary);
+          }
           yield {
             content: [
               { type: 'text', text: fullText },
-              {
-                type: 'data',
-                name: 'observability',
-                data: doneObservabilitySummary,
-              },
+              ...(doneObservabilitySummary
+                ? [
+                    {
+                      type: 'data' as const,
+                      name: 'observability',
+                      data: doneObservabilitySummary,
+                    },
+                  ]
+                : []),
+              ...(latestArtifactManifest
+                ? [
+                    {
+                      type: 'data' as const,
+                      name: 'artifact',
+                      data: latestArtifactManifest,
+                    },
+                  ]
+                : []),
             ],
           };
         }
+        setSubAgentProgressEvents([]);
       },
     }),
     [
@@ -698,6 +801,7 @@ export function AgentraWorkspace() {
                 <Thread
                   modelValue={selectedModel}
                   onModelChange={setSelectedModel}
+                  {...(selectedThreadId ? { threadId: selectedThreadId } : {})}
                   slideCommandActive={slideCommandActive}
                   onSlideCommandActivate={handleSlideCommandActivate}
                   onSlideCommandDeactivate={handleSlideCommandDeactivate}
@@ -716,6 +820,24 @@ export function AgentraWorkspace() {
   );
 }
 
+function mockSleep(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+    const id = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      'abort',
+      () => {
+        clearTimeout(id);
+        resolve();
+      },
+      { once: true },
+    );
+  });
+}
+
 function getErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message.trim().length > 0) {
     return error.message;
@@ -727,30 +849,38 @@ function getErrorMessage(error: unknown, fallback: string) {
 function convertPersistedMessageToRuntimeMessage(
   message: PersistedChatMessage,
 ): ThreadMessageLike {
-  const contentParts: ThreadMessageLike['content'] =
-    message.observabilitySummary && message.role === 'assistant'
+  const isAssistant = message.role === 'assistant';
+  const contentParts: ThreadMessageLike['content'] = [
+    { type: 'text', text: message.content },
+    ...(isAssistant && message.observabilitySummary
       ? [
-          { type: 'text', text: message.content },
           {
-            type: 'data',
+            type: 'data' as const,
             name: 'observability',
             data: message.observabilitySummary,
           },
         ]
-      : [{ type: 'text', text: message.content }];
+      : []),
+    ...(isAssistant && message.artifactManifest
+      ? [{ type: 'data' as const, name: 'artifact', data: message.artifactManifest }]
+      : []),
+  ];
+
+  const customMetadata: {
+    observabilitySummary?: ChatObservationSummary;
+    errorMessage?: string;
+    cancelledAt?: string;
+  } = {};
+  if (message.observabilitySummary)
+    customMetadata.observabilitySummary = message.observabilitySummary;
+  if (message.errorMessage) customMetadata.errorMessage = message.errorMessage;
+  if (message.cancelledAt) customMetadata.cancelledAt = message.cancelledAt;
+  const hasCustom = Object.keys(customMetadata).length > 0;
 
   return {
     role: message.role,
     content: contentParts,
-    ...(message.observabilitySummary
-      ? {
-          metadata: {
-            custom: {
-              observabilitySummary: message.observabilitySummary,
-            },
-          },
-        }
-      : {}),
+    ...(hasCustom ? { metadata: { custom: customMetadata } } : {}),
   };
 }
 

@@ -1,16 +1,44 @@
-import { isMockApiMode, STREAMING_API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL, isMockApiMode, STREAMING_API_BASE_URL } from '@/lib/api-config';
 import { ApiError } from '@/lib/api-error';
 import {
   createThread as createThreadRequest,
+  deleteKbDocument as deleteKbDocumentRequest,
   deleteThread as deleteThreadRequest,
+  getAdminAgents as getAdminAgentsRequest,
+  getAdminOverview as getAdminOverviewRequest,
+  getAdminSkills as getAdminSkillsRequest,
+  getAdminTimeseries as getAdminTimeseriesRequest,
+  getAdminTools as getAdminToolsRequest,
+  getAdminTraceDetail as getAdminTraceDetailRequest,
+  getAdminTraces as getAdminTracesRequest,
+  getAdminUsers as getAdminUsersRequest,
   getHealth as getHealthRequest,
+  getKbStatus as getKbStatusRequest,
+  listAdminUsers as listAdminUsersRequest,
+  listKbDocuments as listKbDocumentsRequest,
+  listKbIngestionJobs as listKbIngestionJobsRequest,
   listThreadMessages as listThreadMessagesRequest,
   listThreads as listThreadsRequest,
   postChat as postChatRequest,
+  presignKbDocument as presignKbDocumentRequest,
+  startKbSync as startKbSyncRequest,
   updateThread as updateThreadRequest,
 } from '@/lib/generated/agentra';
 import type {
+  AdminAgentsResponse,
+  AdminOverviewResponse,
+  AdminSkillsResponse,
+  AdminTimeseriesResponse,
+  AdminToolsResponse,
+  AdminTraceDetailResponse,
+  AdminTracesResponse,
+  AdminUser,
+  AdminUsersListResponse,
+  AdminUsersResponse,
+  ArtifactManifest,
+  ChatObservationSummary,
   ChatRequest,
+  ChatStreamArtifactEvent,
   ChatStreamDoneEvent,
   ChatStreamErrorEvent,
   ChatStreamObservationEvent,
@@ -20,6 +48,13 @@ import type {
   ChatStreamThreadStartedEvent,
   CreateThreadRequest,
   HealthResponse,
+  IngestionJobsResponse,
+  KbDocumentsResponse,
+  KbStatusResponse,
+  ObsStatusParameter,
+  PresignDocumentRequest,
+  PresignDocumentResponse,
+  SyncResponse,
   ThreadMessagesResponse,
   ThreadResponse,
   ThreadsResponse,
@@ -32,6 +67,7 @@ export type ChatStreamEvent =
   | ChatStreamProgressSummaryEvent
   | ChatStreamSubAgentProgressEvent
   | ChatStreamObservationEvent
+  | ChatStreamArtifactEvent
   | ChatStreamDoneEvent
   | ChatStreamErrorEvent;
 
@@ -47,6 +83,8 @@ export type MockChatResponse = {
   reply: string;
   model: string;
   createdAt: string;
+  observabilitySummary?: ChatObservationSummary;
+  artifactManifest?: ArtifactManifest;
 };
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -125,7 +163,16 @@ export async function* sendChatStream(
   });
 
   if (!response.ok || !response.body) {
-    throw new Error(`Chat request failed: ${response.status} ${response.statusText}`);
+    const bodyText = await response.text().catch(() => '');
+    let parsed: unknown = null;
+    if (bodyText) {
+      try {
+        parsed = JSON.parse(bodyText);
+      } catch {
+        parsed = bodyText;
+      }
+    }
+    throw new ApiError(response.status, parsed);
   }
 
   const reader = response.body.getReader();
@@ -207,4 +254,192 @@ async function expectThreadResponse(
     throw new ApiError(502, { error: 'Unexpected response shape from thread API.' });
   }
   return response;
+}
+
+export async function fetchArtifactDownloadUrl(
+  threadId: string,
+  artifactId: string,
+): Promise<{ url: string; expiresAt: string }> {
+  if (isMockApiMode) {
+    const blob = new Blob(['mock pptx artifact'], {
+      type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    });
+    return {
+      url: URL.createObjectURL(blob),
+      expiresAt: new Date(Date.now() + 900_000).toISOString(),
+    };
+  }
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${API_BASE_URL}/threads/${encodeURIComponent(threadId)}/artifacts/${encodeURIComponent(artifactId)}/download-url`,
+    { headers },
+  );
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+  return res.json() as Promise<{ url: string; expiresAt: string }>;
+}
+
+// ── Admin observability API ───────────────────────────────────────────────────
+
+export type AdminDateRange = { from?: string; to?: string };
+export type AdminPaginationParams = AdminDateRange & { limit?: number; cursor?: string };
+
+export async function fetchAdminOverview(
+  params: AdminDateRange = {},
+): Promise<AdminOverviewResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminOverviewRequest(params, { headers });
+}
+
+export async function fetchAdminUsers(
+  params: AdminPaginationParams = {},
+): Promise<AdminUsersResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminUsersRequest(params, { headers });
+}
+
+export type AdminUsersListParams = { limit?: number; cursor?: string };
+
+export async function fetchAdminUsersList(
+  params: AdminUsersListParams = {},
+): Promise<AdminUsersListResponse> {
+  const headers = await getAuthHeaders();
+  return listAdminUsersRequest(params, { headers });
+}
+
+export type { AdminUser, AdminUsersListResponse };
+
+export async function fetchAdminAgents(
+  params: AdminDateRange = {},
+): Promise<AdminAgentsResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminAgentsRequest(params, { headers });
+}
+
+export async function fetchAdminTools(
+  params: AdminDateRange = {},
+): Promise<AdminToolsResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminToolsRequest(params, { headers });
+}
+
+export async function fetchAdminSkills(
+  params: AdminDateRange = {},
+): Promise<AdminSkillsResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminSkillsRequest(params, { headers });
+}
+
+export async function fetchAdminTraces(
+  params: AdminPaginationParams & { status?: string; userId?: string } = {},
+): Promise<AdminTracesResponse> {
+  const headers = await getAuthHeaders();
+  const { status, userId, ...rest } = params;
+  const tracesParams = {
+    ...rest,
+    ...(status ? { status: status as ObsStatusParameter } : {}),
+    ...(userId ? { userId } : {}),
+  };
+  return getAdminTracesRequest(tracesParams, { headers });
+}
+
+export async function fetchAdminTraceDetail(
+  traceId: string,
+): Promise<AdminTraceDetailResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminTraceDetailRequest(traceId, { headers });
+}
+
+export type AdminTimeseriesParams = AdminDateRange & { bucket?: 'hour' | 'day' };
+
+export async function fetchAdminTimeseries(
+  params: AdminTimeseriesParams = {},
+): Promise<AdminTimeseriesResponse> {
+  const headers = await getAuthHeaders();
+  return getAdminTimeseriesRequest(params, { headers });
+}
+
+// ── Error classification ──────────────────────────────────────────────────────
+
+export type ChatErrorKind =
+  | 'network_disconnect'
+  | 'auth_error'
+  | 'timeout'
+  | 'server_error'
+  | 'tool_failure'
+  | 'unknown';
+
+export interface ClassifiedChatError {
+  kind: ChatErrorKind;
+  userMessage: string;
+}
+
+const ERROR_MESSAGES: Record<ChatErrorKind, string> = {
+  network_disconnect: '接続が切断されました。再試行してください',
+  auth_error: 'セッションが切れました。再ログインしてください',
+  timeout: '処理がタイムアウトしました。簡単な質問に分割して試してください',
+  server_error: 'サーバーエラーが発生しました。しばらく経ってから再試行してください',
+  tool_failure: '一部のツール呼び出しが失敗しました。回答が不完全な場合があります',
+  unknown:
+    'メッセージ送信に失敗しました。バックエンドまたは AgentCore の状態を確認してください',
+};
+
+export function classifyChatError(
+  error: unknown,
+  observabilitySummary?: { toolFailureCount?: number | null } | null,
+): ClassifiedChatError {
+  let kind: ChatErrorKind;
+
+  if (error instanceof PrematureSseEofError) {
+    kind = 'network_disconnect';
+  } else if (
+    error instanceof ApiError &&
+    (error.status === 401 || error.status === 403)
+  ) {
+    kind = 'auth_error';
+  } else if (error instanceof Error && /timeout/i.test(error.message)) {
+    kind = 'timeout';
+  } else if (error instanceof ApiError && error.status >= 500) {
+    kind = 'server_error';
+  } else if ((observabilitySummary?.toolFailureCount ?? 0) > 0) {
+    kind = 'tool_failure';
+  } else {
+    kind = 'unknown';
+  }
+
+  return { kind, userMessage: ERROR_MESSAGES[kind] };
+}
+
+// ── Knowledge Base API ────────────────────────────────────────────────────────
+
+export async function fetchKbStatus(): Promise<KbStatusResponse> {
+  const headers = await getAuthHeaders();
+  return getKbStatusRequest({ headers });
+}
+
+export async function fetchKbDocuments(nextToken?: string): Promise<KbDocumentsResponse> {
+  const headers = await getAuthHeaders();
+  return listKbDocumentsRequest(nextToken ? { nextToken } : undefined, { headers });
+}
+
+export async function removeKbDocument(key: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  // Pass raw key — the generated client uses URLSearchParams which encodes automatically
+  return deleteKbDocumentRequest({ key }, { headers });
+}
+
+export async function presignKbUpload(
+  request: PresignDocumentRequest,
+): Promise<PresignDocumentResponse> {
+  const headers = await getAuthHeaders();
+  return presignKbDocumentRequest(request, { headers });
+}
+
+export async function fetchKbIngestionJobs(): Promise<IngestionJobsResponse> {
+  const headers = await getAuthHeaders();
+  return listKbIngestionJobsRequest({ headers });
+}
+
+export async function triggerKbSync(): Promise<SyncResponse> {
+  const headers = await getAuthHeaders();
+  return startKbSyncRequest({ headers });
 }

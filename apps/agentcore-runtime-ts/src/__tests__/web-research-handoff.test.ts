@@ -236,8 +236,7 @@ describe('streamInvokeWebResearchAgentTool', () => {
     return result;
   }
 
-  it('yields running then complete progress events for each sub-agent tool call', async () => {
-    const toolUseId = 'tool-1';
+  it('yields running then complete for the web_research stage', async () => {
     const agentResult = makeAgentResult({
       status: 'success' as const,
       answer: 'Tavily returned current web results.',
@@ -245,21 +244,7 @@ describe('streamInvokeWebResearchAgentTool', () => {
       citations: [],
     });
 
-    const streamEvents = [
-      {
-        type: 'modelStreamUpdateEvent',
-        event: {
-          type: 'modelContentBlockStartEvent',
-          start: { type: 'toolUseStart', toolUseId, name: 'tavily_search' },
-        },
-      },
-      {
-        type: 'toolResultEvent',
-        result: { toolUseId, status: 'success', content: [] },
-      },
-    ];
-
-    const stream = makeAgentStream(streamEvents, agentResult);
+    const stream = makeAgentStream([], agentResult);
     const progress: unknown[] = [];
 
     const gen = streamInvokeWebResearchAgentTool(
@@ -282,12 +267,12 @@ describe('streamInvokeWebResearchAgentTool', () => {
     }
 
     expect(progress).toEqual([
-      { stage: 'tavily_search', status: 'running' },
-      { stage: 'tavily_search', status: 'complete', durationMs: expect.any(Number) },
+      { stage: 'web_research', status: 'running' },
+      { stage: 'web_research', status: 'complete', durationMs: expect.any(Number) },
     ]);
   });
 
-  it('includes inputTokens from modelMetadataEvent in subsequent progress events', async () => {
+  it('yields running then complete even when internal child tools complete successfully', async () => {
     const toolUseId = 'tool-tok';
     const agentResult = makeAgentResult({ status: 'success', answer: 'done' });
 
@@ -295,15 +280,8 @@ describe('streamInvokeWebResearchAgentTool', () => {
       {
         type: 'modelStreamUpdateEvent',
         event: {
-          type: 'modelMetadataEvent',
-          usage: { inputTokens: 42000, outputTokens: 300 },
-        },
-      },
-      {
-        type: 'modelStreamUpdateEvent',
-        event: {
           type: 'modelContentBlockStartEvent',
-          start: { type: 'toolUseStart', toolUseId, name: 'strands_structured_output' },
+          start: { type: 'toolUseStart', toolUseId, name: 'tavily_search' },
         },
       },
       {
@@ -332,24 +310,19 @@ describe('streamInvokeWebResearchAgentTool', () => {
     }
 
     expect(progress).toEqual([
-      { stage: 'strands_structured_output', status: 'running', inputTokens: 42000 },
-      {
-        stage: 'strands_structured_output',
-        status: 'complete',
-        durationMs: expect.any(Number),
-        inputTokens: 42000,
-      },
+      { stage: 'web_research', status: 'running' },
+      { stage: 'web_research', status: 'complete', durationMs: expect.any(Number) },
     ]);
   });
 
-  it('yields error status when sub-agent tool returns error', async () => {
+  it('yields running then complete even when an internal child tool returns an error result', async () => {
     const toolUseId = 'tool-err';
     const agentResult = makeAgentResult({ status: 'success', answer: 'done' });
 
     const streamEvents = [
       {
         type: 'contentBlockEvent',
-        contentBlock: { type: 'toolUseBlock', toolUseId, name: 'web_research' },
+        contentBlock: { type: 'toolUseBlock', toolUseId, name: 'tavily_search' },
       },
       {
         type: 'toolResultEvent',
@@ -376,12 +349,13 @@ describe('streamInvokeWebResearchAgentTool', () => {
       progress.push(value);
     }
 
-    expect(progress).toContainEqual(
-      expect.objectContaining({ stage: 'web_research', status: 'error' }),
-    );
+    expect(progress).toEqual([
+      { stage: 'web_research', status: 'running' },
+      { stage: 'web_research', status: 'complete', durationMs: expect.any(Number) },
+    ]);
   });
 
-  it('returns success payload when the sub-agent stream throws', async () => {
+  it('yields error for the web_research stage and returns success payload when stream throws', async () => {
     const failingStream = {
       next: () => Promise.reject(new Error('web research failure')),
       [Symbol.asyncIterator]() {
@@ -399,12 +373,26 @@ describe('streamInvokeWebResearchAgentTool', () => {
       },
     );
 
-    const { value, done } = await gen.next();
-    expect(done).toBe(true);
+    const progress: unknown[] = [];
+    let finalValue: { status: string; content: [{ text: string }] } | undefined;
+
+    while (true) {
+      const { value, done } = await gen.next();
+      if (done) {
+        finalValue = value;
+        break;
+      }
+      progress.push(value);
+    }
+
+    expect(progress).toContainEqual(
+      expect.objectContaining({ stage: 'web_research', status: 'error' }),
+    );
+
     // Tool must succeed so the Router reads the error reason from content
     // rather than treating it as a transient failure to retry.
-    expect(value.status).toBe('success');
-    const streamPayload = JSON.parse(value.content[0].text);
+    expect(finalValue?.status).toBe('success');
+    const streamPayload = JSON.parse(finalValue?.content[0].text ?? '{}');
     // Raw error must not leak into the user-facing answer; it goes to metadata.rawError
     expect(streamPayload.answer).not.toContain('web research failure');
     expect(streamPayload.metadata?.rawError).toContain('web research failure');

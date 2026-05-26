@@ -1,4 +1,6 @@
 import {
+  type ArtifactManifest,
+  artifactManifestSchema,
   type ChatObservationSummary,
   chatObservationSummarySchema,
 } from '@agentra/shared';
@@ -22,6 +24,7 @@ export type RuntimeStreamEvent =
       observation: ChatObservationSummary;
       subAgentStage?: SubAgentStage;
     }
+  | { type: 'artifact_manifest'; manifest: ArtifactManifest }
   | { type: 'done'; observabilitySummary?: ChatObservationSummary }
   | { type: 'error'; error: string; observabilitySummary?: ChatObservationSummary };
 
@@ -100,6 +103,7 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
       subAgentStage?: SubAgentStage;
       observabilitySummary?: ChatObservationSummary;
       error?: string;
+      manifest?: unknown;
     };
 
     if (typed.type === 'text' && typeof typed.text === 'string') {
@@ -119,6 +123,11 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
           ? { subAgentStage: typed.subAgentStage }
           : {}),
       };
+    }
+    if (typed.type === 'artifact_manifest' && typed.manifest !== undefined) {
+      const result = artifactManifestSchema.safeParse(typed.manifest);
+      if (result.success) return { type: 'artifact_manifest', manifest: result.data };
+      return undefined;
     }
     if (typed.type === 'done') {
       const observabilitySummary = typed.observabilitySummary

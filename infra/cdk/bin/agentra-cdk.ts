@@ -130,6 +130,7 @@ const bedrockKbStack = new AgentraBedrockKbStack(
     description: `Agentra ${stageLabel} Bedrock Knowledge Base stack (normal document RAG for manufacturing line).`,
     stage: stageLabel,
     environmentKind,
+    allowedCorsOrigins: resolvedCorsOrigins,
   },
 );
 
@@ -160,10 +161,15 @@ const appStack = new AgentraAppStack(app, `AgentraAppStack-${stageLabel}`, {
   slideRuntimeQualifier: 'prod',
   presentationArtifactsBucketName: slideRuntimeStack.artifactsBucketName,
   allowedCorsOrigins: resolvedCorsOrigins,
+  normalKbId: bedrockKbStack.knowledgeBaseId,
+  normalKbArn: bedrockKbStack.knowledgeBaseArn,
+  normalKbDataSourceId: bedrockKbStack.dataSourceId,
+  kbDataSourceBucketName: bedrockKbStack.documentBucketName,
 });
 appStack.addDependency(dataAuthStack);
 appStack.addDependency(agentCoreRuntimeStack);
 appStack.addDependency(slideRuntimeStack);
+appStack.addDependency(bedrockKbStack);
 
 const webHostingStack = new AgentraWebHostingStack(
   app,

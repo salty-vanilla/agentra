@@ -113,4 +113,36 @@ describe('chat stream contract', () => {
       }).success,
     ).toBe(true);
   });
+
+  it('accepts artifact event with valid manifest', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'artifact',
+        manifest: {
+          id: 'manifest-001',
+          createdAt: '2026-05-07T00:00:00.000Z',
+          artifacts: [
+            {
+              id: 'artifact-001',
+              kind: 'pptx',
+              name: 'presentation.pptx',
+              createdAt: '2026-05-07T00:00:00.000Z',
+            },
+          ],
+        },
+      }).success,
+    ).toBe(true);
+  });
+
+  it('rejects artifact event when manifest id is missing', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'artifact',
+        manifest: {
+          createdAt: '2026-05-07T00:00:00.000Z',
+          artifacts: [],
+        },
+      }).success,
+    ).toBe(false);
+  });
 });

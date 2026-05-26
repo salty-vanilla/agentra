@@ -102,9 +102,10 @@ function ToolFallbackTrigger({
   const statusType = (status?.type ?? 'complete') as ToolStatus;
   const isRunning = statusType === 'running';
   const isCancelled = status?.type === 'incomplete' && status.reason === 'cancelled';
+  const isError = status?.type === 'incomplete' && status.reason !== 'cancelled';
 
   const Icon = statusIconMap[statusType];
-  const label = isCancelled ? 'Cancelled tool' : 'Used tool';
+  const label = isCancelled ? 'Cancelled tool' : isError ? 'Failed tool' : 'Used tool';
 
   return (
     <CollapsibleTrigger
@@ -121,6 +122,7 @@ function ToolFallbackTrigger({
           'aui-tool-fallback-trigger-icon size-4 shrink-0',
           isCancelled && 'text-muted-foreground',
           isRunning && 'animate-spin',
+          isError && 'text-destructive',
         )}
       />
       <span
@@ -128,6 +130,7 @@ function ToolFallbackTrigger({
         className={cn(
           'aui-tool-fallback-trigger-label-wrapper relative inline-block grow text-left leading-none',
           isCancelled && 'text-muted-foreground line-through',
+          isError && 'text-destructive',
         )}
       >
         <span>
@@ -270,10 +273,14 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
   status,
 }) => {
   const isCancelled = status?.type === 'incomplete' && status.reason === 'cancelled';
+  const isError = status?.type === 'incomplete' && status.reason !== 'cancelled';
 
   return (
     <ToolFallbackRoot
-      className={cn(isCancelled && 'border-muted-foreground/30 bg-muted/30')}
+      className={cn(
+        isCancelled && 'border-muted-foreground/30 bg-muted/30',
+        isError && 'border-destructive/40 bg-destructive/5',
+      )}
     >
       <ToolFallbackTrigger toolName={toolName} status={status} />
       <ToolFallbackContent>

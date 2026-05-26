@@ -9,10 +9,37 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  AdminAgentsResponse,
+  AdminOverviewResponse,
+  AdminSkillsResponse,
+  AdminTimeseriesResponse,
+  AdminToolsResponse,
+  AdminTraceDetailResponse,
+  AdminTracesResponse,
+  AdminUsersListResponse,
+  AdminUsersResponse,
+  ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
+  DeleteKbDocumentParams,
   ErrorResponse,
+  GetAdminAgentsParams,
+  GetAdminOverviewParams,
+  GetAdminSkillsParams,
+  GetAdminTimeseriesParams,
+  GetAdminToolsParams,
+  GetAdminTracesParams,
+  GetAdminUsersParams,
   HealthResponse,
+  IngestionJobsResponse,
+  KbDocumentsResponse,
+  KbStatusResponse,
+  ListAdminUsersParams,
+  ListKbDocumentsParams,
+  PresignDocumentRequest,
+  PresignDocumentResponse,
+  SyncResponse,
+  ThreadArtifactsResponse,
   ThreadMessagesResponse,
   ThreadResponse,
   ThreadsResponse,
@@ -33,6 +60,7 @@ import type {
 } from 'msw';
 
 import {
+  ArtifactKind,
   MessageRole
 } from './model';
 
@@ -427,6 +455,962 @@ export const listThreadMessages = async (threadId: string, options?: RequestInit
 }
 
 
+
+/**
+ * @summary List artifact manifests for a thread
+ */
+export type listThreadArtifactsResponse200 = {
+  data: ThreadArtifactsResponse
+  status: 200
+}
+
+export type listThreadArtifactsResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type listThreadArtifactsResponseSuccess = (listThreadArtifactsResponse200) & {
+  headers: Headers;
+};
+export type listThreadArtifactsResponseError = (listThreadArtifactsResponse404) & {
+  headers: Headers;
+};
+
+export type listThreadArtifactsResponse = (listThreadArtifactsResponseSuccess | listThreadArtifactsResponseError)
+
+export const getListThreadArtifactsUrl = (threadId: string,) => {
+
+
+
+
+  return `/threads/${threadId}/artifacts`
+}
+
+export const listThreadArtifacts = async (threadId: string, options?: RequestInit): Promise<listThreadArtifactsResponse> => {
+
+  const res = await fetch(getListThreadArtifactsUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listThreadArtifactsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listThreadArtifactsResponse
+}
+
+
+
+/**
+ * @summary Get a fresh presigned download URL for an artifact
+ */
+export type getArtifactDownloadUrlResponse200 = {
+  data: ArtifactDownloadUrlResponse
+  status: 200
+}
+
+export type getArtifactDownloadUrlResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getArtifactDownloadUrlResponse503 = {
+  data: ErrorResponse
+  status: 503
+}
+
+export type getArtifactDownloadUrlResponseSuccess = (getArtifactDownloadUrlResponse200) & {
+  headers: Headers;
+};
+export type getArtifactDownloadUrlResponseError = (getArtifactDownloadUrlResponse404 | getArtifactDownloadUrlResponse503) & {
+  headers: Headers;
+};
+
+export type getArtifactDownloadUrlResponse = (getArtifactDownloadUrlResponseSuccess | getArtifactDownloadUrlResponseError)
+
+export const getGetArtifactDownloadUrlUrl = (threadId: string,
+    artifactId: string,) => {
+
+
+
+
+  return `/threads/${threadId}/artifacts/${artifactId}/download-url`
+}
+
+export const getArtifactDownloadUrl = async (threadId: string,
+    artifactId: string, options?: RequestInit): Promise<getArtifactDownloadUrlResponse> => {
+
+  const res = await fetch(getGetArtifactDownloadUrlUrl(threadId,artifactId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getArtifactDownloadUrlResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getArtifactDownloadUrlResponse
+}
+
+
+
+/**
+ * @summary Get observability overview stats
+ */
+export type getAdminOverviewResponse200 = {
+  data: AdminOverviewResponse
+  status: 200
+}
+
+export type getAdminOverviewResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type getAdminOverviewResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminOverviewResponseSuccess = (getAdminOverviewResponse200) & {
+  headers: Headers;
+};
+export type getAdminOverviewResponseError = (getAdminOverviewResponse400 | getAdminOverviewResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminOverviewResponse = (getAdminOverviewResponseSuccess | getAdminOverviewResponseError)
+
+export const getGetAdminOverviewUrl = (params?: GetAdminOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/overview?${stringifiedParams}` : `/admin/observability/overview`
+}
+
+export const getAdminOverview = async (params?: GetAdminOverviewParams, options?: RequestInit): Promise<getAdminOverviewResponse> => {
+
+  const res = await fetch(getGetAdminOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminOverviewResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminOverviewResponse
+}
+
+
+
+/**
+ * @summary Get time-bucketed observability metrics
+ */
+export type getAdminTimeseriesResponse200 = {
+  data: AdminTimeseriesResponse
+  status: 200
+}
+
+export type getAdminTimeseriesResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type getAdminTimeseriesResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminTimeseriesResponseSuccess = (getAdminTimeseriesResponse200) & {
+  headers: Headers;
+};
+export type getAdminTimeseriesResponseError = (getAdminTimeseriesResponse400 | getAdminTimeseriesResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminTimeseriesResponse = (getAdminTimeseriesResponseSuccess | getAdminTimeseriesResponseError)
+
+export const getGetAdminTimeseriesUrl = (params?: GetAdminTimeseriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/timeseries?${stringifiedParams}` : `/admin/observability/timeseries`
+}
+
+export const getAdminTimeseries = async (params?: GetAdminTimeseriesParams, options?: RequestInit): Promise<getAdminTimeseriesResponse> => {
+
+  const res = await fetch(getGetAdminTimeseriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminTimeseriesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminTimeseriesResponse
+}
+
+
+
+/**
+ * @summary Get per-user observability stats
+ */
+export type getAdminUsersResponse200 = {
+  data: AdminUsersResponse
+  status: 200
+}
+
+export type getAdminUsersResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminUsersResponseSuccess = (getAdminUsersResponse200) & {
+  headers: Headers;
+};
+export type getAdminUsersResponseError = (getAdminUsersResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminUsersResponse = (getAdminUsersResponseSuccess | getAdminUsersResponseError)
+
+export const getGetAdminUsersUrl = (params?: GetAdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/users?${stringifiedParams}` : `/admin/observability/users`
+}
+
+export const getAdminUsers = async (params?: GetAdminUsersParams, options?: RequestInit): Promise<getAdminUsersResponse> => {
+
+  const res = await fetch(getGetAdminUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminUsersResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminUsersResponse
+}
+
+
+
+/**
+ * @summary Get per-agent observability stats
+ */
+export type getAdminAgentsResponse200 = {
+  data: AdminAgentsResponse
+  status: 200
+}
+
+export type getAdminAgentsResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminAgentsResponseSuccess = (getAdminAgentsResponse200) & {
+  headers: Headers;
+};
+export type getAdminAgentsResponseError = (getAdminAgentsResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminAgentsResponse = (getAdminAgentsResponseSuccess | getAdminAgentsResponseError)
+
+export const getGetAdminAgentsUrl = (params?: GetAdminAgentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/agents?${stringifiedParams}` : `/admin/observability/agents`
+}
+
+export const getAdminAgents = async (params?: GetAdminAgentsParams, options?: RequestInit): Promise<getAdminAgentsResponse> => {
+
+  const res = await fetch(getGetAdminAgentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminAgentsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminAgentsResponse
+}
+
+
+
+/**
+ * @summary Get per-tool observability stats
+ */
+export type getAdminToolsResponse200 = {
+  data: AdminToolsResponse
+  status: 200
+}
+
+export type getAdminToolsResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminToolsResponseSuccess = (getAdminToolsResponse200) & {
+  headers: Headers;
+};
+export type getAdminToolsResponseError = (getAdminToolsResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminToolsResponse = (getAdminToolsResponseSuccess | getAdminToolsResponseError)
+
+export const getGetAdminToolsUrl = (params?: GetAdminToolsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/tools?${stringifiedParams}` : `/admin/observability/tools`
+}
+
+export const getAdminTools = async (params?: GetAdminToolsParams, options?: RequestInit): Promise<getAdminToolsResponse> => {
+
+  const res = await fetch(getGetAdminToolsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminToolsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminToolsResponse
+}
+
+
+
+/**
+ * @summary Get per-skill observability stats
+ */
+export type getAdminSkillsResponse200 = {
+  data: AdminSkillsResponse
+  status: 200
+}
+
+export type getAdminSkillsResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminSkillsResponseSuccess = (getAdminSkillsResponse200) & {
+  headers: Headers;
+};
+export type getAdminSkillsResponseError = (getAdminSkillsResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminSkillsResponse = (getAdminSkillsResponseSuccess | getAdminSkillsResponseError)
+
+export const getGetAdminSkillsUrl = (params?: GetAdminSkillsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/skills?${stringifiedParams}` : `/admin/observability/skills`
+}
+
+export const getAdminSkills = async (params?: GetAdminSkillsParams, options?: RequestInit): Promise<getAdminSkillsResponse> => {
+
+  const res = await fetch(getGetAdminSkillsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminSkillsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminSkillsResponse
+}
+
+
+
+/**
+ * @summary List individual trace records
+ */
+export type getAdminTracesResponse200 = {
+  data: AdminTracesResponse
+  status: 200
+}
+
+export type getAdminTracesResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminTracesResponseSuccess = (getAdminTracesResponse200) & {
+  headers: Headers;
+};
+export type getAdminTracesResponseError = (getAdminTracesResponse403) & {
+  headers: Headers;
+};
+
+export type getAdminTracesResponse = (getAdminTracesResponseSuccess | getAdminTracesResponseError)
+
+export const getGetAdminTracesUrl = (params?: GetAdminTracesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/observability/traces?${stringifiedParams}` : `/admin/observability/traces`
+}
+
+export const getAdminTraces = async (params?: GetAdminTracesParams, options?: RequestInit): Promise<getAdminTracesResponse> => {
+
+  const res = await fetch(getGetAdminTracesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminTracesResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminTracesResponse
+}
+
+
+
+/**
+ * @summary Get full detail for a single trace
+ */
+export type getAdminTraceDetailResponse200 = {
+  data: AdminTraceDetailResponse
+  status: 200
+}
+
+export type getAdminTraceDetailResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getAdminTraceDetailResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getAdminTraceDetailResponseSuccess = (getAdminTraceDetailResponse200) & {
+  headers: Headers;
+};
+export type getAdminTraceDetailResponseError = (getAdminTraceDetailResponse403 | getAdminTraceDetailResponse404) & {
+  headers: Headers;
+};
+
+export type getAdminTraceDetailResponse = (getAdminTraceDetailResponseSuccess | getAdminTraceDetailResponseError)
+
+export const getGetAdminTraceDetailUrl = (traceId: string,) => {
+
+
+
+
+  return `/admin/observability/traces/${traceId}`
+}
+
+export const getAdminTraceDetail = async (traceId: string, options?: RequestInit): Promise<getAdminTraceDetailResponse> => {
+
+  const res = await fetch(getGetAdminTraceDetailUrl(traceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getAdminTraceDetailResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getAdminTraceDetailResponse
+}
+
+
+
+/**
+ * @summary List all users from UserTable
+ */
+export type listAdminUsersResponse200 = {
+  data: AdminUsersListResponse
+  status: 200
+}
+
+export type listAdminUsersResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type listAdminUsersResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type listAdminUsersResponseSuccess = (listAdminUsersResponse200) & {
+  headers: Headers;
+};
+export type listAdminUsersResponseError = (listAdminUsersResponse400 | listAdminUsersResponse403) & {
+  headers: Headers;
+};
+
+export type listAdminUsersResponse = (listAdminUsersResponseSuccess | listAdminUsersResponseError)
+
+export const getListAdminUsersUrl = (params?: ListAdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/users?${stringifiedParams}` : `/admin/users`
+}
+
+export const listAdminUsers = async (params?: ListAdminUsersParams, options?: RequestInit): Promise<listAdminUsersResponse> => {
+
+  const res = await fetch(getListAdminUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listAdminUsersResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listAdminUsersResponse
+}
+
+
+
+/**
+ * @summary Get Knowledge Base configuration status
+ */
+export type getKbStatusResponse200 = {
+  data: KbStatusResponse
+  status: 200
+}
+
+export type getKbStatusResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type getKbStatusResponseSuccess = (getKbStatusResponse200) & {
+  headers: Headers;
+};
+export type getKbStatusResponseError = (getKbStatusResponse403) & {
+  headers: Headers;
+};
+
+export type getKbStatusResponse = (getKbStatusResponseSuccess | getKbStatusResponseError)
+
+export const getGetKbStatusUrl = () => {
+
+
+
+
+  return `/knowledge-base/status`
+}
+
+export const getKbStatus = async ( options?: RequestInit): Promise<getKbStatusResponse> => {
+
+  const res = await fetch(getGetKbStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getKbStatusResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getKbStatusResponse
+}
+
+
+
+/**
+ * @summary List documents in the KB S3 data source bucket
+ */
+export type listKbDocumentsResponse200 = {
+  data: KbDocumentsResponse
+  status: 200
+}
+
+export type listKbDocumentsResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type listKbDocumentsResponseSuccess = (listKbDocumentsResponse200) & {
+  headers: Headers;
+};
+export type listKbDocumentsResponseError = (listKbDocumentsResponse403) & {
+  headers: Headers;
+};
+
+export type listKbDocumentsResponse = (listKbDocumentsResponseSuccess | listKbDocumentsResponseError)
+
+export const getListKbDocumentsUrl = (params?: ListKbDocumentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/knowledge-base/documents?${stringifiedParams}` : `/knowledge-base/documents`
+}
+
+export const listKbDocuments = async (params?: ListKbDocumentsParams, options?: RequestInit): Promise<listKbDocumentsResponse> => {
+
+  const res = await fetch(getListKbDocumentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listKbDocumentsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listKbDocumentsResponse
+}
+
+
+
+/**
+ * @summary Delete a document from the KB S3 data source bucket
+ */
+export type deleteKbDocumentResponse204 = {
+  data: void
+  status: 204
+}
+
+export type deleteKbDocumentResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type deleteKbDocumentResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type deleteKbDocumentResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type deleteKbDocumentResponseSuccess = (deleteKbDocumentResponse204) & {
+  headers: Headers;
+};
+export type deleteKbDocumentResponseError = (deleteKbDocumentResponse400 | deleteKbDocumentResponse403 | deleteKbDocumentResponse404) & {
+  headers: Headers;
+};
+
+export type deleteKbDocumentResponse = (deleteKbDocumentResponseSuccess | deleteKbDocumentResponseError)
+
+export const getDeleteKbDocumentUrl = (params: DeleteKbDocumentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/knowledge-base/documents?${stringifiedParams}` : `/knowledge-base/documents`
+}
+
+export const deleteKbDocument = async (params: DeleteKbDocumentParams, options?: RequestInit): Promise<deleteKbDocumentResponse> => {
+
+  const res = await fetch(getDeleteKbDocumentUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: deleteKbDocumentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as deleteKbDocumentResponse
+}
+
+
+
+/**
+ * @summary Get a presigned S3 URL for uploading a document
+ */
+export type presignKbDocumentResponse200 = {
+  data: PresignDocumentResponse
+  status: 200
+}
+
+export type presignKbDocumentResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type presignKbDocumentResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type presignKbDocumentResponseSuccess = (presignKbDocumentResponse200) & {
+  headers: Headers;
+};
+export type presignKbDocumentResponseError = (presignKbDocumentResponse400 | presignKbDocumentResponse403) & {
+  headers: Headers;
+};
+
+export type presignKbDocumentResponse = (presignKbDocumentResponseSuccess | presignKbDocumentResponseError)
+
+export const getPresignKbDocumentUrl = () => {
+
+
+
+
+  return `/knowledge-base/documents/presign`
+}
+
+export const presignKbDocument = async (presignDocumentRequest: PresignDocumentRequest, options?: RequestInit): Promise<presignKbDocumentResponse> => {
+
+  const res = await fetch(getPresignKbDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      presignDocumentRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: presignKbDocumentResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as presignKbDocumentResponse
+}
+
+
+
+/**
+ * @summary List recent KB ingestion jobs (last 10)
+ */
+export type listKbIngestionJobsResponse200 = {
+  data: IngestionJobsResponse
+  status: 200
+}
+
+export type listKbIngestionJobsResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type listKbIngestionJobsResponseSuccess = (listKbIngestionJobsResponse200) & {
+  headers: Headers;
+};
+export type listKbIngestionJobsResponseError = (listKbIngestionJobsResponse403) & {
+  headers: Headers;
+};
+
+export type listKbIngestionJobsResponse = (listKbIngestionJobsResponseSuccess | listKbIngestionJobsResponseError)
+
+export const getListKbIngestionJobsUrl = () => {
+
+
+
+
+  return `/knowledge-base/ingestion-jobs`
+}
+
+export const listKbIngestionJobs = async ( options?: RequestInit): Promise<listKbIngestionJobsResponse> => {
+
+  const res = await fetch(getListKbIngestionJobsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listKbIngestionJobsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listKbIngestionJobsResponse
+}
+
+
+
+/**
+ * @summary Manually start a KB ingestion sync job
+ */
+export type startKbSyncResponse200 = {
+  data: SyncResponse
+  status: 200
+}
+
+export type startKbSyncResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type startKbSyncResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type startKbSyncResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type startKbSyncResponseSuccess = (startKbSyncResponse200) & {
+  headers: Headers;
+};
+export type startKbSyncResponseError = (startKbSyncResponse400 | startKbSyncResponse403 | startKbSyncResponse409) & {
+  headers: Headers;
+};
+
+export type startKbSyncResponse = (startKbSyncResponseSuccess | startKbSyncResponseError)
+
+export const getStartKbSyncUrl = () => {
+
+
+
+
+  return `/knowledge-base/sync`
+}
+
+export const startKbSync = async ( options?: RequestInit): Promise<startKbSyncResponse> => {
+
+  const res = await fetch(getStartKbSyncUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: startKbSyncResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as startKbSyncResponse
+}
+
+
 export const getGetHealthResponseMock = (overrideResponse: Partial<Extract<HealthResponse, object>> = {}): HealthResponse => ({status: faker.helpers.arrayElement(['ok'] as const), service: faker.string.alpha({length: {min: 1, max: 20}}), version: faker.string.alpha({length: {min: 1, max: 20}}), timestamp: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
 
 export const getPostChatResponseMock = (): string => (faker.word.sample())
@@ -441,7 +1425,39 @@ export const getUpdateThreadResponseMock = (overrideResponse: Partial<Extract<Th
 
 export const getDeleteThreadResponseMock = (overrideResponse: Partial<Extract<ThreadResponse, object>> = {}): ThreadResponse => ({thread: {threadId: faker.string.alpha({length: {min: 1, max: 20}}), title: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', preview: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, ...overrideResponse})
 
-export const getListThreadMessagesResponseMock = (overrideResponse: Partial<Extract<ThreadMessagesResponse, object>> = {}): ThreadMessagesResponse => ({thread: {threadId: faker.string.alpha({length: {min: 1, max: 20}}), title: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', preview: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, messages: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({messageId: faker.string.alpha({length: {min: 1, max: 20}}), threadId: faker.string.alpha({length: {min: 1, max: 20}}), role: faker.helpers.arrayElement(Object.values(MessageRole)), content: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', requestId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined]), errorMessage: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), errorStack: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), cancelledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), observabilitySummary: faker.helpers.arrayElement([{traceId: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined]), reasoning: faker.helpers.arrayElement([{stepCount: faker.number.int({min: 0}), summary: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, undefined]), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 1, max: 20}}), toolName: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined])})), toolCallCount: faker.number.int({min: 0}), toolFailureCount: faker.number.int({min: 0})}, undefined])})), ...overrideResponse})
+export const getListThreadMessagesResponseMock = (overrideResponse: Partial<Extract<ThreadMessagesResponse, object>> = {}): ThreadMessagesResponse => ({thread: {threadId: faker.string.alpha({length: {min: 1, max: 20}}), title: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', preview: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, messages: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({messageId: faker.string.alpha({length: {min: 1, max: 20}}), threadId: faker.string.alpha({length: {min: 1, max: 20}}), role: faker.helpers.arrayElement(Object.values(MessageRole)), content: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', requestId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined]), errorMessage: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), errorStack: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), cancelledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), observabilitySummary: faker.helpers.arrayElement([{traceId: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined]), reasoning: faker.helpers.arrayElement([{stepCount: faker.number.int({min: 0}), summary: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, undefined]), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 1, max: 20}}), toolName: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined]), metadata: faker.helpers.arrayElement([{}, undefined])})), toolCallCount: faker.number.int({min: 0}), toolFailureCount: faker.number.int({min: 0})}, undefined]), artifactManifest: faker.helpers.arrayElement([{id: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', artifacts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 1, max: 20}}), kind: faker.helpers.arrayElement(Object.values(ArtifactKind)), name: faker.string.alpha({length: {min: 1, max: 20}}), path: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), url: faker.helpers.arrayElement([faker.internet.url(), undefined]), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), sizeBytes: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', metadata: faker.helpers.arrayElement([{}, undefined]), label: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), exists: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), metadata: faker.helpers.arrayElement([{}, undefined])}, undefined])})), ...overrideResponse})
+
+export const getListThreadArtifactsResponseMock = (overrideResponse: Partial<Extract<ThreadArtifactsResponse, object>> = {}): ThreadArtifactsResponse => ({manifests: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', artifacts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 1, max: 20}}), kind: faker.helpers.arrayElement(Object.values(ArtifactKind)), name: faker.string.alpha({length: {min: 1, max: 20}}), path: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), url: faker.helpers.arrayElement([faker.internet.url(), undefined]), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), sizeBytes: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', metadata: faker.helpers.arrayElement([{}, undefined]), label: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), exists: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), metadata: faker.helpers.arrayElement([{}, undefined])})), ...overrideResponse})
+
+export const getGetArtifactDownloadUrlResponseMock = (overrideResponse: Partial<Extract<ArtifactDownloadUrlResponse, object>> = {}): ArtifactDownloadUrlResponse => ({url: faker.internet.url(), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getGetAdminOverviewResponseMock = (overrideResponse: Partial<Extract<AdminOverviewResponse, object>> = {}): AdminOverviewResponse => ({requestCount: faker.number.int({min: 0}), activeUserCount: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), avgDurationMs: faker.number.int({min: 0}), p95DurationMs: faker.number.int({min: 0}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), totalToolCalls: faker.number.int({min: 0}), toolFailureRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), estimatedCostUsd: faker.number.float({min: 0, fractionDigits: 2}), period: {from: faker.string.alpha({length: {min: 10, max: 20}}), to: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
+
+export const getGetAdminTimeseriesResponseMock = (overrideResponse: Partial<Extract<AdminTimeseriesResponse, object>> = {}): AdminTimeseriesResponse => ({buckets: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({bucketStart: faker.date.past().toISOString().slice(0, 19) + 'Z', requestCount: faker.number.int({min: 0}), successCount: faker.number.int({min: 0}), errorCount: faker.number.int({min: 0}), cancelledCount: faker.number.int({min: 0}), avgDurationMs: faker.number.float({min: 0, fractionDigits: 2}), p95DurationMs: faker.number.float({min: 0, fractionDigits: 2}), totalTokens: faker.number.int({min: 0}), inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), toolCallCount: faker.number.int({min: 0}), toolFailureCount: faker.number.int({min: 0})})), period: {from: faker.string.alpha({length: {min: 10, max: 20}}), to: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
+
+export const getGetAdminUsersResponseMock = (overrideResponse: Partial<Extract<AdminUsersResponse, object>> = {}): AdminUsersResponse => ({users: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({userId: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement([faker.helpers.arrayElement(['admin','user'] as const), undefined]), requestCount: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), avgDurationMs: faker.number.int({min: 0}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), mostUsedAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), mostUsedTool: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getGetAdminAgentsResponseMock = (overrideResponse: Partial<Extract<AdminAgentsResponse, object>> = {}): AdminAgentsResponse => ({agents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({agentName: faker.string.alpha({length: {min: 10, max: 20}}), callCount: faker.number.int({min: 0}), successRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), avgDurationMs: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), relatedTools: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}})))})), ...overrideResponse})
+
+export const getGetAdminToolsResponseMock = (overrideResponse: Partial<Extract<AdminToolsResponse, object>> = {}): AdminToolsResponse => ({tools: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolName: faker.string.alpha({length: {min: 10, max: 20}}), callCount: faker.number.int({min: 0}), failureRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), avgDurationMs: faker.number.int({min: 0}), lastError: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), ...overrideResponse})
+
+export const getGetAdminSkillsResponseMock = (overrideResponse: Partial<Extract<AdminSkillsResponse, object>> = {}): AdminSkillsResponse => ({skills: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({skillName: faker.string.alpha({length: {min: 10, max: 20}}), requestCount: faker.number.int({min: 0}), avgDurationMs: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2})})), ...overrideResponse})
+
+export const getGetAdminTracesResponseMock = (overrideResponse: Partial<Extract<AdminTracesResponse, object>> = {}): AdminTracesResponse => ({traces: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({traceId: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), model: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), estimatedCostUsd: faker.helpers.arrayElement([faker.number.float({min: 0, fractionDigits: 2}), undefined]), toolCallCount: faker.number.int({min: 0}), agentCallCount: faker.number.int({min: 0}), skillCallCount: faker.number.int({min: 0})})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getGetAdminTraceDetailResponseMock = (overrideResponse: Partial<Extract<AdminTraceDetailResponse, object>> = {}): AdminTraceDetailResponse => ({trace: {traceId: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), model: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), estimatedCostUsd: faker.helpers.arrayElement([faker.number.float({min: 0, fractionDigits: 2}), undefined]), toolCallCount: faker.number.int({min: 0}), agentCallCount: faker.number.int({min: 0}), skillCallCount: faker.number.int({min: 0}), requestId: faker.string.alpha({length: {min: 10, max: 20}}), threadId: faker.string.alpha({length: {min: 10, max: 20}}), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 10, max: 20}}), toolName: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), agentCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({agentName: faker.string.alpha({length: {min: 10, max: 20}}), agentKind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), startedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), skillCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({skillName: faker.string.alpha({length: {min: 10, max: 20}}), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined])}, ...overrideResponse})
+
+export const getListAdminUsersResponseMock = (overrideResponse: Partial<Extract<AdminUsersListResponse, object>> = {}): AdminUsersListResponse => ({users: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({userId: faker.string.alpha({length: {min: 10, max: 20}}), sub: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', lastSeenAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), requestCount: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), errorRate: faker.helpers.arrayElement([faker.number.float({min: 0, max: 1, fractionDigits: 2}), undefined]), mostUsedAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), mostUsedTool: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getGetKbStatusResponseMock = (overrideResponse: Partial<Extract<KbStatusResponse, object>> = {}): KbStatusResponse => ({configured: faker.datatype.boolean(), kbId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceBucketName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getListKbDocumentsResponseMock = (overrideResponse: Partial<Extract<KbDocumentsResponse, object>> = {}): KbDocumentsResponse => ({documents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({key: faker.string.alpha({length: {min: 1, max: 20}}), name: faker.string.alpha({length: {min: 1, max: 20}}), sizeBytes: faker.number.int({min: 0}), lastModified: faker.date.past().toISOString().slice(0, 19) + 'Z'})), nextToken: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
+export const getPresignKbDocumentResponseMock = (overrideResponse: Partial<Extract<PresignDocumentResponse, object>> = {}): PresignDocumentResponse => ({presignedUrl: faker.internet.url(), key: faker.string.alpha({length: {min: 1, max: 20}}), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
+
+export const getListKbIngestionJobsResponseMock = (overrideResponse: Partial<Extract<IngestionJobsResponse, object>> = {}): IngestionJobsResponse => ({jobs: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({jobId: faker.string.alpha({length: {min: 1, max: 20}}), status: faker.helpers.arrayElement(['STARTING','IN_PROGRESS','COMPLETE','FAILED','STOPPING','STOPPED'] as const), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), statistics: faker.helpers.arrayElement([faker.helpers.arrayElement([null,]), undefined])})), ...overrideResponse})
+
+export const getStartKbSyncResponseMock = (overrideResponse: Partial<Extract<SyncResponse, object>> = {}): SyncResponse => ({jobId: faker.string.alpha({length: {min: 1, max: 20}}), status: faker.helpers.arrayElement(['STARTING'] as const), ...overrideResponse})
 
 
 export const getGetHealthMockHandler = (overrideResponse?: HealthResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<HealthResponse> | HealthResponse), options?: RequestHandlerOptions) => {
@@ -540,6 +1556,208 @@ export const getListThreadMessagesMockHandler = (overrideResponse?: ThreadMessag
       })
   }, options)
 }
+
+export const getListThreadArtifactsMockHandler = (overrideResponse?: ThreadArtifactsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ThreadArtifactsResponse> | ThreadArtifactsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/threads/:threadId/artifacts', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListThreadArtifactsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetArtifactDownloadUrlMockHandler = (overrideResponse?: ArtifactDownloadUrlResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ArtifactDownloadUrlResponse> | ArtifactDownloadUrlResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/threads/:threadId/artifacts/:artifactId/download-url', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetArtifactDownloadUrlResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminOverviewMockHandler = (overrideResponse?: AdminOverviewResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminOverviewResponse> | AdminOverviewResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/overview', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminOverviewResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminTimeseriesMockHandler = (overrideResponse?: AdminTimeseriesResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminTimeseriesResponse> | AdminTimeseriesResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/timeseries', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminTimeseriesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminUsersMockHandler = (overrideResponse?: AdminUsersResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminUsersResponse> | AdminUsersResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/users', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminUsersResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminAgentsMockHandler = (overrideResponse?: AdminAgentsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminAgentsResponse> | AdminAgentsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/agents', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminAgentsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminToolsMockHandler = (overrideResponse?: AdminToolsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminToolsResponse> | AdminToolsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/tools', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminToolsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminSkillsMockHandler = (overrideResponse?: AdminSkillsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminSkillsResponse> | AdminSkillsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/skills', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminSkillsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminTracesMockHandler = (overrideResponse?: AdminTracesResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminTracesResponse> | AdminTracesResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/traces', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminTracesResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetAdminTraceDetailMockHandler = (overrideResponse?: AdminTraceDetailResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminTraceDetailResponse> | AdminTraceDetailResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/observability/traces/:traceId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetAdminTraceDetailResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListAdminUsersMockHandler = (overrideResponse?: AdminUsersListResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminUsersListResponse> | AdminUsersListResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/users', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListAdminUsersResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetKbStatusMockHandler = (overrideResponse?: KbStatusResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KbStatusResponse> | KbStatusResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/knowledge-base/status', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetKbStatusResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListKbDocumentsMockHandler = (overrideResponse?: KbDocumentsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KbDocumentsResponse> | KbDocumentsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/knowledge-base/documents', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListKbDocumentsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDeleteKbDocumentMockHandler = (overrideResponse?: void | ((info: Parameters<Parameters<typeof http.delete>[1]>[0]) => Promise<void> | void), options?: RequestHandlerOptions) => {
+  return http.delete('*/knowledge-base/documents', async (info: Parameters<Parameters<typeof http.delete>[1]>[0]) => {await delay(200);
+  if (typeof overrideResponse === 'function') {await overrideResponse(info); }
+
+    return new HttpResponse(null,
+      { status: 204
+      })
+  }, options)
+}
+
+export const getPresignKbDocumentMockHandler = (overrideResponse?: PresignDocumentResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<PresignDocumentResponse> | PresignDocumentResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/knowledge-base/documents/presign', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPresignKbDocumentResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getListKbIngestionJobsMockHandler = (overrideResponse?: IngestionJobsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<IngestionJobsResponse> | IngestionJobsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/knowledge-base/ingestion-jobs', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListKbIngestionJobsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getStartKbSyncMockHandler = (overrideResponse?: SyncResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<SyncResponse> | SyncResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/knowledge-base/sync', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getStartKbSyncResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
 export const getAgentraBFFAPIMock = () => [
   getGetHealthMockHandler(),
   getPostChatMockHandler(),
@@ -548,5 +1766,22 @@ export const getAgentraBFFAPIMock = () => [
   getGetThreadMockHandler(),
   getUpdateThreadMockHandler(),
   getDeleteThreadMockHandler(),
-  getListThreadMessagesMockHandler()
+  getListThreadMessagesMockHandler(),
+  getListThreadArtifactsMockHandler(),
+  getGetArtifactDownloadUrlMockHandler(),
+  getGetAdminOverviewMockHandler(),
+  getGetAdminTimeseriesMockHandler(),
+  getGetAdminUsersMockHandler(),
+  getGetAdminAgentsMockHandler(),
+  getGetAdminToolsMockHandler(),
+  getGetAdminSkillsMockHandler(),
+  getGetAdminTracesMockHandler(),
+  getGetAdminTraceDetailMockHandler(),
+  getListAdminUsersMockHandler(),
+  getGetKbStatusMockHandler(),
+  getListKbDocumentsMockHandler(),
+  getDeleteKbDocumentMockHandler(),
+  getPresignKbDocumentMockHandler(),
+  getListKbIngestionJobsMockHandler(),
+  getStartKbSyncMockHandler()
 ]

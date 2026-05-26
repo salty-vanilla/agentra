@@ -8,9 +8,36 @@ This spec is the source of truth for frontend client generation and API mocks.
  * OpenAPI spec version: 0.1.0
  */
 import type {
+  AdminAgentsResponse,
+  AdminOverviewResponse,
+  AdminSkillsResponse,
+  AdminTimeseriesResponse,
+  AdminToolsResponse,
+  AdminTraceDetailResponse,
+  AdminTracesResponse,
+  AdminUsersListResponse,
+  AdminUsersResponse,
+  ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
+  DeleteKbDocumentParams,
+  GetAdminAgentsParams,
+  GetAdminOverviewParams,
+  GetAdminSkillsParams,
+  GetAdminTimeseriesParams,
+  GetAdminToolsParams,
+  GetAdminTracesParams,
+  GetAdminUsersParams,
   HealthResponse,
+  IngestionJobsResponse,
+  KbDocumentsResponse,
+  KbStatusResponse,
+  ListAdminUsersParams,
+  ListKbDocumentsParams,
+  PresignDocumentRequest,
+  PresignDocumentResponse,
+  SyncResponse,
+  ThreadArtifactsResponse,
   ThreadMessagesResponse,
   ThreadResponse,
   ThreadsResponse,
@@ -208,6 +235,487 @@ export const listThreadMessages = async (threadId: string, options?: RequestInit
   {
     ...options,
     method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List artifact manifests for a thread
+ */
+export const getListThreadArtifactsUrl = (threadId: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/threads/${threadId}/artifacts`
+}
+
+export const listThreadArtifacts = async (threadId: string, options?: RequestInit): Promise<ThreadArtifactsResponse> => {
+
+  return fetchMutator<ThreadArtifactsResponse>(getListThreadArtifactsUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get a fresh presigned download URL for an artifact
+ */
+export const getGetArtifactDownloadUrlUrl = (threadId: string,
+    artifactId: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/threads/${threadId}/artifacts/${artifactId}/download-url`
+}
+
+export const getArtifactDownloadUrl = async (threadId: string,
+    artifactId: string, options?: RequestInit): Promise<ArtifactDownloadUrlResponse> => {
+
+  return fetchMutator<ArtifactDownloadUrlResponse>(getGetArtifactDownloadUrlUrl(threadId,artifactId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get observability overview stats
+ */
+export const getGetAdminOverviewUrl = (params?: GetAdminOverviewParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/overview?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/overview`
+}
+
+export const getAdminOverview = async (params?: GetAdminOverviewParams, options?: RequestInit): Promise<AdminOverviewResponse> => {
+
+  return fetchMutator<AdminOverviewResponse>(getGetAdminOverviewUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get time-bucketed observability metrics
+ */
+export const getGetAdminTimeseriesUrl = (params?: GetAdminTimeseriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/timeseries?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/timeseries`
+}
+
+export const getAdminTimeseries = async (params?: GetAdminTimeseriesParams, options?: RequestInit): Promise<AdminTimeseriesResponse> => {
+
+  return fetchMutator<AdminTimeseriesResponse>(getGetAdminTimeseriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-user observability stats
+ */
+export const getGetAdminUsersUrl = (params?: GetAdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/users?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/users`
+}
+
+export const getAdminUsers = async (params?: GetAdminUsersParams, options?: RequestInit): Promise<AdminUsersResponse> => {
+
+  return fetchMutator<AdminUsersResponse>(getGetAdminUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-agent observability stats
+ */
+export const getGetAdminAgentsUrl = (params?: GetAdminAgentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/agents?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/agents`
+}
+
+export const getAdminAgents = async (params?: GetAdminAgentsParams, options?: RequestInit): Promise<AdminAgentsResponse> => {
+
+  return fetchMutator<AdminAgentsResponse>(getGetAdminAgentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-tool observability stats
+ */
+export const getGetAdminToolsUrl = (params?: GetAdminToolsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/tools?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/tools`
+}
+
+export const getAdminTools = async (params?: GetAdminToolsParams, options?: RequestInit): Promise<AdminToolsResponse> => {
+
+  return fetchMutator<AdminToolsResponse>(getGetAdminToolsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get per-skill observability stats
+ */
+export const getGetAdminSkillsUrl = (params?: GetAdminSkillsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/skills?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/skills`
+}
+
+export const getAdminSkills = async (params?: GetAdminSkillsParams, options?: RequestInit): Promise<AdminSkillsResponse> => {
+
+  return fetchMutator<AdminSkillsResponse>(getGetAdminSkillsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List individual trace records
+ */
+export const getGetAdminTracesUrl = (params?: GetAdminTracesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/traces?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/traces`
+}
+
+export const getAdminTraces = async (params?: GetAdminTracesParams, options?: RequestInit): Promise<AdminTracesResponse> => {
+
+  return fetchMutator<AdminTracesResponse>(getGetAdminTracesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get full detail for a single trace
+ */
+export const getGetAdminTraceDetailUrl = (traceId: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/observability/traces/${traceId}`
+}
+
+export const getAdminTraceDetail = async (traceId: string, options?: RequestInit): Promise<AdminTraceDetailResponse> => {
+
+  return fetchMutator<AdminTraceDetailResponse>(getGetAdminTraceDetailUrl(traceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List all users from UserTable
+ */
+export const getListAdminUsersUrl = (params?: ListAdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users`
+}
+
+export const listAdminUsers = async (params?: ListAdminUsersParams, options?: RequestInit): Promise<AdminUsersListResponse> => {
+
+  return fetchMutator<AdminUsersListResponse>(getListAdminUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get Knowledge Base configuration status
+ */
+export const getGetKbStatusUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/status`
+}
+
+export const getKbStatus = async ( options?: RequestInit): Promise<KbStatusResponse> => {
+
+  return fetchMutator<KbStatusResponse>(getGetKbStatusUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List documents in the KB S3 data source bucket
+ */
+export const getListKbDocumentsUrl = (params?: ListKbDocumentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents`
+}
+
+export const listKbDocuments = async (params?: ListKbDocumentsParams, options?: RequestInit): Promise<KbDocumentsResponse> => {
+
+  return fetchMutator<KbDocumentsResponse>(getListKbDocumentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Delete a document from the KB S3 data source bucket
+ */
+export const getDeleteKbDocumentUrl = (params: DeleteKbDocumentParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents`
+}
+
+export const deleteKbDocument = async (params: DeleteKbDocumentParams, options?: RequestInit): Promise<void> => {
+
+  return fetchMutator<void>(getDeleteKbDocumentUrl(params),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get a presigned S3 URL for uploading a document
+ */
+export const getPresignKbDocumentUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/documents/presign`
+}
+
+export const presignKbDocument = async (presignDocumentRequest: PresignDocumentRequest, options?: RequestInit): Promise<PresignDocumentResponse> => {
+
+  return fetchMutator<PresignDocumentResponse>(getPresignKbDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      presignDocumentRequest,)
+  }
+);}
+
+
+
+/**
+ * @summary List recent KB ingestion jobs (last 10)
+ */
+export const getListKbIngestionJobsUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/ingestion-jobs`
+}
+
+export const listKbIngestionJobs = async ( options?: RequestInit): Promise<IngestionJobsResponse> => {
+
+  return fetchMutator<IngestionJobsResponse>(getListKbIngestionJobsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Manually start a KB ingestion sync job
+ */
+export const getStartKbSyncUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/knowledge-base/sync`
+}
+
+export const startKbSync = async ( options?: RequestInit): Promise<SyncResponse> => {
+
+  return fetchMutator<SyncResponse>(getStartKbSyncUrl(),
+  {
+    ...options,
+    method: 'POST'
 
 
   }

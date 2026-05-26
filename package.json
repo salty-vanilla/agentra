@@ -11,6 +11,7 @@
     "prepare:workspace": "pnpm generate:api && pnpm build:shared && pnpm --filter ./packages/presentation-author build && pnpm --filter ./packages/agent-tools build",
     "dev:frontend": "pnpm prepare:workspace && pnpm --filter @agentra/frontend dev",
     "dev:backend": "pnpm build:shared && pnpm --filter @agentra/backend dev",
+    "dev:storybook": "pnpm --filter @agentra/frontend storybook",
     "generate:api": "node ./scripts/generate/run-generate-api.mjs",
     "validate:openapi": "node ./scripts/contract/validate-openapi.mjs",
     "contract:backend": "pnpm --filter @agentra/backend exec node --import tsx ./src/contract.ts",

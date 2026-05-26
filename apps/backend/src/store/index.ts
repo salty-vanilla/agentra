@@ -1,4 +1,5 @@
 import type {
+  ArtifactManifest,
   ChatObservationSummary,
   PersistedChatMessage,
   ThreadSummary,
@@ -33,6 +34,7 @@ export interface Store {
     role: Exclude<ChatRole, 'system'>;
     content: string;
     observabilitySummary?: ChatObservationSummary;
+    artifactManifest?: ArtifactManifest;
     requestId?: string;
     errorMessage?: string;
     errorStack?: string;
@@ -67,6 +69,7 @@ export const appendMessage = (input: {
   role: Exclude<ChatRole, 'system'>;
   content: string;
   observabilitySummary?: ChatObservationSummary;
+  artifactManifest?: ArtifactManifest;
   requestId?: string;
   errorMessage?: string;
   errorStack?: string;

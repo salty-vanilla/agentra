@@ -12,6 +12,8 @@ tags:
   - name: health
   - name: threads
   - name: chat
+  - name: admin
+  - name: knowledge-base
 paths:
   /health:
     get:
@@ -47,7 +49,7 @@ paths:
                   Server-Sent Events stream. Each line is `data: <json>`.
                   JSON payload is one of ChatStreamTextEvent, ChatStreamProgressSummaryEvent,
                   ChatStreamSubAgentProgressEvent, ChatStreamObservationEvent,
-                  ChatStreamDoneEvent, ChatStreamErrorEvent.
+                  ChatStreamArtifactEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:
@@ -185,6 +187,445 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /threads/{threadId}/artifacts:
+    get:
+      operationId: listThreadArtifacts
+      tags: [threads]
+      summary: List artifact manifests for a thread
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+      responses:
+        '200':
+          description: Artifact manifests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ThreadArtifactsResponse'
+        '404':
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /threads/{threadId}/artifacts/{artifactId}/download-url:
+    get:
+      operationId: getArtifactDownloadUrl
+      tags: [threads]
+      summary: Get a fresh presigned download URL for an artifact
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+        - name: artifactId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Presigned download URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ArtifactDownloadUrlResponse'
+        '404':
+          description: Thread or artifact not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Artifact storage not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [admin]
+      summary: Get observability overview stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Overview stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverviewResponse'
+        '400':
+          description: Invalid date format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/timeseries:
+    get:
+      operationId: getAdminTimeseries
+      tags: [admin]
+      summary: Get time-bucketed observability metrics
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+        - name: bucket
+          in: query
+          schema:
+            type: string
+            enum: [hour, day]
+            default: day
+      responses:
+        '200':
+          description: Time-series buckets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTimeseriesResponse'
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/users:
+    get:
+      operationId: getAdminUsers
+      tags: [admin]
+      summary: Get per-user observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+        - $ref: '#/components/parameters/ObsLimit'
+        - $ref: '#/components/parameters/ObsCursor'
+      responses:
+        '200':
+          description: Per-user stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsersResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/agents:
+    get:
+      operationId: getAdminAgents
+      tags: [admin]
+      summary: Get per-agent observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Per-agent stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAgentsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/tools:
+    get:
+      operationId: getAdminTools
+      tags: [admin]
+      summary: Get per-tool observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Per-tool stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminToolsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/skills:
+    get:
+      operationId: getAdminSkills
+      tags: [admin]
+      summary: Get per-skill observability stats
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+      responses:
+        '200':
+          description: Per-skill stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminSkillsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/traces:
+    get:
+      operationId: getAdminTraces
+      tags: [admin]
+      summary: List individual trace records
+      parameters:
+        - $ref: '#/components/parameters/ObsFrom'
+        - $ref: '#/components/parameters/ObsTo'
+        - $ref: '#/components/parameters/ObsStatus'
+        - $ref: '#/components/parameters/ObsUserId'
+        - $ref: '#/components/parameters/ObsLimit'
+        - $ref: '#/components/parameters/ObsCursor'
+      responses:
+        '200':
+          description: Trace list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTracesResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/observability/traces/{traceId}:
+    get:
+      operationId: getAdminTraceDetail
+      tags: [admin]
+      summary: Get full detail for a single trace
+      parameters:
+        - $ref: '#/components/parameters/TraceId'
+      responses:
+        '200':
+          description: Trace detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminTraceDetailResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Trace not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List all users from UserTable
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsersListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/status:
+    get:
+      operationId: getKbStatus
+      tags: [knowledge-base]
+      summary: Get Knowledge Base configuration status
+      responses:
+        '200':
+          description: KB status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KbStatusResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/documents:
+    get:
+      operationId: listKbDocuments
+      tags: [knowledge-base]
+      summary: List documents in the KB S3 data source bucket
+      parameters:
+        - name: nextToken
+          in: query
+          required: false
+          schema:
+            type: string
+            description: Pagination token from a previous response
+      responses:
+        '200':
+          description: Document list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KbDocumentsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      operationId: deleteKbDocument
+      tags: [knowledge-base]
+      summary: Delete a document from the KB S3 data source bucket
+      parameters:
+        - name: key
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 1
+            description: URL-encoded S3 object key
+      responses:
+        '204':
+          description: Deleted successfully
+        '400':
+          description: Invalid or missing key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Document not found or key outside allowed prefix
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/documents/presign:
+    post:
+      operationId: presignKbDocument
+      tags: [knowledge-base]
+      summary: Get a presigned S3 URL for uploading a document
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PresignDocumentRequest'
+      responses:
+        '200':
+          description: Presigned upload URL
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PresignDocumentResponse'
+        '400':
+          description: Invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/ingestion-jobs:
+    get:
+      operationId: listKbIngestionJobs
+      tags: [knowledge-base]
+      summary: List recent KB ingestion jobs (last 10)
+      responses:
+        '200':
+          description: Ingestion job list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IngestionJobsResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /knowledge-base/sync:
+    post:
+      operationId: startKbSync
+      tags: [knowledge-base]
+      summary: Manually start a KB ingestion sync job
+      responses:
+        '200':
+          description: Sync job started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SyncResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '400':
+          description: Knowledge Base is not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Sync already in progress
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 components:
   parameters:
     ThreadId:
@@ -194,6 +635,58 @@ components:
       schema:
         type: string
         minLength: 1
+    TraceId:
+      name: traceId
+      in: path
+      required: true
+      schema:
+        type: string
+        minLength: 1
+    ObsFrom:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+    ObsTo:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        pattern: '^\d{4}-\d{2}-\d{2}$'
+    ObsLimit:
+      name: limit
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 50
+    ObsCursor:
+      name: cursor
+      in: query
+      required: false
+      schema:
+        type: string
+    ObsStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - success
+          - error
+          - cancelled
+    ObsUserId:
+      name: userId
+      in: query
+      required: false
+      schema:
+        type: string
   schemas:
     ChatRole:
       type: string
@@ -281,6 +774,8 @@ components:
           description: ISO timestamp when chat was cancelled
         observabilitySummary:
           $ref: '#/components/schemas/ChatObservationSummary'
+        artifactManifest:
+          $ref: '#/components/schemas/ArtifactManifest'
     ChatCommand:
       type: object
       required:
@@ -525,6 +1020,9 @@ components:
         error:
           type: string
           minLength: 1
+        metadata:
+          type: object
+          additionalProperties: true
     ChatObservationSummary:
       type: object
       additionalProperties: false
@@ -730,3 +1228,826 @@ components:
           minLength: 1
         details:
           type: object
+    AdminPeriod:
+      type: object
+      additionalProperties: false
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+    AdminTimeseriesResponse:
+      type: object
+      additionalProperties: false
+      required: [buckets, period]
+      properties:
+        buckets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - bucketStart
+              - requestCount
+              - successCount
+              - errorCount
+              - cancelledCount
+              - avgDurationMs
+              - p95DurationMs
+              - totalTokens
+              - inputTokens
+              - outputTokens
+              - toolCallCount
+              - toolFailureCount
+            properties:
+              bucketStart:
+                type: string
+                format: date-time
+              requestCount:
+                type: integer
+                minimum: 0
+              successCount:
+                type: integer
+                minimum: 0
+              errorCount:
+                type: integer
+                minimum: 0
+              cancelledCount:
+                type: integer
+                minimum: 0
+              avgDurationMs:
+                type: number
+                minimum: 0
+              p95DurationMs:
+                type: number
+                minimum: 0
+              totalTokens:
+                type: integer
+                minimum: 0
+              inputTokens:
+                type: integer
+                minimum: 0
+              outputTokens:
+                type: integer
+                minimum: 0
+              toolCallCount:
+                type: integer
+                minimum: 0
+              toolFailureCount:
+                type: integer
+                minimum: 0
+        period:
+          type: object
+          additionalProperties: false
+          required: [from, to]
+          properties:
+            from:
+              type: string
+            to:
+              type: string
+    AdminOverviewResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - requestCount
+        - activeUserCount
+        - totalTokens
+        - avgDurationMs
+        - p95DurationMs
+        - errorRate
+        - totalToolCalls
+        - toolFailureRate
+        - estimatedCostUsd
+        - period
+      properties:
+        requestCount:
+          type: integer
+          minimum: 0
+        activeUserCount:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        p95DurationMs:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        totalToolCalls:
+          type: integer
+          minimum: 0
+        toolFailureRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        estimatedCostUsd:
+          type: number
+          minimum: 0
+        period:
+          $ref: '#/components/schemas/AdminPeriod'
+    AdminUserStats:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - requestCount
+        - totalTokens
+        - avgDurationMs
+        - errorRate
+      properties:
+        userId:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+        requestCount:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        mostUsedAgent:
+          type: string
+        mostUsedTool:
+          type: string
+    AdminUsersResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUserStats'
+        cursor:
+          type: string
+    AdminUser:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - sub
+        - email
+        - role
+        - createdAt
+      properties:
+        userId:
+          type: string
+        sub:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        requestCount:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        mostUsedAgent:
+          type: string
+        mostUsedTool:
+          type: string
+    AdminUsersListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUser'
+        cursor:
+          type: string
+    AdminAgentStats:
+      type: object
+      additionalProperties: false
+      required:
+        - agentName
+        - callCount
+        - successRate
+        - errorRate
+        - avgDurationMs
+        - totalTokens
+        - relatedTools
+      properties:
+        agentName:
+          type: string
+        callCount:
+          type: integer
+          minimum: 0
+        successRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        relatedTools:
+          type: array
+          items:
+            type: string
+    AdminAgentsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - agents
+      properties:
+        agents:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminAgentStats'
+    AdminToolStats:
+      type: object
+      additionalProperties: false
+      required:
+        - toolName
+        - callCount
+        - failureRate
+        - avgDurationMs
+      properties:
+        toolName:
+          type: string
+        callCount:
+          type: integer
+          minimum: 0
+        failureRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        lastError:
+          type: string
+    AdminToolsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - tools
+      properties:
+        tools:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminToolStats'
+    AdminSkillStats:
+      type: object
+      additionalProperties: false
+      required:
+        - skillName
+        - requestCount
+        - avgDurationMs
+        - totalTokens
+        - errorRate
+      properties:
+        skillName:
+          type: string
+        requestCount:
+          type: integer
+          minimum: 0
+        avgDurationMs:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+    AdminSkillsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - skills
+      properties:
+        skills:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminSkillStats'
+    AdminTraceListItem:
+      type: object
+      additionalProperties: false
+      required:
+        - traceId
+        - userId
+        - startedAt
+        - completedAt
+        - durationMs
+        - status
+        - toolCallCount
+        - agentCallCount
+        - skillCallCount
+      properties:
+        traceId:
+          type: string
+        userId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        model:
+          type: string
+        totalTokens:
+          type: integer
+          minimum: 0
+        estimatedCostUsd:
+          type: number
+          minimum: 0
+        toolCallCount:
+          type: integer
+          minimum: 0
+        agentCallCount:
+          type: integer
+          minimum: 0
+        skillCallCount:
+          type: integer
+          minimum: 0
+    AdminTracesResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - traces
+      properties:
+        traces:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceListItem'
+        cursor:
+          type: string
+    AdminTraceToolCall:
+      type: object
+      additionalProperties: false
+      required:
+        - toolCallId
+        - toolName
+        - startedAt
+        - durationMs
+        - status
+      properties:
+        toolCallId:
+          type: string
+        toolName:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        error:
+          type: string
+    AdminTraceAgentCall:
+      type: object
+      additionalProperties: false
+      required:
+        - agentName
+      properties:
+        agentName:
+          type: string
+        agentKind:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+    AdminTraceSkillCall:
+      type: object
+      additionalProperties: false
+      required:
+        - skillName
+      properties:
+        skillName:
+          type: string
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+    AdminTokenUsage:
+      type: object
+      additionalProperties: false
+      required:
+        - inputTokens
+        - outputTokens
+        - totalTokens
+      properties:
+        inputTokens:
+          type: integer
+          minimum: 0
+        outputTokens:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+    AdminTraceDetail:
+      type: object
+      additionalProperties: false
+      required:
+        - traceId
+        - userId
+        - startedAt
+        - completedAt
+        - durationMs
+        - status
+        - toolCallCount
+        - agentCallCount
+        - skillCallCount
+        - requestId
+        - threadId
+        - toolCalls
+        - agentCalls
+        - skillCalls
+      properties:
+        traceId:
+          type: string
+        userId:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        durationMs:
+          type: integer
+          minimum: 0
+        status:
+          type: string
+          enum:
+            - success
+            - error
+            - cancelled
+        model:
+          type: string
+        totalTokens:
+          type: integer
+          minimum: 0
+        estimatedCostUsd:
+          type: number
+          minimum: 0
+        toolCallCount:
+          type: integer
+          minimum: 0
+        agentCallCount:
+          type: integer
+          minimum: 0
+        skillCallCount:
+          type: integer
+          minimum: 0
+        requestId:
+          type: string
+        threadId:
+          type: string
+        toolCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceToolCall'
+        agentCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceAgentCall'
+        skillCalls:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminTraceSkillCall'
+        tokenUsage:
+          $ref: '#/components/schemas/AdminTokenUsage'
+    AdminTraceDetailResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - trace
+      properties:
+        trace:
+          $ref: '#/components/schemas/AdminTraceDetail'
+    ArtifactKind:
+      type: string
+      enum:
+        - pptx
+        - pdf
+        - html
+        - png
+        - jpg
+        - json
+        - text
+        - source-js
+        - contact-sheet
+        - rendered-slide
+        - render-dir
+        - work-dir
+        - diagnostics-json
+        - image-asset
+        - other
+    ArtifactRef:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - kind
+        - name
+        - createdAt
+      properties:
+        id:
+          type: string
+          minLength: 1
+        kind:
+          $ref: '#/components/schemas/ArtifactKind'
+        name:
+          type: string
+          minLength: 1
+        path:
+          type: string
+        url:
+          type: string
+          format: uri
+        mimeType:
+          type: string
+        sizeBytes:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        metadata:
+          type: object
+          additionalProperties: true
+        label:
+          type: string
+        exists:
+          type: boolean
+    ArtifactManifest:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - createdAt
+        - artifacts
+      properties:
+        id:
+          type: string
+          minLength: 1
+        createdAt:
+          type: string
+          format: date-time
+        artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactRef'
+        metadata:
+          type: object
+          additionalProperties: true
+    ThreadArtifactsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - manifests
+      properties:
+        manifests:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactManifest'
+    ArtifactDownloadUrlResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - url
+        - expiresAt
+      properties:
+        url:
+          type: string
+          format: uri
+        expiresAt:
+          type: string
+          format: date-time
+    ChatStreamArtifactEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - manifest
+      properties:
+        type:
+          type: string
+          enum:
+            - artifact
+        manifest:
+          $ref: '#/components/schemas/ArtifactManifest'
+    KbStatusResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - configured
+      properties:
+        configured:
+          type: boolean
+        kbId:
+          type: string
+        dataSourceId:
+          type: string
+        dataSourceBucketName:
+          type: string
+    KbDocument:
+      type: object
+      additionalProperties: false
+      required:
+        - key
+        - name
+        - sizeBytes
+        - lastModified
+      properties:
+        key:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        sizeBytes:
+          type: integer
+          minimum: 0
+        lastModified:
+          type: string
+          format: date-time
+    KbDocumentsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - documents
+      properties:
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/KbDocument'
+        nextToken:
+          type: string
+    PresignDocumentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - fileName
+        - contentType
+        - sizeBytes
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+        contentType:
+          type: string
+          enum:
+            - application/pdf
+            - text/plain
+            - text/markdown
+            - application/msword
+            - application/vnd.openxmlformats-officedocument.wordprocessingml.document
+        sizeBytes:
+          type: integer
+          minimum: 1
+          maximum: 52428800
+    PresignDocumentResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - presignedUrl
+        - key
+        - expiresAt
+      properties:
+        presignedUrl:
+          type: string
+          format: uri
+        key:
+          type: string
+          minLength: 1
+        expiresAt:
+          type: string
+          format: date-time
+    IngestionJobSummary:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - status
+        - startedAt
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - STARTING
+            - IN_PROGRESS
+            - COMPLETE
+            - FAILED
+            - STOPPING
+            - STOPPED
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        statistics:
+          type: object
+          nullable: true
+    IngestionJobsResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - jobs
+      properties:
+        jobs:
+          type: array
+          items:
+            $ref: '#/components/schemas/IngestionJobSummary'
+    SyncResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - jobId
+        - status
+      properties:
+        jobId:
+          type: string
+          minLength: 1
+        status:
+          type: string
+          enum:
+            - STARTING

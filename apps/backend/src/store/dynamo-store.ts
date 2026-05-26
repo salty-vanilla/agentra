@@ -1,4 +1,5 @@
 import {
+  type ArtifactManifest,
   type ChatObservationSummary,
   type PersistedChatMessage,
   persistedChatMessageSchema,
@@ -199,6 +200,7 @@ export class DynamoStore implements Store {
     role: 'user' | 'assistant';
     content: string;
     observabilitySummary?: ChatObservationSummary;
+    artifactManifest?: ArtifactManifest;
     requestId?: string;
     errorMessage?: string;
     errorStack?: string;
@@ -215,6 +217,7 @@ export class DynamoStore implements Store {
       ...(input.observabilitySummary
         ? { observabilitySummary: input.observabilitySummary }
         : {}),
+      ...(input.artifactManifest ? { artifactManifest: input.artifactManifest } : {}),
       ...(input.requestId ? { requestId: input.requestId } : {}),
       ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
       ...(input.errorStack ? { errorStack: input.errorStack } : {}),
@@ -234,6 +237,7 @@ export class DynamoStore implements Store {
           ...(input.observabilitySummary
             ? { observabilitySummary: input.observabilitySummary }
             : {}),
+          ...(input.artifactManifest ? { artifactManifest: input.artifactManifest } : {}),
           ...(input.requestId ? { requestId: input.requestId } : {}),
           ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
           ...(input.errorStack ? { errorStack: input.errorStack } : {}),

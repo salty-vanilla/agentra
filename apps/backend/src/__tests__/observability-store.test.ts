@@ -193,4 +193,175 @@ describe('MemoryObservabilityStore', () => {
       expect(result.records).toHaveLength(0);
     });
   });
+
+  describe('listObservabilityRecordsInRange', () => {
+    it('returns all records within the date range inclusive', async () => {
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't1',
+          startedAt: '2026-05-20T10:00:00.000Z',
+          completedAt: '2026-05-20T10:00:05.000Z',
+        }),
+      );
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't2',
+          startedAt: '2026-05-22T10:00:00.000Z',
+          completedAt: '2026-05-22T10:00:05.000Z',
+        }),
+      );
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't3',
+          startedAt: '2026-05-24T10:00:00.000Z',
+          completedAt: '2026-05-24T10:00:05.000Z',
+        }),
+      );
+
+      const result = await store.listObservabilityRecordsInRange({
+        startDay: '2026-05-20',
+        endDay: '2026-05-22',
+      });
+
+      expect(result.records).toHaveLength(2);
+      const traceIds = result.records.map((r) => r.traceId);
+      expect(traceIds).toContain('t1');
+      expect(traceIds).toContain('t2');
+      expect(traceIds).not.toContain('t3');
+    });
+
+    it('excludes records before startDay', async () => {
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't1',
+          startedAt: '2026-05-19T23:59:59.000Z',
+          completedAt: '2026-05-19T23:59:59.999Z',
+        }),
+      );
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't2',
+          startedAt: '2026-05-20T00:00:00.000Z',
+          completedAt: '2026-05-20T00:00:01.000Z',
+        }),
+      );
+
+      const result = await store.listObservabilityRecordsInRange({
+        startDay: '2026-05-20',
+      });
+      expect(result.records).toHaveLength(1);
+      expect(result.records[0]?.traceId).toBe('t2');
+    });
+
+    it('excludes records after endDay', async () => {
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't1',
+          startedAt: '2026-05-20T10:00:00.000Z',
+          completedAt: '2026-05-20T10:00:05.000Z',
+        }),
+      );
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't2',
+          startedAt: '2026-05-21T10:00:00.000Z',
+          completedAt: '2026-05-21T10:00:05.000Z',
+        }),
+      );
+
+      const result = await store.listObservabilityRecordsInRange({
+        endDay: '2026-05-20',
+      });
+      expect(result.records).toHaveLength(1);
+      expect(result.records[0]?.traceId).toBe('t1');
+    });
+
+    it('returns records in reverse-chronological order', async () => {
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't1',
+          startedAt: '2026-05-20T08:00:00.000Z',
+          completedAt: '2026-05-20T08:00:05.000Z',
+        }),
+      );
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't2',
+          startedAt: '2026-05-21T08:00:00.000Z',
+          completedAt: '2026-05-21T08:00:05.000Z',
+        }),
+      );
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't3',
+          startedAt: '2026-05-22T08:00:00.000Z',
+          completedAt: '2026-05-22T08:00:05.000Z',
+        }),
+      );
+
+      const result = await store.listObservabilityRecordsInRange({
+        startDay: '2026-05-20',
+        endDay: '2026-05-22',
+      });
+
+      expect(result.records[0]?.traceId).toBe('t3');
+      expect(result.records[1]?.traceId).toBe('t2');
+      expect(result.records[2]?.traceId).toBe('t1');
+    });
+
+    it('paginates with cursor', async () => {
+      for (let i = 0; i < 5; i++) {
+        await store.putObservabilityRecord(
+          makeRecord({
+            traceId: `t${i}`,
+            startedAt: `2026-05-2${i}T08:00:00.000Z`,
+            completedAt: `2026-05-2${i}T08:00:05.000Z`,
+          }),
+        );
+      }
+
+      const page1 = await store.listObservabilityRecordsInRange(
+        { startDay: '2026-05-20', endDay: '2026-05-24' },
+        { limit: 3 },
+      );
+      expect(page1.records).toHaveLength(3);
+      expect(page1.cursor).toBeDefined();
+
+      const page2 = await store.listObservabilityRecordsInRange(
+        { startDay: '2026-05-20', endDay: '2026-05-24' },
+        { limit: 3, ...(page1.cursor ? { cursor: page1.cursor } : {}) },
+      );
+      expect(page2.records).toHaveLength(2);
+      expect(page2.cursor).toBeUndefined();
+    });
+
+    it('returns empty result when no records match', async () => {
+      const result = await store.listObservabilityRecordsInRange({
+        startDay: '2099-01-01',
+        endDay: '2099-01-31',
+      });
+      expect(result.records).toHaveLength(0);
+      expect(result.cursor).toBeUndefined();
+    });
+
+    it('returns all records when no range is specified', async () => {
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't1',
+          startedAt: '2026-05-20T10:00:00.000Z',
+          completedAt: '2026-05-20T10:00:05.000Z',
+        }),
+      );
+      await store.putObservabilityRecord(
+        makeRecord({
+          traceId: 't2',
+          startedAt: '2026-05-24T10:00:00.000Z',
+          completedAt: '2026-05-24T10:00:05.000Z',
+        }),
+      );
+
+      const result = await store.listObservabilityRecordsInRange({});
+      expect(result.records).toHaveLength(2);
+    });
+  });
 });

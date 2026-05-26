@@ -30,6 +30,10 @@ export interface AgentraAppStackProps extends StackProps {
   slideRuntimeQualifier?: string;
   presentationArtifactsBucketName?: string;
   allowedCorsOrigins?: string[];
+  normalKbId?: string;
+  normalKbArn?: string;
+  normalKbDataSourceId?: string;
+  kbDataSourceBucketName?: string;
 }
 
 export class AgentraAppStack extends Stack {
@@ -55,6 +59,7 @@ export class AgentraAppStack extends Stack {
       MESSAGES_TABLE_NAME: props.dataAuthStack.messagesTable.tableName,
       USERS_TABLE_NAME: props.dataAuthStack.usersTable.tableName,
       OBSERVABILITY_TABLE_NAME: props.dataAuthStack.observabilityTable.tableName,
+      ADMIN_GROUP_NAME: props.dataAuthStack.adminGroupName,
       COGNITO_USER_POOL_ID: props.dataAuthStack.userPool.userPoolId,
       COGNITO_USER_POOL_CLIENT_ID: props.dataAuthStack.userPoolClient.userPoolClientId,
       COGNITO_REGION: Stack.of(this).region,
@@ -62,6 +67,7 @@ export class AgentraAppStack extends Stack {
       ALLOWED_CORS_ORIGINS: (props.allowedCorsOrigins ?? ['http://localhost:3000']).join(
         ',',
       ),
+      ARTIFACT_BUCKET_NAME: props.presentationArtifactsBucketName ?? '',
     };
 
     // AgentCore / slide runtime env vars — StreamingHandler only
@@ -73,6 +79,14 @@ export class AgentraAppStack extends Stack {
       PRESENTATION_ARTIFACT_BUCKET_NAME: props.presentationArtifactsBucketName ?? '',
     };
 
+    // KB management env vars — RestHandler only (not StreamingHandler)
+    const kbEnv = {
+      BEDROCK_KB_ID: props.normalKbId ?? '',
+      BEDROCK_KB_ARN: props.normalKbArn ?? '',
+      BEDROCK_KB_DATA_SOURCE_ID: props.normalKbDataSourceId ?? '',
+      KB_DATA_SOURCE_BUCKET_NAME: props.kbDataSourceBucketName ?? '',
+    };
+
     // HTTP API Lambda — buffered mode, short timeout for CRUD endpoints
     const restHandler = new DockerImageFunction(this, 'RestHandler', {
       code: backendImage,
@@ -81,6 +95,7 @@ export class AgentraAppStack extends Stack {
       memorySize: 512,
       environment: {
         ...baseEnv,
+        ...kbEnv,
         AWS_LWA_INVOKE_MODE: 'buffered',
       },
     });
@@ -133,6 +148,55 @@ export class AgentraAppStack extends Stack {
       props.dataAuthStack.observabilityTable.grantReadWriteData(handler);
     }
 
+    // S3 GetObject — restHandler serves presigned download-url endpoint
+    if (props.presentationArtifactsBucketName) {
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:GetObject'],
+          resources: [`arn:aws:s3:::${props.presentationArtifactsBucketName}/runs/*`],
+        }),
+      );
+    }
+
+    // KB data source S3 access — RestHandler only, scoped to manufacturing-line/ prefix
+    if (props.kbDataSourceBucketName) {
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:ListBucket'],
+          resources: [`arn:aws:s3:::${props.kbDataSourceBucketName}`],
+          conditions: {
+            StringLike: { 's3:prefix': ['manufacturing-line/', 'manufacturing-line/*'] },
+          },
+        }),
+      );
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+          resources: [
+            `arn:aws:s3:::${props.kbDataSourceBucketName}/manufacturing-line/*`,
+          ],
+        }),
+      );
+    }
+
+    // Bedrock ingestion job management — RestHandler only
+    if (props.normalKbArn) {
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            'bedrock:StartIngestionJob',
+            'bedrock:GetIngestionJob',
+            'bedrock:ListIngestionJobs',
+          ],
+          resources: [props.normalKbArn],
+        }),
+      );
+    }
+
     const allowedOrigins = props.allowedCorsOrigins ?? ['http://localhost:3000'];
 
     // HTTP API — normal CRUD routes (/health, /threads), lower cost + latency than REST API
@@ -163,6 +227,26 @@ export class AgentraAppStack extends Stack {
     httpApi.addRoutes({
       path: '/threads/{threadId}/messages',
       methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/threads/{threadId}/artifacts',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/threads/{threadId}/artifacts/{artifactId}/download-url',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/admin/{proxy+}',
+      methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/knowledge-base/{proxy+}',
+      methods: [HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE],
       integration: httpIntegration,
     });
 
