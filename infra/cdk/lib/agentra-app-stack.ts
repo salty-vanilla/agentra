@@ -30,6 +30,10 @@ export interface AgentraAppStackProps extends StackProps {
   slideRuntimeQualifier?: string;
   presentationArtifactsBucketName?: string;
   allowedCorsOrigins?: string[];
+  normalKbId?: string;
+  normalKbArn?: string;
+  normalKbDataSourceId?: string;
+  kbDataSourceBucketName?: string;
 }
 
 export class AgentraAppStack extends Stack {
@@ -75,6 +79,14 @@ export class AgentraAppStack extends Stack {
       PRESENTATION_ARTIFACT_BUCKET_NAME: props.presentationArtifactsBucketName ?? '',
     };
 
+    // KB management env vars — RestHandler only (not StreamingHandler)
+    const kbEnv = {
+      BEDROCK_KB_ID: props.normalKbId ?? '',
+      BEDROCK_KB_ARN: props.normalKbArn ?? '',
+      BEDROCK_KB_DATA_SOURCE_ID: props.normalKbDataSourceId ?? '',
+      KB_DATA_SOURCE_BUCKET_NAME: props.kbDataSourceBucketName ?? '',
+    };
+
     // HTTP API Lambda — buffered mode, short timeout for CRUD endpoints
     const restHandler = new DockerImageFunction(this, 'RestHandler', {
       code: backendImage,
@@ -83,6 +95,7 @@ export class AgentraAppStack extends Stack {
       memorySize: 512,
       environment: {
         ...baseEnv,
+        ...kbEnv,
         AWS_LWA_INVOKE_MODE: 'buffered',
       },
     });
@@ -146,6 +159,44 @@ export class AgentraAppStack extends Stack {
       );
     }
 
+    // KB data source S3 access — RestHandler only, scoped to manufacturing-line/ prefix
+    if (props.kbDataSourceBucketName) {
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:ListBucket'],
+          resources: [`arn:aws:s3:::${props.kbDataSourceBucketName}`],
+          conditions: {
+            StringLike: { 's3:prefix': ['manufacturing-line/', 'manufacturing-line/*'] },
+          },
+        }),
+      );
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
+          resources: [
+            `arn:aws:s3:::${props.kbDataSourceBucketName}/manufacturing-line/*`,
+          ],
+        }),
+      );
+    }
+
+    // Bedrock ingestion job management — RestHandler only
+    if (props.normalKbArn) {
+      restHandler.addToRolePolicy(
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            'bedrock:StartIngestionJob',
+            'bedrock:GetIngestionJob',
+            'bedrock:ListIngestionJobs',
+          ],
+          resources: [props.normalKbArn],
+        }),
+      );
+    }
+
     const allowedOrigins = props.allowedCorsOrigins ?? ['http://localhost:3000'];
 
     // HTTP API — normal CRUD routes (/health, /threads), lower cost + latency than REST API
@@ -191,6 +242,11 @@ export class AgentraAppStack extends Stack {
     httpApi.addRoutes({
       path: '/admin/{proxy+}',
       methods: [HttpMethod.GET],
+      integration: httpIntegration,
+    });
+    httpApi.addRoutes({
+      path: '/knowledge-base/{proxy+}',
+      methods: [HttpMethod.GET, HttpMethod.POST, HttpMethod.DELETE],
       integration: httpIntegration,
     });
 

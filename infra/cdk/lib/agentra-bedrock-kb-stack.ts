@@ -13,6 +13,7 @@ import {
   BlockPublicAccess,
   Bucket,
   BucketEncryption,
+  HttpMethods,
   type LifecycleRule,
   StorageClass,
 } from 'aws-cdk-lib/aws-s3';
@@ -45,12 +46,18 @@ export interface AgentraBedrockKbStackProps extends StackProps {
    *   Lower latency; better for high-throughput production use cases.
    */
   vectorStoreType?: VectorStoreType;
+  /**
+   * Origins allowed to PUT directly to the S3 data source bucket via presigned URLs.
+   * Defaults to localhost for local/shared-dev stages.
+   */
+  allowedCorsOrigins?: string[];
 }
 
 export class AgentraBedrockKbStack extends Stack {
   readonly knowledgeBaseId: string;
   readonly knowledgeBaseArn: string;
   readonly documentBucketName: string;
+  readonly dataSourceId: string;
 
   constructor(scope: Construct, id: string, props: AgentraBedrockKbStackProps) {
     super(scope, id, props);
@@ -78,6 +85,11 @@ export class AgentraBedrockKbStack extends Stack {
       },
     ];
 
+    const corsOrigins = props.allowedCorsOrigins ?? [
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+    ];
+
     const documentBucket = new Bucket(this, 'ManufacturingDocBucket', {
       bucketName: `agentra-${stage}-manufacturing-docs`,
       blockPublicAccess: BlockPublicAccess.BLOCK_ALL,
@@ -88,6 +100,14 @@ export class AgentraBedrockKbStack extends Stack {
       lifecycleRules: pocLifecycleRules,
       removalPolicy: isDevStage ? RemovalPolicy.DESTROY : RemovalPolicy.RETAIN,
       autoDeleteObjects: isDevStage,
+      cors: [
+        {
+          allowedMethods: [HttpMethods.PUT],
+          allowedOrigins: corsOrigins,
+          allowedHeaders: ['content-type', 'x-amz-*'],
+          maxAge: 300,
+        },
+      ],
     });
 
     // --- IAM role for Bedrock Knowledge Base ---
@@ -273,7 +293,12 @@ export class AgentraBedrockKbStack extends Stack {
     this.knowledgeBaseId = kb.attrKnowledgeBaseId;
     this.knowledgeBaseArn = kb.attrKnowledgeBaseArn;
     this.documentBucketName = documentBucket.bucketName;
+    this.dataSourceId = dataSource.attrDataSourceId;
 
+    new CfnOutput(this, 'DataSourceId', {
+      value: this.dataSourceId,
+      description: 'BEDROCK_KB_DATA_SOURCE_ID — Bedrock Knowledge Base data source ID.',
+    });
     new CfnOutput(this, 'BedrockKbId', {
       value: this.knowledgeBaseId,
       exportName: `${id}-BedrockKbId`,

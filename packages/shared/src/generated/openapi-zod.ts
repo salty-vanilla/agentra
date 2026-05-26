@@ -726,3 +726,104 @@ export const GetAdminTraceDetailResponse = zod.object({
 }).optional()
 })
 })
+
+
+/**
+ * @summary Get Knowledge Base configuration status
+ */
+export const GetKbStatusResponse = zod.object({
+  "configured": zod.boolean(),
+  "kbId": zod.string().optional(),
+  "dataSourceId": zod.string().optional(),
+  "dataSourceBucketName": zod.string().optional()
+})
+
+
+/**
+ * @summary List documents in the KB S3 data source bucket
+ */
+export const ListKbDocumentsQueryParams = zod.object({
+  "nextToken": zod.string().optional()
+})
+
+
+
+export const listKbDocumentsResponseDocumentsItemSizeBytesMin = 0;
+
+
+
+export const ListKbDocumentsResponse = zod.object({
+  "documents": zod.array(zod.object({
+  "key": zod.string().min(1),
+  "name": zod.string().min(1),
+  "sizeBytes": zod.number().min(listKbDocumentsResponseDocumentsItemSizeBytesMin),
+  "lastModified": zod.string().datetime({})
+})),
+  "nextToken": zod.string().optional()
+})
+
+
+/**
+ * @summary Delete a document from the KB S3 data source bucket
+ */
+
+
+
+export const DeleteKbDocumentQueryParams = zod.object({
+  "key": zod.string().min(1)
+})
+
+
+/**
+ * @summary Get a presigned S3 URL for uploading a document
+ */
+
+export const presignKbDocumentBodySizeBytesMax = 52428800;
+
+
+
+export const PresignKbDocumentBody = zod.object({
+  "fileName": zod.string().min(1),
+  "contentType": zod.enum(['application/pdf', 'text/plain', 'text/markdown', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']),
+  "sizeBytes": zod.number().min(1).max(presignKbDocumentBodySizeBytesMax)
+})
+
+
+
+
+export const PresignKbDocumentResponse = zod.object({
+  "presignedUrl": zod.string().url(),
+  "key": zod.string().min(1),
+  "expiresAt": zod.string().datetime({})
+})
+
+
+/**
+ * @summary List recent KB ingestion jobs (last 10)
+ */
+
+
+
+export const ListKbIngestionJobsResponse = zod.object({
+  "jobs": zod.array(zod.object({
+  "jobId": zod.string().min(1),
+  "status": zod.enum(['STARTING', 'IN_PROGRESS', 'COMPLETE', 'FAILED', 'STOPPING', 'STOPPED']),
+  "startedAt": zod.string().datetime({}),
+  "completedAt": zod.string().datetime({}).optional(),
+  "statistics": zod.object({
+
+}).passthrough().nullish()
+}))
+})
+
+
+/**
+ * @summary Manually start a KB ingestion sync job
+ */
+
+
+
+export const StartKbSyncResponse = zod.object({
+  "jobId": zod.string().min(1),
+  "status": zod.enum(['STARTING'])
+})

@@ -29,6 +29,7 @@ import { adminAuthMiddleware } from './middleware/admin-auth.js';
 import { authMiddleware } from './middleware/auth.js';
 import { requestIdMiddleware } from './middleware/request-id.js';
 import { adminObservabilityRouter } from './routes/admin-observability.js';
+import { knowledgeBaseRouter } from './routes/knowledge-base.js';
 import {
   appendMessage,
   createThread,
@@ -162,6 +163,9 @@ app.use('/threads', authMiddleware);
 app.use('/admin/*', authMiddleware);
 app.use('/admin/*', adminAuthMiddleware);
 app.route('/admin/observability', adminObservabilityRouter);
+app.use('/knowledge-base/*', authMiddleware);
+app.use('/knowledge-base/*', adminAuthMiddleware);
+app.route('/knowledge-base', knowledgeBaseRouter);
 
 app.get('/', (context) => {
   return context.json({
