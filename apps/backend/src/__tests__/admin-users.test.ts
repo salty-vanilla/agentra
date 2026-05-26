@@ -157,6 +157,31 @@ describe('GET /admin/users', () => {
       expect(body2.users).toHaveLength(1);
       expect(body2.cursor).toBeUndefined();
     });
+
+    it('traverses all pages with limit=1 without duplicates or missing users', async () => {
+      await userStore.getOrCreateUser('sub-extra-1', 'a@example.com', []);
+      await userStore.getOrCreateUser('sub-extra-2', 'b@example.com', []);
+
+      const collected: string[] = [];
+      let cursor: string | undefined;
+
+      do {
+        const url = cursor
+          ? `/admin/users?limit=1&cursor=${cursor}`
+          : '/admin/users?limit=1';
+        const res = await app.request(url);
+        expect(res.status).toBe(200);
+        // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+        const body = (await res.json()) as any;
+        expect(body.users).toHaveLength(1);
+        collected.push(body.users[0].userId);
+        cursor = body.cursor;
+      } while (cursor);
+
+      // 3 users total (DEMO + 2 extras), no duplicates
+      expect(collected).toHaveLength(3);
+      expect(new Set(collected).size).toBe(3);
+    });
   });
 
   describe('input validation', () => {

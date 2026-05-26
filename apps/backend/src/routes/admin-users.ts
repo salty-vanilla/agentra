@@ -142,26 +142,31 @@ adminUsersRouter.get('/', async (c) => {
   const { records } = await listObservabilityRecordsInRange(obsWindow);
   const obsByUserId = buildObsStatsByUser(records);
 
-  const adminUsers: AdminUser[] = userRecords.map((u) => {
-    const obs = obsByUserId.get(u.userId);
-    return {
-      userId: u.userId,
-      sub: u.sub,
-      email: u.email,
-      role: u.role,
-      createdAt: u.createdAt,
-      ...(obs
-        ? {
-            lastSeenAt: obs.lastSeenAt,
-            requestCount: obs.requestCount,
-            totalTokens: obs.totalTokens,
-            errorRate: obs.errorRate,
-            ...(obs.mostUsedAgent ? { mostUsedAgent: obs.mostUsedAgent } : {}),
-            ...(obs.mostUsedTool ? { mostUsedTool: obs.mostUsedTool } : {}),
-          }
-        : {}),
-    };
-  });
+  const adminUsers: AdminUser[] = userRecords
+    .map((u) => {
+      const obs = obsByUserId.get(u.userId);
+      return {
+        userId: u.userId,
+        sub: u.sub,
+        email: u.email,
+        role: u.role,
+        createdAt: u.createdAt,
+        ...(obs
+          ? {
+              lastSeenAt: obs.lastSeenAt,
+              requestCount: obs.requestCount,
+              totalTokens: obs.totalTokens,
+              errorRate: obs.errorRate,
+              ...(obs.mostUsedAgent ? { mostUsedAgent: obs.mostUsedAgent } : {}),
+              ...(obs.mostUsedTool ? { mostUsedTool: obs.mostUsedTool } : {}),
+            }
+          : {}),
+      };
+    })
+    .sort(
+      (a, b) =>
+        b.createdAt.localeCompare(a.createdAt) || a.userId.localeCompare(b.userId),
+    );
 
   const { page, nextCursor } = applyOffsetPagination(adminUsers, limit, offset);
 
