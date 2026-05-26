@@ -13,7 +13,13 @@ import {
   useAuiState,
 } from '@assistant-ui/react';
 import { cva } from 'class-variance-authority';
-import { ArrowDownIcon, PencilIcon } from 'lucide-react';
+import {
+  AlertTriangleIcon,
+  ArrowDownIcon,
+  BanIcon,
+  PencilIcon,
+  XCircleIcon,
+} from 'lucide-react';
 import {
   type ButtonHTMLAttributes,
   createContext,
@@ -276,7 +282,57 @@ const CaptureButton = forwardRef<
 });
 CaptureButton.displayName = 'CaptureButton';
 
+type PersistedMessageCustom = {
+  observabilitySummary?: ChatObservationSummary;
+  errorMessage?: string;
+  cancelledAt?: string;
+};
+
+// biome-ignore lint/suspicious/noExplicitAny: state shape typed by @assistant-ui/react
+const selectPersistedMessageCustom = (s: any): PersistedMessageCustom =>
+  (s.message.metadata.custom as PersistedMessageCustom | undefined) ?? {};
+
+const AssistantMessageErrorBadge: FC<{ errorMessage: string }> = ({ errorMessage }) => {
+  const reloadRef = useRef<(() => void) | undefined>(undefined);
+  return (
+    <div className="mt-2 rounded-md border border-destructive/50 bg-destructive/5 px-3 py-2 text-sm">
+      <div style={{ display: 'none' }} aria-hidden="true">
+        <ActionBarPrimitive.Reload render={<CaptureButton callbackRef={reloadRef} />} />
+      </div>
+      <div className="flex items-center gap-2">
+        <XCircleIcon className="size-4 shrink-0 text-destructive" />
+        <span className="font-medium text-destructive">生成に失敗しました</span>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="ml-auto h-auto px-2 py-0.5 text-destructive text-xs hover:bg-destructive/10"
+          onClick={() => reloadRef.current?.()}
+        >
+          再送信
+        </Button>
+      </div>
+      <details className="mt-1">
+        <summary className="cursor-pointer text-muted-foreground text-xs">詳細</summary>
+        <p className="mt-1 whitespace-pre-wrap break-all text-muted-foreground text-xs">
+          {errorMessage}
+        </p>
+      </details>
+    </div>
+  );
+};
+
+const AssistantMessageCancelledBadge: FC = () => (
+  <div className="mt-2 flex items-center gap-2 rounded-md border border-muted-foreground/20 bg-muted/40 px-3 py-2 text-muted-foreground text-sm">
+    <BanIcon className="size-4 shrink-0" />
+    生成がキャンセルされました
+  </div>
+);
+
 const AssistantMessage: FC = () => {
+  const custom = useAuiState(selectPersistedMessageCustom);
+  const summary = useAuiState(selectObservabilitySummary);
+  const toolFailureCount = summary?.toolFailureCount ?? 0;
+
   return (
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
@@ -284,7 +340,17 @@ const AssistantMessage: FC = () => {
       className={threadMessageRootVariants({ role: 'assistant' })}
     >
       <AssistantMessageView
-        errorContent={<MessageError />}
+        errorContent={
+          <>
+            <MessageError />
+            {custom.errorMessage && (
+              <AssistantMessageErrorBadge errorMessage={custom.errorMessage} />
+            )}
+            {!custom.errorMessage && custom.cancelledAt && (
+              <AssistantMessageCancelledBadge />
+            )}
+          </>
+        }
         footer={
           <>
             <BranchPicker />
@@ -292,6 +358,12 @@ const AssistantMessage: FC = () => {
           </>
         }
       >
+        {toolFailureCount > 0 && (
+          <div className="mb-2 flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-700 text-sm dark:text-amber-400">
+            <AlertTriangleIcon className="size-4 shrink-0" />
+            一部の処理が失敗しました。回答が不完全な場合があります
+          </div>
+        )}
         <MessagePrimitive.Parts
           components={{
             Text: MarkdownText,

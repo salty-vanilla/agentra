@@ -1,6 +1,7 @@
 import { APP_VERSION } from '@agentra/shared';
 import { HttpResponse } from 'msw';
 import { uuidv7 } from 'uuidv7';
+import { observabilityFixtures } from '@/mocks/fixtures/observability';
 import {
   getCreateThreadMockHandler,
   getDeleteThreadMockHandler,
@@ -1334,6 +1335,142 @@ function seedStore() {
       content: 'トークン使用量が記録されていないモデルからの応答です。',
       createdAt: '2026-04-18T01:04:12.000Z',
       observabilitySummary: buildDummyObservabilitySummary('トークン'),
+    },
+  ]);
+
+  // Third seed thread: error-handling UI state variations
+  const thread3Id = 'thread-mock-003';
+
+  threadStore.set(thread3Id, {
+    threadId: thread3Id,
+    title: 'エラーハンドリング バリエーション',
+    createdAt: '2026-04-18T02:00:00.000Z',
+    updatedAt: '2026-04-18T02:07:00.000Z',
+    preview: 'error badge / cancelled badge / warning banner の確認用スレッドです。',
+  });
+
+  messageStore.set(thread3Id, [
+    // 1. Normal message (control — no badge, no banner)
+    {
+      messageId: 'msg-e-001',
+      threadId: thread3Id,
+      role: 'user',
+      content: '通常応答のケースを見せてください',
+      createdAt: '2026-04-18T02:01:00.000Z',
+    },
+    {
+      messageId: 'msg-e-002',
+      threadId: thread3Id,
+      role: 'assistant',
+      content: 'ツール呼び出しを含む通常の応答です。エラーも中断もありません。',
+      createdAt: '2026-04-18T02:01:10.000Z',
+      observabilitySummary: observabilityFixtures.successWithTools,
+    },
+
+    // 2. Persisted errorMessage → red error badge + 再送信 button
+    {
+      messageId: 'msg-e-003',
+      threadId: thread3Id,
+      role: 'user',
+      content: '生成エラーが記録されたケースを見せてください',
+      createdAt: '2026-04-18T02:02:00.000Z',
+    },
+    {
+      messageId: 'msg-e-004',
+      threadId: thread3Id,
+      role: 'assistant',
+      content: '',
+      createdAt: '2026-04-18T02:02:05.000Z',
+      errorMessage:
+        'AgentCore invocation failed after 3 retries.\nCaused by: ThrottlingException: Rate limit exceeded for model claude-3-5-sonnet.',
+    },
+
+    // 3. Persisted cancelledAt → muted cancelled badge
+    {
+      messageId: 'msg-e-005',
+      threadId: thread3Id,
+      role: 'user',
+      content: 'ユーザーが中断したケースを見せてください',
+      createdAt: '2026-04-18T02:03:00.000Z',
+    },
+    {
+      messageId: 'msg-e-006',
+      threadId: thread3Id,
+      role: 'assistant',
+      content: '途中まで生成された内容です...',
+      createdAt: '2026-04-18T02:03:05.000Z',
+      cancelledAt: '2026-04-18T02:03:08.000Z',
+    },
+
+    // 4. toolFailureCount > 0 with no errorMessage → amber warning banner only
+    {
+      messageId: 'msg-e-007',
+      threadId: thread3Id,
+      role: 'user',
+      content: 'ツール失敗（警告バナーのみ）のケースを見せてください',
+      createdAt: '2026-04-18T02:04:00.000Z',
+    },
+    {
+      messageId: 'msg-e-008',
+      threadId: thread3Id,
+      role: 'assistant',
+      content: '一部のツールが失敗しましたが、他の手段で回答を生成できました。',
+      createdAt: '2026-04-18T02:04:15.000Z',
+      observabilitySummary: observabilityFixtures.withToolFailure,
+    },
+
+    // 5. errorMessage + toolFailureCount > 0 → red badge + amber banner combined
+    {
+      messageId: 'msg-e-009',
+      threadId: thread3Id,
+      role: 'user',
+      content: 'エラーバッジと警告バナーが両方出るケースを見せてください',
+      createdAt: '2026-04-18T02:05:00.000Z',
+    },
+    {
+      messageId: 'msg-e-010',
+      threadId: thread3Id,
+      role: 'assistant',
+      content: '',
+      createdAt: '2026-04-18T02:05:05.000Z',
+      errorMessage:
+        'ツール失敗後に AgentCore が終了しました。応答を完成できませんでした。',
+      observabilitySummary: observabilityFixtures.withToolFailure,
+    },
+
+    // 6. Failed tool call — observability popover shows red-styled failed tool
+    {
+      messageId: 'msg-e-011',
+      threadId: thread3Id,
+      role: 'user',
+      content: 'observability ポップオーバーで失敗ツールを確認したい',
+      createdAt: '2026-04-18T02:06:00.000Z',
+    },
+    {
+      messageId: 'msg-e-012',
+      threadId: thread3Id,
+      role: 'assistant',
+      content: 'ツール実行が失敗しており、observability に詳細が記録されています。',
+      createdAt: '2026-04-18T02:06:10.000Z',
+      observabilitySummary: observabilityFixtures.errorStatus,
+    },
+
+    // 7. Cancelled tool call — observability popover shows cancelled tool status
+    {
+      messageId: 'msg-e-013',
+      threadId: thread3Id,
+      role: 'user',
+      content: 'observability ポップオーバーでキャンセルされたツールを確認したい',
+      createdAt: '2026-04-18T02:07:00.000Z',
+    },
+    {
+      messageId: 'msg-e-014',
+      threadId: thread3Id,
+      role: 'assistant',
+      content:
+        'ツール実行がキャンセルされており、observability に状態が記録されています。',
+      createdAt: '2026-04-18T02:07:10.000Z',
+      observabilitySummary: observabilityFixtures.cancelledStatus,
     },
   ]);
 }
