@@ -11,7 +11,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -181,11 +181,23 @@ export function KbPanel() {
 
   const [deleteTarget, setDeleteTarget] = useState<KbDocument | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [nextToken, setNextToken] = useState<string | undefined>(undefined);
-  const [prevToken, setPrevToken] = useState<string | undefined>(undefined);
+  const [allDocuments, setAllDocuments] = useState<KbDocument[]>([]);
+  const [pageToken, setPageToken] = useState<string | undefined>(undefined);
+  const isAppendingRef = useRef(false);
 
   const statusQuery = useQuery(kbStatusQueryOptions());
-  const documentsQuery = useQuery(kbDocumentsQueryOptions(nextToken));
+  const documentsQuery = useQuery(kbDocumentsQueryOptions(pageToken));
+
+  useEffect(() => {
+    const docs = documentsQuery.data?.documents;
+    if (docs === undefined || documentsQuery.isFetching) return;
+    if (isAppendingRef.current) {
+      setAllDocuments((prev) => [...prev, ...docs]);
+      isAppendingRef.current = false;
+    } else {
+      setAllDocuments(docs);
+    }
+  }, [documentsQuery.data, documentsQuery.isFetching]);
   const jobsQuery = useQuery(kbIngestionJobsQueryOptions());
 
   const latestJob = jobsQuery.data?.jobs[0] ?? null;
@@ -194,6 +206,9 @@ export function KbPanel() {
     mutationFn: (key: string) => removeKbDocument(key),
     onSuccess: async () => {
       setDeleteTarget(null);
+      isAppendingRef.current = false;
+      setPageToken(undefined);
+      setAllDocuments([]);
       await queryClient.invalidateQueries({ queryKey: ['kb-documents'] });
       await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.kbIngestionJobs });
     },
@@ -228,7 +243,11 @@ export function KbPanel() {
     },
     onSuccess: async () => {
       setUploadError(null);
+      isAppendingRef.current = false;
+      setPageToken(undefined);
+      setAllDocuments([]);
       await queryClient.invalidateQueries({ queryKey: ['kb-documents'] });
+      await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.kbIngestionJobs });
     },
     onError: (err: Error) => {
       setUploadError(err.message);
@@ -242,16 +261,11 @@ export function KbPanel() {
     uploadMutation.mutate(file);
   }
 
-  function handlePageForward() {
-    const token = documentsQuery.data?.nextToken;
-    if (!token) return;
-    setPrevToken(nextToken);
-    setNextToken(token);
-  }
-
-  function handlePageBack() {
-    setNextToken(prevToken);
-    setPrevToken(undefined);
+  function handleLoadMore() {
+    const next = documentsQuery.data?.nextToken;
+    if (!next) return;
+    isAppendingRef.current = true;
+    setPageToken(next);
   }
 
   if (statusQuery.isLoading) {
@@ -268,7 +282,6 @@ export function KbPanel() {
   }
 
   const { kbId, dataSourceBucketName } = statusQuery.data;
-  const documents = documentsQuery.data?.documents ?? [];
   const hasNextPage = Boolean(documentsQuery.data?.nextToken);
 
   return (
@@ -334,30 +347,29 @@ export function KbPanel() {
                 <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
-          ) : documents.length === 0 ? (
+          ) : allDocuments.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
               No documents uploaded yet.
             </p>
           ) : (
             <div>
-              {documents.map((doc) => (
+              {allDocuments.map((doc) => (
                 <DocumentRow key={doc.key} doc={doc} onDeleteClick={setDeleteTarget} />
               ))}
             </div>
           )}
 
-          {(hasNextPage || prevToken !== undefined) && (
-            <div className="flex items-center justify-end gap-2 pt-3">
-              {prevToken !== undefined && (
-                <Button size="sm" variant="outline" onClick={handlePageBack}>
-                  Previous
-                </Button>
-              )}
-              {hasNextPage && (
-                <Button size="sm" variant="outline" onClick={handlePageForward}>
-                  Load more
-                </Button>
-              )}
+          {hasNextPage && (
+            <div className="flex items-center justify-end pt-3">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={documentsQuery.isFetching}
+              >
+                {documentsQuery.isFetching && <Loader2 className="size-4 animate-spin" />}
+                Load more
+              </Button>
             </div>
           )}
         </CardContent>
@@ -370,7 +382,7 @@ export function KbPanel() {
             <CardTitle>Ingestion</CardTitle>
             <Button
               size="sm"
-              variant="outline"
+              variant={latestJob?.status === 'FAILED' ? 'destructive' : 'outline'}
               onClick={() => syncMutation.mutate()}
               disabled={
                 syncMutation.isPending ||

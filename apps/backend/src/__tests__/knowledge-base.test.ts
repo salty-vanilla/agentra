@@ -238,6 +238,29 @@ describe('Knowledge Base API', () => {
       expect(doc).not.toHaveProperty('contentType');
     });
 
+    it('filters out the S3 prefix folder marker object', async () => {
+      s3SendMock.mockResolvedValue({
+        Contents: [
+          {
+            Key: 'manufacturing-line/',
+            Size: 0,
+            LastModified: new Date('2026-01-01T00:00:00Z'),
+          },
+          {
+            Key: 'manufacturing-line/doc.pdf',
+            Size: 1024,
+            LastModified: new Date('2026-01-01T00:00:00Z'),
+          },
+        ],
+      });
+
+      const res = await app.request('/knowledge-base/documents');
+      expect(res.status).toBe(200);
+      const body = (await res.json()) as { documents: Array<Record<string, unknown>> };
+      expect(body.documents).toHaveLength(1);
+      expect(body.documents[0]?.name).toBe('doc.pdf');
+    });
+
     it('passes nextToken as ContinuationToken and returns nextToken in response', async () => {
       s3SendMock.mockResolvedValue({
         Contents: [],
@@ -250,8 +273,9 @@ describe('Knowledge Base API', () => {
       expect(body.nextToken).toBe('token-page-2');
 
       // Verify ContinuationToken was passed
-      const callArg = (s3SendMock.mock.calls[0]![0] as { input: Record<string, unknown> })
-        .input;
+      const callArg = (
+        s3SendMock.mock.calls[0]?.[0] as { input: Record<string, unknown> }
+      ).input;
       expect(callArg.ContinuationToken).toBe('token-page-1');
     });
   });
@@ -347,10 +371,18 @@ describe('Knowledge Base API', () => {
       expect(res.status).toBe(200);
       const body = (await res.json()) as { jobs: Array<Record<string, unknown>> };
       expect(body.jobs).toHaveLength(1);
-      const job = body.jobs[0]!;
+      const job = body.jobs[0] as Record<string, unknown>;
       expect(job.jobId).toBe('job-123');
       expect(job.status).toBe('COMPLETE');
       expect(job.completedAt).toBe('2026-01-01T10:05:00.000Z');
+    });
+  });
+
+  describe('POST /knowledge-base/sync — unconfigured', () => {
+    it('returns 400 when KB is unconfigured', async () => {
+      clearKbEnv();
+      const res = await app.request('/knowledge-base/sync', { method: 'POST' });
+      expect(res.status).toBe(400);
     });
   });
 

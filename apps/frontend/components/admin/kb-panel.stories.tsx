@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { HttpResponse, http } from 'msw';
+import { userEvent, within } from 'storybook/test';
 import {
   getDeleteKbDocumentMockHandler,
   getGetKbStatusMockHandler,
@@ -190,6 +191,11 @@ export const DeleteConfirmationOpen: Story = {
         getDeleteKbDocumentMockHandler(),
       ],
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const deleteButton = await canvas.findByLabelText('Delete machine-a-manual.pdf');
+    await userEvent.click(deleteButton);
   },
 };
 

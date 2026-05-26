@@ -1298,6 +1298,11 @@ export type startKbSyncResponse200 = {
   status: 200
 }
 
+export type startKbSyncResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
 export type startKbSyncResponse403 = {
   data: ErrorResponse
   status: 403
@@ -1311,7 +1316,7 @@ export type startKbSyncResponse409 = {
 export type startKbSyncResponseSuccess = (startKbSyncResponse200) & {
   headers: Headers;
 };
-export type startKbSyncResponseError = (startKbSyncResponse403 | startKbSyncResponse409) & {
+export type startKbSyncResponseError = (startKbSyncResponse400 | startKbSyncResponse403 | startKbSyncResponse409) & {
   headers: Headers;
 };
 

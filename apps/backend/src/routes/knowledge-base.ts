@@ -41,8 +41,8 @@ function kbConfig() {
 }
 
 function isConfigured(): boolean {
-  const { kbId, bucketName } = kbConfig();
-  return kbId.length > 0 && bucketName.length > 0;
+  const { kbId, dataSourceId, bucketName } = kbConfig();
+  return kbId.length > 0 && dataSourceId.length > 0 && bucketName.length > 0;
 }
 
 // Lazy-initialized SDK clients — reused across Lambda warm starts
@@ -114,12 +114,19 @@ knowledgeBaseRouter.get('/documents', async (c) => {
     }),
   );
 
-  const documents = (result.Contents ?? []).map((obj) => ({
-    key: obj.Key ?? '',
-    name: (obj.Key ?? '').slice(S3_UPLOAD_PREFIX.length),
-    sizeBytes: obj.Size ?? 0,
-    lastModified: obj.LastModified?.toISOString() ?? new Date().toISOString(),
-  }));
+  const documents = (result.Contents ?? [])
+    .filter((obj) => obj.Key && obj.Key !== S3_UPLOAD_PREFIX)
+    .map((obj) => {
+      const key = obj.Key as string;
+      const name = key.slice(S3_UPLOAD_PREFIX.length);
+      return {
+        key,
+        name,
+        sizeBytes: obj.Size ?? 0,
+        lastModified: obj.LastModified?.toISOString() ?? new Date().toISOString(),
+      };
+    })
+    .filter((doc) => doc.name.length > 0);
 
   const response: Record<string, unknown> = { documents };
   if (result.NextContinuationToken) {

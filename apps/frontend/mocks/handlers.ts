@@ -1,9 +1,10 @@
 import { APP_VERSION } from '@agentra/shared';
-import { HttpResponse } from 'msw';
+import { HttpResponse, http } from 'msw';
 import { uuidv7 } from 'uuidv7';
 import { observabilityFixtures } from '@/mocks/fixtures/observability';
 import {
   getCreateThreadMockHandler,
+  getDeleteKbDocumentMockHandler,
   getDeleteThreadMockHandler,
   getGetAdminAgentsMockHandler,
   getGetAdminOverviewMockHandler,
@@ -14,10 +15,15 @@ import {
   getGetAdminTracesMockHandler,
   getGetAdminUsersMockHandler,
   getGetHealthMockHandler,
+  getGetKbStatusMockHandler,
   getGetThreadMockHandler,
+  getListKbDocumentsMockHandler,
+  getListKbIngestionJobsMockHandler,
   getListThreadMessagesMockHandler,
   getListThreadsMockHandler,
   getPostChatMockHandler,
+  getPresignKbDocumentMockHandler,
+  getStartKbSyncMockHandler,
   getUpdateThreadMockHandler,
 } from '@/mocks/generated/agentra.msw';
 import type {
@@ -30,6 +36,8 @@ import type {
   ChatRequest,
   CreateThreadRequest,
   HealthResponse,
+  IngestionJobSummary,
+  KbDocument,
   MessageRole,
   PersistedChatMessage,
   ThreadMessagesResponse,
@@ -48,6 +56,47 @@ const threadStore = new Map<string, ThreadSummary>();
 const messageStore = new Map<string, PersistedChatMessage[]>();
 
 seedStore();
+
+// ─── Knowledge-base in-memory mock store ─────────────────────────────────────
+
+const kbDocumentStore = new Map<string, KbDocument>([
+  [
+    'manufacturing-line/machine-a-manual.pdf',
+    {
+      key: 'manufacturing-line/machine-a-manual.pdf',
+      name: 'machine-a-manual.pdf',
+      sizeBytes: 2_457_600,
+      lastModified: '2026-05-20T10:00:00.000Z',
+    },
+  ],
+  [
+    'manufacturing-line/safety-checklist.docx',
+    {
+      key: 'manufacturing-line/safety-checklist.docx',
+      name: 'safety-checklist.docx',
+      sizeBytes: 89_600,
+      lastModified: '2026-05-18T08:30:00.000Z',
+    },
+  ],
+]);
+
+const kbJobStore = new Map<string, IngestionJobSummary>([
+  [
+    'job-complete-001',
+    {
+      jobId: 'job-complete-001',
+      status: 'COMPLETE',
+      startedAt: '2026-05-20T10:05:00.000Z',
+      completedAt: '2026-05-20T10:06:12.000Z',
+    },
+  ],
+]);
+
+// Maps uploadId → pending upload metadata so the fake S3 PUT can resolve the key
+const pendingKbUploads = new Map<
+  string,
+  { key: string; fileName: string; sizeBytes: number }
+>();
 
 // ─── Admin observability mock data ───────────────────────────────────────────
 
@@ -852,10 +901,108 @@ export const handlers = [
       ...(artifactManifest ? { artifactManifest } : {}),
     });
   }),
+
+  // ─── Knowledge-base handlers ─────────────────────────────────────────────────
+
+  getGetKbStatusMockHandler(() => ({
+    configured: true,
+    kbId: 'MOCK-KB-001',
+    dataSourceId: 'DS-MOCK-001',
+    dataSourceBucketName: 'mock-agentra-kb-bucket',
+  })),
+
+  getListKbDocumentsMockHandler(() => ({ documents: kbDocumentList() })),
+
+  getPresignKbDocumentMockHandler(async ({ request }) => {
+    const body = await request.json().catch(() => null);
+    const { fileName, sizeBytes } = (body ?? {}) as {
+      fileName: string;
+      sizeBytes: number;
+    };
+    const uploadId = uuidv7();
+    const safeName = String(fileName ?? 'file').replace(/[/\\]/g, '_');
+    const key = `manufacturing-line/${uploadId}-${safeName}`;
+    pendingKbUploads.set(uploadId, {
+      key,
+      fileName: safeName,
+      sizeBytes: Number(sizeBytes),
+    });
+    return {
+      presignedUrl: `/mock-s3/kb-upload/${uploadId}`,
+      key,
+      expiresAt: new Date(Date.now() + 900_000).toISOString(),
+    };
+  }),
+
+  http.put('/mock-s3/kb-upload/:uploadId', ({ params }) => {
+    const uploadId = String(params.uploadId);
+    const pending = pendingKbUploads.get(uploadId);
+    if (!pending) return new HttpResponse(null, { status: 404 });
+    pendingKbUploads.delete(uploadId);
+    kbDocumentStore.set(pending.key, {
+      key: pending.key,
+      name: pending.fileName,
+      sizeBytes: pending.sizeBytes,
+      lastModified: now(),
+    });
+    startMockIngestionJob();
+    return new HttpResponse(null, { status: 200 });
+  }),
+
+  getDeleteKbDocumentMockHandler(({ request }) => {
+    const url = new URL(request.url);
+    const key = url.searchParams.get('key') ?? '';
+    kbDocumentStore.delete(key);
+    startMockIngestionJob();
+  }),
+
+  getListKbIngestionJobsMockHandler(() => ({ jobs: kbJobList() })),
+
+  getStartKbSyncMockHandler(() => {
+    const hasActive = Array.from(kbJobStore.values()).some(
+      (j) => j.status === 'IN_PROGRESS' || j.status === 'STARTING',
+    );
+    if (hasActive) {
+      throw HttpResponse.json(
+        { error: 'An ingestion job is already in progress.' },
+        { status: 409 },
+      );
+    }
+    const jobId = uuidv7();
+    kbJobStore.set(jobId, { jobId, status: 'STARTING', startedAt: now() });
+    setTimeout(() => {
+      const existing = kbJobStore.get(jobId);
+      if (existing) {
+        kbJobStore.set(jobId, { ...existing, status: 'COMPLETE', completedAt: now() });
+      }
+    }, 3_000);
+    return { jobId, status: 'STARTING' as const };
+  }),
 ];
 
 function now() {
   return new Date().toISOString();
+}
+
+function kbDocumentList(): KbDocument[] {
+  return Array.from(kbDocumentStore.values());
+}
+
+function kbJobList(): IngestionJobSummary[] {
+  return Array.from(kbJobStore.values()).sort((a, b) =>
+    b.startedAt.localeCompare(a.startedAt),
+  );
+}
+
+function startMockIngestionJob() {
+  const jobId = uuidv7();
+  kbJobStore.set(jobId, { jobId, status: 'IN_PROGRESS', startedAt: now() });
+  setTimeout(() => {
+    const existing = kbJobStore.get(jobId);
+    if (existing) {
+      kbJobStore.set(jobId, { ...existing, status: 'COMPLETE', completedAt: now() });
+    }
+  }, 3_000);
 }
 
 function listThreads() {
