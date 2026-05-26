@@ -199,6 +199,15 @@ const ThreadScrollToBottom: FC = () => {
 
 const ThreadWelcome: FC = () => {
   const threadRuntime = useThreadRuntime();
+
+  const handleSelectPrompt = (prompt: string) => {
+    threadRuntime.composer.setText(prompt);
+    requestAnimationFrame(() => {
+      const input = document.querySelector<HTMLElement>('[aria-label="Message input"]');
+      input?.focus();
+    });
+  };
+
   return (
     <div className="aui-thread-welcome-root my-auto flex grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
@@ -213,9 +222,7 @@ const ThreadWelcome: FC = () => {
             Hono backend の `/chat` SSE を使いながら、thread UI・message actions・composer
             を assistant-ui ベースに統合しています。
           </p>
-          <WelcomePromptCards
-            onSelect={(prompt) => threadRuntime.composer.setText(prompt)}
-          />
+          <WelcomePromptCards onSelect={handleSelectPrompt} />
         </div>
       </div>
     </div>
