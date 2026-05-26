@@ -14,6 +14,7 @@ import {
   getAdminUsers as getAdminUsersRequest,
   getHealth as getHealthRequest,
   getKbStatus as getKbStatusRequest,
+  inviteAdminUser as inviteAdminUserRequest,
   listAdminUsers as listAdminUsersRequest,
   listKbDocuments as listKbDocumentsRequest,
   listKbIngestionJobs as listKbIngestionJobsRequest,
@@ -49,6 +50,8 @@ import type {
   CreateThreadRequest,
   HealthResponse,
   IngestionJobsResponse,
+  InviteAdminUserRequest,
+  InviteAdminUserResponse,
   KbDocumentsResponse,
   KbStatusResponse,
   ObsStatusParameter,
@@ -306,7 +309,19 @@ export async function fetchAdminUsersList(
   return listAdminUsersRequest(params, { headers });
 }
 
-export type { AdminUser, AdminUsersListResponse };
+export type {
+  AdminUser,
+  AdminUsersListResponse,
+  InviteAdminUserRequest,
+  InviteAdminUserResponse,
+};
+
+export async function inviteAdminUser(
+  req: InviteAdminUserRequest,
+): Promise<InviteAdminUserResponse> {
+  const headers = await getAuthHeaders();
+  return inviteAdminUserRequest(req, { headers });
+}
 
 export async function fetchAdminAgents(
   params: AdminDateRange = {},

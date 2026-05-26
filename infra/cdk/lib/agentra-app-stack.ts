@@ -148,6 +148,15 @@ export class AgentraAppStack extends Stack {
       props.dataAuthStack.observabilityTable.grantReadWriteData(handler);
     }
 
+    // Cognito admin — RestHandler only (invite user flow)
+    restHandler.addToRolePolicy(
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup'],
+        resources: [props.dataAuthStack.userPool.userPoolArn],
+      }),
+    );
+
     // S3 GetObject — restHandler serves presigned download-url endpoint
     if (props.presentationArtifactsBucketName) {
       restHandler.addToRolePolicy(
@@ -241,7 +250,7 @@ export class AgentraAppStack extends Stack {
     });
     httpApi.addRoutes({
       path: '/admin/{proxy+}',
-      methods: [HttpMethod.GET],
+      methods: [HttpMethod.GET, HttpMethod.POST],
       integration: httpIntegration,
     });
     httpApi.addRoutes({

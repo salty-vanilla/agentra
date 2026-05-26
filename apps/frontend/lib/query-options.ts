@@ -40,6 +40,7 @@ export const agentraQueryKeys = {
   adminTraces: (params: AdminPaginationParams & { status?: string; userId?: string }) =>
     ['admin-traces', params] as const,
   adminTraceDetail: (traceId: string) => ['admin-trace-detail', traceId] as const,
+  adminUsersListRoot: ['admin-users-list'] as const,
   adminUsersList: (params: AdminUsersListParams) => ['admin-users-list', params] as const,
   kbStatus: ['kb-status'] as const,
   kbDocuments: (nextToken?: string) => ['kb-documents', nextToken] as const,

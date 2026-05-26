@@ -124,3 +124,43 @@ export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
 export const storybookAdminUsersListHandler = http.get('*/admin/users', () =>
   HttpResponse.json(STORYBOOK_ADMIN_USERS_LIST),
 );
+
+export const storybookInviteAdminUserSuccessHandler = http.post(
+  '*/admin/users/invite',
+  () =>
+    HttpResponse.json(
+      {
+        email: 'new@example.com',
+        role: 'user',
+        sub: 'sub-new-abc123',
+        userId: 'uid-new-001',
+      },
+      { status: 201 },
+    ),
+);
+
+export const storybookInviteAdminUserConflictHandler = http.post(
+  '*/admin/users/invite',
+  () =>
+    HttpResponse.json(
+      { error: 'A user with this email already exists' },
+      { status: 409 },
+    ),
+);
+
+export const storybookInviteAdminUserValidationErrorHandler = http.post(
+  '*/admin/users/invite',
+  () =>
+    HttpResponse.json(
+      { error: 'Request validation failed against OpenAPI contract.' },
+      { status: 400 },
+    ),
+);
+
+export const storybookInviteAdminUserLoadingHandler = http.post(
+  '*/admin/users/invite',
+  async () => {
+    await new Promise((resolve) => setTimeout(resolve, 60_000));
+    return HttpResponse.json({ error: 'timeout' }, { status: 504 });
+  },
+);

@@ -17,6 +17,7 @@
     "@aws-sdk/client-bedrock-agent": "^3.1053.0",
     "@aws-sdk/client-bedrock-agentcore": "^3.1032.0",
     "@aws-sdk/client-bedrock-runtime": "^3.1032.0",
+    "@aws-sdk/client-cognito-identity-provider": "latest",
     "@aws-sdk/client-dynamodb": "latest",
     "@aws-sdk/client-s3": "^3.1037.0",
     "@aws-sdk/lib-dynamodb": "latest",

@@ -5,8 +5,13 @@ import type { AdminUser } from '@/lib/api';
 import {
   STORYBOOK_ADMIN_USERS_LIST,
   storybookAdminUsersListHandler,
+  storybookInviteAdminUserConflictHandler,
+  storybookInviteAdminUserLoadingHandler,
+  storybookInviteAdminUserSuccessHandler,
+  storybookInviteAdminUserValidationErrorHandler,
 } from '@/mocks/handlers/storybook-handlers';
 import { AdminUserDetailDrawer } from './admin-user-detail-drawer';
+import { AdminUserInviteDialog } from './admin-user-invite-dialog';
 import { AdminUsersPage } from './admin-users-page';
 
 const meta = {
@@ -98,5 +103,80 @@ export const WithDetailDrawerOpen: Story = {
         story: 'Detail drawer pre-opened for the first user (admin).',
       },
     },
+  },
+};
+
+function InviteDialogWrapper({ children }: { children?: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        height: '700px',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+export const InviteDialogOpen: Story = {
+  render: () => (
+    <InviteDialogWrapper>
+      <AdminUsersPage />
+      <AdminUserInviteDialog open={true} onClose={() => {}} />
+    </InviteDialogWrapper>
+  ),
+  parameters: {
+    msw: {
+      handlers: [storybookAdminUsersListHandler, storybookInviteAdminUserSuccessHandler],
+    },
+    docs: { description: { story: 'Invite dialog open with empty form.' } },
+  },
+};
+
+export const InviteDialogLoading: Story = {
+  render: () => (
+    <InviteDialogWrapper>
+      <AdminUserInviteDialog open={true} onClose={() => {}} />
+    </InviteDialogWrapper>
+  ),
+  parameters: {
+    msw: {
+      handlers: [storybookAdminUsersListHandler, storybookInviteAdminUserLoadingHandler],
+    },
+    docs: { description: { story: 'Invite dialog in pending/loading state.' } },
+  },
+};
+
+export const InviteDialogConflict: Story = {
+  render: () => (
+    <InviteDialogWrapper>
+      <AdminUserInviteDialog open={true} onClose={() => {}} />
+    </InviteDialogWrapper>
+  ),
+  parameters: {
+    msw: {
+      handlers: [storybookAdminUsersListHandler, storybookInviteAdminUserConflictHandler],
+    },
+    docs: { description: { story: 'Invite dialog showing 409 conflict error.' } },
+  },
+};
+
+export const InviteDialogValidationError: Story = {
+  render: () => (
+    <InviteDialogWrapper>
+      <AdminUserInviteDialog open={true} onClose={() => {}} />
+    </InviteDialogWrapper>
+  ),
+  parameters: {
+    msw: {
+      handlers: [
+        storybookAdminUsersListHandler,
+        storybookInviteAdminUserValidationErrorHandler,
+      ],
+    },
+    docs: { description: { story: 'Invite dialog showing 400 validation error.' } },
   },
 };

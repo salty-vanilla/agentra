@@ -29,7 +29,7 @@ const api = definitionPath
   ? new OpenAPIBackend({
       definition: definitionPath,
       customizeAjv: (ajv) => {
-        addFormats(ajv, { mode: 'fast', formats: ['date-time', 'uri', 'uuid'] });
+        addFormats(ajv, { mode: 'fast', formats: ['date-time', 'uri', 'uuid', 'email'] });
         return ajv;
       },
     })

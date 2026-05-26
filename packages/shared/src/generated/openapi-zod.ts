@@ -769,6 +769,19 @@ export const ListAdminUsersResponse = zod.object({
 
 
 /**
+ * @summary Invite a new user via Cognito AdminCreateUser
+ */
+export const inviteAdminUserBodySendInvitationDefault = true;
+
+export const InviteAdminUserBody = zod.object({
+  "email": zod.string().email(),
+  "role": zod.enum(['admin', 'user']),
+  "name": zod.string().optional().describe('Optional display name; passed to Cognito UserAttributes.'),
+  "sendInvitation": zod.boolean().default(inviteAdminUserBodySendInvitationDefault)
+})
+
+
+/**
  * @summary Get Knowledge Base configuration status
  */
 export const GetKbStatusResponse = zod.object({

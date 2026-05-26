@@ -20,6 +20,7 @@ export type UserRecord = {
 export interface UserStore {
   getOrCreateUser(sub: string, email: string, groups: string[]): Promise<UserRecord>;
   listUsers(): Promise<UserRecord[]>;
+  createInvitedUser(sub: string, email: string, role: UserRole): Promise<UserRecord>;
 }
 
 export function normalizeUserRecord(item: Record<string, unknown>): UserRecord {
@@ -119,6 +120,28 @@ export class DynamoUserStore implements UserStore {
 
     return items.map(normalizeUserRecord);
   }
+
+  async createInvitedUser(
+    sub: string,
+    email: string,
+    role: UserRole,
+  ): Promise<UserRecord> {
+    const record: UserRecord = {
+      sub,
+      userId: uuidv7(),
+      email,
+      createdAt: new Date().toISOString(),
+      role,
+    };
+    await this.client.send(
+      new PutCommand({
+        TableName: getUsersTable(),
+        Item: record,
+        ConditionExpression: 'attribute_not_exists(sub)',
+      }),
+    );
+    return record;
+  }
 }
 
 // ── Memory implementation (local dev) ────────────────────────────────────────
@@ -166,6 +189,22 @@ export class MemoryUserStore implements UserStore {
 
   async listUsers(): Promise<UserRecord[]> {
     return Array.from(this.store.values());
+  }
+
+  async createInvitedUser(
+    sub: string,
+    email: string,
+    role: UserRole,
+  ): Promise<UserRecord> {
+    const record: UserRecord = {
+      sub,
+      userId: uuidv7(),
+      email,
+      createdAt: new Date().toISOString(),
+      role,
+    };
+    this.store.set(sub, record);
+    return record;
   }
 }
 

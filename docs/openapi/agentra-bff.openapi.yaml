@@ -472,6 +472,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/invite:
+    post:
+      operationId: inviteAdminUser
+      tags: [admin]
+      summary: Invite a new user via Cognito AdminCreateUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteAdminUserRequest'
+      responses:
+        '201':
+          description: User invited
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteAdminUserResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /knowledge-base/status:
     get:
       operationId: getKbStatus
@@ -1452,6 +1488,47 @@ components:
           items:
             $ref: '#/components/schemas/AdminUser'
         cursor:
+          type: string
+    InviteAdminUserRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - role
+      properties:
+        email:
+          type: string
+          format: email
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+        name:
+          type: string
+          description: Optional display name; passed to Cognito UserAttributes.
+        sendInvitation:
+          type: boolean
+          default: true
+    InviteAdminUserResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - email
+        - role
+        - sub
+        - userId
+      properties:
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+        sub:
+          type: string
+        userId:
           type: string
     AdminAgentStats:
       type: object

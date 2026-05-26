@@ -1,6 +1,8 @@
 import type { ObservabilityRecord } from '@agentra/shared';
 import { Hono } from 'hono';
-import { jsonWithValidation } from '../lib/openapi.js';
+import { getCognitoClient } from '../lib/cognito-client.js';
+import { jsonWithValidation, readJsonBody, validateRequest } from '../lib/openapi.js';
+import { getAdminGroupName } from '../lib/user-role.js';
 import { listObservabilityRecordsInRange } from '../store/observability-store.js';
 import { userStore } from '../store/user-store.js';
 import {
@@ -173,6 +175,77 @@ adminUsersRouter.get('/', async (c) => {
   return jsonWithValidation(c, 'listAdminUsers', 200, {
     users: page,
     ...(nextCursor ? { cursor: nextCursor } : {}),
+  });
+});
+
+adminUsersRouter.post('/invite', async (c) => {
+  const validationError = await validateRequest(c, 'inviteAdminUser');
+  if (validationError) return validationError;
+
+  const body = (await readJsonBody(c)) as {
+    email: string;
+    role: 'admin' | 'user';
+    name?: string;
+    sendInvitation?: boolean;
+  };
+
+  const { email, role, name, sendInvitation = true } = body;
+  const userPoolId = process.env.COGNITO_USER_POOL_ID;
+  if (!userPoolId) {
+    return c.json(
+      { error: 'Server misconfiguration: COGNITO_USER_POOL_ID not set' },
+      500,
+    );
+  }
+
+  const { AdminCreateUserCommand, AdminAddUserToGroupCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+  const cognito = getCognitoClient();
+
+  let sub: string;
+  try {
+    const userAttributes = [
+      { Name: 'email', Value: email },
+      { Name: 'email_verified', Value: 'true' },
+      ...(name ? [{ Name: 'name', Value: name }] : []),
+    ];
+    const result = await cognito.send(
+      new AdminCreateUserCommand({
+        UserPoolId: userPoolId,
+        Username: email,
+        UserAttributes: userAttributes,
+        MessageAction: sendInvitation ? undefined : 'SUPPRESS',
+        DesiredDeliveryMediums: sendInvitation ? ['EMAIL'] : undefined,
+      }),
+    );
+    sub = result.User?.Attributes?.find((a) => a.Name === 'sub')?.Value ?? email;
+  } catch (err) {
+    if ((err as { name?: string }).name === 'UsernameExistsException') {
+      return c.json({ error: 'A user with this email already exists' }, 409);
+    }
+    throw err;
+  }
+
+  if (role === 'admin') {
+    await cognito.send(
+      new AdminAddUserToGroupCommand({
+        UserPoolId: userPoolId,
+        Username: email,
+        GroupName: getAdminGroupName(),
+      }),
+    );
+  }
+
+  // Write projection record so the invited user appears in /admin/users before first login.
+  // getOrCreateUser will sync the role from Cognito group membership on first login.
+  const record = await userStore.createInvitedUser(sub, email, role);
+
+  return jsonWithValidation(c, 'inviteAdminUser', 201, {
+    email,
+    role,
+    sub,
+    userId: record.userId,
   });
 });
 

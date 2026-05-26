@@ -32,6 +32,8 @@ import type {
   GetAdminUsersParams,
   HealthResponse,
   IngestionJobsResponse,
+  InviteAdminUserRequest,
+  InviteAdminUserResponse,
   KbDocumentsResponse,
   KbStatusResponse,
   ListAdminUsersParams,
@@ -1079,6 +1081,66 @@ export const listAdminUsers = async (params?: ListAdminUsersParams, options?: Re
 
 
 /**
+ * @summary Invite a new user via Cognito AdminCreateUser
+ */
+export type inviteAdminUserResponse201 = {
+  data: InviteAdminUserResponse
+  status: 201
+}
+
+export type inviteAdminUserResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type inviteAdminUserResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type inviteAdminUserResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type inviteAdminUserResponseSuccess = (inviteAdminUserResponse201) & {
+  headers: Headers;
+};
+export type inviteAdminUserResponseError = (inviteAdminUserResponse400 | inviteAdminUserResponse403 | inviteAdminUserResponse409) & {
+  headers: Headers;
+};
+
+export type inviteAdminUserResponse = (inviteAdminUserResponseSuccess | inviteAdminUserResponseError)
+
+export const getInviteAdminUserUrl = () => {
+
+
+
+
+  return `/admin/users/invite`
+}
+
+export const inviteAdminUser = async (inviteAdminUserRequest: InviteAdminUserRequest, options?: RequestInit): Promise<inviteAdminUserResponse> => {
+
+  const res = await fetch(getInviteAdminUserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      inviteAdminUserRequest,)
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: inviteAdminUserResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as inviteAdminUserResponse
+}
+
+
+
+/**
  * @summary Get Knowledge Base configuration status
  */
 export type getKbStatusResponse200 = {
@@ -1449,6 +1511,8 @@ export const getGetAdminTraceDetailResponseMock = (overrideResponse: Partial<Ext
 
 export const getListAdminUsersResponseMock = (overrideResponse: Partial<Extract<AdminUsersListResponse, object>> = {}): AdminUsersListResponse => ({users: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({userId: faker.string.alpha({length: {min: 10, max: 20}}), sub: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', lastSeenAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), requestCount: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), errorRate: faker.helpers.arrayElement([faker.number.float({min: 0, max: 1, fractionDigits: 2}), undefined]), mostUsedAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), mostUsedTool: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
+export const getInviteAdminUserResponseMock = (overrideResponse: Partial<Extract<InviteAdminUserResponse, object>> = {}): InviteAdminUserResponse => ({email: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), sub: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
 export const getGetKbStatusResponseMock = (overrideResponse: Partial<Extract<KbStatusResponse, object>> = {}): KbStatusResponse => ({configured: faker.datatype.boolean(), kbId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceBucketName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
 export const getListKbDocumentsResponseMock = (overrideResponse: Partial<Extract<KbDocumentsResponse, object>> = {}): KbDocumentsResponse => ({documents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({key: faker.string.alpha({length: {min: 1, max: 20}}), name: faker.string.alpha({length: {min: 1, max: 20}}), sizeBytes: faker.number.int({min: 0}), lastModified: faker.date.past().toISOString().slice(0, 19) + 'Z'})), nextToken: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
@@ -1689,6 +1753,18 @@ export const getListAdminUsersMockHandler = (overrideResponse?: AdminUsersListRe
   }, options)
 }
 
+export const getInviteAdminUserMockHandler = (overrideResponse?: InviteAdminUserResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<InviteAdminUserResponse> | InviteAdminUserResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/users/invite', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getInviteAdminUserResponseMock(),
+      { status: 201
+      })
+  }, options)
+}
+
 export const getGetKbStatusMockHandler = (overrideResponse?: KbStatusResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KbStatusResponse> | KbStatusResponse), options?: RequestHandlerOptions) => {
   return http.get('*/knowledge-base/status', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
 
@@ -1778,6 +1854,7 @@ export const getAgentraBFFAPIMock = () => [
   getGetAdminTracesMockHandler(),
   getGetAdminTraceDetailMockHandler(),
   getListAdminUsersMockHandler(),
+  getInviteAdminUserMockHandler(),
   getGetKbStatusMockHandler(),
   getListKbDocumentsMockHandler(),
   getDeleteKbDocumentMockHandler(),
