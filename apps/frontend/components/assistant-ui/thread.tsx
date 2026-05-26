@@ -11,6 +11,7 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
   useAuiState,
+  useThreadRuntime,
 } from '@assistant-ui/react';
 import { cva } from 'class-variance-authority';
 import {
@@ -26,6 +27,7 @@ import {
   type FC,
   forwardRef,
   type MutableRefObject,
+  useCallback,
   useContext,
   useRef,
 } from 'react';
@@ -46,6 +48,7 @@ import type { ModelKey } from '@/components/model-selector';
 import { ProgressSummaryCard } from '@/components/progress-summary-card';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
+import { WelcomePromptCards } from '@/components/welcome-prompt-cards';
 import type {
   ArtifactManifest,
   ChatCommand,
@@ -109,6 +112,11 @@ export const Thread: FC<{
   activeProgressPhase,
   subAgentProgressEvents,
 }) => {
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const focusComposerInput = useCallback(() => {
+    requestAnimationFrame(() => composerInputRef.current?.focus());
+  }, []);
+
   return (
     <ThreadIdContext.Provider value={threadId}>
       <ThreadPrimitive.Root
@@ -126,7 +134,7 @@ export const Thread: FC<{
         >
           <div className="mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4">
             <AuiIf condition={(s) => s.thread.isEmpty}>
-              <ThreadWelcome />
+              <ThreadWelcome focusComposerInput={focusComposerInput} />
             </AuiIf>
 
             <div
@@ -156,6 +164,7 @@ export const Thread: FC<{
               <Composer
                 modelValue={modelValue}
                 onModelChange={onModelChange}
+                composerInputRef={composerInputRef}
                 {...(slideCommandActive != null ? { slideCommandActive } : {})}
                 {...(onSlideCommandActivate ? { onSlideCommandActivate } : {})}
                 {...(onSlideCommandDeactivate ? { onSlideCommandDeactivate } : {})}
@@ -195,7 +204,16 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-const ThreadWelcome: FC = () => {
+const ThreadWelcome: FC<{ focusComposerInput: () => void }> = ({
+  focusComposerInput,
+}) => {
+  const threadRuntime = useThreadRuntime();
+
+  const handleSelectPrompt = (prompt: string) => {
+    threadRuntime.composer.setText(prompt);
+    focusComposerInput();
+  };
+
   return (
     <div className="aui-thread-welcome-root my-auto flex grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
@@ -210,6 +228,7 @@ const ThreadWelcome: FC = () => {
             Hono backend の `/chat` SSE を使いながら、thread UI・message actions・composer
             を assistant-ui ベースに統合しています。
           </p>
+          <WelcomePromptCards onSelect={handleSelectPrompt} />
         </div>
       </div>
     </div>
@@ -219,6 +238,7 @@ const ThreadWelcome: FC = () => {
 const Composer: FC<{
   modelValue: ModelKey;
   onModelChange: (m: ModelKey) => void;
+  composerInputRef?: MutableRefObject<HTMLTextAreaElement | null>;
   slideCommandActive?: boolean;
   onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
   onSlideCommandDeactivate?: () => void;

@@ -2,6 +2,7 @@
 
 import { AuiIf, ComposerPrimitive } from '@assistant-ui/react';
 import { ArrowUpIcon, SquareIcon } from 'lucide-react';
+import type { MutableRefObject } from 'react';
 import type { ModelKey } from '@/components/model-selector';
 import { Button } from '@/components/ui/button';
 import { isMockApiMode } from '@/lib/api-config';
@@ -11,6 +12,7 @@ import { TooltipIconButton } from './tooltip-icon-button';
 interface AssistantComposerAdapterProps {
   modelValue: ModelKey;
   onModelChange: (m: ModelKey) => void;
+  composerInputRef?: MutableRefObject<HTMLTextAreaElement | null>;
   slideCommandActive?: boolean;
   hasSlidePrefix?: boolean;
   onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
@@ -22,6 +24,7 @@ interface AssistantComposerAdapterProps {
 export function AssistantComposerAdapter({
   slideCommandActive,
   hasSlidePrefix = false,
+  composerInputRef,
   ...props
 }: AssistantComposerAdapterProps) {
   const showBadge = (slideCommandActive ?? false) || hasSlidePrefix;
@@ -31,6 +34,7 @@ export function AssistantComposerAdapter({
 
   const inputSlot = (
     <ComposerPrimitive.Input
+      ref={composerInputRef}
       placeholder={placeholder}
       className="aui-composer-input max-h-32 min-h-[1.75rem] w-full resize-none bg-transparent px-1.5 py-0.5 text-sm leading-6 outline-none placeholder:text-muted-foreground/80"
       rows={1}
