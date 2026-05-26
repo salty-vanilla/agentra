@@ -1,0 +1,111 @@
+name: Live AWS smoke
+
+# This workflow is NOT part of the normal CI pipeline.
+# It hits real AWS resources (API Gateway, Lambda, AgentCore, CloudWatch Logs)
+# and is therefore flaky, slow, and cost-bearing.
+#
+# When to run:
+#   - Manual dispatch before merging changes to CDK stacks, API Gateway,
+#     Lambda Web Adapter, SSE transport, AgentCore Runtime invoke path,
+#     requestId/traceId propagation, or the generated postChat client.
+#   - Optionally on PRs with the `run-live-smoke` label.
+#   - See docs/development/live-smoke.md for the full trigger matrix.
+#
+# Prerequisites:
+#   - OIDC trust: GitHub Actions role with CloudFormation read,
+#     CloudWatch Logs read, and API Gateway invoke permissions.
+#   - A deployed stage (run `just cdk-deploy-with-outputs <group> <stage>` first).
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: "CDK stage to smoke-test (e.g. dev, prod)"
+        required: true
+        default: dev
+      aws_region:
+        description: "AWS region"
+        required: true
+        default: ap-northeast-1
+      run_log_correlation:
+        description: "Run requestId log correlation (polls CloudWatch)"
+        type: boolean
+        required: false
+        default: true
+
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: live-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: live smoke (${{ github.event.inputs.stage || 'dev' }})
+    runs-on: ubuntu-latest
+    # Only run on workflow_dispatch or when the `run-live-smoke` label is added.
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.label.name == 'run-live-smoke')
+    permissions:
+      id-token: write
+      contents: read
+
+    env:
+      STAGE: ${{ github.event.inputs.stage || 'dev' }}
+      AWS_REGION: ${{ github.event.inputs.aws_region || 'ap-northeast-1' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_LIVE_SMOKE_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verify AWS identity
+        run: aws sts get-caller-identity
+
+      - name: Get API URLs from CloudFormation
+        run: |
+          STACK_NAME="AgentraAppStack-${STAGE}"
+          STREAMING_URL=$(aws cloudformation describe-stacks \
+            --stack-name "$STACK_NAME" \
+            --query 'Stacks[0].Outputs[?OutputKey==`StreamingApiUrl`].OutputValue' \
+            --output text)
+          if [[ -z "$STREAMING_URL" ]]; then
+            echo "ERROR: StreamingApiUrl output not found in stack $STACK_NAME" >&2
+            echo "Deploy the stage first: just cdk-deploy-with-outputs agentcore ${STAGE}" >&2
+            exit 1
+          fi
+          echo "AGENTRA_STREAMING_API_BASE_URL=${STREAMING_URL}" >> "$GITHUB_ENV"
+
+      # Run the all-in-one correlation script (includes BFF smoke internally).
+      # Default for PR label trigger and workflow_dispatch with run_log_correlation=true.
+      - name: BFF smoke + requestId log correlation
+        if: ${{ github.event_name != 'workflow_dispatch' || inputs.run_log_correlation }}
+        run: |
+          AGENTRA_STAGE="$STAGE" \
+            pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat-log-correlation.ts
+
+      # Standalone BFF smoke only — skips the CloudWatch polling step.
+      # Only runs when explicitly disabled via workflow_dispatch input.
+      - name: BFF smoke (standalone, no log correlation)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_log_correlation == false }}
+        run: |
+          AGENTRA_STAGE="$STAGE" \
+            pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts

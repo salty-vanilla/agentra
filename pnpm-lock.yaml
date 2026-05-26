@@ -139,6 +139,9 @@ importers:
         specifier: 4.4.3
         version: 4.4.3
     devDependencies:
+      '@aws-sdk/client-cloudwatch-logs':
+        specifier: ^3.1039.0
+        version: 3.1039.0
       '@types/aws-lambda':
         specifier: latest
         version: 8.10.161

@@ -366,14 +366,46 @@ smoke-bff-chat stage=default_stage profile=aws_profile:
     aws sts get-caller-identity
     AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts
 
-# Run BFF /chat smoke and scan recent AgentCore logs for the returned requestId.
-# Combines smoke-bff-chat with agentcore-errors to verify requestId propagation.
-# Note: requires smoke-bff-chat.ts from #255.
-smoke-bff-chat-logs stage=default_stage since="5m" profile=aws_profile:
+# Run BFF /chat smoke + requestId log correlation.
+# Runs smoke-bff-chat, captures done.requestId, then polls CloudWatch Logs to
+# verify agent_request_start and agent_request_end appear for the same requestId.
+# Auto-loads env from .agentra/env/<stage>/bff-smoke.env when present.
+# Run `just outputs-env <stage> bff-smoke` first to generate the env file.
+smoke-bff-chat-logs stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
-    just smoke-bff-chat '{{stage}}' '{{profile}}'
-    just agentcore-errors '{{stage}}' '{{since}}' '{{profile}}'
+    SCRIPT_ROOT="apps/backend/scripts/smoke-bff-chat-log-correlation.ts"
+    if [[ ! -f "$SCRIPT_ROOT" ]]; then
+      echo "ERROR: $SCRIPT_ROOT not found." >&2
+      exit 1
+    fi
+    ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
+    if [[ -f "$ENV_FILE" ]]; then
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
+      echo "Loaded env from $ENV_FILE"
+    fi
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    aws sts get-caller-identity
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat-log-correlation.ts
+
+# Run the full live smoke suite: AgentCore runtime (optional) + BFF SSE + requestId log correlation.
+# Use before merging changes to: CDK stacks, API Gateway, Lambda Web Adapter, SSE transport,
+# AgentCore Runtime invoke path, requestId/traceId propagation, or generated postChat client.
+# See docs/development/live-smoke.md for when to run this.
+smoke-live-chat stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "── smoke-live-chat: stage={{stage}} profile={{profile}} ──────────────────"
+    echo ""
+    echo "BFF SSE smoke + requestId log correlation"
+    just smoke-bff-chat-logs '{{stage}}' '{{profile}}'
+    echo ""
+    echo "── smoke-live-chat completed successfully ──────────────────────────────"
+    echo "stage:   {{stage}}"
+    echo "profile: {{profile}}"
 
 # ── Worktree-safe verification workflows (see docs/development/cdk-verify.md) ─
 

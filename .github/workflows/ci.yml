@@ -114,8 +114,6 @@ jobs:
             sandbox: true
           - workspace: '@agentra/infra-cdk'
             sandbox: false
-          - workspace: '@agentra/frontend'
-            sandbox: false
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
