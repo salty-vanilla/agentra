@@ -11,6 +11,7 @@ import {
   MessagePrimitive,
   ThreadPrimitive,
   useAuiState,
+  useThreadRuntime,
 } from '@assistant-ui/react';
 import { cva } from 'class-variance-authority';
 import {
@@ -46,6 +47,7 @@ import type { ModelKey } from '@/components/model-selector';
 import { ProgressSummaryCard } from '@/components/progress-summary-card';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
+import { WelcomePromptCards } from '@/components/welcome-prompt-cards';
 import type {
   ArtifactManifest,
   ChatCommand,
@@ -196,6 +198,7 @@ const ThreadScrollToBottom: FC = () => {
 };
 
 const ThreadWelcome: FC = () => {
+  const threadRuntime = useThreadRuntime();
   return (
     <div className="aui-thread-welcome-root my-auto flex grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
@@ -210,6 +213,9 @@ const ThreadWelcome: FC = () => {
             Hono backend の `/chat` SSE を使いながら、thread UI・message actions・composer
             を assistant-ui ベースに統合しています。
           </p>
+          <WelcomePromptCards
+            onSelect={(prompt) => threadRuntime.composer.setText(prompt)}
+          />
         </div>
       </div>
     </div>
