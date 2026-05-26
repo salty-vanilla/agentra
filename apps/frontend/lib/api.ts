@@ -237,8 +237,11 @@ export async function fetchArtifactDownloadUrl(
   artifactId: string,
 ): Promise<{ url: string; expiresAt: string }> {
   if (isMockApiMode) {
+    const blob = new Blob(['mock pptx artifact'], {
+      type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    });
     return {
-      url: 'data:application/octet-stream;base64,',
+      url: URL.createObjectURL(blob),
       expiresAt: new Date(Date.now() + 900_000).toISOString(),
     };
   }

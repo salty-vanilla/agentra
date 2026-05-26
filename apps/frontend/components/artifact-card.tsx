@@ -52,7 +52,7 @@ export function ArtifactCard({
     try {
       const resolver = getDownloadUrl ?? fetchArtifactDownloadUrl;
       const { url } = await resolver(threadId, artifact.id);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      window.location.assign(url);
     } catch {
       toast.error('ダウンロードに失敗しました');
     } finally {

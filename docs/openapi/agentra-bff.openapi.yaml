@@ -48,7 +48,7 @@ paths:
                   Server-Sent Events stream. Each line is `data: <json>`.
                   JSON payload is one of ChatStreamTextEvent, ChatStreamProgressSummaryEvent,
                   ChatStreamSubAgentProgressEvent, ChatStreamObservationEvent,
-                  ChatStreamDoneEvent, ChatStreamErrorEvent.
+                  ChatStreamArtifactEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:

@@ -52,6 +52,7 @@ const ThreadIdContext = createContext<string>('');
 
 const ArtifactDataRenderer: DataMessagePartComponent = ({ data }) => {
   const threadId = useContext(ThreadIdContext);
+  if (!threadId) return null;
   const manifest = data as ArtifactManifest;
   return (
     <div className="mt-2 flex flex-col gap-2">
