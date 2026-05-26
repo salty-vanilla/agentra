@@ -1,5 +1,9 @@
 import { HttpResponse, http } from 'msw';
-import type { AdminUsersResponse, ThreadsResponse } from '@/mocks/generated/model';
+import type {
+  AdminUsersListResponse,
+  AdminUsersResponse,
+  ThreadsResponse,
+} from '@/mocks/generated/model';
 
 const STORYBOOK_THREADS: ThreadsResponse = {
   threads: [
@@ -72,4 +76,51 @@ export const STORYBOOK_USERS_WITH_ROLES: AdminUsersResponse = {
 
 export const storybookUsersHandler = http.get('*/admin/observability/users', () =>
   HttpResponse.json(STORYBOOK_USERS_WITH_ROLES),
+);
+
+export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
+  users: [
+    {
+      userId: 'user-admin-001-aabbccddeeff',
+      sub: 'sub-admin-001',
+      email: 'admin@example.com',
+      role: 'admin',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      requestCount: 42,
+      totalTokens: 15000,
+      errorRate: 0.02,
+      lastSeenAt: '2026-05-26T12:00:00.000Z',
+      mostUsedAgent: 'research-agent',
+      mostUsedTool: 'web_search',
+    },
+    {
+      userId: 'user-regular-002-gghhiijjkkll',
+      sub: 'sub-user-002',
+      email: 'alice@example.com',
+      role: 'user',
+      createdAt: '2026-02-10T00:00:00.000Z',
+      requestCount: 18,
+      totalTokens: 6200,
+      errorRate: 0.0,
+      lastSeenAt: '2026-05-25T08:00:00.000Z',
+    },
+    {
+      userId: 'user-no-obs-003-mmnnoopp',
+      sub: 'sub-user-003',
+      email: 'bob@example.com',
+      role: 'user',
+      createdAt: '2026-03-05T00:00:00.000Z',
+    },
+    {
+      userId: 'user-legacy-004-qqrrsstt',
+      sub: 'sub-user-004',
+      email: 'carol@example.com',
+      role: 'user',
+      createdAt: '2026-04-01T00:00:00.000Z',
+    },
+  ],
+};
+
+export const storybookAdminUsersListHandler = http.get('*/admin/users', () =>
+  HttpResponse.json(STORYBOOK_ADMIN_USERS_LIST),
 );

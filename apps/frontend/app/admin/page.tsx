@@ -24,7 +24,7 @@ const SECTIONS: Section[] = [
     description: 'Manage users and access',
     href: '/admin/users',
     icon: Users,
-    enabled: false,
+    enabled: true,
   },
   {
     label: 'Agents',

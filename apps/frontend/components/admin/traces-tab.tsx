@@ -14,6 +14,7 @@ type Props = {
   from: string;
   to: string;
   onSelectTrace: (traceId: string) => void;
+  initialUserId?: string;
 };
 
 function statusVariant(status: string): 'default' | 'destructive' | 'secondary' {
@@ -81,10 +82,10 @@ function filterTraces(traces: AdminTraceListItem[], query: string): AdminTraceLi
   );
 }
 
-export function TracesTab({ from, to, onSelectTrace }: Props) {
+export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props) {
   const [statusFilter, setStatusFilter] = useState('');
-  const [appliedUserId, setAppliedUserId] = useState('');
-  const [traceSearch, setTraceSearch] = useState('');
+  const [appliedUserId, setAppliedUserId] = useState(initialUserId);
+  const [traceSearch, setTraceSearch] = useState(initialUserId);
 
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allTraces, setAllTraces] = useState<AdminTraceListItem[]>([]);

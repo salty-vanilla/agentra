@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { AgentsTab } from '@/components/admin/agents-tab';
 import { OverviewTab } from '@/components/admin/overview-tab';
@@ -12,16 +13,24 @@ import { TracesTab } from '@/components/admin/traces-tab';
 import { UsersTab } from '@/components/admin/users-tab';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
+const VALID_TABS = new Set(['overview', 'users', 'agents', 'tools', 'skills', 'traces']);
+
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
 export function AdminDashboard() {
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') ?? 'overview';
+  const initialUserId = searchParams.get('userId') ?? '';
+
   const today = todayStr();
   const [period, setPeriod] = useState<Period>('today');
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(
+    VALID_TABS.has(initialTab) ? initialTab : 'overview',
+  );
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
 
   function handlePeriodChange(p: Period, nextFrom: string, nextTo: string) {
@@ -63,7 +72,12 @@ export function AdminDashboard() {
           <SkillsTab from={from} to={to} />
         </TabsContent>
         <TabsContent value="traces" className="mt-2 min-h-0 flex flex-col">
-          <TracesTab from={from} to={to} onSelectTrace={setSelectedTraceId} />
+          <TracesTab
+            from={from}
+            to={to}
+            onSelectTrace={setSelectedTraceId}
+            initialUserId={initialUserId}
+          />
         </TabsContent>
       </Tabs>
 

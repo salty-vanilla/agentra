@@ -15,6 +15,12 @@ import {
   listObservabilityRecordsInRange,
 } from '../store/observability-store.js';
 import { userStore } from '../store/user-store.js';
+import {
+  applyOffsetPagination,
+  parseCursorParam,
+  parseDateRange,
+  parseLimitParam,
+} from './admin-route-utils.js';
 
 type HonoEnv = {
   Variables: {
@@ -22,52 +28,6 @@ type HonoEnv = {
     requestId: string;
   };
 };
-
-const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
-
-function todayUtc(): string {
-  return new Date().toISOString().slice(0, 10);
-}
-
-function parseDateRange(
-  from: string | undefined,
-  to: string | undefined,
-): { startDay: string; endDay: string } | { error: string } {
-  const startDay = from ?? todayUtc();
-  const endDay = to ?? todayUtc();
-
-  if (!DATE_PATTERN.test(startDay)) {
-    return { error: `Invalid 'from' date: "${startDay}". Expected YYYY-MM-DD.` };
-  }
-  if (!DATE_PATTERN.test(endDay)) {
-    return { error: `Invalid 'to' date: "${endDay}". Expected YYYY-MM-DD.` };
-  }
-
-  return { startDay, endDay };
-}
-
-function parseLimitParam(raw: string | undefined): number | { error: string } {
-  const n = raw === undefined ? 50 : Number(raw);
-  if (!Number.isInteger(n) || n < 1 || n > 200) {
-    return { error: `Invalid 'limit': must be an integer between 1 and 200.` };
-  }
-  return n;
-}
-
-function applyOffsetPagination<T>(
-  items: T[],
-  limit: number,
-  cursor?: string,
-): { page: T[]; nextCursor?: string } {
-  const offset = cursor ? Number(Buffer.from(cursor, 'base64').toString()) : 0;
-  const page = items.slice(offset, offset + limit);
-  const nextOffset = offset + page.length;
-  const nextCursor =
-    nextOffset < items.length
-      ? Buffer.from(String(nextOffset)).toString('base64')
-      : undefined;
-  return nextCursor !== undefined ? { page, nextCursor } : { page };
-}
 
 const adminObservabilityRouter = new Hono<HonoEnv>();
 
@@ -111,7 +71,12 @@ adminObservabilityRouter.get('/users', async (c) => {
     return c.json({ error: limitResult.error }, 400);
   }
   const limit = limitResult;
-  const cursor = c.req.query('cursor');
+
+  const cursorResult = parseCursorParam(c.req.query('cursor'));
+  if (typeof cursorResult === 'object' && 'error' in cursorResult) {
+    return c.json({ error: cursorResult.error }, 400);
+  }
+  const offset = cursorResult ?? 0;
 
   const { records } = await listObservabilityRecordsInRange(range);
   // Active users = users with observability records in the selected period.
@@ -128,7 +93,7 @@ adminObservabilityRouter.get('/users', async (c) => {
   }));
 
   // Paginate after role join so role is present on all pages.
-  const { page, nextCursor } = applyOffsetPagination(usersWithRole, limit, cursor);
+  const { page, nextCursor } = applyOffsetPagination(usersWithRole, limit, offset);
 
   return jsonWithValidation(c, 'getAdminUsers', 200, {
     users: page,
@@ -185,7 +150,12 @@ adminObservabilityRouter.get('/traces', async (c) => {
     return c.json({ error: limitResult.error }, 400);
   }
   const limit = limitResult;
-  const cursor = c.req.query('cursor');
+
+  const cursorResult = parseCursorParam(c.req.query('cursor'));
+  if (typeof cursorResult === 'object' && 'error' in cursorResult) {
+    return c.json({ error: cursorResult.error }, 400);
+  }
+  const offset = cursorResult ?? 0;
 
   const { records } = await listObservabilityRecordsInRange(range);
 
@@ -200,7 +170,7 @@ adminObservabilityRouter.get('/traces', async (c) => {
   }
 
   const traceItems = filtered.map(toTraceListItem);
-  const { page, nextCursor } = applyOffsetPagination(traceItems, limit, cursor);
+  const { page, nextCursor } = applyOffsetPagination(traceItems, limit, offset);
 
   return jsonWithValidation(c, 'getAdminTraces', 200, {
     traces: page,
