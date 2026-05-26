@@ -102,8 +102,9 @@ function NotConfiguredCard() {
         <BookX className="size-10 text-muted-foreground/50" />
         <p className="font-medium">Knowledge Base not configured</p>
         <p className="text-xs text-muted-foreground max-w-xs">
-          Set <code>BEDROCK_KB_ID</code> and <code>KB_DATA_SOURCE_BUCKET_NAME</code> on
-          the backend to enable document management.
+          Set <code>BEDROCK_KB_ID</code>, <code>BEDROCK_KB_DATA_SOURCE_ID</code>, and{' '}
+          <code>KB_DATA_SOURCE_BUCKET_NAME</code> on the backend to enable document
+          management.
         </p>
       </CardContent>
     </Card>
@@ -283,6 +284,7 @@ export function KbPanel() {
 
   const { kbId, dataSourceBucketName } = statusQuery.data;
   const hasNextPage = Boolean(documentsQuery.data?.nextToken);
+  const isInitialDocumentsLoading = allDocuments.length === 0 && documentsQuery.isLoading;
 
   return (
     <div className="flex flex-col gap-6">
@@ -341,7 +343,7 @@ export function KbPanel() {
           </div>
         </CardHeader>
         <CardContent>
-          {documentsQuery.isLoading ? (
+          {isInitialDocumentsLoading ? (
             <div className="flex flex-col gap-2">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-10 w-full" />
