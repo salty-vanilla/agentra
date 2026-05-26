@@ -16,6 +16,7 @@ import type {
   AdminTraceDetailResponse,
   AdminTracesResponse,
   AdminUsersResponse,
+  ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
   GetAdminAgentsParams,
@@ -26,6 +27,7 @@ import type {
   GetAdminTracesParams,
   GetAdminUsersParams,
   HealthResponse,
+  ThreadArtifactsResponse,
   ThreadMessagesResponse,
   ThreadResponse,
   ThreadsResponse,
@@ -220,6 +222,56 @@ export const getListThreadMessagesUrl = (threadId: string,) => {
 export const listThreadMessages = async (threadId: string, options?: RequestInit): Promise<ThreadMessagesResponse> => {
 
   return fetchMutator<ThreadMessagesResponse>(getListThreadMessagesUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List artifact manifests for a thread
+ */
+export const getListThreadArtifactsUrl = (threadId: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/threads/${threadId}/artifacts`
+}
+
+export const listThreadArtifacts = async (threadId: string, options?: RequestInit): Promise<ThreadArtifactsResponse> => {
+
+  return fetchMutator<ThreadArtifactsResponse>(getListThreadArtifactsUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Get a fresh presigned download URL for an artifact
+ */
+export const getGetArtifactDownloadUrlUrl = (threadId: string,
+    artifactId: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/threads/${threadId}/artifacts/${artifactId}/download-url`
+}
+
+export const getArtifactDownloadUrl = async (threadId: string,
+    artifactId: string, options?: RequestInit): Promise<ArtifactDownloadUrlResponse> => {
+
+  return fetchMutator<ArtifactDownloadUrlResponse>(getGetArtifactDownloadUrlUrl(threadId,artifactId),
   {
     ...options,
     method: 'GET'

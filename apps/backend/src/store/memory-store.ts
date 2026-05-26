@@ -1,4 +1,5 @@
 import type {
+  ArtifactManifest,
   ChatObservationSummary,
   PersistedChatMessage,
   ThreadSummary,
@@ -104,6 +105,7 @@ export class MemoryStore implements Store {
     role: Exclude<ChatRole, 'system'>;
     content: string;
     observabilitySummary?: ChatObservationSummary;
+    artifactManifest?: ArtifactManifest;
     requestId?: string;
     errorMessage?: string;
     errorStack?: string;
@@ -119,6 +121,7 @@ export class MemoryStore implements Store {
       ...(input.observabilitySummary
         ? { observabilitySummary: input.observabilitySummary }
         : {}),
+      ...(input.artifactManifest ? { artifactManifest: input.artifactManifest } : {}),
       ...(input.requestId ? { requestId: input.requestId } : {}),
       ...(input.errorMessage ? { errorMessage: input.errorMessage } : {}),
       ...(input.errorStack ? { errorStack: input.errorStack } : {}),

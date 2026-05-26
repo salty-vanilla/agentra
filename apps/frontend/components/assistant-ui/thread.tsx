@@ -1,6 +1,7 @@
 'use client';
 
 import type { ChatObservationSummary } from '@agentra/shared';
+import type { DataMessagePartComponent } from '@assistant-ui/react';
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -15,11 +16,14 @@ import { cva } from 'class-variance-authority';
 import { ArrowDownIcon, PencilIcon } from 'lucide-react';
 import {
   type ButtonHTMLAttributes,
+  createContext,
   type FC,
   forwardRef,
   type MutableRefObject,
+  useContext,
   useRef,
 } from 'react';
+import { ArtifactCard } from '@/components/artifact-card';
 import { AssistantComposerAdapter } from '@/components/assistant-ui/assistant-composer-adapter';
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import {
@@ -37,11 +41,27 @@ import { ProgressSummaryCard } from '@/components/progress-summary-card';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
 import type {
+  ArtifactManifest,
   ChatCommand,
   ProgressSummaryEvent,
   SubAgentProgressEvent,
 } from '@/lib/generated/model';
 import { cn } from '@/lib/utils';
+
+const ThreadIdContext = createContext<string>('');
+
+const ArtifactDataRenderer: DataMessagePartComponent = ({ data }) => {
+  const threadId = useContext(ThreadIdContext);
+  if (!threadId) return null;
+  const manifest = data as ArtifactManifest;
+  return (
+    <div className="mt-2 flex flex-col gap-2">
+      {manifest.artifacts.map((artifact) => (
+        <ArtifactCard key={artifact.id} artifact={artifact} threadId={threadId} />
+      ))}
+    </div>
+  );
+};
 
 const threadMessageRootVariants = cva(
   'fade-in slide-in-from-bottom-1 animate-in duration-150',
@@ -61,6 +81,7 @@ const threadMessageRootVariants = cva(
 export const Thread: FC<{
   modelValue: ModelKey;
   onModelChange: (m: ModelKey) => void;
+  threadId?: string;
   slideCommandActive?: boolean;
   onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
   onSlideCommandDeactivate?: () => void;
@@ -72,6 +93,7 @@ export const Thread: FC<{
 }> = ({
   modelValue,
   onModelChange,
+  threadId = '',
   slideCommandActive,
   onSlideCommandActivate,
   onSlideCommandDeactivate,
@@ -82,59 +104,63 @@ export const Thread: FC<{
   subAgentProgressEvents,
 }) => {
   return (
-    <ThreadPrimitive.Root
-      className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
-      style={{
-        ['--thread-max-width' as string]: '44rem',
-        ['--composer-radius' as string]: '24px',
-        ['--composer-padding' as string]: '10px',
-      }}
-    >
-      <ThreadPrimitive.Viewport
-        turnAnchor="top"
-        data-slot="aui_thread-viewport"
-        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
+    <ThreadIdContext.Provider value={threadId}>
+      <ThreadPrimitive.Root
+        className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
+        style={{
+          ['--thread-max-width' as string]: '44rem',
+          ['--composer-radius' as string]: '24px',
+          ['--composer-padding' as string]: '10px',
+        }}
       >
-        <div className="mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4">
-          <AuiIf condition={(s) => s.thread.isEmpty}>
-            <ThreadWelcome />
-          </AuiIf>
+        <ThreadPrimitive.Viewport
+          turnAnchor="top"
+          data-slot="aui_thread-viewport"
+          className="relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
+        >
+          <div className="mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4">
+            <AuiIf condition={(s) => s.thread.isEmpty}>
+              <ThreadWelcome />
+            </AuiIf>
 
-          <div
-            data-slot="aui_message-group"
-            className="mb-10 flex flex-col gap-y-8 empty:hidden"
-          >
-            <ThreadPrimitive.Messages>{() => <ThreadMessage />}</ThreadPrimitive.Messages>
+            <div
+              data-slot="aui_message-group"
+              className="mb-10 flex flex-col gap-y-8 empty:hidden"
+            >
+              <ThreadPrimitive.Messages>
+                {() => <ThreadMessage />}
+              </ThreadPrimitive.Messages>
+            </div>
+
+            <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mt-auto flex flex-col gap-3 overflow-visible rounded-t-(--composer-radius) bg-transparent pb-2 md:pb-3">
+              {progressEvents && progressEvents.length > 0 && (
+                <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
+                  <ProgressSummaryCard
+                    events={progressEvents}
+                    {...(activeProgressPhase ? { activePhase: activeProgressPhase } : {})}
+                  />
+                </div>
+              )}
+              {subAgentProgressEvents && subAgentProgressEvents.length > 0 && (
+                <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
+                  <SubAgentProgressCard events={subAgentProgressEvents} />
+                </div>
+              )}
+              <ThreadScrollToBottom />
+              <Composer
+                modelValue={modelValue}
+                onModelChange={onModelChange}
+                {...(slideCommandActive != null ? { slideCommandActive } : {})}
+                {...(onSlideCommandActivate ? { onSlideCommandActivate } : {})}
+                {...(onSlideCommandDeactivate ? { onSlideCommandDeactivate } : {})}
+                {...(slideDialogOpen != null ? { slideDialogOpen } : {})}
+                {...(onSlideDialogOpenChange ? { onSlideDialogOpenChange } : {})}
+              />
+            </ThreadPrimitive.ViewportFooter>
           </div>
-
-          <ThreadPrimitive.ViewportFooter className="aui-thread-viewport-footer sticky bottom-0 mt-auto flex flex-col gap-3 overflow-visible rounded-t-(--composer-radius) bg-transparent pb-2 md:pb-3">
-            {progressEvents && progressEvents.length > 0 && (
-              <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
-                <ProgressSummaryCard
-                  events={progressEvents}
-                  {...(activeProgressPhase ? { activePhase: activeProgressPhase } : {})}
-                />
-              </div>
-            )}
-            {subAgentProgressEvents && subAgentProgressEvents.length > 0 && (
-              <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
-                <SubAgentProgressCard events={subAgentProgressEvents} />
-              </div>
-            )}
-            <ThreadScrollToBottom />
-            <Composer
-              modelValue={modelValue}
-              onModelChange={onModelChange}
-              {...(slideCommandActive != null ? { slideCommandActive } : {})}
-              {...(onSlideCommandActivate ? { onSlideCommandActivate } : {})}
-              {...(onSlideCommandDeactivate ? { onSlideCommandDeactivate } : {})}
-              {...(slideDialogOpen != null ? { slideDialogOpen } : {})}
-              {...(onSlideDialogOpenChange ? { onSlideDialogOpenChange } : {})}
-            />
-          </ThreadPrimitive.ViewportFooter>
-        </div>
-      </ThreadPrimitive.Viewport>
-    </ThreadPrimitive.Root>
+        </ThreadPrimitive.Viewport>
+      </ThreadPrimitive.Root>
+    </ThreadIdContext.Provider>
   );
 };
 
@@ -270,6 +296,7 @@ const AssistantMessage: FC = () => {
           components={{
             Text: MarkdownText,
             tools: { Fallback: ToolFallback },
+            data: { by_name: { artifact: ArtifactDataRenderer } },
           }}
         />
       </AssistantMessageView>

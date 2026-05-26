@@ -1,3 +1,4 @@
+import { type ArtifactManifest, artifactManifestSchema } from '@agentra/agent-tools';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { buildRouterPrompt, createRouterAgent } from './agents/router/index.js';
@@ -7,6 +8,21 @@ import { ObservationCollector } from './observability.js';
 import { RequestSchema } from './request-schema.js';
 import { RuntimeLogger } from './runtime-logger.js';
 import type { SubAgentProgressEvent } from './tools/invoke-manufacturing-line-agent.tool.js';
+
+function parseArtifactManifestContent(content: unknown): ArtifactManifest | undefined {
+  if (!Array.isArray(content)) return undefined;
+  const first = content.find(
+    (c) =>
+      c && typeof c === 'object' && typeof (c as { text?: unknown }).text === 'string',
+  ) as { text?: string } | undefined;
+  if (!first?.text) return undefined;
+  try {
+    const result = artifactManifestSchema.safeParse(JSON.parse(first.text));
+    return result.success ? result.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export type {
   ManufacturingLineAgentConfig,
@@ -279,6 +295,15 @@ const app = new BedrockAgentCoreApp({
               logger.logToolCallError(toolUseId, toolName, toolDuration);
             } else {
               logger.logToolCallEnd(toolUseId, toolName, toolDuration);
+            }
+            if (toolName === 'create_artifact_manifest' && toolStatus === 'success') {
+              const manifest = parseArtifactManifestContent(event.result.content);
+              if (manifest) {
+                yield {
+                  event: 'message',
+                  data: { type: 'artifact_manifest', manifest },
+                };
+              }
             }
             yield {
               event: 'message',

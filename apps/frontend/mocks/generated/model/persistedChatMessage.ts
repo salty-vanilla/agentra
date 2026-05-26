@@ -7,6 +7,7 @@ This spec is the source of truth for frontend client generation and API mocks.
 
  * OpenAPI spec version: 0.1.0
  */
+import type { ArtifactManifest } from './artifactManifest';
 import type { ChatObservationSummary } from './chatObservationSummary';
 import type { MessageRole } from './messageRole';
 
@@ -31,4 +32,5 @@ export interface PersistedChatMessage {
   /** ISO timestamp when chat was cancelled */
   cancelledAt?: string;
   observabilitySummary?: ChatObservationSummary;
+  artifactManifest?: ArtifactManifest;
 }

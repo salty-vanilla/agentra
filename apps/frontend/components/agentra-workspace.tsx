@@ -27,6 +27,7 @@ import {
 } from '@/lib/api';
 import { isMockApiMode } from '@/lib/api-config';
 import type {
+  ArtifactManifest,
   ChatCommand,
   ChatRequest as FrontendChatRequest,
   ProgressSummaryEvent,
@@ -433,22 +434,35 @@ export function AgentraWorkspace() {
           await queryClient.fetchQuery(threadMessagesQueryOptions(response.threadId));
           stopProgressSimulation();
 
-          if (response.observabilitySummary) {
+          {
+            const mockContent: Array<
+              | { type: 'text'; text: string }
+              | { type: 'data'; name: string; data: unknown }
+            > = [{ type: 'text', text: response.reply }];
+            if (response.observabilitySummary) {
+              mockContent.push({
+                type: 'data',
+                name: 'observability',
+                data: response.observabilitySummary,
+              });
+            }
+            if (response.artifactManifest) {
+              mockContent.push({
+                type: 'data',
+                name: 'artifact',
+                data: response.artifactManifest,
+              });
+            }
             yield {
-              content: [
-                { type: 'text', text: response.reply },
-                {
-                  type: 'data',
-                  name: 'observability',
-                  data: response.observabilitySummary,
-                },
-              ],
-              metadata: {
-                custom: { observabilitySummary: response.observabilitySummary },
-              },
+              content: mockContent,
+              ...(response.observabilitySummary
+                ? {
+                    metadata: {
+                      custom: { observabilitySummary: response.observabilitySummary },
+                    },
+                  }
+                : {}),
             };
-          } else {
-            yield { content: [{ type: 'text', text: response.reply }] };
           }
           setSubAgentProgressEvents([]);
           return;
@@ -459,6 +473,7 @@ export function AgentraWorkspace() {
         let streamThreadId: string | null = null;
         let doneThreadId: string | null = null;
         let doneObservabilitySummary: ChatObservationSummary | null = null;
+        let latestArtifactManifest: ArtifactManifest | undefined;
 
         try {
           for await (const event of sendChatStream(finalRequest, abortSignal)) {
@@ -474,6 +489,8 @@ export function AgentraWorkspace() {
             } else if (event.type === 'observation') {
               doneObservabilitySummary = event.observation;
               setLiveObservabilitySummary(event.observation);
+            } else if (event.type === 'artifact') {
+              latestArtifactManifest = event.manifest;
             } else if (event.type === 'done') {
               doneThreadId = event.threadId;
               if (event.observabilitySummary) {
@@ -521,16 +538,31 @@ export function AgentraWorkspace() {
           await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
           await queryClient.fetchQuery(threadMessagesQueryOptions(resolvedThreadId));
         }
-        if (doneObservabilitySummary) {
-          setLiveObservabilitySummary(doneObservabilitySummary);
+        if (doneObservabilitySummary || latestArtifactManifest) {
+          if (doneObservabilitySummary) {
+            setLiveObservabilitySummary(doneObservabilitySummary);
+          }
           yield {
             content: [
               { type: 'text', text: fullText },
-              {
-                type: 'data',
-                name: 'observability',
-                data: doneObservabilitySummary,
-              },
+              ...(doneObservabilitySummary
+                ? [
+                    {
+                      type: 'data' as const,
+                      name: 'observability',
+                      data: doneObservabilitySummary,
+                    },
+                  ]
+                : []),
+              ...(latestArtifactManifest
+                ? [
+                    {
+                      type: 'data' as const,
+                      name: 'artifact',
+                      data: latestArtifactManifest,
+                    },
+                  ]
+                : []),
             ],
           };
         }
@@ -774,6 +806,7 @@ export function AgentraWorkspace() {
                 <Thread
                   modelValue={selectedModel}
                   onModelChange={setSelectedModel}
+                  {...(selectedThreadId ? { threadId: selectedThreadId } : {})}
                   slideCommandActive={slideCommandActive}
                   onSlideCommandActivate={handleSlideCommandActivate}
                   onSlideCommandDeactivate={handleSlideCommandDeactivate}
@@ -821,17 +854,22 @@ function getErrorMessage(error: unknown, fallback: string) {
 function convertPersistedMessageToRuntimeMessage(
   message: PersistedChatMessage,
 ): ThreadMessageLike {
-  const contentParts: ThreadMessageLike['content'] =
-    message.observabilitySummary && message.role === 'assistant'
+  const isAssistant = message.role === 'assistant';
+  const contentParts: ThreadMessageLike['content'] = [
+    { type: 'text', text: message.content },
+    ...(isAssistant && message.observabilitySummary
       ? [
-          { type: 'text', text: message.content },
           {
-            type: 'data',
+            type: 'data' as const,
             name: 'observability',
             data: message.observabilitySummary,
           },
         ]
-      : [{ type: 'text', text: message.content }];
+      : []),
+    ...(isAssistant && message.artifactManifest
+      ? [{ type: 'data' as const, name: 'artifact', data: message.artifactManifest }]
+      : []),
+  ];
 
   return {
     role: message.role,

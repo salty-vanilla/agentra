@@ -1,4 +1,4 @@
-import { ListThreadMessagesResponse } from '@agentra/shared';
+import { artifactManifestSchema, ListThreadMessagesResponse } from '@agentra/shared';
 import { z } from 'zod';
 
 const chatObservationSummarySchema =
@@ -84,12 +84,18 @@ export const chatStreamCancelledEventSchema = z.object({
   observabilitySummary: chatObservationSummarySchema.optional(),
 });
 
+export const chatStreamArtifactEventSchema = z.object({
+  type: z.literal('artifact'),
+  manifest: artifactManifestSchema,
+});
+
 export const chatStreamEventSchema = z.union([
   chatStreamThreadStartedEventSchema,
   chatStreamTextEventSchema,
   chatStreamProgressSummaryEventSchema,
   chatStreamSubAgentProgressEventSchema,
   chatStreamObservationEventSchema,
+  chatStreamArtifactEventSchema,
   chatStreamDoneEventSchema,
   chatStreamErrorEventSchema,
   chatStreamCancelledEventSchema,

@@ -1,4 +1,4 @@
-import { isMockApiMode, STREAMING_API_BASE_URL } from '@/lib/api-config';
+import { API_BASE_URL, isMockApiMode, STREAMING_API_BASE_URL } from '@/lib/api-config';
 import { ApiError } from '@/lib/api-error';
 import {
   createThread as createThreadRequest,
@@ -26,8 +26,10 @@ import type {
   AdminTraceDetailResponse,
   AdminTracesResponse,
   AdminUsersResponse,
+  ArtifactManifest,
   ChatObservationSummary,
   ChatRequest,
+  ChatStreamArtifactEvent,
   ChatStreamDoneEvent,
   ChatStreamErrorEvent,
   ChatStreamObservationEvent,
@@ -50,6 +52,7 @@ export type ChatStreamEvent =
   | ChatStreamProgressSummaryEvent
   | ChatStreamSubAgentProgressEvent
   | ChatStreamObservationEvent
+  | ChatStreamArtifactEvent
   | ChatStreamDoneEvent
   | ChatStreamErrorEvent;
 
@@ -66,6 +69,7 @@ export type MockChatResponse = {
   model: string;
   createdAt: string;
   observabilitySummary?: ChatObservationSummary;
+  artifactManifest?: ArtifactManifest;
 };
 
 async function getAuthHeaders(): Promise<HeadersInit> {
@@ -226,6 +230,28 @@ async function expectThreadResponse(
     throw new ApiError(502, { error: 'Unexpected response shape from thread API.' });
   }
   return response;
+}
+
+export async function fetchArtifactDownloadUrl(
+  threadId: string,
+  artifactId: string,
+): Promise<{ url: string; expiresAt: string }> {
+  if (isMockApiMode) {
+    const blob = new Blob(['mock pptx artifact'], {
+      type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    });
+    return {
+      url: URL.createObjectURL(blob),
+      expiresAt: new Date(Date.now() + 900_000).toISOString(),
+    };
+  }
+  const headers = await getAuthHeaders();
+  const res = await fetch(
+    `${API_BASE_URL}/threads/${encodeURIComponent(threadId)}/artifacts/${encodeURIComponent(artifactId)}/download-url`,
+    { headers },
+  );
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+  return res.json() as Promise<{ url: string; expiresAt: string }>;
 }
 
 // ── Admin observability API ───────────────────────────────────────────────────

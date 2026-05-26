@@ -22,6 +22,9 @@ import {
 import type {
   AdminTraceDetail,
   AdminTraceListItem,
+  ArtifactManifest,
+  ArtifactRef,
+  ChatCommand,
   ChatObservationSummary,
   ChatRequest,
   CreateThreadRequest,
@@ -811,7 +814,7 @@ export const handlers = [
       );
     }
 
-    const { message, threadId } = parsed.data;
+    const { message, threadId, command } = parsed.data;
     const thread = threadId
       ? (getThread(threadId) ?? createThread({ initialMessage: message }))
       : createThread({ initialMessage: message });
@@ -825,11 +828,18 @@ export const handlers = [
     const reply = buildDummyReply(message);
     const observabilitySummary = buildDummyObservabilitySummary(message);
 
+    const isSlideCommand =
+      command?.type === 'create_slide_presentation' ||
+      /^\/slide(\s|$)/i.test(message) ||
+      /スライド|プレゼン/i.test(message);
+    const artifactManifest = isSlideCommand ? buildMockArtifactManifest() : undefined;
+
     appendMessage({
       threadId: thread.threadId,
       role: 'assistant',
       content: reply,
       observabilitySummary,
+      ...(artifactManifest ? { artifactManifest } : {}),
     });
 
     return JSON.stringify({
@@ -838,6 +848,7 @@ export const handlers = [
       model: 'msw-dummy-agent-v1',
       createdAt: now(),
       observabilitySummary,
+      ...(artifactManifest ? { artifactManifest } : {}),
     });
   }),
 ];
@@ -877,11 +888,32 @@ function createThread(input: CreateThreadInput = {}) {
   return thread;
 }
 
+function buildMockArtifactManifest(): ArtifactManifest {
+  return {
+    id: uuidv7(),
+    createdAt: now(),
+    artifacts: [
+      {
+        id: uuidv7(),
+        kind: 'pptx' as ArtifactRef['kind'],
+        name: 'presentation.pptx',
+        path: 'runs/mock/presentation.pptx',
+        mimeType:
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+        sizeBytes: 1_234_567,
+        createdAt: now(),
+        exists: true,
+      },
+    ],
+  };
+}
+
 function appendMessage(input: {
   threadId: string;
   role: MessageRole;
   content: string;
   observabilitySummary?: ChatObservationSummary;
+  artifactManifest?: ArtifactManifest;
 }) {
   const timestamp = now();
   const message: PersistedChatMessage = {
@@ -893,6 +925,7 @@ function appendMessage(input: {
     ...(input.observabilitySummary
       ? { observabilitySummary: input.observabilitySummary }
       : {}),
+    ...(input.artifactManifest ? { artifactManifest: input.artifactManifest } : {}),
   };
 
   const currentMessages = messageStore.get(input.threadId) ?? [];
@@ -982,6 +1015,8 @@ function parseChatRequest(payload: unknown) {
 
   const message = 'message' in payload ? payload.message : undefined;
   const threadId = 'threadId' in payload ? payload.threadId : undefined;
+  const command =
+    'command' in payload ? (payload.command as ChatCommand | undefined) : undefined;
 
   if (typeof message !== 'string' || message.trim().length === 0) {
     return {
@@ -1003,6 +1038,7 @@ function parseChatRequest(payload: unknown) {
     data: {
       message,
       ...(threadId ? { threadId } : {}),
+      ...(command ? { command } : {}),
     } satisfies ChatRequest,
   };
 }

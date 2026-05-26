@@ -17,6 +17,7 @@ import type {
   AdminTraceDetailResponse,
   AdminTracesResponse,
   AdminUsersResponse,
+  ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
   ErrorResponse,
@@ -28,6 +29,7 @@ import type {
   GetAdminTracesParams,
   GetAdminUsersParams,
   HealthResponse,
+  ThreadArtifactsResponse,
   ThreadMessagesResponse,
   ThreadResponse,
   ThreadsResponse,
@@ -48,6 +50,7 @@ import type {
 } from 'msw';
 
 import {
+  ArtifactKind,
   MessageRole
 } from './model';
 
@@ -439,6 +442,111 @@ export const listThreadMessages = async (threadId: string, options?: RequestInit
 
   const data: listThreadMessagesResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as listThreadMessagesResponse
+}
+
+
+
+/**
+ * @summary List artifact manifests for a thread
+ */
+export type listThreadArtifactsResponse200 = {
+  data: ThreadArtifactsResponse
+  status: 200
+}
+
+export type listThreadArtifactsResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type listThreadArtifactsResponseSuccess = (listThreadArtifactsResponse200) & {
+  headers: Headers;
+};
+export type listThreadArtifactsResponseError = (listThreadArtifactsResponse404) & {
+  headers: Headers;
+};
+
+export type listThreadArtifactsResponse = (listThreadArtifactsResponseSuccess | listThreadArtifactsResponseError)
+
+export const getListThreadArtifactsUrl = (threadId: string,) => {
+
+
+
+
+  return `/threads/${threadId}/artifacts`
+}
+
+export const listThreadArtifacts = async (threadId: string, options?: RequestInit): Promise<listThreadArtifactsResponse> => {
+
+  const res = await fetch(getListThreadArtifactsUrl(threadId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listThreadArtifactsResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listThreadArtifactsResponse
+}
+
+
+
+/**
+ * @summary Get a fresh presigned download URL for an artifact
+ */
+export type getArtifactDownloadUrlResponse200 = {
+  data: ArtifactDownloadUrlResponse
+  status: 200
+}
+
+export type getArtifactDownloadUrlResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getArtifactDownloadUrlResponse503 = {
+  data: ErrorResponse
+  status: 503
+}
+
+export type getArtifactDownloadUrlResponseSuccess = (getArtifactDownloadUrlResponse200) & {
+  headers: Headers;
+};
+export type getArtifactDownloadUrlResponseError = (getArtifactDownloadUrlResponse404 | getArtifactDownloadUrlResponse503) & {
+  headers: Headers;
+};
+
+export type getArtifactDownloadUrlResponse = (getArtifactDownloadUrlResponseSuccess | getArtifactDownloadUrlResponseError)
+
+export const getGetArtifactDownloadUrlUrl = (threadId: string,
+    artifactId: string,) => {
+
+
+
+
+  return `/threads/${threadId}/artifacts/${artifactId}/download-url`
+}
+
+export const getArtifactDownloadUrl = async (threadId: string,
+    artifactId: string, options?: RequestInit): Promise<getArtifactDownloadUrlResponse> => {
+
+  const res = await fetch(getGetArtifactDownloadUrlUrl(threadId,artifactId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getArtifactDownloadUrlResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getArtifactDownloadUrlResponse
 }
 
 
@@ -912,7 +1020,11 @@ export const getUpdateThreadResponseMock = (overrideResponse: Partial<Extract<Th
 
 export const getDeleteThreadResponseMock = (overrideResponse: Partial<Extract<ThreadResponse, object>> = {}): ThreadResponse => ({thread: {threadId: faker.string.alpha({length: {min: 1, max: 20}}), title: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', preview: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, ...overrideResponse})
 
-export const getListThreadMessagesResponseMock = (overrideResponse: Partial<Extract<ThreadMessagesResponse, object>> = {}): ThreadMessagesResponse => ({thread: {threadId: faker.string.alpha({length: {min: 1, max: 20}}), title: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', preview: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, messages: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({messageId: faker.string.alpha({length: {min: 1, max: 20}}), threadId: faker.string.alpha({length: {min: 1, max: 20}}), role: faker.helpers.arrayElement(Object.values(MessageRole)), content: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', requestId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined]), errorMessage: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), errorStack: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), cancelledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), observabilitySummary: faker.helpers.arrayElement([{traceId: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined]), reasoning: faker.helpers.arrayElement([{stepCount: faker.number.int({min: 0}), summary: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, undefined]), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 1, max: 20}}), toolName: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined]), metadata: faker.helpers.arrayElement([{}, undefined])})), toolCallCount: faker.number.int({min: 0}), toolFailureCount: faker.number.int({min: 0})}, undefined])})), ...overrideResponse})
+export const getListThreadMessagesResponseMock = (overrideResponse: Partial<Extract<ThreadMessagesResponse, object>> = {}): ThreadMessagesResponse => ({thread: {threadId: faker.string.alpha({length: {min: 1, max: 20}}), title: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', updatedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', preview: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, messages: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({messageId: faker.string.alpha({length: {min: 1, max: 20}}), threadId: faker.string.alpha({length: {min: 1, max: 20}}), role: faker.helpers.arrayElement(Object.values(MessageRole)), content: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', requestId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined]), errorMessage: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), errorStack: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), cancelledAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), observabilitySummary: faker.helpers.arrayElement([{traceId: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined]), reasoning: faker.helpers.arrayElement([{stepCount: faker.number.int({min: 0}), summary: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])}, undefined]), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 1, max: 20}}), toolName: faker.string.alpha({length: {min: 1, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 1, max: 20}}), undefined]), metadata: faker.helpers.arrayElement([{}, undefined])})), toolCallCount: faker.number.int({min: 0}), toolFailureCount: faker.number.int({min: 0})}, undefined]), artifactManifest: faker.helpers.arrayElement([{id: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', artifacts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 1, max: 20}}), kind: faker.helpers.arrayElement(Object.values(ArtifactKind)), name: faker.string.alpha({length: {min: 1, max: 20}}), path: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), url: faker.helpers.arrayElement([faker.internet.url(), undefined]), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), sizeBytes: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', metadata: faker.helpers.arrayElement([{}, undefined]), label: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), exists: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), metadata: faker.helpers.arrayElement([{}, undefined])}, undefined])})), ...overrideResponse})
+
+export const getListThreadArtifactsResponseMock = (overrideResponse: Partial<Extract<ThreadArtifactsResponse, object>> = {}): ThreadArtifactsResponse => ({manifests: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 1, max: 20}}), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', artifacts: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({id: faker.string.alpha({length: {min: 1, max: 20}}), kind: faker.helpers.arrayElement(Object.values(ArtifactKind)), name: faker.string.alpha({length: {min: 1, max: 20}}), path: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), url: faker.helpers.arrayElement([faker.internet.url(), undefined]), mimeType: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), sizeBytes: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', metadata: faker.helpers.arrayElement([{}, undefined]), label: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), exists: faker.helpers.arrayElement([faker.datatype.boolean(), undefined])})), metadata: faker.helpers.arrayElement([{}, undefined])})), ...overrideResponse})
+
+export const getGetArtifactDownloadUrlResponseMock = (overrideResponse: Partial<Extract<ArtifactDownloadUrlResponse, object>> = {}): ArtifactDownloadUrlResponse => ({url: faker.internet.url(), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
 
 export const getGetAdminOverviewResponseMock = (overrideResponse: Partial<Extract<AdminOverviewResponse, object>> = {}): AdminOverviewResponse => ({requestCount: faker.number.int({min: 0}), activeUserCount: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), avgDurationMs: faker.number.int({min: 0}), p95DurationMs: faker.number.int({min: 0}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), totalToolCalls: faker.number.int({min: 0}), toolFailureRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), estimatedCostUsd: faker.number.float({min: 0, fractionDigits: 2}), period: {from: faker.string.alpha({length: {min: 10, max: 20}}), to: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
 
@@ -1028,6 +1140,30 @@ export const getListThreadMessagesMockHandler = (overrideResponse?: ThreadMessag
   }, options)
 }
 
+export const getListThreadArtifactsMockHandler = (overrideResponse?: ThreadArtifactsResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ThreadArtifactsResponse> | ThreadArtifactsResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/threads/:threadId/artifacts', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListThreadArtifactsResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetArtifactDownloadUrlMockHandler = (overrideResponse?: ArtifactDownloadUrlResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<ArtifactDownloadUrlResponse> | ArtifactDownloadUrlResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/threads/:threadId/artifacts/:artifactId/download-url', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetArtifactDownloadUrlResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getGetAdminOverviewMockHandler = (overrideResponse?: AdminOverviewResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminOverviewResponse> | AdminOverviewResponse), options?: RequestHandlerOptions) => {
   return http.get('*/admin/observability/overview', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
 
@@ -1132,6 +1268,8 @@ export const getAgentraBFFAPIMock = () => [
   getUpdateThreadMockHandler(),
   getDeleteThreadMockHandler(),
   getListThreadMessagesMockHandler(),
+  getListThreadArtifactsMockHandler(),
+  getGetArtifactDownloadUrlMockHandler(),
   getGetAdminOverviewMockHandler(),
   getGetAdminTimeseriesMockHandler(),
   getGetAdminUsersMockHandler(),
