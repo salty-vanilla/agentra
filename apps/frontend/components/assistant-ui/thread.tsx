@@ -27,6 +27,7 @@ import {
   type FC,
   forwardRef,
   type MutableRefObject,
+  useCallback,
   useContext,
   useRef,
 } from 'react';
@@ -111,6 +112,11 @@ export const Thread: FC<{
   activeProgressPhase,
   subAgentProgressEvents,
 }) => {
+  const composerInputRef = useRef<HTMLTextAreaElement>(null);
+  const focusComposerInput = useCallback(() => {
+    requestAnimationFrame(() => composerInputRef.current?.focus());
+  }, []);
+
   return (
     <ThreadIdContext.Provider value={threadId}>
       <ThreadPrimitive.Root
@@ -128,7 +134,7 @@ export const Thread: FC<{
         >
           <div className="mx-auto flex w-full max-w-(--thread-max-width) flex-1 flex-col px-4 pt-4">
             <AuiIf condition={(s) => s.thread.isEmpty}>
-              <ThreadWelcome />
+              <ThreadWelcome focusComposerInput={focusComposerInput} />
             </AuiIf>
 
             <div
@@ -158,6 +164,7 @@ export const Thread: FC<{
               <Composer
                 modelValue={modelValue}
                 onModelChange={onModelChange}
+                composerInputRef={composerInputRef}
                 {...(slideCommandActive != null ? { slideCommandActive } : {})}
                 {...(onSlideCommandActivate ? { onSlideCommandActivate } : {})}
                 {...(onSlideCommandDeactivate ? { onSlideCommandDeactivate } : {})}
@@ -197,15 +204,14 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-const ThreadWelcome: FC = () => {
+const ThreadWelcome: FC<{ focusComposerInput: () => void }> = ({
+  focusComposerInput,
+}) => {
   const threadRuntime = useThreadRuntime();
 
   const handleSelectPrompt = (prompt: string) => {
     threadRuntime.composer.setText(prompt);
-    requestAnimationFrame(() => {
-      const input = document.querySelector<HTMLElement>('[aria-label="Message input"]');
-      input?.focus();
-    });
+    focusComposerInput();
   };
 
   return (
@@ -232,6 +238,7 @@ const ThreadWelcome: FC = () => {
 const Composer: FC<{
   modelValue: ModelKey;
   onModelChange: (m: ModelKey) => void;
+  composerInputRef?: MutableRefObject<HTMLTextAreaElement | null>;
   slideCommandActive?: boolean;
   onSlideCommandActivate?: (params?: Record<string, unknown>) => void;
   onSlideCommandDeactivate?: () => void;
