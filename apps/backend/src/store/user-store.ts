@@ -32,6 +32,16 @@ export function normalizeUserRecord(item: Record<string, unknown>): UserRecord {
   };
 }
 
+// Returns true when the stored role requires an UpdateCommand:
+// - raw role is missing or invalid (backfill needed)
+// - raw role is valid but differs from the derived role (sync needed)
+export function shouldBackfillOrUpdateRole(
+  rawRole: unknown,
+  derivedRole: UserRole,
+): boolean {
+  return rawRole !== 'admin' && rawRole !== 'user' ? true : rawRole !== derivedRole;
+}
+
 // ── DynamoDB implementation ──────────────────────────────────────────────────
 
 function getUsersTable(): string {
@@ -59,10 +69,13 @@ export class DynamoUserStore implements UserStore {
     );
 
     if (existing.Item) {
+      const rawRole = existing.Item.role;
       const normalized = normalizeUserRecord(existing.Item as Record<string, unknown>);
-      if (normalized.role === role) {
+
+      if (!shouldBackfillOrUpdateRole(rawRole, role)) {
         return normalized;
       }
+      // Run UpdateCommand: backfill missing/invalid role, or sync changed role
       await this.client.send(
         new UpdateCommand({
           TableName: getUsersTable(),

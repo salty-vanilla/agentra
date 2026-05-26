@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { MemoryUserStore, normalizeUserRecord } from '../store/user-store.js';
+import {
+  MemoryUserStore,
+  normalizeUserRecord,
+  shouldBackfillOrUpdateRole,
+} from '../store/user-store.js';
 
 describe('normalizeUserRecord', () => {
   it('passes through valid admin role', () => {
@@ -43,6 +47,32 @@ describe('normalizeUserRecord', () => {
       role: 'superadmin',
     });
     expect(result.role).toBe('user');
+  });
+});
+
+describe('shouldBackfillOrUpdateRole', () => {
+  it('returns true when role is undefined (missing from DynamoDB)', () => {
+    expect(shouldBackfillOrUpdateRole(undefined, 'user')).toBe(true);
+  });
+
+  it('returns true when role is an invalid value', () => {
+    expect(shouldBackfillOrUpdateRole('superadmin', 'user')).toBe(true);
+  });
+
+  it('returns false when valid role matches derived role (user)', () => {
+    expect(shouldBackfillOrUpdateRole('user', 'user')).toBe(false);
+  });
+
+  it('returns false when valid role matches derived role (admin)', () => {
+    expect(shouldBackfillOrUpdateRole('admin', 'admin')).toBe(false);
+  });
+
+  it('returns true when valid role differs from derived role (user→admin)', () => {
+    expect(shouldBackfillOrUpdateRole('user', 'admin')).toBe(true);
+  });
+
+  it('returns true when valid role differs from derived role (admin→user)', () => {
+    expect(shouldBackfillOrUpdateRole('admin', 'user')).toBe(true);
   });
 });
 
