@@ -12,9 +12,12 @@ const meta = {
   },
   args: {
     threadId: THREAD_ID,
-    getDownloadUrl: async (_tid, _aid) => ({
-      url: 'data:application/octet-stream;base64,',
-    }),
+    getDownloadUrl: async () => {
+      const blob = new Blob(['mock pptx artifact'], {
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      });
+      return { url: URL.createObjectURL(blob) };
+    },
   },
 } satisfies Meta<typeof ArtifactCard>;
 
