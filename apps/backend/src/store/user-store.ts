@@ -134,6 +134,10 @@ const DEMO_USER: UserRecord = {
 export class MemoryUserStore implements UserStore {
   private store = new Map<string, UserRecord>([[DEMO_USER.sub, DEMO_USER]]);
 
+  reset(): void {
+    this.store = new Map([[DEMO_USER.sub, DEMO_USER]]);
+  }
+
   async getOrCreateUser(
     sub: string,
     email: string,
@@ -175,3 +179,9 @@ function createUserStore(): UserStore {
 }
 
 export const userStore: UserStore = createUserStore();
+
+export function resetUserStore(): void {
+  if (userStore instanceof MemoryUserStore) {
+    (userStore as MemoryUserStore).reset();
+  }
+}

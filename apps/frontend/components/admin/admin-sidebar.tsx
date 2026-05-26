@@ -22,7 +22,7 @@ const STATIC_NAV_ITEMS: NavItem[] = [
     icon: BarChart3,
     enabled: true,
   },
-  { label: 'Users', href: '/admin/users', icon: Users, enabled: false },
+  { label: 'Users', href: '/admin/users', icon: Users, enabled: true },
   { label: 'Agents', href: '/admin/agents', icon: Bot, enabled: false },
   { label: 'RAG / KB', href: '/admin/rag', icon: BookOpen, enabled: false },
   { label: 'Settings', href: '/admin/settings', icon: Settings, enabled: false },

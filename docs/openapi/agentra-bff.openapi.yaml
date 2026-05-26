@@ -436,6 +436,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /admin/users:
+    get:
+      operationId: listAdminUsers
+      tags: [admin]
+      summary: List all users from UserTable
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
+            default: 50
+        - name: cursor
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUsersListResponse'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /knowledge-base/status:
     get:
       operationId: getKbStatus
@@ -1362,6 +1398,59 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/AdminUserStats'
+        cursor:
+          type: string
+    AdminUser:
+      type: object
+      additionalProperties: false
+      required:
+        - userId
+        - sub
+        - email
+        - role
+        - createdAt
+      properties:
+        userId:
+          type: string
+        sub:
+          type: string
+        email:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+        createdAt:
+          type: string
+          format: date-time
+        lastSeenAt:
+          type: string
+          format: date-time
+        requestCount:
+          type: integer
+          minimum: 0
+        totalTokens:
+          type: integer
+          minimum: 0
+        errorRate:
+          type: number
+          minimum: 0
+          maximum: 1
+        mostUsedAgent:
+          type: string
+        mostUsedTool:
+          type: string
+    AdminUsersListResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - users
+      properties:
+        users:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdminUser'
         cursor:
           type: string
     AdminAgentStats:

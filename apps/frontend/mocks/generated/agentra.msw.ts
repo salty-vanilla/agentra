@@ -16,6 +16,7 @@ import type {
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
+  AdminUsersListResponse,
   AdminUsersResponse,
   ArtifactDownloadUrlResponse,
   ChatRequest,
@@ -33,6 +34,7 @@ import type {
   IngestionJobsResponse,
   KbDocumentsResponse,
   KbStatusResponse,
+  ListAdminUsersParams,
   ListKbDocumentsParams,
   PresignDocumentRequest,
   PresignDocumentResponse,
@@ -1016,6 +1018,67 @@ export const getAdminTraceDetail = async (traceId: string, options?: RequestInit
 
 
 /**
+ * @summary List all users from UserTable
+ */
+export type listAdminUsersResponse200 = {
+  data: AdminUsersListResponse
+  status: 200
+}
+
+export type listAdminUsersResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type listAdminUsersResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type listAdminUsersResponseSuccess = (listAdminUsersResponse200) & {
+  headers: Headers;
+};
+export type listAdminUsersResponseError = (listAdminUsersResponse400 | listAdminUsersResponse403) & {
+  headers: Headers;
+};
+
+export type listAdminUsersResponse = (listAdminUsersResponseSuccess | listAdminUsersResponseError)
+
+export const getListAdminUsersUrl = (params?: ListAdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/admin/users?${stringifiedParams}` : `/admin/users`
+}
+
+export const listAdminUsers = async (params?: ListAdminUsersParams, options?: RequestInit): Promise<listAdminUsersResponse> => {
+
+  const res = await fetch(getListAdminUsersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: listAdminUsersResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as listAdminUsersResponse
+}
+
+
+
+/**
  * @summary Get Knowledge Base configuration status
  */
 export type getKbStatusResponse200 = {
@@ -1384,6 +1447,8 @@ export const getGetAdminTracesResponseMock = (overrideResponse: Partial<Extract<
 
 export const getGetAdminTraceDetailResponseMock = (overrideResponse: Partial<Extract<AdminTraceDetailResponse, object>> = {}): AdminTraceDetailResponse => ({trace: {traceId: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), model: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), estimatedCostUsd: faker.helpers.arrayElement([faker.number.float({min: 0, fractionDigits: 2}), undefined]), toolCallCount: faker.number.int({min: 0}), agentCallCount: faker.number.int({min: 0}), skillCallCount: faker.number.int({min: 0}), requestId: faker.string.alpha({length: {min: 10, max: 20}}), threadId: faker.string.alpha({length: {min: 10, max: 20}}), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 10, max: 20}}), toolName: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), agentCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({agentName: faker.string.alpha({length: {min: 10, max: 20}}), agentKind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), startedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), skillCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({skillName: faker.string.alpha({length: {min: 10, max: 20}}), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined])}, ...overrideResponse})
 
+export const getListAdminUsersResponseMock = (overrideResponse: Partial<Extract<AdminUsersListResponse, object>> = {}): AdminUsersListResponse => ({users: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({userId: faker.string.alpha({length: {min: 10, max: 20}}), sub: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', lastSeenAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), requestCount: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), errorRate: faker.helpers.arrayElement([faker.number.float({min: 0, max: 1, fractionDigits: 2}), undefined]), mostUsedAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), mostUsedTool: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+
 export const getGetKbStatusResponseMock = (overrideResponse: Partial<Extract<KbStatusResponse, object>> = {}): KbStatusResponse => ({configured: faker.datatype.boolean(), kbId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceBucketName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
 export const getListKbDocumentsResponseMock = (overrideResponse: Partial<Extract<KbDocumentsResponse, object>> = {}): KbDocumentsResponse => ({documents: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({key: faker.string.alpha({length: {min: 1, max: 20}}), name: faker.string.alpha({length: {min: 1, max: 20}}), sizeBytes: faker.number.int({min: 0}), lastModified: faker.date.past().toISOString().slice(0, 19) + 'Z'})), nextToken: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
@@ -1612,6 +1677,18 @@ export const getGetAdminTraceDetailMockHandler = (overrideResponse?: AdminTraceD
   }, options)
 }
 
+export const getListAdminUsersMockHandler = (overrideResponse?: AdminUsersListResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<AdminUsersListResponse> | AdminUsersListResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/admin/users', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getListAdminUsersResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getGetKbStatusMockHandler = (overrideResponse?: KbStatusResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KbStatusResponse> | KbStatusResponse), options?: RequestHandlerOptions) => {
   return http.get('*/knowledge-base/status', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
 
@@ -1700,6 +1777,7 @@ export const getAgentraBFFAPIMock = () => [
   getGetAdminSkillsMockHandler(),
   getGetAdminTracesMockHandler(),
   getGetAdminTraceDetailMockHandler(),
+  getListAdminUsersMockHandler(),
   getGetKbStatusMockHandler(),
   getListKbDocumentsMockHandler(),
   getDeleteKbDocumentMockHandler(),

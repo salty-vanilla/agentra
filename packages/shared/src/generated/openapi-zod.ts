@@ -729,6 +729,46 @@ export const GetAdminTraceDetailResponse = zod.object({
 
 
 /**
+ * @summary List all users from UserTable
+ */
+export const listAdminUsersQueryLimitDefault = 50;
+export const listAdminUsersQueryLimitMax = 200;
+
+
+
+export const ListAdminUsersQueryParams = zod.object({
+  "limit": zod.number().min(1).max(listAdminUsersQueryLimitMax).default(listAdminUsersQueryLimitDefault),
+  "cursor": zod.string().optional()
+})
+
+export const listAdminUsersResponseUsersItemRequestCountMin = 0;
+
+export const listAdminUsersResponseUsersItemTotalTokensMin = 0;
+
+export const listAdminUsersResponseUsersItemErrorRateMin = 0;
+export const listAdminUsersResponseUsersItemErrorRateMax = 1;
+
+
+
+export const ListAdminUsersResponse = zod.object({
+  "users": zod.array(zod.object({
+  "userId": zod.string(),
+  "sub": zod.string(),
+  "email": zod.string(),
+  "role": zod.enum(['admin', 'user']),
+  "createdAt": zod.string().datetime({}),
+  "lastSeenAt": zod.string().datetime({}).optional(),
+  "requestCount": zod.number().min(listAdminUsersResponseUsersItemRequestCountMin).optional(),
+  "totalTokens": zod.number().min(listAdminUsersResponseUsersItemTotalTokensMin).optional(),
+  "errorRate": zod.number().min(listAdminUsersResponseUsersItemErrorRateMin).max(listAdminUsersResponseUsersItemErrorRateMax).optional(),
+  "mostUsedAgent": zod.string().optional(),
+  "mostUsedTool": zod.string().optional()
+})),
+  "cursor": zod.string().optional()
+})
+
+
+/**
  * @summary Get Knowledge Base configuration status
  */
 export const GetKbStatusResponse = zod.object({

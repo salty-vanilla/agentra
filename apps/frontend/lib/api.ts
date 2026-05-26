@@ -14,6 +14,7 @@ import {
   getAdminUsers as getAdminUsersRequest,
   getHealth as getHealthRequest,
   getKbStatus as getKbStatusRequest,
+  listAdminUsers as listAdminUsersRequest,
   listKbDocuments as listKbDocumentsRequest,
   listKbIngestionJobs as listKbIngestionJobsRequest,
   listThreadMessages as listThreadMessagesRequest,
@@ -31,6 +32,8 @@ import type {
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
+  AdminUser,
+  AdminUsersListResponse,
   AdminUsersResponse,
   ArtifactManifest,
   ChatObservationSummary,
@@ -293,6 +296,17 @@ export async function fetchAdminUsers(
   const headers = await getAuthHeaders();
   return getAdminUsersRequest(params, { headers });
 }
+
+export type AdminUsersListParams = { limit?: number; cursor?: string };
+
+export async function fetchAdminUsersList(
+  params: AdminUsersListParams = {},
+): Promise<AdminUsersListResponse> {
+  const headers = await getAuthHeaders();
+  return listAdminUsersRequest(params, { headers });
+}
+
+export type { AdminUser, AdminUsersListResponse };
 
 export async function fetchAdminAgents(
   params: AdminDateRange = {},

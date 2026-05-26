@@ -15,6 +15,7 @@ import type {
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
+  AdminUsersListResponse,
   AdminUsersResponse,
   ArtifactDownloadUrlResponse,
   ChatRequest,
@@ -31,6 +32,7 @@ import type {
   IngestionJobsResponse,
   KbDocumentsResponse,
   KbStatusResponse,
+  ListAdminUsersParams,
   ListKbDocumentsParams,
   PresignDocumentRequest,
   PresignDocumentResponse,
@@ -521,6 +523,37 @@ export const getGetAdminTraceDetailUrl = (traceId: string,) => {
 export const getAdminTraceDetail = async (traceId: string, options?: RequestInit): Promise<AdminTraceDetailResponse> => {
 
   return fetchMutator<AdminTraceDetailResponse>(getGetAdminTraceDetailUrl(traceId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary List all users from UserTable
+ */
+export const getListAdminUsersUrl = (params?: ListAdminUsersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users?${stringifiedParams}` : `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users`
+}
+
+export const listAdminUsers = async (params?: ListAdminUsersParams, options?: RequestInit): Promise<AdminUsersListResponse> => {
+
+  return fetchMutator<AdminUsersListResponse>(getListAdminUsersUrl(params),
   {
     ...options,
     method: 'GET'

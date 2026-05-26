@@ -3,6 +3,7 @@ import type {
   AdminDateRange,
   AdminPaginationParams,
   AdminTimeseriesParams,
+  AdminUsersListParams,
 } from '@/lib/api';
 import {
   fetchAdminAgents,
@@ -13,6 +14,7 @@ import {
   fetchAdminTraceDetail,
   fetchAdminTraces,
   fetchAdminUsers,
+  fetchAdminUsersList,
   fetchHealth,
   fetchKbDocuments,
   fetchKbIngestionJobs,
@@ -38,6 +40,7 @@ export const agentraQueryKeys = {
   adminTraces: (params: AdminPaginationParams & { status?: string; userId?: string }) =>
     ['admin-traces', params] as const,
   adminTraceDetail: (traceId: string) => ['admin-trace-detail', traceId] as const,
+  adminUsersList: (params: AdminUsersListParams) => ['admin-users-list', params] as const,
   kbStatus: ['kb-status'] as const,
   kbDocuments: (nextToken?: string) => ['kb-documents', nextToken] as const,
   kbIngestionJobs: ['kb-ingestion-jobs'] as const,
@@ -129,6 +132,14 @@ export function adminTraceDetailQueryOptions(traceId: string | null) {
     queryKey: agentraQueryKeys.adminTraceDetail(traceId ?? ''),
     queryFn: () => fetchAdminTraceDetail(traceId as string),
     enabled: traceId !== null,
+    staleTime: ADMIN_STALE_TIME,
+  });
+}
+
+export function adminUsersListQueryOptions(params: AdminUsersListParams = {}) {
+  return queryOptions({
+    queryKey: agentraQueryKeys.adminUsersList(params),
+    queryFn: () => fetchAdminUsersList(params),
     staleTime: ADMIN_STALE_TIME,
   });
 }
