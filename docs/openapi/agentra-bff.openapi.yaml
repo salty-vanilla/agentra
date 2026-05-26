@@ -1121,6 +1121,11 @@ components:
       properties:
         userId:
           type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - user
         requestCount:
           type: integer
           minimum: 0

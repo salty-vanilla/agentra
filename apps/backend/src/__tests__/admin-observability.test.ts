@@ -5,6 +5,7 @@ import {
   putObservabilityRecord,
   resetObservabilityStore,
 } from '../store/observability-store.js';
+import { userStore } from '../store/user-store.js';
 
 function makeRecord(overrides: Partial<ObservabilityRecord> = {}): ObservabilityRecord {
   return {
@@ -92,6 +93,101 @@ describe('Admin Observability API', () => {
       const body = (await res.json()) as any;
       expect(Array.isArray(body.users)).toBe(true);
       expect(body.users).toHaveLength(2);
+    });
+
+    it('only returns users with observability records (active users, not full UserTable)', async () => {
+      // Add a user to the store without any observability records
+      await userStore.getOrCreateUser('no-trace-sub', 'notrace@example.com', []);
+
+      await putObservabilityRecord(
+        makeRecord({ traceId: 't1', userId: 'active-user-x' }),
+      );
+
+      const res = await app.request(
+        '/admin/observability/users?from=2026-05-23&to=2026-05-23',
+      );
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
+      // Only the user with a trace record should appear
+      expect(
+        body.users.every((u: { userId: string }) => u.userId === 'active-user-x'),
+      ).toBe(true);
+    });
+
+    it('includes role=user for unknown userId (not in UserTable)', async () => {
+      await putObservabilityRecord(
+        makeRecord({ traceId: 't-unknown', userId: 'unknown-user-id' }),
+      );
+
+      const res = await app.request(
+        '/admin/observability/users?from=2026-05-23&to=2026-05-23',
+      );
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
+      const user = body.users.find(
+        (u: { userId: string }) => u.userId === 'unknown-user-id',
+      );
+      expect(user?.role).toBe('user');
+    });
+
+    it('includes role=admin for userId belonging to admin group user', async () => {
+      const adminUser = await userStore.getOrCreateUser(
+        'admin-sub-x',
+        'admin@example.com',
+        ['agentra-admin'],
+      );
+      await putObservabilityRecord(
+        makeRecord({ traceId: 't-admin', userId: adminUser.userId }),
+      );
+
+      const res = await app.request(
+        '/admin/observability/users?from=2026-05-23&to=2026-05-23',
+      );
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body = (await res.json()) as any;
+      const user = body.users.find(
+        (u: { userId: string }) => u.userId === adminUser.userId,
+      );
+      expect(user?.role).toBe('admin');
+    });
+
+    it('preserves role on all pages when paginating', async () => {
+      const adminUser = await userStore.getOrCreateUser(
+        'admin-sub-y',
+        'admin2@example.com',
+        ['agentra-admin'],
+      );
+
+      for (let i = 0; i < 4; i++) {
+        await putObservabilityRecord(
+          makeRecord({ traceId: `tp${i}`, userId: `paged-user-${i}` }),
+        );
+      }
+      // admin user is the 5th entry
+      await putObservabilityRecord(
+        makeRecord({ traceId: 'tp-admin', userId: adminUser.userId }),
+      );
+
+      const res1 = await app.request(
+        '/admin/observability/users?from=2026-05-23&to=2026-05-23&limit=3',
+      );
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body1 = (await res1.json()) as any;
+      expect(body1.cursor).toBeDefined();
+      // All entries on page 1 have a role field
+      expect(body1.users.every((u: { role?: string }) => u.role !== undefined)).toBe(
+        true,
+      );
+
+      const res2 = await app.request(
+        `/admin/observability/users?from=2026-05-23&to=2026-05-23&limit=3&cursor=${body1.cursor}`,
+      );
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      const body2 = (await res2.json()) as any;
+      // All entries on page 2 also have a role field
+      expect(body2.users.every((u: { role?: string }) => u.role !== undefined)).toBe(
+        true,
+      );
     });
 
     it('paginates with limit and cursor', async () => {

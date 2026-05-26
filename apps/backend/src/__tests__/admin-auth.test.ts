@@ -1,3 +1,5 @@
+// Admin authorization is based on Cognito groups / userGroups from the JWT token,
+// NOT on UserTable.role. UserTable.role is display-only.
 import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { adminAuthMiddleware } from '../middleware/admin-auth.js';

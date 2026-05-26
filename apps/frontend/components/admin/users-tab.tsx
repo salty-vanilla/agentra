@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { createColumnHelper } from '@tanstack/react-table';
 import { useEffect, useMemo, useState } from 'react';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
 import type { AdminUserStats } from '@/lib/generated/model';
@@ -24,6 +25,18 @@ const columns = [
     cell: ({ getValue }) => (
       <span className="font-mono text-xs">{getValue<string>().slice(0, 16)}…</span>
     ),
+  }),
+  helper.accessor('role', {
+    header: 'Role',
+    size: 90,
+    cell: ({ getValue }) => {
+      const role = getValue<'admin' | 'user' | undefined>() ?? 'user';
+      return (
+        <Badge variant={role === 'admin' ? 'default' : 'secondary'}>
+          {role === 'admin' ? 'Admin' : 'User'}
+        </Badge>
+      );
+    },
   }),
   helper.accessor('requestCount', { header: 'Requests', size: 100 }),
   helper.accessor('totalTokens', {
@@ -59,6 +72,7 @@ function filterUsers(users: AdminUserStats[], query: string): AdminUserStats[] {
   return users.filter(
     (u) =>
       u.userId.toLowerCase().includes(q) ||
+      (u.role ?? 'user').toLowerCase().includes(q) ||
       (u.mostUsedAgent?.toLowerCase().includes(q) ?? false) ||
       (u.mostUsedTool?.toLowerCase().includes(q) ?? false),
   );
@@ -106,7 +120,7 @@ export function UsersTab({ from, to }: Props) {
         <SearchToolbar
           value={search}
           onChange={setSearch}
-          placeholder="Search by user ID, top agent, or top tool..."
+          placeholder="Search by user ID, role, top agent, or top tool..."
           className="w-72"
         />
       </div>

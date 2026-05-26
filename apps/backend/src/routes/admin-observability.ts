@@ -14,6 +14,7 @@ import {
   getObservabilityRecordByTraceId,
   listObservabilityRecordsInRange,
 } from '../store/observability-store.js';
+import { userStore } from '../store/user-store.js';
 
 type HonoEnv = {
   Variables: {
@@ -113,8 +114,21 @@ adminObservabilityRouter.get('/users', async (c) => {
   const cursor = c.req.query('cursor');
 
   const { records } = await listObservabilityRecordsInRange(range);
+  // Active users = users with observability records in the selected period.
+  // This is NOT a full UserTable listing — users without traces are excluded.
   const allUsers = aggregateByUser(records);
-  const { page, nextCursor } = applyOffsetPagination(allUsers, limit, cursor);
+
+  const allUserRecords = await userStore.listUsers();
+  const roleByUserId = new Map(allUserRecords.map((u) => [u.userId, u.role]));
+
+  // Join role onto active users. Unknown userId (no UserTable entry) defaults to 'user'.
+  const usersWithRole = allUsers.map((u) => ({
+    ...u,
+    role: roleByUserId.get(u.userId) ?? 'user',
+  }));
+
+  // Paginate after role join so role is present on all pages.
+  const { page, nextCursor } = applyOffsetPagination(usersWithRole, limit, cursor);
 
   return jsonWithValidation(c, 'getAdminUsers', 200, {
     users: page,

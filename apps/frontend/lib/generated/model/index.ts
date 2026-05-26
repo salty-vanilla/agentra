@@ -34,6 +34,7 @@ export * from './adminTraceToolCall';
 export * from './adminTraceToolCallStatus';
 export * from './adminUsersResponse';
 export * from './adminUserStats';
+export * from './adminUserStatsRole';
 export * from './chatCommand';
 export * from './chatCommandLanguage';
 export * from './chatCommandOutputFormat';

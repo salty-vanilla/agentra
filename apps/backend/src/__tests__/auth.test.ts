@@ -110,6 +110,7 @@ describe('authMiddleware - auth bypass gating', () => {
     await authMiddleware(context as never, next);
 
     expect(context.set).toHaveBeenCalledWith('userId', 'user-demo-001');
+    expect(context.set).toHaveBeenCalledWith('userGroups', []);
     expect(next).toHaveBeenCalled();
   });
 
@@ -126,6 +127,7 @@ describe('authMiddleware - auth bypass gating', () => {
     await authMiddleware(context as never, next);
 
     expect(context.set).toHaveBeenCalledWith('userId', 'user-demo-001');
+    expect(context.set).toHaveBeenCalledWith('userGroups', []);
     expect(next).toHaveBeenCalled();
   });
 });

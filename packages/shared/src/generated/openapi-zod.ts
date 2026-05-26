@@ -396,6 +396,7 @@ export const getAdminUsersResponseUsersItemErrorRateMax = 1;
 export const GetAdminUsersResponse = zod.object({
   "users": zod.array(zod.object({
   "userId": zod.string(),
+  "role": zod.enum(['admin', 'user']).optional(),
   "requestCount": zod.number().min(getAdminUsersResponseUsersItemRequestCountMin),
   "totalTokens": zod.number().min(getAdminUsersResponseUsersItemTotalTokensMin),
   "avgDurationMs": zod.number().min(getAdminUsersResponseUsersItemAvgDurationMsMin),

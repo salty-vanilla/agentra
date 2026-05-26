@@ -1,5 +1,6 @@
 'use client';
 
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import type { AdminUserStats } from '@/lib/generated/model';
@@ -24,6 +25,16 @@ export function UserDetailDrawer({ user, onClose }: Props) {
               <DetailRow
                 label="User ID"
                 value={<span className="font-mono text-xs break-all">{user.userId}</span>}
+              />
+              <DetailRow
+                label="Role"
+                value={
+                  <Badge
+                    variant={(user.role ?? 'user') === 'admin' ? 'default' : 'secondary'}
+                  >
+                    {(user.role ?? 'user') === 'admin' ? 'Admin' : 'User'}
+                  </Badge>
+                }
               />
               <DetailRow label="Requests" value={user.requestCount.toLocaleString()} />
               <DetailRow label="Total Tokens" value={user.totalTokens.toLocaleString()} />

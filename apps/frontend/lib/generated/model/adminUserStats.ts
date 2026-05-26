@@ -7,9 +7,11 @@ This spec is the source of truth for frontend client generation and API mocks.
 
  * OpenAPI spec version: 0.1.0
  */
+import type { AdminUserStatsRole } from './adminUserStatsRole';
 
 export interface AdminUserStats {
   userId: string;
+  role?: AdminUserStatsRole;
   /** @minimum 0 */
   requestCount: number;
   /** @minimum 0 */

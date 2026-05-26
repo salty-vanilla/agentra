@@ -17,6 +17,7 @@ export type OverviewStats = {
 
 export type UserStats = {
   userId: string;
+  role?: 'admin' | 'user';
   requestCount: number;
   totalTokens: number;
   avgDurationMs: number;
