@@ -10,7 +10,11 @@
     "chat:direct": "node --import tsx src/tools/direct-chat.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run && pnpm contract",
-    "contract": "pnpm --filter @agentra/shared build && node --import tsx src/contract.ts"
+    "contract": "pnpm --filter @agentra/shared build && node --import tsx src/contract.ts",
+    "smoke:bff": "tsx scripts/smoke-bff.ts all",
+    "smoke:bff:health": "tsx scripts/smoke-bff.ts health",
+    "smoke:bff:threads": "tsx scripts/smoke-bff.ts threads",
+    "smoke:bff:chat": "tsx scripts/smoke-bff.ts chat"
   },
   "dependencies": {
     "@agentra/shared": "workspace:*",
