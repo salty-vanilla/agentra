@@ -23,6 +23,18 @@ import { UserActionConfirmDialog } from './user-action-confirm-dialog';
 
 type ActionType = 'promote' | 'remove-admin' | 'disable' | 'enable' | 'resend-invite';
 
+function getActionErrorMessage(error: unknown): string {
+  if (
+    error instanceof ApiError &&
+    error.body !== null &&
+    typeof error.body === 'object' &&
+    'error' in error.body
+  ) {
+    return String((error.body as { error: unknown }).error);
+  }
+  return '操作に失敗しました。もう一度お試しください。';
+}
+
 type ConfirmState = {
   action: ActionType;
   title: string;
@@ -87,11 +99,7 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
       onClose();
     },
     onError: (error) => {
-      const message =
-        error instanceof ApiError
-          ? error.message
-          : '操作に失敗しました。もう一度お試しください。';
-      toast.error(message);
+      toast.error(getActionErrorMessage(error));
     },
   });
 

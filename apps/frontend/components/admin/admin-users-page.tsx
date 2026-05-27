@@ -48,6 +48,18 @@ const columns = [
       );
     },
   }),
+  helper.accessor('enabled', {
+    header: 'Status',
+    size: 100,
+    cell: ({ getValue }) => {
+      const enabled = getValue<boolean>();
+      return (
+        <Badge variant={enabled ? 'secondary' : 'destructive'}>
+          {enabled ? 'Active' : 'Disabled'}
+        </Badge>
+      );
+    },
+  }),
   helper.accessor('createdAt', {
     header: 'Created',
     size: 160,

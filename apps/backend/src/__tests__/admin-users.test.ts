@@ -1,7 +1,9 @@
 import type { ObservabilityRecord } from '@agentra/shared';
+import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../app.js';
 import { _resetCognitoClient } from '../lib/cognito-client.js';
+import { adminAuthMiddleware } from '../middleware/admin-auth.js';
 import {
   putObservabilityRecord,
   resetObservabilityStore,
@@ -549,14 +551,52 @@ describe('POST /admin/users/:sub/remove-admin', () => {
     expect([401, 403]).toContain(res.status);
   });
 
-  it('UserTable.role is not used for authorization (only Cognito groups matter)', async () => {
-    // A user with role='admin' in UserTable but no real Cognito group should still be
-    // blocked by adminAuthMiddleware (which checks userGroups from JWT, not UserTable.role).
-    // When SKIP_AUTH=false with no token → 401 (auth rejected before adminAuth).
+  it('returns 401 when request has no auth token', async () => {
     delete process.env.SKIP_AUTH;
     const res = await postAction('any-sub/remove-admin');
-    // 401 means auth middleware rejected — Cognito groups were not checked, not UserTable.role
     expect(res.status).toBe(401);
+  });
+});
+
+describe('adminAuthMiddleware — Cognito group-based authorization', () => {
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+  });
+
+  it('returns 403 when authenticated user is not in the admin Cognito group', async () => {
+    // Verify that adminAuthMiddleware checks userGroups (from JWT), NOT UserTable.role.
+    // A caller whose JWT has no Cognito group must be rejected even if UserTable.role='admin'.
+    delete process.env.SKIP_AUTH;
+    type TestEnv = { Variables: { userGroups: string[] } };
+    const testApp = new Hono<TestEnv>();
+    // Simulate authMiddleware passing (authenticated user) but with no admin group
+    testApp.use('*', async (c, next) => {
+      c.set('userGroups', []);
+      await next();
+    });
+    testApp.use('*', adminAuthMiddleware);
+    testApp.post('/:sub/remove-admin', (c) => c.json({ ok: true }));
+
+    const res = await testApp.request('/other-sub/remove-admin', { method: 'POST' });
+    expect(res.status).toBe(403);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.error).toBe('Forbidden.');
+  });
+
+  it('allows request when userGroups includes the admin group', async () => {
+    delete process.env.SKIP_AUTH;
+    type TestEnv = { Variables: { userGroups: string[] } };
+    const testApp = new Hono<TestEnv>();
+    testApp.use('*', async (c, next) => {
+      c.set('userGroups', ['agentra-admin']);
+      await next();
+    });
+    testApp.use('*', adminAuthMiddleware);
+    testApp.post('/:sub/remove-admin', (c) => c.json({ ok: true }));
+
+    const res = await testApp.request('/other-sub/remove-admin', { method: 'POST' });
+    expect(res.status).toBe(200);
   });
 });
 
