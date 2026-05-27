@@ -148,11 +148,18 @@ export class AgentraAppStack extends Stack {
       props.dataAuthStack.observabilityTable.grantReadWriteData(handler);
     }
 
-    // Cognito admin — RestHandler only (invite user flow)
+    // Cognito admin — RestHandler only (invite + user management flows)
     restHandler.addToRolePolicy(
       new PolicyStatement({
         effect: Effect.ALLOW,
-        actions: ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup'],
+        actions: [
+          'cognito-idp:AdminCreateUser',
+          'cognito-idp:AdminAddUserToGroup',
+          'cognito-idp:AdminRemoveUserFromGroup',
+          'cognito-idp:AdminDisableUser',
+          'cognito-idp:AdminEnableUser',
+          'cognito-idp:ListUsersInGroup',
+        ],
         resources: [props.dataAuthStack.userPool.userPoolArn],
       }),
     );

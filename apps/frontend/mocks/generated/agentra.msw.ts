@@ -16,6 +16,7 @@ import type {
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
+  AdminUserActionResponse,
   AdminUsersListResponse,
   AdminUsersResponse,
   ArtifactDownloadUrlResponse,
@@ -1093,6 +1094,11 @@ export type inviteAdminUserResponse400 = {
   status: 400
 }
 
+export type inviteAdminUserResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
 export type inviteAdminUserResponse403 = {
   data: ErrorResponse
   status: 403
@@ -1106,7 +1112,7 @@ export type inviteAdminUserResponse409 = {
 export type inviteAdminUserResponseSuccess = (inviteAdminUserResponse201) & {
   headers: Headers;
 };
-export type inviteAdminUserResponseError = (inviteAdminUserResponse400 | inviteAdminUserResponse403 | inviteAdminUserResponse409) & {
+export type inviteAdminUserResponseError = (inviteAdminUserResponse400 | inviteAdminUserResponse401 | inviteAdminUserResponse403 | inviteAdminUserResponse409) & {
   headers: Headers;
 };
 
@@ -1136,6 +1142,316 @@ export const inviteAdminUser = async (inviteAdminUserRequest: InviteAdminUserReq
 
   const data: inviteAdminUserResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as inviteAdminUserResponse
+}
+
+
+
+/**
+ * @summary Add user to the admin Cognito group
+ */
+export type promoteAdminUserResponse200 = {
+  data: AdminUserActionResponse
+  status: 200
+}
+
+export type promoteAdminUserResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type promoteAdminUserResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type promoteAdminUserResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type promoteAdminUserResponseSuccess = (promoteAdminUserResponse200) & {
+  headers: Headers;
+};
+export type promoteAdminUserResponseError = (promoteAdminUserResponse401 | promoteAdminUserResponse403 | promoteAdminUserResponse404) & {
+  headers: Headers;
+};
+
+export type promoteAdminUserResponse = (promoteAdminUserResponseSuccess | promoteAdminUserResponseError)
+
+export const getPromoteAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `/admin/users/${sub}/promote-admin`
+}
+
+export const promoteAdminUser = async (sub: string, options?: RequestInit): Promise<promoteAdminUserResponse> => {
+
+  const res = await fetch(getPromoteAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: promoteAdminUserResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as promoteAdminUserResponse
+}
+
+
+
+/**
+ * @summary Remove user from the admin Cognito group
+ */
+export type removeAdminUserResponse200 = {
+  data: AdminUserActionResponse
+  status: 200
+}
+
+export type removeAdminUserResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type removeAdminUserResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type removeAdminUserResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type removeAdminUserResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type removeAdminUserResponse409 = {
+  data: ErrorResponse
+  status: 409
+}
+
+export type removeAdminUserResponseSuccess = (removeAdminUserResponse200) & {
+  headers: Headers;
+};
+export type removeAdminUserResponseError = (removeAdminUserResponse400 | removeAdminUserResponse401 | removeAdminUserResponse403 | removeAdminUserResponse404 | removeAdminUserResponse409) & {
+  headers: Headers;
+};
+
+export type removeAdminUserResponse = (removeAdminUserResponseSuccess | removeAdminUserResponseError)
+
+export const getRemoveAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `/admin/users/${sub}/remove-admin`
+}
+
+export const removeAdminUser = async (sub: string, options?: RequestInit): Promise<removeAdminUserResponse> => {
+
+  const res = await fetch(getRemoveAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: removeAdminUserResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as removeAdminUserResponse
+}
+
+
+
+/**
+ * @summary Disable a user via Cognito AdminDisableUser
+ */
+export type disableAdminUserResponse200 = {
+  data: AdminUserActionResponse
+  status: 200
+}
+
+export type disableAdminUserResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type disableAdminUserResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type disableAdminUserResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type disableAdminUserResponseSuccess = (disableAdminUserResponse200) & {
+  headers: Headers;
+};
+export type disableAdminUserResponseError = (disableAdminUserResponse401 | disableAdminUserResponse403 | disableAdminUserResponse404) & {
+  headers: Headers;
+};
+
+export type disableAdminUserResponse = (disableAdminUserResponseSuccess | disableAdminUserResponseError)
+
+export const getDisableAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `/admin/users/${sub}/disable`
+}
+
+export const disableAdminUser = async (sub: string, options?: RequestInit): Promise<disableAdminUserResponse> => {
+
+  const res = await fetch(getDisableAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: disableAdminUserResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as disableAdminUserResponse
+}
+
+
+
+/**
+ * @summary Enable a user via Cognito AdminEnableUser
+ */
+export type enableAdminUserResponse200 = {
+  data: AdminUserActionResponse
+  status: 200
+}
+
+export type enableAdminUserResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type enableAdminUserResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type enableAdminUserResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type enableAdminUserResponseSuccess = (enableAdminUserResponse200) & {
+  headers: Headers;
+};
+export type enableAdminUserResponseError = (enableAdminUserResponse401 | enableAdminUserResponse403 | enableAdminUserResponse404) & {
+  headers: Headers;
+};
+
+export type enableAdminUserResponse = (enableAdminUserResponseSuccess | enableAdminUserResponseError)
+
+export const getEnableAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `/admin/users/${sub}/enable`
+}
+
+export const enableAdminUser = async (sub: string, options?: RequestInit): Promise<enableAdminUserResponse> => {
+
+  const res = await fetch(getEnableAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: enableAdminUserResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as enableAdminUserResponse
+}
+
+
+
+/**
+ * @summary Resend invitation email via Cognito AdminCreateUser RESEND
+ */
+export type resendAdminUserInviteResponse200 = {
+  data: AdminUserActionResponse
+  status: 200
+}
+
+export type resendAdminUserInviteResponse400 = {
+  data: ErrorResponse
+  status: 400
+}
+
+export type resendAdminUserInviteResponse401 = {
+  data: ErrorResponse
+  status: 401
+}
+
+export type resendAdminUserInviteResponse403 = {
+  data: ErrorResponse
+  status: 403
+}
+
+export type resendAdminUserInviteResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type resendAdminUserInviteResponseSuccess = (resendAdminUserInviteResponse200) & {
+  headers: Headers;
+};
+export type resendAdminUserInviteResponseError = (resendAdminUserInviteResponse400 | resendAdminUserInviteResponse401 | resendAdminUserInviteResponse403 | resendAdminUserInviteResponse404) & {
+  headers: Headers;
+};
+
+export type resendAdminUserInviteResponse = (resendAdminUserInviteResponseSuccess | resendAdminUserInviteResponseError)
+
+export const getResendAdminUserInviteUrl = (sub: string,) => {
+
+
+
+
+  return `/admin/users/${sub}/resend-invite`
+}
+
+export const resendAdminUserInvite = async (sub: string, options?: RequestInit): Promise<resendAdminUserInviteResponse> => {
+
+  const res = await fetch(getResendAdminUserInviteUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: resendAdminUserInviteResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as resendAdminUserInviteResponse
 }
 
 
@@ -1509,9 +1825,19 @@ export const getGetAdminTracesResponseMock = (overrideResponse: Partial<Extract<
 
 export const getGetAdminTraceDetailResponseMock = (overrideResponse: Partial<Extract<AdminTraceDetailResponse, object>> = {}): AdminTraceDetailResponse => ({trace: {traceId: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), model: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), estimatedCostUsd: faker.helpers.arrayElement([faker.number.float({min: 0, fractionDigits: 2}), undefined]), toolCallCount: faker.number.int({min: 0}), agentCallCount: faker.number.int({min: 0}), skillCallCount: faker.number.int({min: 0}), requestId: faker.string.alpha({length: {min: 10, max: 20}}), threadId: faker.string.alpha({length: {min: 10, max: 20}}), toolCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({toolCallId: faker.string.alpha({length: {min: 10, max: 20}}), toolName: faker.string.alpha({length: {min: 10, max: 20}}), startedAt: faker.date.past().toISOString().slice(0, 19) + 'Z', completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.number.int({min: 0}), status: faker.helpers.arrayElement(['success','error','cancelled'] as const), error: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), agentCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({agentName: faker.string.alpha({length: {min: 10, max: 20}}), agentKind: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), startedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), completedAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), skillCalls: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({skillName: faker.string.alpha({length: {min: 10, max: 20}}), durationMs: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), status: faker.helpers.arrayElement([faker.helpers.arrayElement(['success','error','cancelled'] as const), undefined])})), tokenUsage: faker.helpers.arrayElement([{inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0})}, undefined])}, ...overrideResponse})
 
-export const getListAdminUsersResponseMock = (overrideResponse: Partial<Extract<AdminUsersListResponse, object>> = {}): AdminUsersListResponse => ({users: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({userId: faker.string.alpha({length: {min: 10, max: 20}}), sub: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', lastSeenAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), requestCount: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), errorRate: faker.helpers.arrayElement([faker.number.float({min: 0, max: 1, fractionDigits: 2}), undefined]), mostUsedAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), mostUsedTool: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
+export const getListAdminUsersResponseMock = (overrideResponse: Partial<Extract<AdminUsersListResponse, object>> = {}): AdminUsersListResponse => ({users: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({userId: faker.string.alpha({length: {min: 10, max: 20}}), sub: faker.string.alpha({length: {min: 10, max: 20}}), email: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), enabled: faker.datatype.boolean(), createdAt: faker.date.past().toISOString().slice(0, 19) + 'Z', lastSeenAt: faker.helpers.arrayElement([faker.date.past().toISOString().slice(0, 19) + 'Z', undefined]), requestCount: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), totalTokens: faker.helpers.arrayElement([faker.number.int({min: 0}), undefined]), errorRate: faker.helpers.arrayElement([faker.number.float({min: 0, max: 1, fractionDigits: 2}), undefined]), mostUsedAgent: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), mostUsedTool: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined])})), cursor: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
 export const getInviteAdminUserResponseMock = (overrideResponse: Partial<Extract<InviteAdminUserResponse, object>> = {}): InviteAdminUserResponse => ({email: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), sub: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), ...overrideResponse})
+
+export const getPromoteAdminUserResponseMock = (overrideResponse: Partial<Extract<AdminUserActionResponse, object>> = {}): AdminUserActionResponse => ({sub: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), enabled: faker.datatype.boolean(), ...overrideResponse})
+
+export const getRemoveAdminUserResponseMock = (overrideResponse: Partial<Extract<AdminUserActionResponse, object>> = {}): AdminUserActionResponse => ({sub: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), enabled: faker.datatype.boolean(), ...overrideResponse})
+
+export const getDisableAdminUserResponseMock = (overrideResponse: Partial<Extract<AdminUserActionResponse, object>> = {}): AdminUserActionResponse => ({sub: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), enabled: faker.datatype.boolean(), ...overrideResponse})
+
+export const getEnableAdminUserResponseMock = (overrideResponse: Partial<Extract<AdminUserActionResponse, object>> = {}): AdminUserActionResponse => ({sub: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), enabled: faker.datatype.boolean(), ...overrideResponse})
+
+export const getResendAdminUserInviteResponseMock = (overrideResponse: Partial<Extract<AdminUserActionResponse, object>> = {}): AdminUserActionResponse => ({sub: faker.string.alpha({length: {min: 10, max: 20}}), userId: faker.string.alpha({length: {min: 10, max: 20}}), role: faker.helpers.arrayElement(['admin','user'] as const), enabled: faker.datatype.boolean(), ...overrideResponse})
 
 export const getGetKbStatusResponseMock = (overrideResponse: Partial<Extract<KbStatusResponse, object>> = {}): KbStatusResponse => ({configured: faker.datatype.boolean(), kbId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceId: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), dataSourceBucketName: faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), undefined]), ...overrideResponse})
 
@@ -1765,6 +2091,66 @@ export const getInviteAdminUserMockHandler = (overrideResponse?: InviteAdminUser
   }, options)
 }
 
+export const getPromoteAdminUserMockHandler = (overrideResponse?: AdminUserActionResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminUserActionResponse> | AdminUserActionResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/users/:sub/promote-admin', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getPromoteAdminUserResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getRemoveAdminUserMockHandler = (overrideResponse?: AdminUserActionResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminUserActionResponse> | AdminUserActionResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/users/:sub/remove-admin', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getRemoveAdminUserResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getDisableAdminUserMockHandler = (overrideResponse?: AdminUserActionResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminUserActionResponse> | AdminUserActionResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/users/:sub/disable', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getDisableAdminUserResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getEnableAdminUserMockHandler = (overrideResponse?: AdminUserActionResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminUserActionResponse> | AdminUserActionResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/users/:sub/enable', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getEnableAdminUserResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getResendAdminUserInviteMockHandler = (overrideResponse?: AdminUserActionResponse | ((info: Parameters<Parameters<typeof http.post>[1]>[0]) => Promise<AdminUserActionResponse> | AdminUserActionResponse), options?: RequestHandlerOptions) => {
+  return http.post('*/admin/users/:sub/resend-invite', async (info: Parameters<Parameters<typeof http.post>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getResendAdminUserInviteResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
 export const getGetKbStatusMockHandler = (overrideResponse?: KbStatusResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<KbStatusResponse> | KbStatusResponse), options?: RequestHandlerOptions) => {
   return http.get('*/knowledge-base/status', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
 
@@ -1855,6 +2241,11 @@ export const getAgentraBFFAPIMock = () => [
   getGetAdminTraceDetailMockHandler(),
   getListAdminUsersMockHandler(),
   getInviteAdminUserMockHandler(),
+  getPromoteAdminUserMockHandler(),
+  getRemoveAdminUserMockHandler(),
+  getDisableAdminUserMockHandler(),
+  getEnableAdminUserMockHandler(),
+  getResendAdminUserInviteMockHandler(),
   getGetKbStatusMockHandler(),
   getListKbDocumentsMockHandler(),
   getDeleteKbDocumentMockHandler(),

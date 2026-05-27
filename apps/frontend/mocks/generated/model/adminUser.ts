@@ -14,6 +14,8 @@ export interface AdminUser {
   sub: string;
   email: string;
   role: AdminUserRole;
+  /** Projection of Cognito user enabled status. Defaults to true for pre-existing records. */
+  enabled: boolean;
   createdAt: string;
   lastSeenAt?: string;
   /** @minimum 0 */

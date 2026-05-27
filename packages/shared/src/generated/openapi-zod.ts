@@ -756,6 +756,7 @@ export const ListAdminUsersResponse = zod.object({
   "sub": zod.string(),
   "email": zod.string(),
   "role": zod.enum(['admin', 'user']),
+  "enabled": zod.boolean().describe('Projection of Cognito user enabled status. Defaults to true for pre-existing records.'),
   "createdAt": zod.string().datetime({}),
   "lastSeenAt": zod.string().datetime({}).optional(),
   "requestCount": zod.number().min(listAdminUsersResponseUsersItemRequestCountMin).optional(),
@@ -778,6 +779,81 @@ export const InviteAdminUserBody = zod.object({
   "role": zod.enum(['admin', 'user']),
   "name": zod.string().optional().describe('Optional display name; passed to Cognito UserAttributes.'),
   "sendInvitation": zod.boolean().default(inviteAdminUserBodySendInvitationDefault)
+})
+
+
+/**
+ * @summary Add user to the admin Cognito group
+ */
+export const PromoteAdminUserParams = zod.object({
+  "sub": zod.string()
+})
+
+export const PromoteAdminUserResponse = zod.object({
+  "sub": zod.string(),
+  "userId": zod.string(),
+  "role": zod.enum(['admin', 'user']),
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Remove user from the admin Cognito group
+ */
+export const RemoveAdminUserParams = zod.object({
+  "sub": zod.string()
+})
+
+export const RemoveAdminUserResponse = zod.object({
+  "sub": zod.string(),
+  "userId": zod.string(),
+  "role": zod.enum(['admin', 'user']),
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Disable a user via Cognito AdminDisableUser
+ */
+export const DisableAdminUserParams = zod.object({
+  "sub": zod.string()
+})
+
+export const DisableAdminUserResponse = zod.object({
+  "sub": zod.string(),
+  "userId": zod.string(),
+  "role": zod.enum(['admin', 'user']),
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Enable a user via Cognito AdminEnableUser
+ */
+export const EnableAdminUserParams = zod.object({
+  "sub": zod.string()
+})
+
+export const EnableAdminUserResponse = zod.object({
+  "sub": zod.string(),
+  "userId": zod.string(),
+  "role": zod.enum(['admin', 'user']),
+  "enabled": zod.boolean()
+})
+
+
+/**
+ * @summary Resend invitation email via Cognito AdminCreateUser RESEND
+ */
+export const ResendAdminUserInviteParams = zod.object({
+  "sub": zod.string()
+})
+
+export const ResendAdminUserInviteResponse = zod.object({
+  "sub": zod.string(),
+  "userId": zod.string(),
+  "role": zod.enum(['admin', 'user']),
+  "enabled": zod.boolean()
 })
 
 

@@ -18,6 +18,8 @@ type HonoEnv = {
   Variables: {
     userId: string;
     requestId: string;
+    userGroups: string[];
+    callerSub: string;
   };
 };
 
@@ -26,6 +28,7 @@ type AdminUser = {
   sub: string;
   email: string;
   role: 'admin' | 'user';
+  enabled: boolean;
   createdAt: string;
   lastSeenAt?: string;
   requestCount?: number;
@@ -123,6 +126,36 @@ function buildObsStatsByUser(records: ObservabilityRecord[]): Map<
   return result;
 }
 
+async function countEnabledAdmins(
+  // biome-ignore lint/suspicious/noExplicitAny: Cognito client type from dynamic import
+  cognito: any,
+  userPoolId: string,
+  groupName: string,
+  stopAfter = 2,
+): Promise<number> {
+  const { ListUsersInGroupCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+  let count = 0;
+  let nextToken: string | undefined;
+  do {
+    // biome-ignore lint/suspicious/noExplicitAny: Cognito SDK response
+    const result: any = await cognito.send(
+      new ListUsersInGroupCommand({
+        UserPoolId: userPoolId,
+        GroupName: groupName,
+        ...(nextToken ? { NextToken: nextToken } : {}),
+      }),
+    );
+    for (const u of result.Users ?? []) {
+      if (u.Enabled !== false) count++;
+      if (count >= stopAfter) return count;
+    }
+    nextToken = result.NextToken;
+  } while (nextToken);
+  return count;
+}
+
 const adminUsersRouter = new Hono<HonoEnv>();
 
 adminUsersRouter.get('/', async (c) => {
@@ -152,6 +185,7 @@ adminUsersRouter.get('/', async (c) => {
         sub: u.sub,
         email: u.email,
         role: u.role,
+        enabled: u.enabled,
         createdAt: u.createdAt,
         ...(obs
           ? {
@@ -246,6 +280,244 @@ adminUsersRouter.post('/invite', async (c) => {
     role,
     sub,
     userId: record.userId,
+  });
+});
+
+adminUsersRouter.post('/:sub/promote-admin', async (c) => {
+  const targetSub = c.req.param('sub');
+
+  const target = await userStore.getUserBySub(targetSub);
+  if (!target) return c.json({ error: 'User not found' }, 404);
+
+  const userPoolId = process.env.COGNITO_USER_POOL_ID;
+  if (!userPoolId) {
+    return c.json(
+      { error: 'Server misconfiguration: COGNITO_USER_POOL_ID not set' },
+      500,
+    );
+  }
+
+  const { AdminAddUserToGroupCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+  const cognito = getCognitoClient();
+
+  try {
+    await cognito.send(
+      new AdminAddUserToGroupCommand({
+        UserPoolId: userPoolId,
+        Username: target.email,
+        GroupName: getAdminGroupName(),
+      }),
+    );
+  } catch (err) {
+    if ((err as { name?: string }).name === 'UserNotFoundException') {
+      return c.json({ error: 'User not found in Cognito' }, 404);
+    }
+    throw err;
+  }
+
+  const updated = await userStore.updateRole(targetSub, 'admin');
+  return jsonWithValidation(c, 'promoteAdminUser', 200, {
+    sub: updated.sub,
+    userId: updated.userId,
+    role: updated.role,
+    enabled: updated.enabled,
+  });
+});
+
+adminUsersRouter.post('/:sub/remove-admin', async (c) => {
+  const targetSub = c.req.param('sub');
+  const callerSub = c.get('callerSub');
+
+  if (targetSub === callerSub) {
+    return c.json({ error: 'You cannot remove your own admin role' }, 403);
+  }
+
+  const target = await userStore.getUserBySub(targetSub);
+  if (!target) return c.json({ error: 'User not found' }, 404);
+
+  const userPoolId = process.env.COGNITO_USER_POOL_ID;
+  if (!userPoolId) {
+    return c.json(
+      { error: 'Server misconfiguration: COGNITO_USER_POOL_ID not set' },
+      500,
+    );
+  }
+
+  const cognito = getCognitoClient();
+  const enabledAdminCount = await countEnabledAdmins(
+    cognito,
+    userPoolId,
+    getAdminGroupName(),
+  );
+  if (enabledAdminCount <= 1) {
+    return c.json({ error: 'Cannot remove the last enabled admin' }, 409);
+  }
+
+  const { AdminRemoveUserFromGroupCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+
+  try {
+    await cognito.send(
+      new AdminRemoveUserFromGroupCommand({
+        UserPoolId: userPoolId,
+        Username: target.email,
+        GroupName: getAdminGroupName(),
+      }),
+    );
+  } catch (err) {
+    if ((err as { name?: string }).name === 'UserNotFoundException') {
+      return c.json({ error: 'User not found in Cognito' }, 404);
+    }
+    throw err;
+  }
+
+  const updated = await userStore.updateRole(targetSub, 'user');
+  return jsonWithValidation(c, 'removeAdminUser', 200, {
+    sub: updated.sub,
+    userId: updated.userId,
+    role: updated.role,
+    enabled: updated.enabled,
+  });
+});
+
+adminUsersRouter.post('/:sub/disable', async (c) => {
+  const targetSub = c.req.param('sub');
+  const callerSub = c.get('callerSub');
+
+  if (targetSub === callerSub) {
+    return c.json({ error: 'You cannot disable your own account' }, 403);
+  }
+
+  const target = await userStore.getUserBySub(targetSub);
+  if (!target) return c.json({ error: 'User not found' }, 404);
+
+  const userPoolId = process.env.COGNITO_USER_POOL_ID;
+  if (!userPoolId) {
+    return c.json(
+      { error: 'Server misconfiguration: COGNITO_USER_POOL_ID not set' },
+      500,
+    );
+  }
+
+  const { AdminDisableUserCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+  const cognito = getCognitoClient();
+
+  try {
+    await cognito.send(
+      new AdminDisableUserCommand({
+        UserPoolId: userPoolId,
+        Username: target.email,
+      }),
+    );
+  } catch (err) {
+    if ((err as { name?: string }).name === 'UserNotFoundException') {
+      return c.json({ error: 'User not found in Cognito' }, 404);
+    }
+    throw err;
+  }
+
+  const updated = await userStore.updateEnabled(targetSub, false);
+  return jsonWithValidation(c, 'disableAdminUser', 200, {
+    sub: updated.sub,
+    userId: updated.userId,
+    role: updated.role,
+    enabled: updated.enabled,
+  });
+});
+
+adminUsersRouter.post('/:sub/enable', async (c) => {
+  const targetSub = c.req.param('sub');
+
+  const target = await userStore.getUserBySub(targetSub);
+  if (!target) return c.json({ error: 'User not found' }, 404);
+
+  const userPoolId = process.env.COGNITO_USER_POOL_ID;
+  if (!userPoolId) {
+    return c.json(
+      { error: 'Server misconfiguration: COGNITO_USER_POOL_ID not set' },
+      500,
+    );
+  }
+
+  const { AdminEnableUserCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+  const cognito = getCognitoClient();
+
+  try {
+    await cognito.send(
+      new AdminEnableUserCommand({
+        UserPoolId: userPoolId,
+        Username: target.email,
+      }),
+    );
+  } catch (err) {
+    if ((err as { name?: string }).name === 'UserNotFoundException') {
+      return c.json({ error: 'User not found in Cognito' }, 404);
+    }
+    throw err;
+  }
+
+  const updated = await userStore.updateEnabled(targetSub, true);
+  return jsonWithValidation(c, 'enableAdminUser', 200, {
+    sub: updated.sub,
+    userId: updated.userId,
+    role: updated.role,
+    enabled: updated.enabled,
+  });
+});
+
+adminUsersRouter.post('/:sub/resend-invite', async (c) => {
+  const targetSub = c.req.param('sub');
+
+  const target = await userStore.getUserBySub(targetSub);
+  if (!target) return c.json({ error: 'User not found' }, 404);
+
+  const userPoolId = process.env.COGNITO_USER_POOL_ID;
+  if (!userPoolId) {
+    return c.json(
+      { error: 'Server misconfiguration: COGNITO_USER_POOL_ID not set' },
+      500,
+    );
+  }
+
+  const { AdminCreateUserCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+  const cognito = getCognitoClient();
+
+  try {
+    await cognito.send(
+      new AdminCreateUserCommand({
+        UserPoolId: userPoolId,
+        Username: target.email,
+        MessageAction: 'RESEND',
+      }),
+    );
+  } catch (err) {
+    const errName = (err as { name?: string }).name;
+    if (errName === 'UserNotFoundException') {
+      return c.json({ error: 'User not found in Cognito' }, 404);
+    }
+    if (errName === 'UnsupportedUserStateException') {
+      return c.json(
+        { error: 'User has already activated their account and cannot be re-invited' },
+        400,
+      );
+    }
+    throw err;
+  }
+
+  return jsonWithValidation(c, 'resendAdminUserInvite', 200, {
+    sub: target.sub,
+    userId: target.userId,
+    role: target.role,
+    enabled: target.enabled,
   });
 });
 

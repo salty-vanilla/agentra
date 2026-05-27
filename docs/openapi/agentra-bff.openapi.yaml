@@ -496,6 +496,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Forbidden
           content:
@@ -504,6 +510,204 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
           description: User already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{sub}/promote-admin:
+    post:
+      operationId: promoteAdminUser
+      tags: [admin]
+      summary: Add user to the admin Cognito group
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User promoted to admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserActionResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{sub}/remove-admin:
+    post:
+      operationId: removeAdminUser
+      tags: [admin]
+      summary: Remove user from the admin Cognito group
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Admin role removed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserActionResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — self-demotion not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Cannot remove the last enabled admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{sub}/disable:
+    post:
+      operationId: disableAdminUser
+      tags: [admin]
+      summary: Disable a user via Cognito AdminDisableUser
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User disabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserActionResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden — self-disable not allowed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{sub}/enable:
+    post:
+      operationId: enableAdminUser
+      tags: [admin]
+      summary: Enable a user via Cognito AdminEnableUser
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: User enabled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserActionResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /admin/users/{sub}/resend-invite:
+    post:
+      operationId: resendAdminUserInvite
+      tags: [admin]
+      summary: Resend invitation email via Cognito AdminCreateUser RESEND
+      parameters:
+        - name: sub
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invitation resent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserActionResponse'
+        '400':
+          description: User has already activated their account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: User not found
           content:
             application/json:
               schema:
@@ -1444,6 +1648,7 @@ components:
         - sub
         - email
         - role
+        - enabled
         - createdAt
       properties:
         userId:
@@ -1457,6 +1662,9 @@ components:
           enum:
             - admin
             - user
+        enabled:
+          type: boolean
+          description: Projection of Cognito user enabled status. Defaults to true for pre-existing records.
         createdAt:
           type: string
           format: date-time
@@ -1477,6 +1685,26 @@ components:
           type: string
         mostUsedTool:
           type: string
+    AdminUserActionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - sub
+        - userId
+        - role
+        - enabled
+      properties:
+        sub:
+          type: string
+        userId:
+          type: string
+        role:
+          type: string
+          enum:
+            - admin
+            - user
+        enabled:
+          type: boolean
     AdminUsersListResponse:
       type: object
       additionalProperties: false

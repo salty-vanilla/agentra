@@ -15,12 +15,16 @@ export type UserRecord = {
   email: string;
   createdAt: string;
   role: UserRole;
+  enabled: boolean;
 };
 
 export interface UserStore {
   getOrCreateUser(sub: string, email: string, groups: string[]): Promise<UserRecord>;
   listUsers(): Promise<UserRecord[]>;
   createInvitedUser(sub: string, email: string, role: UserRole): Promise<UserRecord>;
+  getUserBySub(sub: string): Promise<UserRecord | null>;
+  updateRole(sub: string, role: UserRole): Promise<UserRecord>;
+  updateEnabled(sub: string, enabled: boolean): Promise<UserRecord>;
 }
 
 export function normalizeUserRecord(item: Record<string, unknown>): UserRecord {
@@ -30,6 +34,7 @@ export function normalizeUserRecord(item: Record<string, unknown>): UserRecord {
     email: String(item.email ?? ''),
     createdAt: String(item.createdAt ?? ''),
     role: item.role === 'admin' || item.role === 'user' ? item.role : 'user',
+    enabled: item.enabled !== false,
   };
 }
 
@@ -95,6 +100,7 @@ export class DynamoUserStore implements UserStore {
       email,
       createdAt: new Date().toISOString(),
       role,
+      enabled: true,
     };
 
     await this.client.send(new PutCommand({ TableName: getUsersTable(), Item: record }));
@@ -109,7 +115,7 @@ export class DynamoUserStore implements UserStore {
       const result = await this.client.send(
         new ScanCommand({
           TableName: getUsersTable(),
-          ProjectionExpression: 'userId, sub, email, createdAt, #role',
+          ProjectionExpression: 'userId, sub, email, createdAt, #role, enabled',
           ExpressionAttributeNames: { '#role': 'role' },
           ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
         }),
@@ -132,6 +138,7 @@ export class DynamoUserStore implements UserStore {
       email,
       createdAt: new Date().toISOString(),
       role,
+      enabled: true,
     };
     await this.client.send(
       new PutCommand({
@@ -141,6 +148,43 @@ export class DynamoUserStore implements UserStore {
       }),
     );
     return record;
+  }
+
+  async getUserBySub(sub: string): Promise<UserRecord | null> {
+    const result = await this.client.send(
+      new GetCommand({ TableName: getUsersTable(), Key: { sub } }),
+    );
+    if (!result.Item) return null;
+    return normalizeUserRecord(result.Item as Record<string, unknown>);
+  }
+
+  async updateRole(sub: string, role: UserRole): Promise<UserRecord> {
+    const result = await this.client.send(
+      new UpdateCommand({
+        TableName: getUsersTable(),
+        Key: { sub },
+        ConditionExpression: 'attribute_exists(sub)',
+        UpdateExpression: 'SET #role = :role',
+        ExpressionAttributeNames: { '#role': 'role' },
+        ExpressionAttributeValues: { ':role': role },
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+    return normalizeUserRecord(result.Attributes as Record<string, unknown>);
+  }
+
+  async updateEnabled(sub: string, enabled: boolean): Promise<UserRecord> {
+    const result = await this.client.send(
+      new UpdateCommand({
+        TableName: getUsersTable(),
+        Key: { sub },
+        ConditionExpression: 'attribute_exists(sub)',
+        UpdateExpression: 'SET enabled = :enabled',
+        ExpressionAttributeValues: { ':enabled': enabled },
+        ReturnValues: 'ALL_NEW',
+      }),
+    );
+    return normalizeUserRecord(result.Attributes as Record<string, unknown>);
   }
 }
 
@@ -152,13 +196,14 @@ const DEMO_USER: UserRecord = {
   email: 'demo.user@example.internal',
   createdAt: '2026-04-18T00:00:00.000Z',
   role: 'user',
+  enabled: true,
 };
 
 export class MemoryUserStore implements UserStore {
   private store = new Map<string, UserRecord>([[DEMO_USER.sub, DEMO_USER]]);
 
   reset(): void {
-    this.store = new Map([[DEMO_USER.sub, DEMO_USER]]);
+    this.store = new Map([[DEMO_USER.sub, { ...DEMO_USER }]]);
   }
 
   async getOrCreateUser(
@@ -182,6 +227,7 @@ export class MemoryUserStore implements UserStore {
       email,
       createdAt: new Date().toISOString(),
       role,
+      enabled: true,
     };
     this.store.set(sub, record);
     return record;
@@ -202,9 +248,30 @@ export class MemoryUserStore implements UserStore {
       email,
       createdAt: new Date().toISOString(),
       role,
+      enabled: true,
     };
     this.store.set(sub, record);
     return record;
+  }
+
+  async getUserBySub(sub: string): Promise<UserRecord | null> {
+    return this.store.get(sub) ?? null;
+  }
+
+  async updateRole(sub: string, role: UserRole): Promise<UserRecord> {
+    const existing = this.store.get(sub);
+    if (!existing) throw new Error(`User not found: ${sub}`);
+    const updated = { ...existing, role };
+    this.store.set(sub, updated);
+    return updated;
+  }
+
+  async updateEnabled(sub: string, enabled: boolean): Promise<UserRecord> {
+    const existing = this.store.get(sub);
+    if (!existing) throw new Error(`User not found: ${sub}`);
+    const updated = { ...existing, enabled };
+    this.store.set(sub, updated);
+    return updated;
   }
 }
 

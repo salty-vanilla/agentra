@@ -15,6 +15,7 @@ import type {
   AdminToolsResponse,
   AdminTraceDetailResponse,
   AdminTracesResponse,
+  AdminUserActionResponse,
   AdminUsersListResponse,
   AdminUsersResponse,
   ArtifactDownloadUrlResponse,
@@ -586,6 +587,126 @@ export const inviteAdminUser = async (inviteAdminUserRequest: InviteAdminUserReq
     headers: { 'Content-Type': 'application/json', ...options?.headers },
     body: JSON.stringify(
       inviteAdminUserRequest,)
+  }
+);}
+
+
+
+/**
+ * @summary Add user to the admin Cognito group
+ */
+export const getPromoteAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users/${sub}/promote-admin`
+}
+
+export const promoteAdminUser = async (sub: string, options?: RequestInit): Promise<AdminUserActionResponse> => {
+
+  return fetchMutator<AdminUserActionResponse>(getPromoteAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Remove user from the admin Cognito group
+ */
+export const getRemoveAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users/${sub}/remove-admin`
+}
+
+export const removeAdminUser = async (sub: string, options?: RequestInit): Promise<AdminUserActionResponse> => {
+
+  return fetchMutator<AdminUserActionResponse>(getRemoveAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Disable a user via Cognito AdminDisableUser
+ */
+export const getDisableAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users/${sub}/disable`
+}
+
+export const disableAdminUser = async (sub: string, options?: RequestInit): Promise<AdminUserActionResponse> => {
+
+  return fetchMutator<AdminUserActionResponse>(getDisableAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Enable a user via Cognito AdminEnableUser
+ */
+export const getEnableAdminUserUrl = (sub: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users/${sub}/enable`
+}
+
+export const enableAdminUser = async (sub: string, options?: RequestInit): Promise<AdminUserActionResponse> => {
+
+  return fetchMutator<AdminUserActionResponse>(getEnableAdminUserUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Resend invitation email via Cognito AdminCreateUser RESEND
+ */
+export const getResendAdminUserInviteUrl = (sub: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users/${sub}/resend-invite`
+}
+
+export const resendAdminUserInvite = async (sub: string, options?: RequestInit): Promise<AdminUserActionResponse> => {
+
+  return fetchMutator<AdminUserActionResponse>(getResendAdminUserInviteUrl(sub),
+  {
+    ...options,
+    method: 'POST'
+
+
   }
 );}
 

@@ -78,6 +78,7 @@ export const authMiddleware: MiddlewareHandler<any> = async (c, next) => {
     }
     c.set('userId', 'user-demo-001');
     c.set('userGroups', []);
+    c.set('callerSub', 'demo-sub');
     return next();
   }
 
@@ -105,6 +106,7 @@ export const authMiddleware: MiddlewareHandler<any> = async (c, next) => {
     const user = await userStore.getOrCreateUser(sub, email, groups);
     c.set('userId', user.userId);
     c.set('userGroups', groups);
+    c.set('callerSub', sub);
   } catch {
     return c.json({ error: 'Unauthorized.' }, 401);
   }

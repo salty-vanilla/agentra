@@ -33,6 +33,8 @@ export * from './adminTracesResponse';
 export * from './adminTraceToolCall';
 export * from './adminTraceToolCallStatus';
 export * from './adminUser';
+export * from './adminUserActionResponse';
+export * from './adminUserActionResponseRole';
 export * from './adminUserRole';
 export * from './adminUsersListResponse';
 export * from './adminUsersResponse';

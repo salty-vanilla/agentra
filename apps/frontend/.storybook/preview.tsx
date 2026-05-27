@@ -2,6 +2,7 @@ import { TooltipProvider } from '@radix-ui/react-tooltip';
 import type { Preview } from '@storybook/nextjs-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { initialize, mswLoader } from 'msw-storybook-addon';
+import { SonnerToaster } from '@/components/ui/sonner';
 import '../app/globals.css';
 
 initialize();
@@ -19,6 +20,7 @@ const preview: Preview = {
         <QueryClientProvider client={queryClient}>
           <TooltipProvider>
             <Story />
+            <SonnerToaster />
           </TooltipProvider>
         </QueryClientProvider>
       );

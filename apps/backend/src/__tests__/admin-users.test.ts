@@ -1,7 +1,9 @@
 import type { ObservabilityRecord } from '@agentra/shared';
+import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../app.js';
 import { _resetCognitoClient } from '../lib/cognito-client.js';
+import { adminAuthMiddleware } from '../middleware/admin-auth.js';
 import {
   putObservabilityRecord,
   resetObservabilityStore,
@@ -243,6 +245,30 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => {
       this.input = input;
     }
   }
+  class MockAdminRemoveUserFromGroupCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
+  class MockAdminDisableUserCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
+  class MockAdminEnableUserCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
+  class MockListUsersInGroupCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
   class MockCognitoIdentityProviderClient {
     send = mockSend;
   }
@@ -250,6 +276,10 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => {
     CognitoIdentityProviderClient: MockCognitoIdentityProviderClient,
     AdminCreateUserCommand: MockAdminCreateUserCommand,
     AdminAddUserToGroupCommand: MockAdminAddUserToGroupCommand,
+    AdminRemoveUserFromGroupCommand: MockAdminRemoveUserFromGroupCommand,
+    AdminDisableUserCommand: MockAdminDisableUserCommand,
+    AdminEnableUserCommand: MockAdminEnableUserCommand,
+    ListUsersInGroupCommand: MockListUsersInGroupCommand,
   };
 });
 
@@ -387,6 +417,351 @@ describe('POST /admin/users/invite', () => {
     // Without SKIP_AUTH=true, auth middleware kicks in and rejects unauthenticated request
     const res = await postInvite({ email: 'anyone@example.com', role: 'user' });
     // No token → 401 from authMiddleware, then 403 from adminAuthMiddleware if token present
+    expect([401, 403]).toContain(res.status);
+  });
+});
+
+// ── User action route tests ───────────────────────────────────────────────────
+//
+// SKIP_AUTH=true sets callerSub='demo-sub' (the DEMO_USER's Cognito sub).
+// For self-action tests, POST to /:sub/action with sub='demo-sub'.
+// For non-self tests, create 'other-sub' user first.
+
+function postAction(path: string) {
+  return app.request(`/admin/users/${path}`, { method: 'POST' });
+}
+
+describe('POST /admin/users/:sub/promote-admin', () => {
+  beforeEach(() => {
+    process.env.SKIP_AUTH = 'true';
+    process.env.STORE_TYPE = 'memory';
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    resetUserStore();
+    _resetCognitoClient();
+    mockSend.mockReset();
+  });
+
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+    delete process.env.STORE_TYPE;
+    delete process.env.COGNITO_USER_POOL_ID;
+    resetUserStore();
+  });
+
+  it('returns 200 and updates UserTable role to admin', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'user');
+    mockSend.mockResolvedValueOnce({});
+
+    const res = await postAction('other-sub/promote-admin');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.role).toBe('admin');
+    expect(body.sub).toBe('other-sub');
+
+    const updated = await userStore.getUserBySub('other-sub');
+    expect(updated?.role).toBe('admin');
+  });
+
+  it('calls AdminAddUserToGroupCommand with correct args', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'user');
+    mockSend.mockResolvedValueOnce({});
+
+    await postAction('other-sub/promote-admin');
+
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const call = (mockSend.mock.calls[0] as any[])[0];
+    expect(call.input.GroupName).toBeDefined();
+  });
+
+  it('returns 404 when sub does not exist', async () => {
+    const res = await postAction('nonexistent-sub/promote-admin');
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    delete process.env.SKIP_AUTH;
+    const res = await postAction('any-sub/promote-admin');
+    expect([401, 403]).toContain(res.status);
+  });
+});
+
+describe('POST /admin/users/:sub/remove-admin', () => {
+  beforeEach(() => {
+    process.env.SKIP_AUTH = 'true';
+    process.env.STORE_TYPE = 'memory';
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    resetUserStore();
+    _resetCognitoClient();
+    mockSend.mockReset();
+  });
+
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+    delete process.env.STORE_TYPE;
+    delete process.env.COGNITO_USER_POOL_ID;
+    resetUserStore();
+  });
+
+  it('removes admin role when 2+ enabled admins exist', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'admin');
+    // ListUsersInGroup returns 2 enabled admins
+    mockSend.mockResolvedValueOnce({
+      Users: [{ Enabled: true }, { Enabled: true }],
+    });
+    // AdminRemoveUserFromGroup
+    mockSend.mockResolvedValueOnce({});
+
+    const res = await postAction('other-sub/remove-admin');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.role).toBe('user');
+
+    const updated = await userStore.getUserBySub('other-sub');
+    expect(updated?.role).toBe('user');
+  });
+
+  it('returns 403 when trying to remove own admin role (self-demotion)', async () => {
+    // callerSub = 'demo-sub', so POST to /demo-sub/remove-admin triggers self-guard
+    const res = await postAction('demo-sub/remove-admin');
+    expect(res.status).toBe(403);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.error).toMatch(/cannot remove your own/i);
+  });
+
+  it('returns 409 when only 1 enabled admin remains', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'admin');
+    // ListUsersInGroup returns only 1 enabled admin
+    mockSend.mockResolvedValueOnce({ Users: [{ Enabled: true }] });
+
+    const res = await postAction('other-sub/remove-admin');
+    expect(res.status).toBe(409);
+  });
+
+  it('returns 404 when sub does not exist', async () => {
+    const res = await postAction('nonexistent-sub/remove-admin');
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    delete process.env.SKIP_AUTH;
+    const res = await postAction('any-sub/remove-admin');
+    expect([401, 403]).toContain(res.status);
+  });
+
+  it('returns 401 when request has no auth token', async () => {
+    delete process.env.SKIP_AUTH;
+    const res = await postAction('any-sub/remove-admin');
+    expect(res.status).toBe(401);
+  });
+});
+
+describe('adminAuthMiddleware — Cognito group-based authorization', () => {
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+  });
+
+  it('returns 403 when authenticated user is not in the admin Cognito group', async () => {
+    // Verify that adminAuthMiddleware checks userGroups (from JWT), NOT UserTable.role.
+    // A caller whose JWT has no Cognito group must be rejected even if UserTable.role='admin'.
+    delete process.env.SKIP_AUTH;
+    type TestEnv = { Variables: { userGroups: string[] } };
+    const testApp = new Hono<TestEnv>();
+    // Simulate authMiddleware passing (authenticated user) but with no admin group
+    testApp.use('*', async (c, next) => {
+      c.set('userGroups', []);
+      await next();
+    });
+    testApp.use('*', adminAuthMiddleware);
+    testApp.post('/:sub/remove-admin', (c) => c.json({ ok: true }));
+
+    const res = await testApp.request('/other-sub/remove-admin', { method: 'POST' });
+    expect(res.status).toBe(403);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.error).toBe('Forbidden.');
+  });
+
+  it('allows request when userGroups includes the admin group', async () => {
+    delete process.env.SKIP_AUTH;
+    type TestEnv = { Variables: { userGroups: string[] } };
+    const testApp = new Hono<TestEnv>();
+    testApp.use('*', async (c, next) => {
+      c.set('userGroups', ['agentra-admin']);
+      await next();
+    });
+    testApp.use('*', adminAuthMiddleware);
+    testApp.post('/:sub/remove-admin', (c) => c.json({ ok: true }));
+
+    const res = await testApp.request('/other-sub/remove-admin', { method: 'POST' });
+    expect(res.status).toBe(200);
+  });
+});
+
+describe('POST /admin/users/:sub/disable', () => {
+  beforeEach(() => {
+    process.env.SKIP_AUTH = 'true';
+    process.env.STORE_TYPE = 'memory';
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    resetUserStore();
+    _resetCognitoClient();
+    mockSend.mockReset();
+  });
+
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+    delete process.env.STORE_TYPE;
+    delete process.env.COGNITO_USER_POOL_ID;
+    resetUserStore();
+  });
+
+  it('disables user and syncs enabled=false to UserTable', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'user');
+    mockSend.mockResolvedValueOnce({});
+
+    const res = await postAction('other-sub/disable');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.enabled).toBe(false);
+
+    const updated = await userStore.getUserBySub('other-sub');
+    expect(updated?.enabled).toBe(false);
+  });
+
+  it('returns 403 when trying to disable own account (self-disable via callerSub)', async () => {
+    // callerSub = 'demo-sub' (set by SKIP_AUTH=true in auth middleware)
+    const res = await postAction('demo-sub/disable');
+    expect(res.status).toBe(403);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.error).toMatch(/cannot disable your own/i);
+  });
+
+  it('returns 404 when sub does not exist', async () => {
+    const res = await postAction('nonexistent-sub/disable');
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    delete process.env.SKIP_AUTH;
+    const res = await postAction('any-sub/disable');
+    expect([401, 403]).toContain(res.status);
+  });
+});
+
+describe('POST /admin/users/:sub/enable', () => {
+  beforeEach(() => {
+    process.env.SKIP_AUTH = 'true';
+    process.env.STORE_TYPE = 'memory';
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    resetUserStore();
+    _resetCognitoClient();
+    mockSend.mockReset();
+  });
+
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+    delete process.env.STORE_TYPE;
+    delete process.env.COGNITO_USER_POOL_ID;
+    resetUserStore();
+  });
+
+  it('enables user and syncs enabled=true to UserTable', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'user');
+    await userStore.updateEnabled('other-sub', false);
+    mockSend.mockResolvedValueOnce({});
+
+    const res = await postAction('other-sub/enable');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.enabled).toBe(true);
+
+    const updated = await userStore.getUserBySub('other-sub');
+    expect(updated?.enabled).toBe(true);
+  });
+
+  it('returns 404 when sub does not exist', async () => {
+    const res = await postAction('nonexistent-sub/enable');
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    delete process.env.SKIP_AUTH;
+    const res = await postAction('any-sub/enable');
+    expect([401, 403]).toContain(res.status);
+  });
+});
+
+describe('POST /admin/users/:sub/resend-invite', () => {
+  beforeEach(() => {
+    process.env.SKIP_AUTH = 'true';
+    process.env.STORE_TYPE = 'memory';
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    resetUserStore();
+    _resetCognitoClient();
+    mockSend.mockReset();
+  });
+
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+    delete process.env.STORE_TYPE;
+    delete process.env.COGNITO_USER_POOL_ID;
+    resetUserStore();
+  });
+
+  it('resends invite and returns 200 with user data', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'user');
+    mockSend.mockResolvedValueOnce({
+      User: { Attributes: [{ Name: 'sub', Value: 'other-sub' }] },
+    });
+
+    const res = await postAction('other-sub/resend-invite');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.sub).toBe('other-sub');
+  });
+
+  it('calls AdminCreateUserCommand with MessageAction RESEND', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'user');
+    mockSend.mockResolvedValueOnce({
+      User: { Attributes: [] },
+    });
+
+    await postAction('other-sub/resend-invite');
+
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const call = (mockSend.mock.calls[0] as any[])[0];
+    expect(call.input.MessageAction).toBe('RESEND');
+    expect(call.input.Username).toBe('other@example.com');
+  });
+
+  it('returns 400 when Cognito throws UnsupportedUserStateException', async () => {
+    await userStore.createInvitedUser('other-sub', 'other@example.com', 'user');
+    const err = Object.assign(new Error('User already confirmed'), {
+      name: 'UnsupportedUserStateException',
+    });
+    mockSend.mockRejectedValueOnce(err);
+
+    const res = await postAction('other-sub/resend-invite');
+    expect(res.status).toBe(400);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.error).toMatch(/already activated/i);
+  });
+
+  it('returns 404 when sub does not exist', async () => {
+    const res = await postAction('nonexistent-sub/resend-invite');
+    expect(res.status).toBe(404);
+  });
+
+  it('returns 401 when not authenticated', async () => {
+    delete process.env.SKIP_AUTH;
+    const res = await postAction('any-sub/resend-invite');
     expect([401, 403]).toContain(res.status);
   });
 });

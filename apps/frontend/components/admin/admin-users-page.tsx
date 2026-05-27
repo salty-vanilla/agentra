@@ -48,6 +48,18 @@ const columns = [
       );
     },
   }),
+  helper.accessor('enabled', {
+    header: 'Status',
+    size: 100,
+    cell: ({ getValue }) => {
+      const enabled = getValue<boolean>();
+      return (
+        <Badge variant={enabled ? 'secondary' : 'destructive'}>
+          {enabled ? 'Active' : 'Disabled'}
+        </Badge>
+      );
+    },
+  }),
   helper.accessor('createdAt', {
     header: 'Created',
     size: 160,
@@ -191,7 +203,14 @@ export function AdminUsersPage() {
         </div>
       )}
 
-      <AdminUserDetailDrawer user={selected} onClose={() => setSelected(null)} />
+      <AdminUserDetailDrawer
+        user={selected}
+        onClose={() => setSelected(null)}
+        onUserUpdated={(updated) => {
+          setSelected(updated);
+          setAllUsers((prev) => prev.map((u) => (u.sub === updated.sub ? updated : u)));
+        }}
+      />
       <AdminUserInviteDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
