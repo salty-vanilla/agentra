@@ -144,4 +144,109 @@ describe('MemoryUserStore', () => {
     const demo = users.find((u) => u.sub === 'demo-sub');
     expect(demo?.role).toBe('user');
   });
+
+  it('demo user has enabled=true', async () => {
+    const users = await store.listUsers();
+    const demo = users.find((u) => u.sub === 'demo-sub');
+    expect(demo?.enabled).toBe(true);
+  });
+
+  it('getOrCreateUser new record has enabled=true', async () => {
+    const user = await store.getOrCreateUser('sub-new', 'new@example.com', []);
+    expect(user.enabled).toBe(true);
+  });
+
+  it('createInvitedUser has enabled=true', async () => {
+    const record = await store.createInvitedUser('inv-sub', 'inv@example.com', 'user');
+    expect(record.enabled).toBe(true);
+  });
+
+  it('getUserBySub returns the user when found', async () => {
+    await store.getOrCreateUser('find-me', 'find@example.com', []);
+    const found = await store.getUserBySub('find-me');
+    expect(found).not.toBeNull();
+    expect(found?.sub).toBe('find-me');
+  });
+
+  it('getUserBySub returns null for unknown sub', async () => {
+    const found = await store.getUserBySub('does-not-exist');
+    expect(found).toBeNull();
+  });
+
+  it('updateRole changes role immutably and returns updated record', async () => {
+    const original = await store.getOrCreateUser('role-sub', 'r@example.com', []);
+    expect(original.role).toBe('user');
+
+    const updated = await store.updateRole('role-sub', 'admin');
+    expect(updated.role).toBe('admin');
+    expect(updated.userId).toBe(original.userId);
+
+    // original object should not be mutated
+    expect(original.role).toBe('user');
+  });
+
+  it('updateEnabled(false) sets enabled=false', async () => {
+    await store.getOrCreateUser('en-sub', 'en@example.com', []);
+    const updated = await store.updateEnabled('en-sub', false);
+    expect(updated.enabled).toBe(false);
+
+    const fetched = await store.getUserBySub('en-sub');
+    expect(fetched?.enabled).toBe(false);
+  });
+
+  it('updateEnabled(true) sets enabled=true after disabling', async () => {
+    await store.getOrCreateUser('en-sub2', 'en2@example.com', []);
+    await store.updateEnabled('en-sub2', false);
+    const updated = await store.updateEnabled('en-sub2', true);
+    expect(updated.enabled).toBe(true);
+  });
+});
+
+describe('normalizeUserRecord — enabled field', () => {
+  it('treats missing enabled as true (backward compat)', () => {
+    const result = normalizeUserRecord({
+      userId: 'u1',
+      sub: 's1',
+      email: 'a@b.com',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      role: 'user',
+    });
+    expect(result.enabled).toBe(true);
+  });
+
+  it('treats undefined enabled as true', () => {
+    const result = normalizeUserRecord({
+      userId: 'u1',
+      sub: 's1',
+      email: 'a@b.com',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      role: 'user',
+      enabled: undefined,
+    });
+    expect(result.enabled).toBe(true);
+  });
+
+  it('treats enabled=false as false', () => {
+    const result = normalizeUserRecord({
+      userId: 'u1',
+      sub: 's1',
+      email: 'a@b.com',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      role: 'user',
+      enabled: false,
+    });
+    expect(result.enabled).toBe(false);
+  });
+
+  it('treats enabled=true as true', () => {
+    const result = normalizeUserRecord({
+      userId: 'u1',
+      sub: 's1',
+      email: 'a@b.com',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      role: 'user',
+      enabled: true,
+    });
+    expect(result.enabled).toBe(true);
+  });
 });

@@ -4,6 +4,8 @@ import {
   createThread as createThreadRequest,
   deleteKbDocument as deleteKbDocumentRequest,
   deleteThread as deleteThreadRequest,
+  disableAdminUser as disableAdminUserRequest,
+  enableAdminUser as enableAdminUserRequest,
   getAdminAgents as getAdminAgentsRequest,
   getAdminOverview as getAdminOverviewRequest,
   getAdminSkills as getAdminSkillsRequest,
@@ -22,6 +24,9 @@ import {
   listThreads as listThreadsRequest,
   postChat as postChatRequest,
   presignKbDocument as presignKbDocumentRequest,
+  promoteAdminUser as promoteAdminUserRequest,
+  removeAdminUser as removeAdminUserRequest,
+  resendAdminUserInvite as resendAdminUserInviteRequest,
   startKbSync as startKbSyncRequest,
   updateThread as updateThreadRequest,
 } from '@/lib/generated/agentra';
@@ -34,6 +39,7 @@ import type {
   AdminTraceDetailResponse,
   AdminTracesResponse,
   AdminUser,
+  AdminUserActionResponse,
   AdminUsersListResponse,
   AdminUsersResponse,
   ArtifactManifest,
@@ -311,6 +317,7 @@ export async function fetchAdminUsersList(
 
 export type {
   AdminUser,
+  AdminUserActionResponse,
   AdminUsersListResponse,
   InviteAdminUserRequest,
   InviteAdminUserResponse,
@@ -321,6 +328,33 @@ export async function inviteAdminUser(
 ): Promise<InviteAdminUserResponse> {
   const headers = await getAuthHeaders();
   return inviteAdminUserRequest(req, { headers });
+}
+
+export async function promoteAdminUser(sub: string): Promise<AdminUserActionResponse> {
+  const headers = await getAuthHeaders();
+  return promoteAdminUserRequest(sub, { headers });
+}
+
+export async function removeAdminUser(sub: string): Promise<AdminUserActionResponse> {
+  const headers = await getAuthHeaders();
+  return removeAdminUserRequest(sub, { headers });
+}
+
+export async function disableAdminUser(sub: string): Promise<AdminUserActionResponse> {
+  const headers = await getAuthHeaders();
+  return disableAdminUserRequest(sub, { headers });
+}
+
+export async function enableAdminUser(sub: string): Promise<AdminUserActionResponse> {
+  const headers = await getAuthHeaders();
+  return enableAdminUserRequest(sub, { headers });
+}
+
+export async function resendAdminUserInvite(
+  sub: string,
+): Promise<AdminUserActionResponse> {
+  const headers = await getAuthHeaders();
+  return resendAdminUserInviteRequest(sub, { headers });
 }
 
 export async function fetchAdminAgents(

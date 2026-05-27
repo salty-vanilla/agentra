@@ -191,7 +191,14 @@ export function AdminUsersPage() {
         </div>
       )}
 
-      <AdminUserDetailDrawer user={selected} onClose={() => setSelected(null)} />
+      <AdminUserDetailDrawer
+        user={selected}
+        onClose={() => setSelected(null)}
+        onUserUpdated={(updated) => {
+          setSelected(updated);
+          setAllUsers((prev) => prev.map((u) => (u.sub === updated.sub ? updated : u)));
+        }}
+      />
       <AdminUserInviteDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}

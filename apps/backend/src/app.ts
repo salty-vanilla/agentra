@@ -47,6 +47,7 @@ type HonoEnv = {
     userId: string;
     requestId: string;
     userGroups: string[];
+    callerSub: string;
   };
 };
 

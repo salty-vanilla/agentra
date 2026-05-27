@@ -85,6 +85,7 @@ export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
       sub: 'sub-admin-001',
       email: 'admin@example.com',
       role: 'admin',
+      enabled: true,
       createdAt: '2026-01-01T00:00:00.000Z',
       requestCount: 42,
       totalTokens: 15000,
@@ -98,6 +99,7 @@ export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
       sub: 'sub-user-002',
       email: 'alice@example.com',
       role: 'user',
+      enabled: true,
       createdAt: '2026-02-10T00:00:00.000Z',
       requestCount: 18,
       totalTokens: 6200,
@@ -109,6 +111,7 @@ export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
       sub: 'sub-user-003',
       email: 'bob@example.com',
       role: 'user',
+      enabled: true,
       createdAt: '2026-03-05T00:00:00.000Z',
     },
     {
@@ -116,6 +119,7 @@ export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
       sub: 'sub-user-004',
       email: 'carol@example.com',
       role: 'user',
+      enabled: false,
       createdAt: '2026-04-01T00:00:00.000Z',
     },
   ],
@@ -159,6 +163,63 @@ export const storybookInviteAdminUserValidationErrorHandler = http.post(
 
 export const storybookInviteAdminUserLoadingHandler = http.post(
   '*/admin/users/invite',
+  async () => {
+    await new Promise((resolve) => setTimeout(resolve, 60_000));
+    return HttpResponse.json({ error: 'timeout' }, { status: 504 });
+  },
+);
+
+const ACTION_SUCCESS_RESPONSE = {
+  sub: 'sub-user-002',
+  userId: 'user-regular-002-gghhiijjkkll',
+  role: 'admin' as const,
+  enabled: true,
+};
+
+export const storybookPromoteAdminUserSuccessHandler = http.post(
+  '*/admin/users/*/promote-admin',
+  () => HttpResponse.json(ACTION_SUCCESS_RESPONSE),
+);
+
+export const storybookRemoveAdminUserSuccessHandler = http.post(
+  '*/admin/users/*/remove-admin',
+  () => HttpResponse.json({ ...ACTION_SUCCESS_RESPONSE, role: 'user' as const }),
+);
+
+export const storybookRemoveAdminUserConflictHandler = http.post(
+  '*/admin/users/*/remove-admin',
+  () =>
+    HttpResponse.json({ error: 'Cannot remove the last enabled admin' }, { status: 409 }),
+);
+
+export const storybookDisableAdminUserSuccessHandler = http.post(
+  '*/admin/users/*/disable',
+  () =>
+    HttpResponse.json({
+      ...ACTION_SUCCESS_RESPONSE,
+      role: 'user' as const,
+      enabled: false,
+    }),
+);
+
+export const storybookEnableAdminUserSuccessHandler = http.post(
+  '*/admin/users/*/enable',
+  () => HttpResponse.json({ ...ACTION_SUCCESS_RESPONSE, role: 'user' as const }),
+);
+
+export const storybookResendAdminUserInviteSuccessHandler = http.post(
+  '*/admin/users/*/resend-invite',
+  () =>
+    HttpResponse.json({
+      sub: 'sub-user-003',
+      userId: 'user-no-obs-003-mmnnoopp',
+      role: 'user' as const,
+      enabled: true,
+    }),
+);
+
+export const storybookActionLoadingHandler = http.post(
+  '*/admin/users/*/(promote-admin|remove-admin|disable|enable|resend-invite)',
   async () => {
     await new Promise((resolve) => setTimeout(resolve, 60_000));
     return HttpResponse.json({ error: 'timeout' }, { status: 504 });
