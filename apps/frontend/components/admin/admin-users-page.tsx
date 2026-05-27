@@ -192,7 +192,14 @@ export function AdminUsersPage() {
       )}
 
       <AdminUserDetailDrawer user={selected} onClose={() => setSelected(null)} />
-      <AdminUserInviteDialog open={inviteOpen} onClose={() => setInviteOpen(false)} />
+      <AdminUserInviteDialog
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        onInvited={() => {
+          setCursor(undefined);
+          setAllUsers([]);
+        }}
+      />
     </div>
   );
 }

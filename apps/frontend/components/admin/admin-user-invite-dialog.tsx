@@ -21,6 +21,9 @@ type Role = 'user' | 'admin';
 type Props = {
   open: boolean;
   onClose: () => void;
+  onInvited?: () => void;
+  defaultRole?: Role;
+  initialSuccessEmail?: string;
 };
 
 type FormState = {
@@ -37,16 +40,28 @@ const DEFAULT_FORM: FormState = {
   sendInvitation: true,
 };
 
-export function AdminUserInviteDialog({ open, onClose }: Props) {
+export function AdminUserInviteDialog({
+  open,
+  onClose,
+  onInvited,
+  defaultRole,
+  initialSuccessEmail,
+}: Props) {
   const queryClient = useQueryClient();
-  const [form, setForm] = useState<FormState>(DEFAULT_FORM);
-  const [successEmail, setSuccessEmail] = useState<string | null>(null);
+  const [form, setForm] = useState<FormState>({
+    ...DEFAULT_FORM,
+    role: defaultRole ?? 'user',
+  });
+  const [successEmail, setSuccessEmail] = useState<string | null>(
+    initialSuccessEmail ?? null,
+  );
 
   const mutation = useMutation({
     mutationFn: (req: InviteAdminUserRequest) => inviteAdminUser(req),
     onSuccess: (_, req) => {
-      setSuccessEmail(req.email);
       queryClient.invalidateQueries({ queryKey: agentraQueryKeys.adminUsersListRoot });
+      setSuccessEmail(req.email);
+      onInvited?.();
     },
   });
 

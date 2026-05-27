@@ -180,3 +180,33 @@ export const InviteDialogValidationError: Story = {
     docs: { description: { story: 'Invite dialog showing 400 validation error.' } },
   },
 };
+
+export const InviteDialogSuccess: Story = {
+  render: () => (
+    <InviteDialogWrapper>
+      <AdminUserInviteDialog
+        open={true}
+        onClose={() => {}}
+        initialSuccessEmail="new@example.com"
+      />
+    </InviteDialogWrapper>
+  ),
+  parameters: {
+    msw: { handlers: [storybookAdminUsersListHandler] },
+    docs: { description: { story: '招待成功後の success 表示。' } },
+  },
+};
+
+export const InviteDialogAdminRole: Story = {
+  render: () => (
+    <InviteDialogWrapper>
+      <AdminUserInviteDialog open={true} onClose={() => {}} defaultRole="admin" />
+    </InviteDialogWrapper>
+  ),
+  parameters: {
+    msw: {
+      handlers: [storybookAdminUsersListHandler, storybookInviteAdminUserSuccessHandler],
+    },
+    docs: { description: { story: 'role=Admin 選択時の warning 表示。' } },
+  },
+};
