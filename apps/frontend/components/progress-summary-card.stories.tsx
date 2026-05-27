@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { expect, within } from 'storybook/test';
 import type { ProgressSummaryEvent } from '@/lib/generated/model';
 import { ProgressSummaryCard } from './progress-summary-card';
 
@@ -37,6 +38,10 @@ export const InProgress: Story = {
     ],
     activePhase: 'outline',
   },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByText(/作成中/)).toBeVisible();
+  },
 };
 
 export const Complete: Story = {
@@ -61,6 +66,10 @@ export const WithError: Story = {
       makeEvent('outline', 'アウトライン', '構成完了'),
       makeEvent('error', 'エラー', 'スライド生成に失敗しました'),
     ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByText(/失敗/)).toBeVisible();
   },
 };
 

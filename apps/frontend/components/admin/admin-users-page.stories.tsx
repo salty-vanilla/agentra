@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { HttpResponse, http } from 'msw';
 import { useState } from 'react';
+import { expect, userEvent, within } from 'storybook/test';
 import type { AdminUser } from '@/lib/api';
 import {
   STORYBOOK_ADMIN_USERS_LIST,
@@ -208,5 +209,34 @@ export const InviteDialogAdminRole: Story = {
       handlers: [storybookAdminUsersListHandler, storybookInviteAdminUserSuccessHandler],
     },
     docs: { description: { story: 'role=Admin 選択時の warning 表示。' } },
+  },
+};
+
+export const InviteSubmitSuccess: Story = {
+  name: 'Invite dialog — submit shows success state',
+  render: () => (
+    <InviteDialogWrapper>
+      <AdminUsersPage />
+      <AdminUserInviteDialog open={true} onClose={() => {}} />
+    </InviteDialogWrapper>
+  ),
+  parameters: {
+    msw: {
+      handlers: [storybookAdminUsersListHandler, storybookInviteAdminUserSuccessHandler],
+    },
+    docs: {
+      description: {
+        story:
+          '招待フォームにメールを入力→送信→成功表示に遷移することをインタラクションで確認。',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+    const emailInput = await body.findByLabelText(/メールアドレス/);
+    await userEvent.type(emailInput, 'test@example.com');
+    const submitButton = await body.findByRole('button', { name: /招待する/ });
+    await userEvent.click(submitButton);
+    expect(await body.findByText(/招待しました/)).toBeVisible();
   },
 };

@@ -159,7 +159,15 @@ jobs:
           path: .
       - name: Extract package dist artifact
         run: tar -xzf packages-dist.tar.gz
-      - run: pnpm --filter @agentra/frontend build-storybook
+      - name: Build Storybook
+        run: pnpm --filter @agentra/frontend build-storybook
+      - name: Install Playwright browsers for test-runner
+        run: pnpm --filter @agentra/frontend playwright:install
+      - name: Run Storybook interaction tests
+        run: |
+          pnpm --filter @agentra/frontend storybook:serve-static &
+          pnpm --filter @agentra/frontend exec wait-on http://127.0.0.1:6006
+          pnpm --filter @agentra/frontend test-storybook:ci
 
   cdk-synth:
     name: cdk-synth
