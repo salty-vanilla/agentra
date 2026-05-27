@@ -17,6 +17,7 @@ import {
   getGetHealthMockHandler,
   getGetKbStatusMockHandler,
   getGetThreadMockHandler,
+  getListAdminUsersMockHandler,
   getListKbDocumentsMockHandler,
   getListKbIngestionJobsMockHandler,
   getListThreadMessagesMockHandler,
@@ -648,6 +649,35 @@ export const handlers = [
         totalTokens: 5_500,
         avgDurationMs: 1900,
         errorRate: 0.0,
+      },
+    ],
+  })),
+
+  getListAdminUsersMockHandler(() => ({
+    users: [
+      {
+        userId: 'user-mock-001',
+        sub: 'sub-mock-001',
+        email: 'user001@example.com',
+        role: 'user' as const,
+        enabled: true,
+        createdAt: '2025-01-15T09:00:00Z',
+      },
+      {
+        userId: 'user-mock-002',
+        sub: 'sub-mock-002',
+        email: 'user002@example.com',
+        role: 'user' as const,
+        enabled: true,
+        createdAt: '2025-02-20T10:00:00Z',
+      },
+      {
+        userId: 'user-mock-003',
+        sub: 'sub-mock-003',
+        email: 'admin@example.com',
+        role: 'admin' as const,
+        enabled: true,
+        createdAt: '2024-12-01T08:00:00Z',
       },
     ],
   })),
