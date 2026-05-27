@@ -370,6 +370,9 @@ importers:
       aws-cdk:
         specifier: latest
         version: 2.1124.1
+      esbuild:
+        specifier: latest
+        version: 0.28.0
       tsx:
         specifier: latest
         version: 4.22.3
