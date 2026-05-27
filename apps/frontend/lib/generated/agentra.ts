@@ -30,6 +30,8 @@ import type {
   GetAdminUsersParams,
   HealthResponse,
   IngestionJobsResponse,
+  InviteAdminUserRequest,
+  InviteAdminUserResponse,
   KbDocumentsResponse,
   KbStatusResponse,
   ListAdminUsersParams,
@@ -559,6 +561,31 @@ export const listAdminUsers = async (params?: ListAdminUsersParams, options?: Re
     method: 'GET'
 
 
+  }
+);}
+
+
+
+/**
+ * @summary Invite a new user via Cognito AdminCreateUser
+ */
+export const getInviteAdminUserUrl = () => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/admin/users/invite`
+}
+
+export const inviteAdminUser = async (inviteAdminUserRequest: InviteAdminUserRequest, options?: RequestInit): Promise<InviteAdminUserResponse> => {
+
+  return fetchMutator<InviteAdminUserResponse>(getInviteAdminUserUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      inviteAdminUserRequest,)
   }
 );}
 

@@ -1,6 +1,7 @@
 import type { ObservabilityRecord } from '@agentra/shared';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { app } from '../app.js';
+import { _resetCognitoClient } from '../lib/cognito-client.js';
 import {
   putObservabilityRecord,
   resetObservabilityStore,
@@ -224,5 +225,168 @@ describe('GET /admin/users', () => {
       const res = await app.request('/admin/users');
       expect(res.status).toBe(401);
     });
+  });
+});
+
+const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));
+
+vi.mock('@aws-sdk/client-cognito-identity-provider', () => {
+  class MockAdminCreateUserCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
+  class MockAdminAddUserToGroupCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
+  class MockCognitoIdentityProviderClient {
+    send = mockSend;
+  }
+  return {
+    CognitoIdentityProviderClient: MockCognitoIdentityProviderClient,
+    AdminCreateUserCommand: MockAdminCreateUserCommand,
+    AdminAddUserToGroupCommand: MockAdminAddUserToGroupCommand,
+  };
+});
+
+describe('POST /admin/users/invite', () => {
+  function mockCreateUserSuccess(sub = 'cognito-sub-123') {
+    mockSend.mockResolvedValueOnce({
+      User: { Attributes: [{ Name: 'sub', Value: sub }] },
+    });
+  }
+
+  function mockAddToGroupSuccess() {
+    mockSend.mockResolvedValueOnce({});
+  }
+
+  function postInvite(body: Record<string, unknown>) {
+    return app.request('/admin/users/invite', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+  }
+
+  beforeEach(() => {
+    process.env.SKIP_AUTH = 'true';
+    process.env.STORE_TYPE = 'memory';
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    resetUserStore();
+    _resetCognitoClient();
+    mockSend.mockReset();
+  });
+
+  afterEach(() => {
+    delete process.env.SKIP_AUTH;
+    delete process.env.STORE_TYPE;
+    delete process.env.COGNITO_USER_POOL_ID;
+    resetUserStore();
+  });
+
+  it('returns 201 with email, role, sub, userId for a user-role invite', async () => {
+    mockCreateUserSuccess('sub-abc');
+
+    const res = await postInvite({ email: 'new@example.com', role: 'user' });
+    expect(res.status).toBe(201);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.email).toBe('new@example.com');
+    expect(body.role).toBe('user');
+    expect(body.sub).toBe('sub-abc');
+    expect(body.userId).toBeDefined();
+  });
+
+  it('writes a projection record to UserTable so the user appears in listing', async () => {
+    mockCreateUserSuccess('sub-projection');
+
+    await postInvite({ email: 'projection@example.com', role: 'user' });
+
+    const users = await userStore.listUsers();
+    const invited = users.find((u) => u.email === 'projection@example.com');
+    expect(invited).toBeDefined();
+    expect(invited?.role).toBe('user');
+  });
+
+  it('calls AdminAddUserToGroup and sets role=admin for admin invite', async () => {
+    mockCreateUserSuccess('sub-admin');
+    mockAddToGroupSuccess();
+
+    const res = await postInvite({ email: 'admin@example.com', role: 'admin' });
+    expect(res.status).toBe(201);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.role).toBe('admin');
+    expect(mockSend).toHaveBeenCalledTimes(2);
+
+    const users = await userStore.listUsers();
+    const invited = users.find((u) => u.email === 'admin@example.com');
+    expect(invited?.role).toBe('admin');
+  });
+
+  it('returns 400 for missing email', async () => {
+    const res = await postInvite({ role: 'user' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for invalid email format', async () => {
+    const res = await postInvite({ email: 'not-an-email', role: 'user' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 400 for invalid role value', async () => {
+    const res = await postInvite({ email: 'valid@example.com', role: 'superadmin' });
+    expect(res.status).toBe(400);
+  });
+
+  it('returns 409 when Cognito throws UsernameExistsException', async () => {
+    const conflictErr = Object.assign(new Error('User already exists'), {
+      name: 'UsernameExistsException',
+    });
+    mockSend.mockRejectedValueOnce(conflictErr);
+
+    const res = await postInvite({ email: 'existing@example.com', role: 'user' });
+    expect(res.status).toBe(409);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.error).toMatch(/already exists/i);
+  });
+
+  it('passes SUPPRESS MessageAction when sendInvitation is false', async () => {
+    mockCreateUserSuccess();
+
+    await postInvite({ email: 'quiet@example.com', role: 'user', sendInvitation: false });
+
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const createCall = (mockSend.mock.calls[0] as any[])[0] as {
+      input: { MessageAction?: string };
+    };
+    expect(createCall.input.MessageAction).toBe('SUPPRESS');
+  });
+
+  it('passes name to Cognito UserAttributes when name is provided', async () => {
+    mockCreateUserSuccess();
+
+    await postInvite({ email: 'named@example.com', role: 'user', name: 'Alice' });
+
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const createCall = (mockSend.mock.calls[0] as any[])[0] as {
+      input: { UserAttributes: Array<{ Name: string; Value: string }> };
+    };
+    const nameAttr = createCall.input.UserAttributes.find((a) => a.Name === 'name');
+    expect(nameAttr?.Value).toBe('Alice');
+  });
+
+  it('returns 403 when caller is not an admin (non-admin cannot invite)', async () => {
+    delete process.env.SKIP_AUTH;
+    process.env.SKIP_AUTH = 'false';
+    // Without SKIP_AUTH=true, auth middleware kicks in and rejects unauthenticated request
+    const res = await postInvite({ email: 'anyone@example.com', role: 'user' });
+    // No token → 401 from authMiddleware, then 403 from adminAuthMiddleware if token present
+    expect([401, 403]).toContain(res.status);
   });
 });

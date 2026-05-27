@@ -9,6 +9,7 @@ import { DataTable } from '@/components/ui/data-table';
 import type { AdminUser } from '@/lib/api';
 import { adminUsersListQueryOptions } from '@/lib/query-options';
 import { AdminUserDetailDrawer } from './admin-user-detail-drawer';
+import { AdminUserInviteDialog } from './admin-user-invite-dialog';
 import { SearchToolbar } from './search-toolbar';
 
 const ROLE_OPTIONS = ['All', 'Admin', 'User'] as const;
@@ -102,6 +103,7 @@ export function AdminUsersPage() {
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<RoleFilter>('All');
   const [selected, setSelected] = useState<AdminUser | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   const { data, isLoading, error } = useQuery({
     ...adminUsersListQueryOptions({
@@ -137,6 +139,9 @@ export function AdminUsersPage() {
     <div className="flex flex-col min-h-0 flex-1 gap-3">
       <div className="shrink-0 flex items-center justify-between flex-wrap gap-2">
         <h1 className="text-xl font-semibold">Users</h1>
+        <Button size="sm" onClick={() => setInviteOpen(true)}>
+          Invite User
+        </Button>
       </div>
 
       <div className="shrink-0 flex items-center gap-3 flex-wrap">
@@ -187,6 +192,14 @@ export function AdminUsersPage() {
       )}
 
       <AdminUserDetailDrawer user={selected} onClose={() => setSelected(null)} />
+      <AdminUserInviteDialog
+        open={inviteOpen}
+        onClose={() => setInviteOpen(false)}
+        onInvited={() => {
+          setCursor(undefined);
+          setAllUsers([]);
+        }}
+      />
     </div>
   );
 }
