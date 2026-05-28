@@ -8,12 +8,28 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   ...(process.env.CI ? { workers: 1 } : {}),
-  reporter: process.env.CI ? 'github' : 'html',
+  reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : [['html']],
   use: {
     baseURL: 'http://127.0.0.1:3000',
     trace: 'on-first-retry',
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      testMatch: '**/smoke.test.ts',
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'visual-evidence',
+      testMatch: '**/visual-evidence.test.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        screenshot: 'on',
+        video: 'on',
+        trace: 'on',
+      },
+    },
+  ],
   webServer: {
     command: 'pnpm dev',
     url: 'http://127.0.0.1:3000',
