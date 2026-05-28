@@ -8,6 +8,7 @@
 | `pnpm --filter @agentra/frontend test` | Vitest ユニット / コンポーネントテスト | ローカル開発・CI (PR 毎) |
 | `pnpm --filter @agentra/frontend test --watch` | ウォッチモード (TDD サイクル) | ローカル開発時 |
 | `pnpm --filter @agentra/frontend build-storybook` | Story のコンパイル・ビルド検証 | CI (PR 毎) |
+| `pnpm --filter @agentra/frontend test-storybook` | Storybook インタラクションテスト | CI (PR 毎) / ローカル |
 | `pnpm dev:storybook` | ビジュアル確認 (ホットリロード) | ローカル開発時 |
 
 > **E2E テスト (Playwright) は現時点で未配線。** `apps/frontend/package.json` に `e2e` スクリプトは存在しない。
@@ -99,6 +100,63 @@ afterAll(() => mswServer.close());
 - [ ] 新規 Presenter には Story が存在する
 - [ ] loading / empty / error / long content の各状態を Story または test で確認した
 - [ ] API 呼び出しは hook / container に閉じ込め、Presenter は props-only になっている
+
+---
+
+## Storybook インタラクションテスト (`test-storybook`)
+
+Storybook の `play` function はユーザー操作 (クリック・タイピング) をシミュレートし、DOM の状態をアサートする。
+`@storybook/test-runner` がすべての `play` 付き Story を Playwright 経由でヘッドレス実行する。
+
+### コマンド早見表 (追記)
+
+| コマンド | 目的 | 実行タイミング |
+|----------|------|----------------|
+| `pnpm --filter @agentra/frontend test-storybook` | Storybook インタラクションテスト実行 | ローカル (Storybook 起動後) / CI |
+
+### ローカル実行
+
+```bash
+# ターミナル 1 — Storybook dev サーバーを起動
+pnpm --filter @agentra/frontend storybook
+
+# ターミナル 2 — Storybook が :6006 で起動したらテストを実行
+pnpm --filter @agentra/frontend test-storybook
+```
+
+### ビルド済み Storybook に対して実行 (CI 相当)
+
+```bash
+pnpm --filter @agentra/frontend build-storybook
+pnpm --filter @agentra/frontend storybook:serve-static &
+pnpm --filter @agentra/frontend exec wait-on http://127.0.0.1:6006
+pnpm --filter @agentra/frontend test-storybook:ci
+```
+
+### play function の書き方
+
+参照実装: `apps/frontend/components/admin/kb-panel.stories.tsx` — `DeleteConfirmationOpen`
+
+```tsx
+import { expect, userEvent, within } from 'storybook/test';
+
+export const MyStory: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // ポータル (ドロップダウン・ダイアログ) は document.body を使う
+    const body = within(canvasElement.ownerDocument.body);
+
+    const button = await canvas.findByRole('button', { name: /送信/ });
+    await userEvent.click(button);
+    expect(await body.findByText(/成功/)).toBeVisible();
+  },
+};
+```
+
+**ルール:**
+- `findByRole` / `findByLabelText` / `findByPlaceholderText` を優先し、`findByText` による完全一致は避ける
+- ポータルにレンダリングされる要素 (ドロップダウン・Sheet・Dialog) は `within(canvasElement.ownerDocument.body)` で探す
+- 正規表現 (`/pattern/`) で部分一致にする — 文言変更への脆さを減らすため
 
 ---
 

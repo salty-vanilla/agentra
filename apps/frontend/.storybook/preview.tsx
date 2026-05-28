@@ -28,6 +28,9 @@ const preview: Preview = {
   ],
   parameters: {
     layout: 'centered',
+    nextjs: {
+      appDirectory: true,
+    },
   },
 };
 

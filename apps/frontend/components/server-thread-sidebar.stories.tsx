@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useQuery } from '@tanstack/react-query';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { listThreads } from '@/lib/generated/agentra';
 import type { ThreadSummary } from '@/lib/generated/model';
@@ -120,5 +121,21 @@ export const WithLiveThreads: Story = {
     msw: {
       handlers: [storybookThreadsHandler],
     },
+  },
+};
+
+export const DeleteDialogOpen: Story = {
+  name: 'Thread delete → confirmation dialog appears',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const moreButton = await canvas.findByLabelText(/Thread actions for Storybook/);
+    await userEvent.click(moreButton);
+    const body = within(canvasElement.ownerDocument.body);
+    const deleteItem = await body.findByRole('menuitem', { name: /Delete/ });
+    await userEvent.click(deleteItem);
+    await waitFor(async () => {
+      expect(await body.findByRole('button', { name: 'Cancel' })).toBeVisible();
+      expect(await body.findByRole('button', { name: 'Delete' })).toBeVisible();
+    });
   },
 };
