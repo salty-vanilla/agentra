@@ -31,7 +31,9 @@
     "smoke:bff:health": "pnpm --filter @agentra/backend smoke:bff:health",
     "smoke:bff:threads": "pnpm --filter @agentra/backend smoke:bff:threads",
     "smoke:bff:chat": "pnpm --filter @agentra/backend smoke:bff:chat",
-    "smoke:frontend:mock": "pnpm --filter @agentra/frontend e2e:mock"
+    "smoke:frontend:mock": "pnpm --filter @agentra/frontend e2e:mock",
+    "test:preview": "vitest run scripts/preview/",
+    "typecheck:preview": "tsc -p scripts/preview/tsconfig.json --noEmit"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
