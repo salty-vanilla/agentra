@@ -55,6 +55,10 @@ const config = resolvePreviewConfig({
 - Maximum: 24 hours
 - Default: 8 hours
 
+## Future
+
+This library lives in `scripts/preview/` for now. If CDK layer code (issue #315) or a preview CLI both need to import it, it may be promoted to a dedicated pnpm workspace package (e.g. `packages/preview-config`) to make cross-workspace imports stable and explicit.
+
 ## Running Tests
 
 ```bash

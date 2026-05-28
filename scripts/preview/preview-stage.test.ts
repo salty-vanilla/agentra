@@ -55,6 +55,24 @@ describe('validatePreviewStage', () => {
     });
   });
 
+  describe('rejects non-string and empty/whitespace inputs', () => {
+    it('rejects undefined', () => {
+      expect(() => validatePreviewStage(undefined)).toThrow(/expected string/);
+    });
+
+    it('rejects null', () => {
+      expect(() => validatePreviewStage(null)).toThrow(/expected string/);
+    });
+
+    it('rejects number', () => {
+      expect(() => validatePreviewStage(42)).toThrow(/expected string/);
+    });
+
+    it('rejects whitespace-only string', () => {
+      expect(() => validatePreviewStage('   ')).toThrow(/empty or whitespace-only/);
+    });
+  });
+
   it('includes the stage name in the error message', () => {
     expect(() => validatePreviewStage('dev')).toThrow(/Invalid preview stage "dev"/);
   });
@@ -87,8 +105,21 @@ describe('isPreviewStage', () => {
     ['sandbox-user', false],
     ['local-user-notasha', false],
     ['', false],
+    ['   ', false],
   ] as const)('isPreviewStage(%s) === %s', (stage, expected) => {
     expect(isPreviewStage(stage)).toBe(expected);
+  });
+
+  it('returns false for undefined', () => {
+    expect(isPreviewStage(undefined)).toBe(false);
+  });
+
+  it('returns false for null', () => {
+    expect(isPreviewStage(null)).toBe(false);
+  });
+
+  it('returns false for number', () => {
+    expect(isPreviewStage(42)).toBe(false);
   });
 });
 
@@ -156,6 +187,18 @@ describe('resolvePreviewConfig', () => {
 
     it('uses provided owner', () => {
       expect(resolvePreviewConfig({ ...BASE, owner: 'alice' }).owner).toBe('alice');
+    });
+
+    it('trims leading/trailing whitespace from owner', () => {
+      expect(resolvePreviewConfig({ ...BASE, owner: '  alice  ' }).owner).toBe('alice');
+    });
+
+    it('falls back to "unknown" for empty string owner', () => {
+      expect(resolvePreviewConfig({ ...BASE, owner: '' }).owner).toBe('unknown');
+    });
+
+    it('falls back to "unknown" for whitespace-only owner', () => {
+      expect(resolvePreviewConfig({ ...BASE, owner: '   ' }).owner).toBe('unknown');
     });
   });
 

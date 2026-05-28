@@ -72,7 +72,21 @@ function buildStageErrorMessage(stage: string): string {
   );
 }
 
-export function validatePreviewStage(stage: string): void {
+export function validatePreviewStage(stage: unknown): void {
+  if (typeof stage !== 'string') {
+    throw new Error(
+      `Invalid preview stage: expected string, got ${typeof stage}. ` +
+        'Disposable preview stages must match pr-<number>, ' +
+        'sandbox-<user>-<yyyymmddhhmm>, or local-<user>-<short-sha>.',
+    );
+  }
+  if (stage.trim() === '') {
+    throw new Error(
+      'Invalid preview stage: must not be empty or whitespace-only. ' +
+        'Disposable preview stages must match pr-<number>, ' +
+        'sandbox-<user>-<yyyymmddhhmm>, or local-<user>-<short-sha>.',
+    );
+  }
   if (FORBIDDEN_STAGES.has(stage.toLowerCase())) {
     throw new Error(buildStageErrorMessage(stage));
   }
@@ -81,7 +95,7 @@ export function validatePreviewStage(stage: string): void {
   }
 }
 
-export function isPreviewStage(stage: string): boolean {
+export function isPreviewStage(stage: unknown): boolean {
   try {
     validatePreviewStage(stage);
     return true;
@@ -130,7 +144,7 @@ export function resolvePreviewConfig(input: PreviewConfigInput): PreviewConfig {
   const source = input.source ?? DEFAULT_SOURCE;
   validateSource(source);
 
-  const owner = input.owner ?? DEFAULT_OWNER;
+  const owner = input.owner?.trim() || DEFAULT_OWNER;
 
   const ttlHours = input.ttlHours ?? DEFAULT_TTL_HOURS;
   if (input.ttlHours !== undefined) {
