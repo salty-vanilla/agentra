@@ -128,9 +128,9 @@ pnpm --filter @agentra/frontend test-storybook
 
 ```bash
 pnpm --filter @agentra/frontend build-storybook
-npx http-server apps/frontend/storybook-static --port 6006 --silent &
-npx wait-on http://127.0.0.1:6006
-pnpm --filter @agentra/frontend test-storybook --url http://127.0.0.1:6006
+pnpm --filter @agentra/frontend storybook:serve-static &
+pnpm --filter @agentra/frontend exec wait-on http://127.0.0.1:6006
+pnpm --filter @agentra/frontend test-storybook:ci
 ```
 
 ### play function の書き方
