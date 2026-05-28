@@ -24,16 +24,20 @@ test.describe('Frontend visual evidence (mock API mode)', () => {
       timeout: MSW_TIMEOUT,
     });
 
+    const message = 'Hello from visual evidence';
     const composer = page.getByRole('textbox');
     await expect(composer).toBeVisible();
-    await composer.fill('Hello from visual evidence');
+    await composer.fill(message);
     await screenshot(page, testInfo, 'chat-composer-filled');
 
-    // Click the send button and wait for the composer to clear — this confirms
-    // the runtime accepted the submission, without depending on where the
-    // message text is rendered (which varies by runtime state in CI).
     await page.getByRole('button', { name: 'Send message' }).click();
     await expect(composer).toHaveValue('', { timeout: MSW_TIMEOUT });
+
+    // Confirm the user message is visible in the thread area.
+    await expect(page.getByText(message).first()).toBeVisible({
+      timeout: MSW_TIMEOUT,
+    });
+
     await screenshot(page, testInfo, 'chat-send-message');
   });
 
