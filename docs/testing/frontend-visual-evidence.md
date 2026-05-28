@@ -25,7 +25,7 @@ All of the above are uploaded as the `frontend-visual-evidence` GitHub Actions a
 | Test | Page/flow |
 |---|---|
 | `home page` | `/` — workspace loads, "New Thread" visible |
-| `chat send message flow` | `/` — composer filled, message submitted, response visible |
+| `chat send message flow` | `/` — composer filled, message submitted, submitted message visible |
 | `admin users table` | `/admin/users` — user table with mock data |
 | `admin user detail drawer` | `/admin/users` — user row clicked, detail sheet open |
 
