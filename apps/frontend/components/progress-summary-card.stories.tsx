@@ -40,7 +40,7 @@ export const InProgress: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    expect(await canvas.findByText(/作成中/)).toBeVisible();
+    expect(await canvas.findByText('スライド作成中')).toBeVisible();
   },
 };
 
@@ -69,7 +69,7 @@ export const WithError: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    expect(await canvas.findByText(/失敗/)).toBeVisible();
+    expect(await canvas.findByText('スライド作成に失敗しました')).toBeVisible();
   },
 };
 

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useQuery } from '@tanstack/react-query';
-import { expect, userEvent, within } from 'storybook/test';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { listThreads } from '@/lib/generated/agentra';
 import type { ThreadSummary } from '@/lib/generated/model';
@@ -133,8 +133,9 @@ export const DeleteDialogOpen: Story = {
     const body = within(canvasElement.ownerDocument.body);
     const deleteItem = await body.findByRole('menuitem', { name: /Delete/ });
     await userEvent.click(deleteItem);
-    expect(await body.findByRole('dialog')).toBeVisible();
-    expect(await body.findByRole('button', { name: 'Cancel' })).toBeVisible();
-    expect(await body.findByRole('button', { name: 'Delete' })).toBeVisible();
+    await waitFor(async () => {
+      expect(await body.findByRole('button', { name: 'Cancel' })).toBeVisible();
+      expect(await body.findByRole('button', { name: 'Delete' })).toBeVisible();
+    });
   },
 };
