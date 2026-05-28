@@ -33,6 +33,7 @@
     "smoke:bff:chat": "pnpm --filter @agentra/backend smoke:bff:chat",
     "smoke:frontend:mock": "pnpm --filter @agentra/frontend e2e:mock",
     "test:preview": "vitest run scripts/preview/",
+    "test:frontend:visual-evidence": "pnpm --filter @agentra/frontend test:e2e:mock:visual-evidence",
     "typecheck:preview": "tsc -p scripts/preview/tsconfig.json --noEmit"
   },
   "devDependencies": {

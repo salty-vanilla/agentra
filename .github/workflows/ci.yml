@@ -196,3 +196,40 @@ jobs:
         run: tar -xzf packages-dist.tar.gz
       - name: Synth CDK stacks (validate CloudFormation templates)
         run: pnpm --filter @agentra/infra-cdk synth:ci
+
+  frontend-visual-evidence:
+    name: frontend-visual-evidence
+    needs: [build-packages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-dist
+          path: .
+      - name: Extract package dist artifact
+        run: tar -xzf packages-dist.tar.gz
+      - name: Install Playwright browsers
+        run: pnpm --filter @agentra/frontend playwright:install
+      - name: Run frontend visual evidence
+        run: pnpm test:frontend:visual-evidence
+        env:
+          NEXT_PUBLIC_API_MODE: mock
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: frontend-visual-evidence
+          path: |
+            apps/frontend/test-results/
+            apps/frontend/playwright-report/
+          retention-days: 14
+          if-no-files-found: warn
