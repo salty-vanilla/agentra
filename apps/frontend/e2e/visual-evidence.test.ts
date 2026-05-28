@@ -24,6 +24,12 @@ test.describe('Frontend visual evidence (mock API mode)', () => {
       timeout: MSW_TIMEOUT,
     });
 
+    // Open a fresh thread so there are no pre-existing messages.
+    // This avoids a race where the initial thread-messages fetch completes
+    // while the chat generator is running, causing the runtime to reset
+    // the thread with stale data and lose the optimistic user message.
+    await page.getByRole('button', { name: 'New Thread' }).click();
+
     const message = 'Hello from visual evidence';
     const composer = page.getByRole('textbox');
     await expect(composer).toBeVisible();
