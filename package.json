@@ -26,7 +26,8 @@
     "smoke:agentcore:chat": "pnpm --filter @agentra/agentcore-runtime-ts smoke:chat",
     "smoke:agentcore:mfg": "pnpm --filter @agentra/agentcore-runtime-ts smoke:mfg",
     "smoke:agentcore:slide": "pnpm --filter @agentra/agentcore-runtime-ts smoke:slide",
-    "smoke:agentcore:research": "pnpm --filter @agentra/agentcore-runtime-ts smoke:research"
+    "smoke:agentcore:research": "pnpm --filter @agentra/agentcore-runtime-ts smoke:research",
+    "smoke:frontend:mock": "pnpm --filter @agentra/frontend e2e:mock"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
