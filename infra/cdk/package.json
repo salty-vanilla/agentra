@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "synth": "cdk synth",
+    "synth:ci": "cdk synth -c stage=dev -c environmentKind=local -c thirdPartyApiKeysSecretArn=arn:aws:secretsmanager:us-east-1:000000000000:secret:dummy-AbCdEf",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -17,6 +18,7 @@
     "@types/aws-lambda": "latest",
     "@types/node": "latest",
     "aws-cdk": "latest",
+    "esbuild": "latest",
     "tsx": "latest",
     "typescript": "latest",
     "vitest": "latest"

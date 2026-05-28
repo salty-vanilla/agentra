@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { expect, userEvent, within } from 'storybook/test';
 import { storybookUsersHandler } from '@/mocks/handlers/storybook-handlers';
 import { UsersTab } from './users-tab';
 
@@ -44,5 +45,17 @@ export const Loading: Story = {
         // Intentionally no handler — let request hang to show loading state
       ],
     },
+  },
+};
+
+export const SearchAndClear: Story = {
+  name: 'Search → clear resets filter',
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const input = await canvas.findByPlaceholderText(/Search by user ID/);
+    await userEvent.type(input, 'admin');
+    const clearButton = await canvas.findByLabelText('Clear search');
+    await userEvent.click(clearButton);
+    expect(input).toHaveValue('');
   },
 };

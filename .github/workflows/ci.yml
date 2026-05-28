@@ -114,8 +114,6 @@ jobs:
             sandbox: true
           - workspace: '@agentra/infra-cdk'
             sandbox: false
-          - workspace: '@agentra/frontend'
-            sandbox: false
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -161,4 +159,40 @@ jobs:
           path: .
       - name: Extract package dist artifact
         run: tar -xzf packages-dist.tar.gz
-      - run: pnpm --filter @agentra/frontend build-storybook
+      - name: Build Storybook
+        run: pnpm --filter @agentra/frontend build-storybook
+      - name: Install Playwright browsers for test-runner
+        run: pnpm --filter @agentra/frontend playwright:install
+      - name: Run Storybook interaction tests
+        run: |
+          pnpm --filter @agentra/frontend storybook:serve-static &
+          pnpm --filter @agentra/frontend exec wait-on http://127.0.0.1:6006
+          pnpm --filter @agentra/frontend test-storybook:ci
+
+  cdk-synth:
+    name: cdk-synth
+    needs: [build-packages]
+    runs-on: ubuntu-latest
+    env:
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: test
+      AWS_SECRET_ACCESS_KEY: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/download-artifact@v4
+        with:
+          name: packages-dist
+          path: .
+      - name: Extract package dist artifact
+        run: tar -xzf packages-dist.tar.gz
+      - name: Synth CDK stacks (validate CloudFormation templates)
+        run: pnpm --filter @agentra/infra-cdk synth:ci

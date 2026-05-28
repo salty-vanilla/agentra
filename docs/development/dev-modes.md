@@ -195,3 +195,46 @@ CDK outputs.
 |----------|-------|--------|
 | `AGENTRA_STREAMING_API_BASE_URL` | Streaming API URL | `AgentraAppStack` |
 | `AGENTRA_API_BASE_URL` | HTTP API URL | `AgentraAppStack` |
+
+---
+
+## Mode 6: Frontend E2E smoke tests (mock API, no AWS required)
+
+Playwright smoke tests verify that the full page/routing/provider/auth/MSW stack
+works together, without a real backend or Cognito account.
+
+### One-time setup
+
+```bash
+# Download Chromium (needed once per machine / CI image)
+pnpm --filter @agentra/frontend playwright:install
+```
+
+### Run the smoke tests
+
+```bash
+# From the repo root
+pnpm smoke:frontend:mock
+
+# Or from apps/frontend directly
+cd apps/frontend
+pnpm e2e:mock
+```
+
+Playwright starts a Next.js dev server on `http://127.0.0.1:3000` with
+`NEXT_PUBLIC_API_MODE=mock` automatically. No `.env.local` or AWS credentials
+are needed.
+
+### What is covered
+
+| Test | URL | What it checks |
+|------|-----|----------------|
+| top page renders workspace | `/` | "New Thread" button visible after MSW init |
+| chat page accepts input | `/` | Thread list from seeded mock data; composer accepts text |
+| admin users page renders | `/admin/users` | Heading, "Invite User" button, mock user table |
+
+### Auth in mock mode
+
+`NEXT_PUBLIC_API_MODE=mock` bypasses Cognito entirely: `AuthProvider` sets the
+session to authenticated immediately, so all pages (including `/admin/*`) are
+accessible without real credentials.
