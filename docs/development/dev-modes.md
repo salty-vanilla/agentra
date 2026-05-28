@@ -231,7 +231,7 @@ are needed.
 |------|-----|----------------|
 | top page renders workspace | `/` | "New Thread" button visible after MSW init |
 | chat page accepts input | `/` | Thread list from seeded mock data; composer accepts text |
-| admin users page renders | `/admin/users` | Heading, "Invite User" button, 5-row mock user table |
+| admin users page renders | `/admin/users` | Heading, "Invite User" button, mock user table |
 
 ### Auth in mock mode
 
