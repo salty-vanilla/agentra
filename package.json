@@ -27,6 +27,10 @@
     "smoke:agentcore:mfg": "pnpm --filter @agentra/agentcore-runtime-ts smoke:mfg",
     "smoke:agentcore:slide": "pnpm --filter @agentra/agentcore-runtime-ts smoke:slide",
     "smoke:agentcore:research": "pnpm --filter @agentra/agentcore-runtime-ts smoke:research",
+    "smoke:bff": "pnpm --filter @agentra/backend smoke:bff",
+    "smoke:bff:health": "pnpm --filter @agentra/backend smoke:bff:health",
+    "smoke:bff:threads": "pnpm --filter @agentra/backend smoke:bff:threads",
+    "smoke:bff:chat": "pnpm --filter @agentra/backend smoke:bff:chat",
     "smoke:frontend:mock": "pnpm --filter @agentra/frontend e2e:mock"
   },
   "devDependencies": {

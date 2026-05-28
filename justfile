@@ -342,18 +342,48 @@ outputs-env stage=default_stage target="":
     pnpm --filter @agentra/infra-cdk exec tsx ../../scripts/agent/generate-env.ts \
       --stage "{{stage}}" --target "{{target}}"
 
+# Run BFF /health smoke — no auth required.
+# Loads URL from .agentra/env/<stage>/bff-smoke.env when present.
+# Run `just outputs-env <stage> bff-smoke` first to generate the env file.
+# Requires: AGENTRA_API_BASE_URL
+smoke-bff-health stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
+    if [[ -f "$ENV_FILE" ]]; then
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
+      echo "Loaded env from $ENV_FILE"
+    fi
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff.ts health
+
+# Run BFF /threads smoke — SMOKE_JWT_TOKEN required (add to bff-smoke.env).
+# Loads env from .agentra/env/<stage>/bff-smoke.env when present.
+# Run `just outputs-env <stage> bff-smoke` first to generate the env file.
+# Requires: AGENTRA_API_BASE_URL, SMOKE_JWT_TOKEN
+smoke-bff-threads stage=default_stage profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
+    if [[ -f "$ENV_FILE" ]]; then
+      set -a
+      # shellcheck source=/dev/null
+      source "$ENV_FILE"
+      set +a
+      echo "Loaded env from $ENV_FILE"
+    fi
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff.ts threads
+
 # Run BFF /chat SSE smoke test against a deployed stage.
 # Auto-loads env from .agentra/env/<stage>/bff-smoke.env when present.
 # Run `just outputs-env <stage> bff-smoke` first to generate the env file.
-# Note: script file is added by #255 — guard exits cleanly if not yet merged.
+# Requires: AGENTRA_STREAMING_API_BASE_URL, SMOKE_JWT_TOKEN (add to bff-smoke.env)
 smoke-bff-chat stage=default_stage profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
-    SCRIPT_ROOT="apps/backend/scripts/smoke-bff-chat.ts"
-    if [[ ! -f "$SCRIPT_ROOT" ]]; then
-      echo "ERROR: $SCRIPT_ROOT not found. Implement #255 first." >&2
-      exit 1
-    fi
     ENV_FILE=".agentra/env/{{stage}}/bff-smoke.env"
     if [[ -f "$ENV_FILE" ]]; then
       set -a
@@ -364,11 +394,19 @@ smoke-bff-chat stage=default_stage profile=aws_profile:
     fi
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     aws sts get-caller-identity
-    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff-chat.ts
+    AGENTRA_STAGE="{{stage}}" pnpm --filter @agentra/backend exec tsx scripts/smoke-bff.ts chat
+
+# Run all BFF smokes: health -> threads -> chat (stop on first failure).
+# Preferred entry point for stage-based smoke runs.
+# For local env: pnpm smoke:bff (reads env vars directly)
+# Requires: AGENTRA_API_BASE_URL, AGENTRA_STREAMING_API_BASE_URL, SMOKE_JWT_TOKEN
+smoke-bff stage=default_stage profile=aws_profile:
+    just smoke-bff-health {{stage}} {{profile}}
+    just smoke-bff-threads {{stage}} {{profile}}
+    just smoke-bff-chat {{stage}} {{profile}}
 
 # Run BFF /chat smoke and scan recent AgentCore logs for the returned requestId.
 # Combines smoke-bff-chat with agentcore-errors to verify requestId propagation.
-# Note: requires smoke-bff-chat.ts from #255.
 smoke-bff-chat-logs stage=default_stage since="5m" profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
