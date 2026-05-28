@@ -30,6 +30,7 @@
 type SseEventName =
   | 'thread_started'
   | 'token'
+  | 'status'
   | 'observation'
   | 'progress_summary'
   | 'sub_agent_progress'
@@ -149,6 +150,7 @@ function initialChatStats(): ChatStats {
     eventCounts: {
       thread_started: 0,
       token: 0,
+      status: 0,
       observation: 0,
       progress_summary: 0,
       sub_agent_progress: 0,
@@ -439,8 +441,11 @@ async function smokeChat(config: BffConfig): Promise<void> {
     }
   } catch (error) {
     clearTimeout(timeout);
+    const isTimeout = controller.signal.aborted;
     const msg = error instanceof Error ? error.message : String(error);
-    console.error(`\n[smoke:bff] FAIL step=chat url=${url} reason=${msg}`);
+    console.error(
+      `\n[smoke:bff] FAIL step=chat url=${url} reason=${isTimeout ? 'timeout' : msg}`,
+    );
     process.exit(1);
   }
 
@@ -456,7 +461,7 @@ async function smokeChat(config: BffConfig): Promise<void> {
   console.log(`elapsedMs      : ${elapsedMs}`);
   console.log(`textChars      : ${stats.textChars}`);
   console.log(
-    `events         : thread_started=${stats.eventCounts.thread_started} token=${stats.eventCounts.token} done=${stats.eventCounts.done} error=${stats.eventCounts.error} cancelled=${stats.eventCounts.cancelled}`,
+    `events         : thread_started=${stats.eventCounts.thread_started} token=${stats.eventCounts.token} status=${stats.eventCounts.status} done=${stats.eventCounts.done} error=${stats.eventCounts.error} cancelled=${stats.eventCounts.cancelled}`,
   );
 
   if (!stats.gotTerminal) {
