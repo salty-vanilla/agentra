@@ -95,6 +95,19 @@ describe('normalizeOutputs', () => {
     };
     expect(normalizeOutputs(withEmpty)).toEqual({ userPoolId: 'pool-1' });
   });
+
+  test('maps the AgentCore runtime ARN for AI-profile smoke checks', () => {
+    const withRuntime: CdkOutputs = {
+      'AgentraPreview-pr-1-AgentCoreRuntime': {
+        AgentCoreRuntimeArn:
+          'arn:aws:bedrock-agentcore:ap-northeast-1:111122223333:runtime/abc',
+      },
+    };
+    expect(normalizeOutputs(withRuntime)).toEqual({
+      agentCoreRuntimeArn:
+        'arn:aws:bedrock-agentcore:ap-northeast-1:111122223333:runtime/abc',
+    });
+  });
 });
 
 describe('buildManifest', () => {

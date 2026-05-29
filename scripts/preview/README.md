@@ -66,6 +66,7 @@ written under `.agentra/preview/<stage>/` (gitignored).
 pnpm preview:plan    --stage local-nakatsuka-a1b2c3d --profile minimal-api
 pnpm preview:deploy  --stage local-nakatsuka-a1b2c3d --profile minimal-api
 pnpm preview:outputs --stage local-nakatsuka-a1b2c3d
+pnpm preview:smoke   --stage local-nakatsuka-a1b2c3d
 pnpm preview:destroy --stage local-nakatsuka-a1b2c3d --profile minimal-api --dry-run
 pnpm preview:destroy --stage local-nakatsuka-a1b2c3d --profile minimal-api --confirm local-nakatsuka-a1b2c3d
 ```
@@ -76,9 +77,12 @@ Optional `just` wrappers (preview profile vs AWS credentials profile are separat
 just preview-plan   STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
 just preview-deploy STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
 just preview-outputs STAGE=local-nakatsuka-a1b2c3d
+just preview-smoke STAGE=local-nakatsuka-a1b2c3d
 just preview-destroy-dry-run STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
 just preview-destroy STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
 ```
+
+`preview-smoke` takes no `PROFILE` — the preview profile is read from `manifest.json`.
 
 | Flag / variable | Meaning |
 |-----------------|---------|
@@ -104,6 +108,29 @@ preview stack names only** (never `--all`), writing `cdk-outputs.json` and
 Reads `cdk-outputs.json`, normalizes recognized outputs, refreshes `manifest.json`,
 and writes `env.backend` / `env.frontend`. **Does not call AWS or CDK.** Missing
 outputs are omitted — no values are invented.
+
+### `preview:smoke`
+
+Runs a fast liveness smoke against a **deployed** preview stage. Reads
+`manifest.json` (or an explicit `--manifest <path>`); the preview profile comes from
+the manifest, so there is no `--profile` flag. **Performs no deploy or destroy.**
+Only checks whose required outputs are present (and that apply to the profile) run;
+the rest are recorded as `skipped` with a reason. Results are written to
+`smoke-result.json` with an overall `status` plus a `{ passed, failed, skipped }`
+summary; the command exits non-zero when the overall status is `failed`.
+
+| Check | Runs when | Verifies |
+|-------|-----------|----------|
+| `bff.health` | `bffApiUrl` present | `GET /health` returns 2xx with `status: ok` |
+| `bff.threads` | `bffApiUrl` present and `SMOKE_JWT_TOKEN` set | `GET /threads` returns 200 with a `threads` array |
+| `bff.chatSse` | `streamingApiUrl` present and `SMOKE_JWT_TOKEN` set | `POST /chat` SSE opens and reaches a terminal `done` event |
+| `agentcore.invoke` | profile `backend-ai`/`full` and `agentCoreRuntimeArn` present | AgentCore runtime invocation returns a usable, error-free stream |
+
+Auth uses `SMOKE_JWT_TOKEN` (a Cognito access token); checks that need it `skip` with
+an explicit reason when it is absent — no real test users are created. Optional env:
+`SMOKE_PROMPT`, `SMOKE_THREAD_ID`, `AGENTCORE_RUNTIME_QUALIFIER` /
+`SMOKE_AGENTCORE_QUALIFIER` (default `prod`), `SMOKE_AGENTCORE_TIMEOUT_MS` (default
+120000).
 
 ### `preview:destroy`
 
@@ -149,6 +176,7 @@ Report `status`:
   manifest.json         # preview:deploy + preview:outputs
   env.backend           # preview:outputs
   env.frontend          # preview:outputs
+  smoke-result.json     # preview:smoke
   destroy-dry-run.json  # preview:destroy --dry-run
   destroy-result.json   # preview:destroy (real run)
 ```
@@ -156,8 +184,8 @@ Report `status`:
 ## AI Safety Requirements
 
 - AI agents (Claude Code / Codex) **may** use `preview:plan`, `preview:deploy`,
-  `preview:outputs`, and `preview:destroy`. These are the allowed path for AWS preview
-  work.
+  `preview:outputs`, `preview:smoke`, and `preview:destroy`. These are the allowed
+  path for AWS preview work.
 - Direct `cdk deploy --all` / `cdk destroy --all` are **not** allowed for AI-assisted
   preview work.
 - Direct AWS mutation commands (CLI/SDK) are **not** allowed.

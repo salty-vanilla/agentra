@@ -58,6 +58,7 @@ const OUTPUT_KEY_MAP: Readonly<Record<string, string>> = {
   UserPoolClientId: 'userPoolClientId',
   CognitoDomain: 'cognitoDomain',
   PresentationArtifactsBucketName: 'artifactBucketName',
+  AgentCoreRuntimeArn: 'agentCoreRuntimeArn',
 };
 
 /** Ordered `[envVar, normalizedKey]` mappings for generated env files. */

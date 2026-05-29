@@ -8,6 +8,7 @@ import {
   manifestPath,
   planPath,
   previewDir,
+  smokeResultPath,
 } from './paths.js';
 
 describe('preview artifact paths', () => {
@@ -39,6 +40,12 @@ describe('preview artifact paths', () => {
     );
     expect(destroyDryRunPath(stage)).toBe(
       '.agentra/preview/local-nakatsuka-a1b2c3d/destroy-dry-run.json',
+    );
+  });
+
+  test('produces the smoke result path', () => {
+    expect(smokeResultPath(stage)).toBe(
+      '.agentra/preview/local-nakatsuka-a1b2c3d/smoke-result.json',
     );
   });
 });
