@@ -33,3 +33,11 @@ export function envBackendPath(stage: string): string {
 export function envFrontendPath(stage: string): string {
   return join(previewDir(stage), 'env.frontend');
 }
+
+export function destroyResultPath(stage: string): string {
+  return join(previewDir(stage), 'destroy-result.json');
+}
+
+export function destroyDryRunPath(stage: string): string {
+  return join(previewDir(stage), 'destroy-dry-run.json');
+}

@@ -57,15 +57,17 @@ const config = resolvePreviewConfig({
 
 ## Local Preview Commands
 
-Three commands create and inspect disposable preview environments. They reuse the
-guardrails above and drive the CDK preview context (`environmentType=preview`,
-`AgentraPreview-<stage>-*` stacks). All artifacts are written under
-`.agentra/preview/<stage>/` (gitignored).
+Four commands create, inspect, and tear down disposable preview environments. They
+reuse the guardrails above and drive the CDK preview context
+(`environmentType=preview`, `AgentraPreview-<stage>-*` stacks). All artifacts are
+written under `.agentra/preview/<stage>/` (gitignored).
 
 ```bash
 pnpm preview:plan    --stage local-nakatsuka-a1b2c3d --profile minimal-api
 pnpm preview:deploy  --stage local-nakatsuka-a1b2c3d --profile minimal-api
 pnpm preview:outputs --stage local-nakatsuka-a1b2c3d
+pnpm preview:destroy --stage local-nakatsuka-a1b2c3d --profile minimal-api --dry-run
+pnpm preview:destroy --stage local-nakatsuka-a1b2c3d --profile minimal-api --confirm local-nakatsuka-a1b2c3d
 ```
 
 Optional `just` wrappers (preview profile vs AWS credentials profile are separate):
@@ -74,6 +76,8 @@ Optional `just` wrappers (preview profile vs AWS credentials profile are separat
 just preview-plan   STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
 just preview-deploy STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
 just preview-outputs STAGE=local-nakatsuka-a1b2c3d
+just preview-destroy-dry-run STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
+just preview-destroy STAGE=local-nakatsuka-a1b2c3d PROFILE=minimal-api
 ```
 
 | Flag / variable | Meaning |
@@ -101,25 +105,66 @@ Reads `cdk-outputs.json`, normalizes recognized outputs, refreshes `manifest.jso
 and writes `env.backend` / `env.frontend`. **Does not call AWS or CDK.** Missing
 outputs are omitted — no values are invented.
 
+### `preview:destroy`
+
+Safely tears down a preview stage. A stack is destroyed **only** when **both** layers
+pass — never tags alone, never name alone:
+
+1. **Name:** the CloudFormation stack name starts with `AgentraPreview-<stage>-`
+   (the trailing hyphen prevents `pr-123` from matching `AgentraPreview-pr-1234-*`).
+2. **Tags:** the live stack tags satisfy `Project=Agentra`, `EnvironmentType=preview`,
+   `Stage=<stage>`, and a non-empty `ExpiresAt`.
+
+Candidate tags are read first via read-only `aws cloudformation describe-stacks`;
+destruction then runs `cdk destroy <validated explicit stack names> --force` (never
+`--all`), so CDK resolves the cross-stack dependency order. Non-preview stacks, other
+stages, and prod/demo/staging/dev/shared environments are never touched.
+
+`--profile` is the **preview profile** and must match the profile used for the
+original `preview:deploy`, so CDK synthesizes the same stack set (otherwise destroy
+can fail to resolve them). It is **not** the AWS credentials profile.
+
+- **`--dry-run`** validates the stage, asserts AWS identity, lists candidate stacks,
+  runs all destroy-target checks, prints accepted/rejected stacks with reasons,
+  performs **no** mutation, and writes `destroy-dry-run.json`.
+- A **real destroy** requires **`--confirm <stage>`** to exactly equal `--stage`;
+  otherwise it fails before any AWS call. It writes `destroy-result.json`.
+
+Report `status`:
+
+- **dry-run** is always `passed` (it only validates); when nothing is destroyable it
+  records the reason `No destroyable stacks found for stage "<stage>"`.
+- **real destroy** is `failed` when no stacks are destroyable or when `cdk destroy`
+  fails (a best-effort failed report is still written), and `passed` otherwise.
+- Seeing other stages' `AgentraPreview-*` stacks in `rejectedStacks` is **not** a
+  failure on its own. `requestedDestroyStacks` lists the stacks handed to `cdk destroy`
+  that succeeded (deletion is not post-verified).
+
 ### Artifacts
 
 ```text
 .agentra/preview/<stage>/
-  plan.json          # preview:plan
-  cdk-outputs.json   # preview:deploy (cdk --outputs-file)
-  manifest.json      # preview:deploy + preview:outputs
-  env.backend        # preview:outputs
-  env.frontend       # preview:outputs
+  plan.json             # preview:plan
+  cdk-outputs.json      # preview:deploy (cdk --outputs-file)
+  manifest.json         # preview:deploy + preview:outputs
+  env.backend           # preview:outputs
+  env.frontend          # preview:outputs
+  destroy-dry-run.json  # preview:destroy --dry-run
+  destroy-result.json   # preview:destroy (real run)
 ```
 
 ## AI Safety Requirements
 
-- AI agents (Claude Code / Codex) **may** use `preview:plan`, `preview:deploy`, and
-  `preview:outputs`. These are the allowed path for AWS preview validation.
-- Direct `cdk deploy --all` is **not** allowed for AI-assisted preview work.
+- AI agents (Claude Code / Codex) **may** use `preview:plan`, `preview:deploy`,
+  `preview:outputs`, and `preview:destroy`. These are the allowed path for AWS preview
+  work.
+- Direct `cdk deploy --all` / `cdk destroy --all` are **not** allowed for AI-assisted
+  preview work.
 - Direct AWS mutation commands (CLI/SDK) are **not** allowed.
-- A **destroy** command is intentionally **not** included here; teardown is handled
-  separately to keep this safety surface small.
+- `preview:destroy` is guard-railed: it destroys only explicit stacks that pass both
+  the `AgentraPreview-<stage>-` name check and the required tag check, never `--all`,
+  and a real destroy requires `--confirm <stage>`. Prefer `--dry-run` first to confirm
+  the accepted/rejected set.
 
 ## Future
 

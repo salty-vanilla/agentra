@@ -296,6 +296,24 @@ preview-deploy STAGE PROFILE="minimal-api" profile=aws_profile:
 preview-outputs STAGE:
     pnpm preview:outputs --stage '{{STAGE}}'
 
+# Dry-run preview destroy: validate + list accepted/rejected stacks, no AWS mutation.
+# PROFILE must be the same preview profile used for preview-deploy.
+preview-destroy-dry-run STAGE PROFILE="minimal-api" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
+    pnpm preview:destroy --stage '{{STAGE}}' --profile '{{PROFILE}}' --dry-run
+
+# Destroy validated preview stacks for a stage (requires --confirm == STAGE).
+# PROFILE must be the same preview profile used for preview-deploy.
+preview-destroy STAGE PROFILE="minimal-api" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
+    pnpm preview:destroy --stage '{{STAGE}}' --profile '{{PROFILE}}' --confirm '{{STAGE}}'
+
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 
 # Run AgentCore chat smoke test. Auto-loads AGENTCORE_RUNTIME_ARN from

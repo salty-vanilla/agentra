@@ -37,7 +37,8 @@
     "typecheck:preview": "tsc -p scripts/preview/tsconfig.json --noEmit",
     "preview:plan": "tsx scripts/preview/plan.ts",
     "preview:deploy": "tsx scripts/preview/deploy.ts",
-    "preview:outputs": "tsx scripts/preview/export-outputs.ts"
+    "preview:outputs": "tsx scripts/preview/export-outputs.ts",
+    "preview:destroy": "tsx scripts/preview/destroy.ts"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",

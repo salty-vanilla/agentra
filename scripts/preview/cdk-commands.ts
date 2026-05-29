@@ -99,3 +99,38 @@ export function buildCdkDeployArgs(
 
   return args;
 }
+
+/**
+ * Build `cdk destroy <explicit stacks> --force <context>`.
+ *
+ * Mirrors `buildCdkDeployArgs`'s guards so destroy can only ever target named,
+ * already-validated `AgentraPreview-<stage>-*` stacks: refuses an empty stack
+ * list, refuses flag-like names, and asserts `--all` is never present. CDK
+ * resolves the cross-stack dependency order from the synthesized preview app.
+ */
+export function buildCdkDestroyArgs(
+  config: PreviewConfig,
+  stackNames: readonly string[],
+): string[] {
+  if (stackNames.length === 0) {
+    throw new Error(
+      'Refusing to build a preview destroy with no explicit stacks. ' +
+        'Preview destroy must target named AgentraPreview-<stage>-* stacks.',
+    );
+  }
+  for (const name of stackNames) {
+    if (name.startsWith('--')) {
+      throw new Error(
+        `Invalid preview stack name "${name}": stack names must not look like CLI flags.`,
+      );
+    }
+  }
+
+  const args = ['destroy', ...stackNames, '--force', ...buildPreviewContextArgs(config)];
+
+  if (args.includes(FORBIDDEN_DEPLOY_FLAG)) {
+    throw new Error('Preview destroy must never use --all.');
+  }
+
+  return args;
+}
