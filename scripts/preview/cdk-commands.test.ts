@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import {
   buildCdkDeployArgs,
+  buildCdkDestroyArgs,
   buildCdkListArgs,
   buildCdkSynthArgs,
   buildPreviewContextArgs,
@@ -108,6 +109,38 @@ describe('buildCdkDeployArgs', () => {
 
   test('throws when a stack name looks like a flag', () => {
     expect(() => buildCdkDeployArgs(config(), ['--all'], outputsFile)).toThrow(
+      /must not look like CLI flags/,
+    );
+  });
+});
+
+describe('buildCdkDestroyArgs', () => {
+  const stacks = [
+    'AgentraPreview-local-nakatsuka-a1b2c3d-DataAuth',
+    'AgentraPreview-local-nakatsuka-a1b2c3d-Backend',
+  ];
+
+  test('targets explicit stacks with --force and the preview context', () => {
+    const args = buildCdkDestroyArgs(config(), stacks);
+
+    expect(args[0]).toBe('destroy');
+    expect(args).toContain(stacks[0]);
+    expect(args).toContain(stacks[1]);
+    expect(args).toContain('--force');
+    expect(args).toContain('environmentType=preview');
+  });
+
+  test('never includes --all', () => {
+    const args = buildCdkDestroyArgs(config(), stacks);
+    expect(args).not.toContain('--all');
+  });
+
+  test('throws when no explicit stacks are provided', () => {
+    expect(() => buildCdkDestroyArgs(config(), [])).toThrow(/no explicit stacks/);
+  });
+
+  test('throws when a stack name looks like a flag', () => {
+    expect(() => buildCdkDestroyArgs(config(), ['--all'])).toThrow(
       /must not look like CLI flags/,
     );
   });

@@ -17,7 +17,7 @@ referenced from future implementation prompts and PR review instructions.
 | [#314](https://github.com/salty-vanilla/agentra/issues/314) | Preview stage naming + guardrail library (`scripts/preview/`) | Implemented |
 | [#315](https://github.com/salty-vanilla/agentra/issues/315) | Preview CDK context and stack isolation | Planned |
 | [#316](https://github.com/salty-vanilla/agentra/issues/316) | Local preview plan/deploy/outputs commands | Planned |
-| [#317](https://github.com/salty-vanilla/agentra/issues/317) | Local preview destroy command with safety checks | Planned |
+| [#317](https://github.com/salty-vanilla/agentra/issues/317) | Local preview destroy command with safety checks | Implemented |
 | [#318](https://github.com/salty-vanilla/agentra/issues/318) | Preview smoke tests for ephemeral environments | Planned |
 | [#319](https://github.com/salty-vanilla/agentra/issues/319) | GitHub Actions manual preview deploy/destroy workflow | Planned |
 | [#320](https://github.com/salty-vanilla/agentra/issues/320) | Preview cleanup and stale environment detection | Planned |
@@ -56,8 +56,8 @@ pnpm preview:plan --stage <preview-stage> --profile minimal-api
 pnpm preview:deploy --stage <preview-stage> --profile minimal-api
 pnpm preview:outputs --stage <preview-stage>
 pnpm preview:smoke --stage <preview-stage>
-pnpm preview:destroy --stage <preview-stage> --dry-run
-pnpm preview:destroy --stage <preview-stage> --confirm <preview-stage>
+pnpm preview:destroy --stage <preview-stage> --profile minimal-api --dry-run
+pnpm preview:destroy --stage <preview-stage> --profile minimal-api --confirm <preview-stage>
 pnpm preview:cleanup --dry-run
 ```
 
@@ -138,8 +138,11 @@ The expected flow is **plan → deploy → smoke → report → destroy**:
 pnpm preview:plan --stage local-nakatsuka-a1b2c3d --profile minimal-api
 pnpm preview:deploy --stage local-nakatsuka-a1b2c3d --profile minimal-api
 pnpm preview:smoke --stage local-nakatsuka-a1b2c3d
-pnpm preview:destroy --stage local-nakatsuka-a1b2c3d --confirm local-nakatsuka-a1b2c3d
+pnpm preview:destroy --stage local-nakatsuka-a1b2c3d --profile minimal-api --confirm local-nakatsuka-a1b2c3d
 ```
+
+`preview:destroy` requires the same `--profile` used for deploy so CDK synthesizes the
+same stack set.
 
 If the agent needs to keep the environment for human review instead of destroying it, it
 must state:
@@ -149,7 +152,7 @@ Preview environment kept for review:
 Stage: <stage>
 ExpiresAt: <timestamp>
 Reason: <reason>
-Destroy command: pnpm preview:destroy --stage <stage> --confirm <stage>
+Destroy command: pnpm preview:destroy --stage <stage> --profile <profile> --confirm <stage>
 ```
 
 ## Reporting format
@@ -174,7 +177,7 @@ If the environment was not destroyed:
 - Destroyed: no
 - Reason: kept for manual review
 - ExpiresAt: <timestamp>
-- Destroy command: pnpm preview:destroy --stage <stage> --confirm <stage>
+- Destroy command: pnpm preview:destroy --stage <stage> --profile <profile> --confirm <stage>
 ```
 
 ## Failure handling

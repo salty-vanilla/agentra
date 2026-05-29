@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import {
   cdkOutputsPath,
+  destroyDryRunPath,
+  destroyResultPath,
   envBackendPath,
   envFrontendPath,
   manifestPath,
@@ -28,6 +30,15 @@ describe('preview artifact paths', () => {
     );
     expect(envFrontendPath(stage)).toBe(
       '.agentra/preview/local-nakatsuka-a1b2c3d/env.frontend',
+    );
+  });
+
+  test('produces the destroy report paths', () => {
+    expect(destroyResultPath(stage)).toBe(
+      '.agentra/preview/local-nakatsuka-a1b2c3d/destroy-result.json',
+    );
+    expect(destroyDryRunPath(stage)).toBe(
+      '.agentra/preview/local-nakatsuka-a1b2c3d/destroy-dry-run.json',
     );
   });
 });
