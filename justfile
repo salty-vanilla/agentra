@@ -271,6 +271,31 @@ cdk-diff-agentcore stage=default_stage profile=aws_profile:
 cdk-deploy-agentcore stage=default_stage profile=aws_profile:
     just cdk-deploy agentcore {{stage}} {{profile}}
 
+# ── Preview environments (disposable, AI-safe) ───────────────────────────────
+# PROFILE is the preview *profile* (minimal-api | backend-ai | full).
+# `profile` is the AWS *credentials* profile (AGENTRA_AWS_PROFILE). These differ.
+# Destroy is intentionally not provided here (handled by a separate workflow).
+
+# Validate + synth a preview stage and write .agentra/preview/<stage>/plan.json (no AWS mutation)
+preview-plan STAGE PROFILE="minimal-api" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
+    pnpm preview:plan --stage '{{STAGE}}' --profile '{{PROFILE}}'
+
+# Deploy explicit preview stacks for a stage; writes cdk-outputs.json + manifest.json
+preview-deploy STAGE PROFILE="minimal-api" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
+    pnpm preview:deploy --stage '{{STAGE}}' --profile '{{PROFILE}}'
+
+# Normalize CDK outputs into manifest.json + env files (no AWS/CDK calls)
+preview-outputs STAGE:
+    pnpm preview:outputs --stage '{{STAGE}}'
+
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 
 # Run AgentCore chat smoke test. Auto-loads AGENTCORE_RUNTIME_ARN from
