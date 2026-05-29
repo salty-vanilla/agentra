@@ -13,7 +13,7 @@
 import { buildCdkDeployArgs } from './cdk-commands.js';
 import { listPreviewStacks, resolveAndReportIdentity, runCdk } from './cli-runtime.js';
 import { parseCommandArgs } from './command-args.js';
-import { readJsonFile, writeJsonFile } from './io.js';
+import { ensurePreviewDir, readJsonFile, writeJsonFile } from './io.js';
 import { buildManifest, type CdkOutputs, normalizeOutputs } from './manifest.js';
 import { cdkOutputsPath, manifestPath } from './paths.js';
 import { resolvePreviewConfig } from './preview-stage.js';
@@ -34,6 +34,10 @@ function main(): void {
 
   const outputsFile = cdkOutputsPath(config.stage);
   const deployArgs = buildCdkDeployArgs(config, stacks, outputsFile);
+
+  // Create the artifact dir up front so `cdk deploy --outputs-file` can write
+  // even when preview:deploy runs standalone (without a prior preview:plan).
+  ensurePreviewDir(config.stage);
 
   console.log(`\nDeploying ${stacks.length} preview stack(s):`);
   for (const name of stacks) {

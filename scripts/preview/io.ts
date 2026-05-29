@@ -4,9 +4,21 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
+import { previewDir } from './paths.js';
 
 function ensureParentDir(filePath: string): void {
   mkdirSync(dirname(filePath), { recursive: true });
+}
+
+/**
+ * Ensure `.agentra/preview/<stage>/` exists and return its path. Used by
+ * `preview:deploy` so `cdk deploy --outputs-file` can write even when
+ * `preview:plan` has not run first.
+ */
+export function ensurePreviewDir(stage: string): string {
+  const dir = previewDir(stage);
+  mkdirSync(dir, { recursive: true });
+  return dir;
 }
 
 export function writeJsonFile(filePath: string, data: unknown): void {
