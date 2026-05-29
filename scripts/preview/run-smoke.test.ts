@@ -135,7 +135,7 @@ describe('loadSmokeManifest', () => {
 
   test('throws a clear error when the manifest file is missing', () => {
     expect(() =>
-      loadSmokeManifest('.agentra/preview/pr-307/manifest.json', {
+      loadSmokeManifest('.agentra/preview/pr-307/manifest.json', 'pr-307', {
         exists: () => false,
         readJson: <T>() => valid as T,
       }),
@@ -144,15 +144,24 @@ describe('loadSmokeManifest', () => {
 
   test('throws when the manifest has no stage', () => {
     expect(() =>
-      loadSmokeManifest('m.json', {
+      loadSmokeManifest('m.json', 'pr-307', {
         exists: () => true,
         readJson: <T>() => ({ ...valid, stage: '' }) as T,
       }),
     ).toThrow(/missing a "stage"/);
   });
 
+  test('throws when the manifest stage does not match --stage', () => {
+    expect(() =>
+      loadSmokeManifest('.agentra/preview/pr-308/manifest.json', 'pr-307', {
+        exists: () => true,
+        readJson: <T>() => ({ ...valid, stage: 'pr-308' }) as T,
+      }),
+    ).toThrow(/stage mismatch: --stage=pr-307, manifest\.stage=pr-308/);
+  });
+
   test('returns the parsed manifest when valid', () => {
-    const loaded = loadSmokeManifest('m.json', {
+    const loaded = loadSmokeManifest('m.json', 'pr-307', {
       exists: () => true,
       readJson: <T>() => valid as T,
     });

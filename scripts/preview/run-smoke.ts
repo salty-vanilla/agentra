@@ -90,11 +90,16 @@ export interface ManifestFsDeps {
 }
 
 /**
- * Load and minimally validate the preview manifest. Throws a clear error when
- * the manifest is missing or structurally unusable (no stage / no outputs).
+ * Load and validate the preview manifest. Throws a clear error when the manifest
+ * is missing, structurally unusable (no stage / no outputs), or its `stage` does
+ * not match the requested `expectedStage`. The stage match guards against an
+ * explicit `--manifest` from one stage being smoke-tested as another, which would
+ * otherwise probe one environment's endpoints and write the result under a
+ * different stage's artifact dir.
  */
 export function loadSmokeManifest(
   manifestPath: string,
+  expectedStage: string,
   deps: ManifestFsDeps,
 ): PreviewManifest {
   if (!deps.exists(manifestPath)) {
@@ -107,6 +112,12 @@ export function loadSmokeManifest(
   const manifest = deps.readJson<PreviewManifest>(manifestPath);
   if (!manifest || typeof manifest.stage !== 'string' || manifest.stage.length === 0) {
     throw new Error(`Manifest at ${manifestPath} is missing a "stage".`);
+  }
+  if (manifest.stage !== expectedStage) {
+    throw new Error(
+      `Manifest stage mismatch: --stage=${expectedStage}, ` +
+        `manifest.stage=${manifest.stage} (${manifestPath}).`,
+    );
   }
   if (manifest.outputs === null || typeof manifest.outputs !== 'object') {
     throw new Error(`Manifest at ${manifestPath} is missing an "outputs" object.`);

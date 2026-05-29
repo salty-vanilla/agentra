@@ -146,45 +146,109 @@ export async function consumeSse(
   }
 }
 
-interface DrainResult {
+interface DrainState {
   sawAny: boolean;
   sawError: boolean;
 }
 
-/** Drain an AgentCore response stream, noting whether any/error events arrived. */
-async function drainAgentCore(stream: unknown): Promise<DrainResult> {
-  const decoder = new TextDecoder();
-  const parser = new SseParser();
-  let sawAny = false;
-  let sawError = false;
+/**
+ * Decode an AgentCore stream chunk to text. The SDK's stream may yield strings,
+ * `Uint8Array`, `ArrayBuffer`, or other typed-array views depending on runtime;
+ * mirrors `decodeChunk` in apps/agentcore-runtime-ts/scripts/smoke-utils.ts so a
+ * non-`Uint8Array` chunk does not silently become an empty string.
+ */
+function decodeChunk(chunk: unknown): string {
+  if (typeof chunk === 'string') return chunk;
+  if (chunk instanceof Uint8Array) return new TextDecoder().decode(chunk);
+  if (chunk instanceof ArrayBuffer)
+    return new TextDecoder().decode(new Uint8Array(chunk));
+  if (ArrayBuffer.isView(chunk)) {
+    return new TextDecoder().decode(
+      new Uint8Array(chunk.buffer, chunk.byteOffset, chunk.byteLength),
+    );
+  }
+  return String(chunk ?? '');
+}
 
-  const inspect = (text: string): void => {
-    for (const event of parser.push(text)) {
-      sawAny = true;
-      const data = event.data as { type?: unknown } | null;
-      if (event.name === 'error' || data?.type === 'error') {
-        sawError = true;
-      }
+/** A non-empty payload counts as output; a JSON `{ type: "error" }` is a failure. */
+function inspectPayload(raw: string, state: DrainState): void {
+  const value = raw.trim();
+  if (!value || value === '[DONE]') return;
+  state.sawAny = true;
+  try {
+    const parsed = JSON.parse(value) as { type?: unknown } | null;
+    if (parsed && typeof parsed === 'object' && parsed.type === 'error') {
+      state.sawError = true;
     }
+  } catch {
+    // Non-JSON text payload still counts as output (sawAny already set).
+  }
+}
+
+/**
+ * Inspect one line of the stream. Handles both `text/event-stream` framing
+ * (`event:` / `data:` / `:` comment) and raw JSON-line payloads, so the optional
+ * AgentCore check does not produce a false negative when the runtime returns
+ * raw JSON instead of SSE.
+ */
+function processLine(
+  line: string,
+  state: DrainState,
+  ctx: { eventName: string | undefined },
+): void {
+  const trimmed = line.trim();
+  if (trimmed === '') {
+    ctx.eventName = undefined;
+    return;
+  }
+  if (trimmed.startsWith(':')) return; // heartbeat comment
+  if (trimmed.startsWith('event:')) {
+    ctx.eventName = trimmed.slice(6).trim();
+    if (ctx.eventName === 'error') state.sawError = true;
+    return;
+  }
+  if (trimmed.startsWith('data:')) {
+    inspectPayload(trimmed.slice(5), state);
+    ctx.eventName = undefined;
+    return;
+  }
+  // Raw (non-SSE) line, e.g. a bare JSON object.
+  inspectPayload(trimmed, state);
+}
+
+/** Drain an AgentCore response stream, noting whether any/error events arrived. */
+async function drainAgentCore(stream: unknown): Promise<DrainState> {
+  const state: DrainState = { sawAny: false, sawError: false };
+  const ctx: { eventName: string | undefined } = { eventName: undefined };
+
+  const drainLines = (text: string, buffer: string): string => {
+    let working = buffer + text;
+    let idx = working.indexOf('\n');
+    while (idx >= 0) {
+      processLine(working.slice(0, idx).replace(/\r$/, ''), state, ctx);
+      working = working.slice(idx + 1);
+      idx = working.indexOf('\n');
+    }
+    return working;
   };
 
-  const asyncIterable = stream as AsyncIterable<Uint8Array> | undefined;
+  const asyncIterable = stream as AsyncIterable<unknown> | undefined;
   if (asyncIterable && typeof asyncIterable[Symbol.asyncIterator] === 'function') {
+    let buffer = '';
     for await (const chunk of asyncIterable) {
-      inspect(decoder.decode(chunk, { stream: true }));
+      buffer = drainLines(decodeChunk(chunk), buffer);
     }
-    return { sawAny, sawError };
+    if (buffer.trim()) processLine(buffer, state, ctx);
+    return state;
   }
 
   const streamable = stream as { transformToString?: () => Promise<string> } | undefined;
   if (streamable?.transformToString) {
     const text = await streamable.transformToString();
-    inspect(text);
-    if (!sawAny && text.trim().length > 0) {
-      sawAny = true;
-    }
+    const remainder = drainLines(text, '');
+    if (remainder.trim()) processLine(remainder, state, ctx);
   }
-  return { sawAny, sawError };
+  return state;
 }
 
 export async function invokeAgentCore(

@@ -42,7 +42,7 @@ async function main(): Promise<void> {
   const { stage } = args;
 
   const file = args.manifest ?? manifestPath(stage);
-  const manifest = loadSmokeManifest(file, {
+  const manifest = loadSmokeManifest(file, stage, {
     exists: existsSync,
     readJson: readJsonFile,
   });
