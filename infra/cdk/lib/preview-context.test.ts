@@ -48,10 +48,21 @@ const REQUIRED_TAG_KEYS = [
 ];
 
 describe('resolvePreviewCdkContext', () => {
-  it('returns null when environmentType is not preview', () => {
+  it('returns null when environmentType is omitted', () => {
     const app = new App({ context: { stage: 'dev' } });
 
     expect(resolvePreviewCdkContext(app)).toBeNull();
+  });
+
+  it('throws when environmentType is provided but is not preview', () => {
+    const app = new App({
+      context: {
+        environmentType: 'Preview',
+        stage: 'pr-123',
+      },
+    });
+
+    expect(() => resolvePreviewCdkContext(app)).toThrow(/Invalid environmentType/);
   });
 
   it('resolves a valid preview stage with the AgentraPreview-<stage> prefix', () => {

@@ -172,8 +172,17 @@ function buildPreviewTags(
  */
 export function resolvePreviewCdkContext(app: App): PreviewCdkContext | null {
   const environmentType = readContextString(app, 'environmentType');
-  if (environmentType !== 'preview') {
+  // Distinguish "key omitted" (standard path) from a typo'd value. A typo such as
+  // `environmentType=Preview` must fail fast rather than silently fall back to the
+  // standard path, where a `pr-123` stage would synth as a non-isolated stack name.
+  if (environmentType === undefined) {
     return null;
+  }
+  if (environmentType !== 'preview') {
+    throw new Error(
+      `Invalid environmentType "${environmentType}". ` +
+        'Expected "preview", or omit the key for standard environments.',
+    );
   }
 
   const stage = readContextString(app, 'stage');
