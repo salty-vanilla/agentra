@@ -34,7 +34,10 @@
     "smoke:frontend:mock": "pnpm --filter @agentra/frontend e2e:mock",
     "test:preview": "vitest run scripts/preview/",
     "test:frontend:visual-evidence": "pnpm --filter @agentra/frontend test:e2e:mock:visual-evidence",
-    "typecheck:preview": "tsc -p scripts/preview/tsconfig.json --noEmit"
+    "typecheck:preview": "tsc -p scripts/preview/tsconfig.json --noEmit",
+    "preview:plan": "tsx scripts/preview/plan.ts",
+    "preview:deploy": "tsx scripts/preview/deploy.ts",
+    "preview:outputs": "tsx scripts/preview/export-outputs.ts"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
@@ -43,6 +46,7 @@
     "jszip": "^3.10.1",
     "lefthook": "latest",
     "orval": "^8.8.0",
+    "tsx": "latest",
     "typescript": "latest",
     "vitest": "^3.2.4"
   }
