@@ -114,6 +114,27 @@ the task.
   (`cdk-destroy`, `cdk-cleanup-ephemeral`) refuse stable stage names and
   require `CONFIRM_STAGE=<stage>` in the environment.
 
+## Preview Environments (AI-assisted)
+
+Safe ephemeral preview environments are governed by Epic #313. The full operating
+guide is [`docs/ai/preview-environments.md`](docs/ai/preview-environments.md); the
+core rules are:
+
+- **AI agents may validate AWS behavior only through preview commands. AI agents must
+  not run arbitrary CDK or AWS mutation commands.**
+- The sanctioned surface is `pnpm preview:plan / deploy / outputs / smoke / destroy /
+  cleanup` (stages `pr-*`, `sandbox-*`, `local-*`; default profile `minimal-api`). This
+  command set is the intended #313 contract and is still being implemented, so **some
+  commands may not exist yet**. If one is missing, do not approximate it with raw `cdk`
+  or `aws` commands — wait for it or report it.
+- Forbidden: `cdk deploy/destroy --all`, the `pnpm --filter @agentra/infra-cdk cdk ...`
+  forms, `aws cloudformation delete-*`, `aws iam create-role/put-role-policy/attach-role-policy`,
+  `aws s3 rb --force`, deploying to forbidden stages, or weakening preview validation, TTL
+  limits, or destroy guards to make a task pass.
+- This preview control plane is **separate** from the `dev-issue-*` / `dev-<agent>-<topic>`
+  cdk-verify flow described above: those `dev-*` stages are the legacy worktree CDK
+  verification path and are **not** valid #313 preview stages.
+
 ## Agent Workflow
 
 - Codex is the primary implementation and review agent for architecture-aware
