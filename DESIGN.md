@@ -296,7 +296,12 @@ Every data surface must design all four states (mirrors the UI-state checklist i
 
 Any PR that changes UI must include visual evidence:
 
-- Attach screenshots in **light + dark** themes and **desktop + mobile** widths.
+- Attach screenshots for the affected screens and states, at **desktop + mobile** widths.
+- Include **light-theme** screenshots by default.
+- Include **dark-theme** screenshots when dark mode is available, affected, or after
+  **#337** is complete.
+- **Before #337 is complete**, UI PRs may attach light-theme screenshots only and should
+  explicitly note that dark-mode verification is deferred to #337.
 - Capture is automated via the Playwright **`visual-evidence`** project in
   `apps/frontend/playwright.config.ts` (screenshot/video/trace).
 - **Detailed execution and reporting** of visual evidence is delegated to **#336** and the
