@@ -82,6 +82,18 @@ describe('validateDestroyTarget — rejected', () => {
     expect(decision.reason).toMatch(/ExpiresAt/);
   });
 
+  test('rejects when ExpiresAt is whitespace-only', () => {
+    const decision = validateDestroyTarget(
+      stack('AgentraPreview-pr-123-Backend', {
+        ...matchingTags('pr-123'),
+        ExpiresAt: '   ',
+      }),
+      'pr-123',
+    );
+    expect(decision.destroyable).toBe(false);
+    expect(decision.reason).toMatch(/ExpiresAt/);
+  });
+
   test('rejects a longer stage prefix (pr-1234) when requesting pr-123', () => {
     const decision = validateDestroyTarget(
       stack('AgentraPreview-pr-1234-Backend', matchingTags('pr-1234')),

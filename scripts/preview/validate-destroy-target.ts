@@ -78,7 +78,7 @@ export function validateDestroyTarget(
     };
   }
 
-  if (!tags.ExpiresAt || tags.ExpiresAt.length === 0) {
+  if (!tags.ExpiresAt || tags.ExpiresAt.trim().length === 0) {
     return { destroyable: false, reason: 'missing required ExpiresAt tag' };
   }
 

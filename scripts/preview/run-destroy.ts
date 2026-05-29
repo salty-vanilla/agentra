@@ -39,7 +39,10 @@ function noDestroyableReason(stage: string): string {
 
 /**
  * Validate, then (for a real destroy with accepted targets) destroy the explicit
- * preview stacks for the stage. Always builds and writes a report; returns it.
+ * preview stacks for the stage. Once validation and discovery succeed, builds and
+ * writes a report and returns it — including a best-effort failed report when
+ * `cdk destroy` fails. Failures in confirmation, identity resolution, or candidate
+ * discovery throw before any report is written.
  */
 export function runDestroy(args: RawDestroyArgs, runtime: DestroyRuntime): DestroyReport {
   const config = resolvePreviewConfig(args);
