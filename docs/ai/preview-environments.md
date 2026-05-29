@@ -15,10 +15,13 @@ referenced from future implementation prompts and PR review instructions.
 |-------|-------|--------|
 | [#313](https://github.com/salty-vanilla/agentra/issues/313) | Epic: safe ephemeral preview environments | Umbrella |
 | [#314](https://github.com/salty-vanilla/agentra/issues/314) | Preview stage naming + guardrail library (`scripts/preview/`) | Implemented |
-| [#316](https://github.com/salty-vanilla/agentra/issues/316) | Preview command / control-plane implementation | Planned |
-| [#317](https://github.com/salty-vanilla/agentra/issues/317) | GitHub Actions preview workflow | Planned |
-| [#318](https://github.com/salty-vanilla/agentra/issues/318) | Preview IAM roles / scoped permissions | Planned |
-| [#321](https://github.com/salty-vanilla/agentra/issues/321) | This AI operating guide | This document |
+| [#315](https://github.com/salty-vanilla/agentra/issues/315) | Preview CDK context and stack isolation | Planned |
+| [#316](https://github.com/salty-vanilla/agentra/issues/316) | Local preview plan/deploy/outputs commands | Planned |
+| [#317](https://github.com/salty-vanilla/agentra/issues/317) | Local preview destroy command with safety checks | Planned |
+| [#318](https://github.com/salty-vanilla/agentra/issues/318) | Preview smoke tests for ephemeral environments | Planned |
+| [#319](https://github.com/salty-vanilla/agentra/issues/319) | GitHub Actions manual preview deploy/destroy workflow | Planned |
+| [#320](https://github.com/salty-vanilla/agentra/issues/320) | Preview cleanup and stale environment detection | Planned |
+| [#321](https://github.com/salty-vanilla/agentra/issues/321) | AI agent operating guide | This document |
 
 > Status reflects intent at authoring time. Treat the linked issues as the live source
 > of truth for what is implemented.
@@ -31,8 +34,9 @@ referenced from future implementation prompts and PR review instructions.
 ## Command availability (read this first)
 
 The `preview:*` commands below are the **intended, sanctioned command contract** for
-preview work under Epic #313. They are being implemented across sibling issues
-(#316/#317/#318) and **not all of them exist yet**.
+preview work under Epic #313. They are being implemented across sibling issues: #315 for
+CDK isolation, #316 for plan/deploy/outputs, #317 for destroy, #318 for smoke, #319 for
+GitHub Actions, and #320 for cleanup. **Not all of them exist yet**.
 
 - If a `preview:*` command is **not yet implemented**, do **not** approximate it with raw
   `cdk deploy` / `cdk destroy` or direct `aws` commands. Wait for the command to land, or
@@ -52,6 +56,7 @@ pnpm preview:plan --stage <preview-stage> --profile minimal-api
 pnpm preview:deploy --stage <preview-stage> --profile minimal-api
 pnpm preview:outputs --stage <preview-stage>
 pnpm preview:smoke --stage <preview-stage>
+pnpm preview:destroy --stage <preview-stage> --dry-run
 pnpm preview:destroy --stage <preview-stage> --confirm <preview-stage>
 pnpm preview:cleanup --dry-run
 ```
