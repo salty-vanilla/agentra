@@ -12,6 +12,7 @@
     "e2e": "playwright test --project=chromium",
     "e2e:mock": "NEXT_PUBLIC_API_MODE=mock playwright test --project=chromium",
     "test:e2e:mock:visual-evidence": "NEXT_PUBLIC_API_MODE=mock playwright test --project=visual-evidence",
+    "e2e:mock:modal-performance": "NEXT_PUBLIC_API_MODE=mock playwright test --project=modal-performance",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "test-storybook": "test-storybook",

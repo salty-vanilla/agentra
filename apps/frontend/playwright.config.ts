@@ -29,6 +29,20 @@ export default defineConfig({
         trace: 'on',
       },
     },
+    {
+      // Diagnostic-only performance probe. Kept separate from normal E2E so we
+      // can force stronger trace/screenshot capture and run sequentially in a
+      // single worker (the combined results JSON aggregates across all tests).
+      name: 'modal-performance',
+      testMatch: '**/modal-performance.test.ts',
+      fullyParallel: false,
+      use: {
+        ...devices['Desktop Chrome'],
+        screenshot: 'on',
+        video: 'off',
+        trace: 'on',
+      },
+    },
   ],
   webServer: {
     command: 'pnpm dev',
