@@ -296,6 +296,17 @@ preview-deploy STAGE PROFILE="minimal-api" profile=aws_profile:
 preview-outputs STAGE:
     pnpm preview:outputs --stage '{{STAGE}}'
 
+# Smoke-test a deployed preview stage (reads manifest.json; the preview profile
+# comes from the manifest). Exports AWS creds so the optional AgentCore probe can
+# authenticate on backend-ai / full. Set SMOKE_JWT_TOKEN to exercise /threads and
+# /chat; without it those checks skip with an explicit reason.
+preview-smoke STAGE profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
+    pnpm preview:smoke --stage '{{STAGE}}'
+
 # Dry-run preview destroy: validate + list accepted/rejected stacks, no AWS mutation.
 # PROFILE must be the same preview profile used for preview-deploy.
 preview-destroy-dry-run STAGE PROFILE="minimal-api" profile=aws_profile:

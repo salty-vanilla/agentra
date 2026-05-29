@@ -38,10 +38,12 @@
     "preview:plan": "tsx scripts/preview/plan.ts",
     "preview:deploy": "tsx scripts/preview/deploy.ts",
     "preview:outputs": "tsx scripts/preview/export-outputs.ts",
-    "preview:destroy": "tsx scripts/preview/destroy.ts"
+    "preview:destroy": "tsx scripts/preview/destroy.ts",
+    "preview:smoke": "tsx scripts/preview/smoke.ts"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "^12.1.0",
+    "@aws-sdk/client-bedrock-agentcore": "^3.1038.0",
     "@biomejs/biome": "latest",
     "@types/node": "^24.10.1",
     "jszip": "^3.10.1",

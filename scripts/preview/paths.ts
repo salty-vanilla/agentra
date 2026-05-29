@@ -41,3 +41,7 @@ export function destroyResultPath(stage: string): string {
 export function destroyDryRunPath(stage: string): string {
   return join(previewDir(stage), 'destroy-dry-run.json');
 }
+
+export function smokeResultPath(stage: string): string {
+  return join(previewDir(stage), 'smoke-result.json');
+}
