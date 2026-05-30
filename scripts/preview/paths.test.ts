@@ -1,6 +1,8 @@
+import { isAbsolute } from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
   cdkOutputsPath,
+  cdkOutputsPathForCdk,
   destroyDryRunPath,
   destroyResultPath,
   envBackendPath,
@@ -47,5 +49,15 @@ describe('preview artifact paths', () => {
     expect(smokeResultPath(stage)).toBe(
       '.agentra/preview/local-nakatsuka-a1b2c3d/smoke-result.json',
     );
+  });
+
+  // Regression: cdk runs with cwd=infra/cdk (pnpm --filter exec), so the
+  // --outputs-file handed to cdk must be absolute. A relative path is written
+  // under infra/cdk/.agentra/... and preview:deploy (at repo root) fails to
+  // read it back (ENOENT), which breaks the deploy -> outputs -> smoke chain.
+  test('cdkOutputsPathForCdk is absolute and resolves to the relative artifact path', () => {
+    const forCdk = cdkOutputsPathForCdk(stage);
+    expect(isAbsolute(forCdk)).toBe(true);
+    expect(forCdk.endsWith(cdkOutputsPath(stage))).toBe(true);
   });
 });

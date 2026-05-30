@@ -32,7 +32,7 @@
     "smoke:bff:threads": "pnpm --filter @agentra/backend smoke:bff:threads",
     "smoke:bff:chat": "pnpm --filter @agentra/backend smoke:bff:chat",
     "smoke:frontend:mock": "pnpm --filter @agentra/frontend e2e:mock",
-    "test:preview": "vitest run scripts/preview/",
+    "test:preview": "vitest run --config scripts/preview/vitest.config.ts",
     "test:frontend:visual-evidence": "pnpm --filter @agentra/frontend test:e2e:mock:visual-evidence",
     "typecheck:preview": "tsc -p scripts/preview/tsconfig.json --noEmit",
     "preview:plan": "tsx scripts/preview/plan.ts",
