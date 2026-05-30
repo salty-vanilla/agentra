@@ -13,7 +13,7 @@ export const ProgressSummaryCard: FC<{
   const hasError = events.some((e) => e.phase === 'error');
 
   return (
-    <div className="rounded-lg border bg-muted/30 p-3">
+    <div className="rounded-lg border bg-card p-3">
       <div className="flex items-center gap-2 text-sm font-medium">
         <PresentationIcon className="h-4 w-4" />
         <span>{hasError ? 'スライド作成に失敗しました' : 'スライド作成中'}</span>

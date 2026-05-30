@@ -78,8 +78,8 @@ function contentTypeForFile(file: File): PresignDocumentRequestContentType | nul
 
 function jobStatusVariant(
   status: IngestionJobSummary['status'],
-): 'default' | 'secondary' | 'destructive' | 'outline' {
-  if (status === 'COMPLETE') return 'default';
+): 'success' | 'secondary' | 'destructive' | 'outline' {
+  if (status === 'COMPLETE') return 'success';
   if (status === 'IN_PROGRESS' || status === 'STARTING') return 'secondary';
   if (status === 'FAILED') return 'destructive';
   return 'outline';

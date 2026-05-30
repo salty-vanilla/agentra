@@ -54,7 +54,7 @@ export function AssistantComposerAdapter({
               type="button"
               variant="default"
               size="icon"
-              className="aui-composer-send size-8 rounded-full"
+              className="aui-composer-send size-8 rounded-lg"
               aria-label="Send message"
             />
           }
@@ -69,7 +69,7 @@ export function AssistantComposerAdapter({
               type="button"
               variant="default"
               size="icon"
-              className="aui-composer-cancel size-8 rounded-full"
+              className="aui-composer-cancel size-8 rounded-lg"
               aria-label="Stop generating"
             />
           }

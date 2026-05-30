@@ -200,7 +200,9 @@ function ToolFallbackArgs({
       className={cn('aui-tool-fallback-args px-4', className)}
       {...props}
     >
-      <pre className="aui-tool-fallback-args-value whitespace-pre-wrap">{argsText}</pre>
+      <pre className="aui-tool-fallback-args-value whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-xs">
+        {argsText}
+      </pre>
     </div>
   );
 }
@@ -224,7 +226,7 @@ function ToolFallbackResult({
       {...props}
     >
       <p className="aui-tool-fallback-result-header font-semibold">Result:</p>
-      <pre className="aui-tool-fallback-result-content whitespace-pre-wrap">
+      <pre className="aui-tool-fallback-result-content whitespace-pre-wrap rounded-md bg-muted/50 p-2 text-xs">
         {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
       </pre>
     </div>
@@ -278,6 +280,7 @@ const ToolFallbackImpl: ToolCallMessagePartComponent = ({
   return (
     <ToolFallbackRoot
       className={cn(
+        'bg-card',
         isCancelled && 'border-muted-foreground/30 bg-muted/30',
         isError && 'border-destructive/40 bg-destructive/5',
       )}

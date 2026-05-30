@@ -17,8 +17,8 @@ type Props = {
   initialUserId?: string;
 };
 
-function statusVariant(status: string): 'default' | 'destructive' | 'secondary' {
-  if (status === 'success') return 'default';
+function statusVariant(status: string): 'success' | 'destructive' | 'secondary' {
+  if (status === 'success') return 'success';
   if (status === 'error') return 'destructive';
   return 'secondary';
 }
@@ -152,7 +152,7 @@ export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props
     <div className="flex flex-col min-h-0 flex-1 gap-3">
       <div className="flex items-center gap-2 flex-wrap shrink-0">
         <select
-          className="h-8 rounded border bg-background px-2 text-sm"
+          className="h-8 rounded-md border border-input bg-background px-2 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           value={statusFilter}
           onChange={(e) => handleStatusChange(e.target.value)}
         >

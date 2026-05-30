@@ -63,7 +63,7 @@ export function UserMessageView({
   return (
     <>
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
-        <div className="aui-user-message-content wrap-break-word peer rounded-lg bg-muted px-4 py-2.5 text-foreground empty:hidden">
+        <div className="aui-user-message-content wrap-break-word peer rounded-md border border-border bg-muted/50 px-3 py-2 text-foreground empty:hidden">
           {hasSlideCommand && (
             <span className="mr-1.5">
               <SlideCommandBadge />

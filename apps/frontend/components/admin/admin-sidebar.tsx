@@ -42,7 +42,7 @@ function AdminNavItem({ item, active }: { item: NavItem; active: boolean }) {
     <span
       className={cn(
         'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-colors',
-        active ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground',
+        active ? 'bg-muted text-foreground font-medium' : 'text-muted-foreground',
         item.enabled
           ? 'hover:bg-muted hover:text-foreground cursor-pointer'
           : 'opacity-50 cursor-not-allowed',
@@ -79,9 +79,9 @@ export function AdminSidebarView({
       <Link
         href="/admin"
         className={cn(
-          'px-3 py-2 mb-1 text-xs font-semibold uppercase tracking-wider transition-colors',
+          'mb-1 rounded-md px-3 py-2 text-xs font-semibold transition-colors',
           consoleActive
-            ? 'text-primary bg-primary/10 rounded-md'
+            ? 'bg-muted text-foreground'
             : 'text-muted-foreground hover:text-foreground',
         )}
       >

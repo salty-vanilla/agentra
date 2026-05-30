@@ -37,7 +37,7 @@ export const SubAgentProgressCard: FC<{
   const hasRunning = events.some((event) => event.status === 'running');
 
   return (
-    <div className="rounded-lg border bg-muted/30 p-3">
+    <div className="rounded-lg border bg-card p-3">
       <div className="flex items-center gap-2 text-sm font-medium">
         <WrenchIcon className="h-4 w-4" />
         <span>
@@ -59,7 +59,7 @@ export const SubAgentProgressCard: FC<{
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-medium text-muted-foreground">
                 <StageIcon stage={event.stage} />
                 <span>{formatStageLabel(event.stage)}</span>
-                <span className="rounded-full bg-background/80 px-2 py-0.5 text-[0.68rem] text-muted-foreground/80">
+                <span className="rounded-md border bg-muted/50 px-1.5 py-0.5 text-[0.68rem] text-muted-foreground">
                   {formatStatus(event)}
                 </span>
               </div>

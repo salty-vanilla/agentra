@@ -88,7 +88,7 @@ export const AssistantError: StoryObj = {
   render: () => (
     <AssistantMessageView
       errorContent={
-        <div className="aui-message-error-root mt-2 rounded-md border border-destructive bg-destructive/10 p-3 text-destructive text-sm dark:bg-destructive/5 dark:text-red-200">
+        <div className="aui-message-error-root mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm dark:bg-destructive/5">
           <span className="aui-message-error-message line-clamp-2">
             {messageFixtures.errorText}
           </span>
