@@ -36,3 +36,7 @@ everything-claude-code/
 #   .agentra/env/<stage>/<target>.env  written by `just outputs-env`
 # See docs/development/cdk-verify.md and docs/development/dev-modes.md.
 .agentra/
+
+# Design-review evidence is a point-in-time artifact, not committed docs.
+# Regenerate via apps/frontend/scripts/design-review-capture.mjs; attach to the PR.
+docs/design-review/
