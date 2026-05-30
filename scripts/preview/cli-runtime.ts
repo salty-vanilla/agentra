@@ -23,12 +23,37 @@ import {
   filterPreviewCandidates,
   parseDescribeStacksOutput,
 } from './list-preview-stacks.js';
-import type { PreviewConfig } from './preview-stage.js';
+import { type PreviewConfig, resolvePreviewConfig } from './preview-stage.js';
+import type { CleanupDestroyResult } from './run-cleanup.js';
 import { runCapture, runInherit } from './run-command.js';
-import type { CandidateStack } from './validate-destroy-target.js';
+import type { CandidateStack, RejectedStack } from './validate-destroy-target.js';
 
 /** Invoke the CDK CLI through the infra-cdk workspace package. */
 const CDK_INVOKER = ['--filter', '@agentra/infra-cdk', 'exec', 'cdk'] as const;
+
+/**
+ * Enforce the preview account allowlist for the active identity. Warns clearly
+ * when no allowlist is configured; throws when a configured allowlist does not
+ * include the active account. Shared by deploy/plan and cleanup identity resolvers.
+ */
+function enforceAccountAllowlist(identity: AwsIdentity): void {
+  const allowlist = parseAllowedAccounts(process.env[ALLOWED_ACCOUNTS_ENV]);
+  const check = checkAccountAllowlist(identity.accountId, allowlist);
+  if (!check.configured) {
+    console.warn(
+      `WARNING: preview account allowlist is not configured. Set ${ALLOWED_ACCOUNTS_ENV} ` +
+        '(comma-separated account IDs) to restrict preview targets.',
+    );
+    return;
+  }
+  if (!check.allowed) {
+    throw new Error(
+      `AWS account ${identity.accountId} is not in the preview allowlist ` +
+        `(${check.allowedAccounts.join(', ')}). Aborting.`,
+    );
+  }
+  console.log(`AWS account ${identity.accountId} is in the preview allowlist.`);
+}
 
 /**
  * Print the deploy-target identity block, then enforce the account allowlist.
@@ -38,23 +63,22 @@ const CDK_INVOKER = ['--filter', '@agentra/infra-cdk', 'exec', 'cdk'] as const;
 export function resolveAndReportIdentity(config: PreviewConfig): AwsIdentity {
   const identity = assertAwsIdentity();
   console.log(formatIdentityReport(identity, config));
+  enforceAccountAllowlist(identity);
+  return identity;
+}
 
-  const allowlist = parseAllowedAccounts(process.env[ALLOWED_ACCOUNTS_ENV]);
-  const check = checkAccountAllowlist(identity.accountId, allowlist);
-  if (!check.configured) {
-    console.warn(
-      `WARNING: preview account allowlist is not configured. Set ${ALLOWED_ACCOUNTS_ENV} ` +
-        '(comma-separated account IDs) to restrict preview deploy targets.',
-    );
-    return identity;
-  }
-  if (!check.allowed) {
-    throw new Error(
-      `AWS account ${identity.accountId} is not in the preview allowlist ` +
-        `(${check.allowedAccounts.join(', ')}). Aborting.`,
-    );
-  }
-  console.log(`AWS account ${identity.accountId} is in the preview allowlist.`);
+/**
+ * Resolve the active AWS identity for an account-wide cleanup run and enforce the
+ * preview account allowlist. Unlike `resolveAndReportIdentity`, cleanup has no
+ * single `PreviewConfig` to format, so it logs just the resolved identity.
+ */
+export function resolveCleanupIdentity(): AwsIdentity {
+  const identity = assertAwsIdentity();
+  console.log(
+    `Cleanup target — account: ${identity.accountId}, region: ${identity.region}, ` +
+      `arn: ${identity.arn}`,
+  );
+  enforceAccountAllowlist(identity);
   return identity;
 }
 
@@ -89,7 +113,7 @@ export function runCdk(cdkArgs: readonly string[]): number {
  * `AgentraPreview-` namespace. Used by destroy to validate candidates against
  * both stack name and tags before any destructive action.
  */
-export function describePreviewCandidates(_config: PreviewConfig): CandidateStack[] {
+export function describePreviewCandidates(): CandidateStack[] {
   const result = runCapture('aws', [
     'cloudformation',
     'describe-stacks',
@@ -117,4 +141,35 @@ export function destroyPreviewStacks(
   if (status !== 0) {
     throw new Error(`cdk destroy failed (exit ${status}).`);
   }
+}
+
+/**
+ * Destroy the eligible expired stacks for cleanup, grouped by their validated
+ * stage, reusing `destroyPreviewStacks`. Each stage is synthesized with the
+ * `full` profile because account-wide cleanup cannot know the original deploy
+ * profile of every stage; this ASSUMES a full synth contains every preview
+ * profile's stack names (deterministic `AgentraPreview-<stage>-<Suffix>`), so
+ * `cdk destroy` can resolve the explicit validated names. A failure for one stage
+ * is recorded and does not stop the remaining stages.
+ */
+export function cleanupDestroyByStage(
+  groups: ReadonlyMap<string, string[]>,
+): CleanupDestroyResult {
+  const deleteRequested: string[] = [];
+  const deleteFailures: RejectedStack[] = [];
+
+  for (const [stage, stackNames] of groups) {
+    const config = resolvePreviewConfig({ stage, profile: 'full' });
+    try {
+      destroyPreviewStacks(config, stackNames);
+      deleteRequested.push(...stackNames);
+    } catch (error) {
+      deleteFailures.push({
+        stackName: stage,
+        reason: `cdk destroy failed for stage "${stage}": ${(error as Error).message}`,
+      });
+    }
+  }
+
+  return { deleteRequested, deleteFailures };
 }
