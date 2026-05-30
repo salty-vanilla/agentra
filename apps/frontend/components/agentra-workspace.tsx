@@ -759,7 +759,7 @@ export function AgentraWorkspace() {
           />
 
           <SidebarInset className="min-w-0 bg-transparent">
-            <header className="flex h-16 items-center justify-between gap-4 border-b border-border/60 bg-background/75 px-4 backdrop-blur md:px-6">
+            <header className="flex h-16 items-center justify-between gap-4 border-b border-border/60 bg-background px-4 md:px-6">
               <div className="flex min-w-0 items-center gap-2 md:gap-3">
                 <SidebarTrigger className="-ml-1" />
                 <div className="min-w-0">

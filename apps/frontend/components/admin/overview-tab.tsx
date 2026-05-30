@@ -100,23 +100,23 @@ type TimeSeriesSectionProps = {
 };
 
 const requestConfig: ChartConfig = {
-  requestCount: { label: 'Requests', color: 'hsl(221 83% 53%)' },
+  requestCount: { label: 'Requests', color: 'var(--chart-1)' },
 };
 
 const durationConfig: ChartConfig = {
-  avgDurationMs: { label: 'Avg', color: 'hsl(221 83% 53%)' },
-  p95DurationMs: { label: 'P95', color: 'hsl(38 92% 50%)' },
+  avgDurationMs: { label: 'Avg', color: 'var(--chart-2)' },
+  p95DurationMs: { label: 'P95', color: 'var(--chart-4)' },
 };
 
 const errorConfig: ChartConfig = {
-  errorRate: { label: 'Error', color: 'hsl(0 84% 60%)' },
-  cancelledRate: { label: 'Cancelled', color: 'hsl(38 92% 50%)' },
-  toolFailureRate: { label: 'Tool Failure', color: 'hsl(280 65% 60%)' },
+  errorRate: { label: 'Error', color: 'var(--destructive)' },
+  cancelledRate: { label: 'Cancelled', color: 'var(--chart-3)' },
+  toolFailureRate: { label: 'Tool Failure', color: 'var(--chart-5)' },
 };
 
 const tokenConfig: ChartConfig = {
-  inputTokens: { label: 'Input', color: 'hsl(221 83% 53%)' },
-  outputTokens: { label: 'Output', color: 'hsl(142 71% 45%)' },
+  inputTokens: { label: 'Input', color: 'var(--chart-2)' },
+  outputTokens: { label: 'Output', color: 'var(--chart-4)' },
 };
 
 function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
@@ -144,12 +144,12 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
             <ChartContainer config={requestConfig}>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <LineChart data={enriched}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip
                     content={<ChartTooltipContent />}
-                    cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                    cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1 }}
                   />
                   <Line
                     type="monotone"
@@ -177,7 +177,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
             <ChartContainer config={durationConfig}>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <LineChart data={enriched}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => ms(v)} />
                   <Tooltip
@@ -186,7 +186,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                         formatter={(v, name) => `${ms(Number(v))} (${name})`}
                       />
                     }
-                    cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                    cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1 }}
                   />
                   <Line
                     type="monotone"
@@ -223,7 +223,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
             <ChartContainer config={errorConfig}>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <LineChart data={enriched}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis
                     tick={{ fontSize: 11 }}
@@ -235,7 +235,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                         formatter={(v) => `${Number(v).toFixed(1)}%`}
                       />
                     }
-                    cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                    cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1 }}
                   />
                   <Line
                     type="monotone"
@@ -281,12 +281,12 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
             <ChartContainer config={tokenConfig}>
               <ResponsiveContainer width="100%" height={CHART_HEIGHT}>
                 <AreaChart data={enriched}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                   <XAxis dataKey="label" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
                   <Tooltip
                     content={<ChartTooltipContent />}
-                    cursor={{ stroke: 'hsl(var(--muted-foreground))', strokeWidth: 1 }}
+                    cursor={{ stroke: 'var(--muted-foreground)', strokeWidth: 1 }}
                   />
                   <Area
                     type="monotone"
@@ -322,7 +322,7 @@ const TOP_N = 5;
 const RANKING_HEIGHT = 180;
 
 const rankingConfig: ChartConfig = {
-  value: { label: 'Count', color: 'hsl(221 83% 53%)' },
+  value: { label: 'Count', color: 'var(--chart-1)' },
 };
 
 type RankingEntry = { name: string; value: number };
@@ -343,7 +343,7 @@ function RankingChart({ title, data }: { title: string; data: RankingEntry[] }) 
                 <CartesianGrid
                   strokeDasharray="3 3"
                   horizontal={false}
-                  stroke="hsl(var(--border))"
+                  stroke="var(--border)"
                 />
                 <XAxis type="number" tick={{ fontSize: 11 }} />
                 <YAxis
@@ -357,7 +357,7 @@ function RankingChart({ title, data }: { title: string; data: RankingEntry[] }) 
                 />
                 <Tooltip
                   content={<ChartTooltipContent />}
-                  cursor={{ fill: 'hsl(var(--muted))', opacity: 0.5 }}
+                  cursor={{ fill: 'var(--muted)', opacity: 0.5 }}
                 />
                 <Bar
                   dataKey="value"

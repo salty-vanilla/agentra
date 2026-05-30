@@ -11,7 +11,7 @@ export const SlideCommandBadge: FC<{
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border border-teal-200 bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-800 dark:border-teal-800 dark:bg-teal-950 dark:text-teal-200',
+        'inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-secondary-foreground text-xs font-semibold',
         className,
       )}
     >
@@ -21,7 +21,7 @@ export const SlideCommandBadge: FC<{
         <button
           type="button"
           onClick={onRemove}
-          className="ml-0.5 rounded-sm hover:bg-teal-200/50 dark:hover:bg-teal-800/50"
+          className="ml-0.5 rounded-sm hover:bg-muted"
           aria-label="コマンドを削除"
         >
           ×

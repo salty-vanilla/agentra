@@ -9,8 +9,8 @@ import {
 } from '@/components/ui/chart';
 
 const config = {
-  requests: { label: 'Requests', color: 'hsl(221 83% 53%)' },
-  errors: { label: 'Errors', color: 'hsl(0 84% 60%)' },
+  requests: { label: 'Requests', color: 'var(--chart-1)' },
+  errors: { label: 'Errors', color: 'var(--destructive)' },
 };
 
 describe('ChartContainer', () => {
@@ -30,8 +30,8 @@ describe('ChartContainer', () => {
       </ChartContainer>,
     );
     const wrapper = container.firstChild as HTMLElement;
-    expect(wrapper.style.getPropertyValue('--color-requests')).toBe('hsl(221 83% 53%)');
-    expect(wrapper.style.getPropertyValue('--color-errors')).toBe('hsl(0 84% 60%)');
+    expect(wrapper.style.getPropertyValue('--color-requests')).toBe('var(--chart-1)');
+    expect(wrapper.style.getPropertyValue('--color-errors')).toBe('var(--destructive)');
   });
 
   it('throws if useChart is used outside ChartContainer', () => {

@@ -43,11 +43,11 @@ import {
 import { API_BASE_URL, API_MODE, isMockApiMode } from '@/lib/api-config';
 
 const threadRowVariants = cva(
-  'group w-full rounded-xl border px-3 py-1.5 text-left transition-colors',
+  'group w-full rounded-lg border px-3 py-1.5 text-left transition-colors',
   {
     variants: {
       selected: {
-        true: 'border-teal-700/20 bg-teal-600/10',
+        true: 'border-sidebar-border bg-sidebar-accent text-sidebar-accent-foreground',
         false:
           'border-transparent bg-transparent hover:border-border/60 hover:bg-muted/70',
       },
@@ -160,7 +160,7 @@ export function ServerThreadSidebar({
               <div className="flex flex-col gap-1">
                 {Array.from({ length: 4 }, (_, index) => (
                   <div
-                    className="h-14 animate-pulse rounded-xl border border-border/60 bg-card/60"
+                    className="h-14 animate-pulse rounded-lg border border-border/60 bg-muted"
                     key={index}
                   />
                 ))}
@@ -221,7 +221,7 @@ export function ServerThreadSidebar({
                 </div>
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-border/80 bg-card/70 px-3 py-4 text-muted-foreground text-sm leading-6">
+              <div className="rounded-lg border border-dashed border-border/80 bg-card px-3 py-4 text-muted-foreground text-sm leading-6">
                 スレッドはまだありません。送信すると backend 側に保存されます。
               </div>
             )}
