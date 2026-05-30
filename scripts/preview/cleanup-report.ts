@@ -9,6 +9,12 @@ import type { RejectedStack } from './validate-destroy-target.js';
 export type CleanupMode = 'dry-run' | 'execute';
 export type CleanupStatus = 'passed' | 'failed';
 
+/** A preview stage whose grouped `cdk destroy` failed, with the error reason. */
+export interface StageFailure {
+  stage: string;
+  reason: string;
+}
+
 export interface CleanupSummary {
   eligibleExpired: number;
   activeNotExpired: number;
@@ -36,7 +42,7 @@ export interface CleanupReport {
    */
   deleteRequested?: string[];
   /** Execute-only. Stages whose `cdk destroy` failed, with the error reason. */
-  deleteFailures?: RejectedStack[];
+  deleteFailures?: StageFailure[];
   status: CleanupStatus;
   reason?: string;
 }
@@ -49,7 +55,7 @@ export interface BuildCleanupReportParams {
   identity: AwsIdentity | null;
   classification: CleanupClassification;
   deleteRequested?: readonly string[] | undefined;
-  deleteFailures?: readonly RejectedStack[] | undefined;
+  deleteFailures?: readonly StageFailure[] | undefined;
   status: CleanupStatus;
   reason: string | undefined;
 }

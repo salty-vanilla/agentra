@@ -138,14 +138,14 @@ describe('runCleanup — execute', () => {
     ];
     const { runtime } = makeRuntime(candidates, {
       deleteRequested: [],
-      deleteFailures: [{ stackName: 'pr-307', reason: 'cdk destroy failed' }],
+      deleteFailures: [{ stage: 'pr-307', reason: 'cdk destroy failed' }],
     });
 
     const report = runCleanup(args({ mode: 'execute', confirm: 'all' }), runtime);
 
     expect(report.status).toBe('failed');
     expect(report.deleteFailures).toEqual([
-      { stackName: 'pr-307', reason: 'cdk destroy failed' },
+      { stage: 'pr-307', reason: 'cdk destroy failed' },
     ]);
   });
 

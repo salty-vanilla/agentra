@@ -35,6 +35,23 @@ describe('parseExpiresAt', () => {
   test('returns null for an impossible date', () => {
     expect(parseExpiresAt('2026-13-99T00:00:00Z')).toBeNull();
   });
+
+  test('strictly rejects out-of-range dates/times that Date.parse would normalize', () => {
+    expect(parseExpiresAt('2026-02-30T00:00:00Z')).toBeNull(); // Feb 30 does not exist
+    expect(parseExpiresAt('2026-04-31T00:00:00Z')).toBeNull(); // April has 30 days
+    expect(parseExpiresAt('2026-05-29T24:00:00Z')).toBeNull(); // hour 24 out of range
+  });
+
+  test('returns null when the timezone designator is missing', () => {
+    expect(parseExpiresAt('2026-05-29T08:00:00')).toBeNull();
+    expect(parseExpiresAt('2026-05-29')).toBeNull();
+  });
+
+  test('accepts a valid leap-day timestamp', () => {
+    expect(parseExpiresAt('2028-02-29T00:00:00Z')).toBe(
+      Date.parse('2028-02-29T00:00:00Z'),
+    );
+  });
 });
 
 describe('classifyStacks — eligibility', () => {

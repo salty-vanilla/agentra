@@ -19,6 +19,7 @@ import {
   buildCdkSynthArgs,
   filterPreviewStacks,
 } from './cdk-commands.js';
+import type { StageFailure } from './cleanup-report.js';
 import {
   filterPreviewCandidates,
   parseDescribeStacksOutput,
@@ -26,7 +27,7 @@ import {
 import { type PreviewConfig, resolvePreviewConfig } from './preview-stage.js';
 import type { CleanupDestroyResult } from './run-cleanup.js';
 import { runCapture, runInherit } from './run-command.js';
-import type { CandidateStack, RejectedStack } from './validate-destroy-target.js';
+import type { CandidateStack } from './validate-destroy-target.js';
 
 /** Invoke the CDK CLI through the infra-cdk workspace package. */
 const CDK_INVOKER = ['--filter', '@agentra/infra-cdk', 'exec', 'cdk'] as const;
@@ -156,7 +157,7 @@ export function cleanupDestroyByStage(
   groups: ReadonlyMap<string, string[]>,
 ): CleanupDestroyResult {
   const deleteRequested: string[] = [];
-  const deleteFailures: RejectedStack[] = [];
+  const deleteFailures: StageFailure[] = [];
 
   for (const [stage, stackNames] of groups) {
     const config = resolvePreviewConfig({ stage, profile: 'full' });
@@ -165,7 +166,7 @@ export function cleanupDestroyByStage(
       deleteRequested.push(...stackNames);
     } catch (error) {
       deleteFailures.push({
-        stackName: stage,
+        stage,
         reason: `cdk destroy failed for stage "${stage}": ${(error as Error).message}`,
       });
     }

@@ -21,6 +21,7 @@ import {
   buildCleanupReport,
   type CleanupReport,
   type CleanupStatus,
+  type StageFailure,
 } from './cleanup-report.js';
 import type { AwsIdentity } from './manifest.js';
 import { cleanupDryRunPath, cleanupResultPath } from './paths.js';
@@ -28,7 +29,6 @@ import { validatePreviewStage } from './preview-stage.js';
 import {
   assertCleanupConfirmation,
   type CandidateStack,
-  type RejectedStack,
 } from './validate-destroy-target.js';
 
 /** Outcome of handing eligible stacks to the destroy executor, grouped by stage. */
@@ -36,7 +36,7 @@ export interface CleanupDestroyResult {
   /** Stacks handed to `cdk destroy` that reported success (not verified deleted). */
   deleteRequested: string[];
   /** Stages whose destroy failed, with the error reason. */
-  deleteFailures: RejectedStack[];
+  deleteFailures: StageFailure[];
 }
 
 export interface CleanupRuntime {
@@ -112,7 +112,7 @@ export function runCleanup(args: RawCleanupArgs, runtime: CleanupRuntime): Clean
   let status: CleanupStatus = 'passed';
   let reason: string | undefined;
   let deleteRequested: string[] | undefined;
-  let deleteFailures: RejectedStack[] | undefined;
+  let deleteFailures: StageFailure[] | undefined;
 
   if (args.mode === 'execute') {
     const eligible = classification.eligibleExpired;

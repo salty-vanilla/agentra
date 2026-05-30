@@ -35,15 +35,55 @@ export interface CleanupClassification {
 
 /**
  * Strict ISO 8601 parse. Returns epoch milliseconds, or `null` when the value is
- * not a well-formed ISO 8601 timestamp. The regex rejects loosely-parseable
- * non-ISO strings (e.g. `"2026"`); `Date.parse` rejects impossible dates
- * (e.g. `"2026-13-99T00:00:00Z"`).
+ * not a well-formed, in-range ISO 8601 timestamp with an explicit timezone.
+ *
+ * `Date.parse` alone is unsafe here: it silently normalizes impossible dates and
+ * times (e.g. `2026-02-30T00:00:00Z` rolls into March, `...T24:00:00Z` into the
+ * next day). Because `ExpiresAt` is the basis for deletion eligibility, the
+ * captured fields are range-checked explicitly (month/day with leap years,
+ * hour/minute/second, timezone offset) before trusting `Date.parse`.
  */
+const ISO_8601 =
+  /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})(?:\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+
+/** Number of days in a given 1-based month, accounting for leap years. */
+function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
 export function parseExpiresAt(value: string): number | null {
-  const ISO_8601 = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
-  if (!ISO_8601.test(value)) {
+  const match = ISO_8601.exec(value);
+  if (!match) {
     return null;
   }
+  const [, yearStr, monthStr, dayStr, hourStr, minuteStr, secondStr, tz] = match;
+  if (tz === undefined) {
+    return null;
+  }
+  const year = Number(yearStr);
+  const month = Number(monthStr);
+  const day = Number(dayStr);
+  const hour = Number(hourStr);
+  const minute = Number(minuteStr);
+  const second = Number(secondStr);
+
+  if (month < 1 || month > 12) {
+    return null;
+  }
+  if (day < 1 || day > daysInMonth(year, month)) {
+    return null;
+  }
+  if (hour > 23 || minute > 59 || second > 59) {
+    return null;
+  }
+  if (tz !== 'Z') {
+    const offsetHours = Number(tz.slice(1, 3));
+    const offsetMinutes = Number(tz.slice(4, 6));
+    if (offsetHours > 23 || offsetMinutes > 59) {
+      return null;
+    }
+  }
+
   const ms = Date.parse(value);
   return Number.isNaN(ms) ? null : ms;
 }
