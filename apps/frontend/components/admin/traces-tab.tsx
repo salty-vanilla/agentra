@@ -56,6 +56,7 @@ const columns = [
     header: '所要時間',
     size: 100,
     cell: ({ getValue }) => `${getValue<number>()}ms`,
+    meta: { align: 'right' },
   }),
   helper.accessor('status', {
     header: '状態',
@@ -69,10 +70,23 @@ const columns = [
     header: 'トークン',
     size: 90,
     cell: ({ getValue }) => getValue<number | undefined>()?.toLocaleString() ?? '—',
+    meta: { align: 'right' },
   }),
-  helper.accessor('toolCallCount', { header: 'ツール', size: 70 }),
-  helper.accessor('agentCallCount', { header: 'エージェント', size: 70 }),
-  helper.accessor('skillCallCount', { header: 'スキル', size: 70 }),
+  helper.accessor('toolCallCount', {
+    header: 'ツール',
+    size: 70,
+    meta: { align: 'right' },
+  }),
+  helper.accessor('agentCallCount', {
+    header: 'エージェント',
+    size: 70,
+    meta: { align: 'right' },
+  }),
+  helper.accessor('skillCallCount', {
+    header: 'スキル',
+    size: 70,
+    meta: { align: 'right' },
+  }),
 ];
 
 function filterTraces(traces: AdminTraceListItem[], query: string): AdminTraceListItem[] {

@@ -12,25 +12,45 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/components/ui/data-table', () => ({
   DataTable: ({
     data,
+    columns,
     onRowClick,
     emptyMessage,
   }: {
     data: Record<string, unknown>[];
+    columns: {
+      accessorKey?: string;
+      header?: unknown;
+      meta?: { align?: string };
+    }[];
     onRowClick?: (row: Record<string, unknown>) => void;
     emptyMessage?: string;
-  }) => (
-    <div data-testid="data-table">
-      {data.length === 0 ? (
-        <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
-      ) : (
-        data.map((row, i) => (
-          <button key={i} type="button" onClick={() => onRowClick?.(row)}>
-            {String(row.traceId)}
-          </button>
-        ))
-      )}
-    </div>
-  ),
+  }) => {
+    const columnLabel = (column: { accessorKey?: string; header?: unknown }) =>
+      typeof column.header === 'string'
+        ? column.header
+        : (column.accessorKey ?? 'column');
+
+    return (
+      <div data-testid="data-table">
+        {columns.map((column) => (
+          <span
+            key={columnLabel(column)}
+            data-testid={`column-align-${columnLabel(column).replaceAll(' ', '-')}`}
+            data-align={column.meta?.align ?? 'left'}
+          />
+        ))}
+        {data.length === 0 ? (
+          <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
+        ) : (
+          data.map((row, i) => (
+            <button key={i} type="button" onClick={() => onRowClick?.(row)}>
+              {String(row.traceId)}
+            </button>
+          ))
+        )}
+      </div>
+    );
+  },
 }));
 
 const traceAlpha = {
@@ -149,6 +169,21 @@ describe('TracesTab', () => {
       expect.objectContaining({
         queryKey: ['admin-traces', expect.objectContaining({ userId: 'alice' })],
       }),
+    );
+  });
+
+  it('marks numeric columns for right alignment', () => {
+    setup();
+
+    for (const header of ['所要時間', 'トークン', 'ツール', 'エージェント', 'スキル']) {
+      expect(screen.getByTestId(`column-align-${header}`)).toHaveAttribute(
+        'data-align',
+        'right',
+      );
+    }
+    expect(screen.getByTestId('column-align-Trace-ID')).toHaveAttribute(
+      'data-align',
+      'left',
     );
   });
 });

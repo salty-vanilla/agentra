@@ -19,6 +19,17 @@ type Props = {
 
 const helper = createColumnHelper<AdminUserStats>();
 
+const ERROR_RATE_WARNING_THRESHOLD = 0.1;
+const ERROR_RATE_DESTRUCTIVE_THRESHOLD = 0.25;
+
+function errorRateTextClassName(rate: number): string | undefined {
+  if (rate >= ERROR_RATE_DESTRUCTIVE_THRESHOLD) return 'text-destructive';
+  if (rate >= ERROR_RATE_WARNING_THRESHOLD) {
+    return 'text-amber-700 dark:text-amber-300';
+  }
+  return undefined;
+}
+
 const columns = [
   helper.accessor('userId', {
     header: 'User ID',
@@ -39,21 +50,33 @@ const columns = [
       );
     },
   }),
-  helper.accessor('requestCount', { header: 'リクエスト', size: 100 }),
+  helper.accessor('requestCount', {
+    header: 'リクエスト',
+    size: 100,
+    meta: { align: 'right' },
+  }),
   helper.accessor('totalTokens', {
     header: 'トークン',
     size: 120,
     cell: ({ getValue }) => getValue<number>().toLocaleString(),
+    meta: { align: 'right' },
   }),
   helper.accessor('avgDurationMs', {
     header: '平均時間',
     size: 120,
     cell: ({ getValue }) => `${getValue<number>()}ms`,
+    meta: { align: 'right' },
   }),
   helper.accessor('errorRate', {
     header: 'エラー率',
     size: 100,
-    cell: ({ getValue }) => `${(getValue<number>() * 100).toFixed(1)}%`,
+    cell: ({ getValue }) => {
+      const rate = getValue<number>();
+      return (
+        <span className={errorRateTextClassName(rate)}>{(rate * 100).toFixed(1)}%</span>
+      );
+    },
+    meta: { align: 'right' },
   }),
   helper.accessor('mostUsedAgent', {
     header: '上位エージェント',
