@@ -9,9 +9,18 @@ type AdminShellProps = {
   sidebar?: ReactNode;
 };
 
+function keepDesktopSidebarOpen() {
+  return undefined;
+}
+
 export function AdminShell({ children, sidebar = <AdminSidebar /> }: AdminShellProps) {
   return (
-    <SidebarProvider defaultOpen style={{ '--sidebar-width': '14rem' } as CSSProperties}>
+    <SidebarProvider
+      defaultOpen
+      onOpenChange={keepDesktopSidebarOpen}
+      open={true}
+      style={{ '--sidebar-width': '14rem' } as CSSProperties}
+    >
       <div className="flex h-svh w-full overflow-hidden bg-background">
         {sidebar}
 
