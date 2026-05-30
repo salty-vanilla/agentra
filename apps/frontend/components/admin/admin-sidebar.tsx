@@ -5,6 +5,7 @@ import { BarChart3, BookOpen, Bot, Settings, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { Sidebar } from '@/components/ui/sidebar';
 import { isAdminConsoleActive, isNavItemActive } from '@/lib/admin-routes';
 import { kbStatusQueryOptions } from '@/lib/query-options';
 import { cn } from '@/lib/utils';
@@ -73,10 +74,37 @@ export function AdminSidebarView({
   currentPath,
   navItems = STATIC_NAV_ITEMS,
 }: AdminSidebarViewProps) {
+  return (
+    <aside className="flex h-full w-56 shrink-0 flex-col gap-0.5 border-r p-3">
+      <AdminSidebarContent currentPath={currentPath} navItems={navItems} />
+    </aside>
+  );
+}
+
+export function AdminSidebarShell({
+  currentPath,
+  navItems = STATIC_NAV_ITEMS,
+}: AdminSidebarViewProps) {
+  return (
+    <Sidebar
+      collapsible="offcanvas"
+      className="[&_[data-slot=sidebar-inner]]:bg-background"
+    >
+      <div className="flex h-full flex-col gap-0.5 p-3">
+        <AdminSidebarContent currentPath={currentPath} navItems={navItems} />
+      </div>
+    </Sidebar>
+  );
+}
+
+function AdminSidebarContent({
+  currentPath,
+  navItems = STATIC_NAV_ITEMS,
+}: AdminSidebarViewProps) {
   const consoleActive = isAdminConsoleActive(currentPath);
 
   return (
-    <aside className="w-56 shrink-0 border-r flex flex-col gap-0.5 p-3">
+    <>
       <Link
         href="/admin"
         className={cn(
@@ -99,12 +127,12 @@ export function AdminSidebarView({
         <span className="text-muted-foreground text-xs">Theme</span>
         <ThemeToggle />
       </div>
-    </aside>
+    </>
   );
 }
 
 export function AdminSidebar() {
   const pathname = usePathname();
   const navItems = useNavItems();
-  return <AdminSidebarView currentPath={pathname} navItems={navItems} />;
+  return <AdminSidebarShell currentPath={pathname} navItems={navItems} />;
 }

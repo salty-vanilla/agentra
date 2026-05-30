@@ -166,7 +166,7 @@ export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props
           onChange={handleTraceSearchChange}
           onEnter={handleTraceSearchEnter}
           placeholder="Search trace ID or user ID…"
-          className="w-64"
+          className="w-full sm:w-64"
         />
       </div>
 

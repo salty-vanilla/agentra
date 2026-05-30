@@ -59,7 +59,7 @@ export function SkillsTab({ from, to }: Props) {
           value={search}
           onChange={setSearch}
           placeholder="Search by skill name..."
-          className="w-72"
+          className="w-full sm:w-72"
         />
       </div>
       <DataTable

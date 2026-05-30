@@ -91,6 +91,13 @@ export function DataTable<T>({
   const showEmpty = isEmpty && !isLoading && !error;
   const showLoading = isEmpty && !!isLoading && !error;
   const showError = isEmpty && !!error;
+  const tableMinWidth = table
+    .getVisibleLeafColumns()
+    .reduce((width, column) => width + column.getSize(), 0);
+  const tableStyle: React.CSSProperties = {
+    minWidth: tableMinWidth > 0 ? `${tableMinWidth}px` : undefined,
+    width: '100%',
+  };
 
   const emptyCell = showError ? (
     <span className="inline-flex items-center rounded-md border border-destructive/25 bg-destructive/5 px-2 py-1 text-destructive">
@@ -125,7 +132,7 @@ export function DataTable<T>({
           className={cn('overflow-auto', height === undefined && 'flex-1 min-h-0')}
           style={scrollStyle}
         >
-          <table style={{ display: 'grid', width: '100%' }}>
+          <table style={{ display: 'grid', ...tableStyle }}>
             <thead
               className="border-b bg-muted/70 text-muted-foreground"
               style={{ display: 'grid', position: 'sticky', top: 0, zIndex: 1 }}
@@ -245,7 +252,7 @@ export function DataTable<T>({
         containerClassName,
       )}
     >
-      <table className="w-full text-sm">
+      <table className="w-full text-sm" style={tableStyle}>
         <thead className="border-b bg-muted/70 text-muted-foreground">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
