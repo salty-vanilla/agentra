@@ -1,0 +1,112 @@
+name: Preview Cleanup
+run-name: preview cleanup ${{ inputs.mode }} ${{ inputs.stage }}
+
+# Account-wide detection and (optional) teardown of stale disposable preview
+# environments. All safety logic (TTL classification, two-layer stack name + tag
+# validation, confirmation gating) lives in `pnpm preview:cleanup` under
+# scripts/preview/. This workflow only orchestrates it.
+#
+# SCHEDULED DESTRUCTIVE CLEANUP IS INTENTIONALLY NOT ENABLED.
+# This stub is `workflow_dispatch` only (no `cron`). Enabling a schedule that runs
+# `--execute` is a deliberate follow-up under epic #313, gated on the execute path
+# being well exercised in production. The default mode here is read-only dry-run.
+#
+# NOTE on `--execute`: cleanup destroys expired stacks via the `full` preview
+# profile because an account-wide run cannot know each stage's original deploy
+# profile. This ASSUMES a `full` synth contains every preview profile's stack
+# names (deterministic `AgentraPreview-<stage>-<Suffix>`). Validate against a
+# throwaway expired stage before relying on scheduled execution.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: Cleanup mode (dry-run is read-only)
+        type: choice
+        default: dry-run
+        options:
+          - dry-run
+          - execute
+      stage:
+        description: Optional preview stage to scope cleanup to (blank = account-wide)
+        required: false
+      confirm:
+        description: Required for execute — "all" for account-wide, or the exact stage when scoped
+        required: false
+
+permissions:
+  id-token: write # GitHub OIDC to assume the preview AWS role
+  contents: read
+
+# Serialize cleanup runs so two executes never race on the same stacks.
+concurrency:
+  group: preview-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: preview cleanup ${{ inputs.mode }}
+    runs-on: ubuntu-latest
+    environment: preview
+    steps:
+      - name: Require preview role ARN
+        env:
+          ROLE_ARN: ${{ secrets.AWS_PREVIEW_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "::error::AWS_PREVIEW_ROLE_ARN secret is not configured. Set it to the OIDC preview role ARN." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PREVIEW_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          role-session-name: agentra-preview-cleanup
+
+      # Inputs are passed via env (never interpolated into the script body) to
+      # avoid shell injection.
+      - name: Run preview cleanup ${{ inputs.mode }}
+        env:
+          MODE: ${{ inputs.mode }}
+          STAGE: ${{ inputs.stage }}
+          CONFIRM: ${{ inputs.confirm }}
+          AGENTRA_PREVIEW_ALLOWED_ACCOUNTS: ${{ vars.AGENTRA_PREVIEW_ALLOWED_ACCOUNTS }}
+        run: |
+          set -euo pipefail
+          ARGS=()
+          if [ "$MODE" = "execute" ]; then
+            ARGS+=(--execute)
+          else
+            ARGS+=(--dry-run)
+          fi
+          if [ -n "$STAGE" ]; then
+            ARGS+=(--stage "$STAGE")
+          fi
+          if [ -n "$CONFIRM" ]; then
+            ARGS+=(--confirm "$CONFIRM")
+          fi
+          pnpm preview:cleanup "${ARGS[@]}"
+
+      - name: Upload cleanup report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-cleanup-${{ inputs.mode }}
+          path: .agentra/preview/cleanup/
+          if-no-files-found: warn
+          retention-days: 14

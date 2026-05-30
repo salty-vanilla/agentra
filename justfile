@@ -325,6 +325,32 @@ preview-destroy STAGE PROFILE="minimal-api" profile=aws_profile:
     export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
     pnpm preview:destroy --stage '{{STAGE}}' --profile '{{PROFILE}}' --confirm '{{STAGE}}'
 
+# Dry-run account-wide preview cleanup: classify stale stacks by TTL + safety,
+# write a report, no AWS mutation. Optional STAGE scopes to one preview stage.
+preview-cleanup-dry-run STAGE="" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
+    if [ -n '{{STAGE}}' ]; then
+        pnpm preview:cleanup --dry-run --stage '{{STAGE}}'
+    else
+        pnpm preview:cleanup --dry-run
+    fi
+
+# Execute preview cleanup: destroy expired + validated stacks. Account-wide requires
+# CONFIRM=all; a scoped run (STAGE set) requires CONFIRM equal to STAGE.
+preview-cleanup-execute STAGE="" CONFIRM="all" profile=aws_profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
+    export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
+    if [ -n '{{STAGE}}' ]; then
+        pnpm preview:cleanup --execute --stage '{{STAGE}}' --confirm '{{CONFIRM}}'
+    else
+        pnpm preview:cleanup --execute --confirm '{{CONFIRM}}'
+    fi
+
 # ── Smoke tests ───────────────────────────────────────────────────────────────
 
 # Run AgentCore chat smoke test. Auto-loads AGENTCORE_RUNTIME_ARN from

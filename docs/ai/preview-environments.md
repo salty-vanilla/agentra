@@ -20,7 +20,7 @@ referenced from future implementation prompts and PR review instructions.
 | [#317](https://github.com/salty-vanilla/agentra/issues/317) | Local preview destroy command with safety checks | Implemented |
 | [#318](https://github.com/salty-vanilla/agentra/issues/318) | Preview smoke tests for ephemeral environments | Planned |
 | [#319](https://github.com/salty-vanilla/agentra/issues/319) | GitHub Actions manual preview deploy/destroy workflow | Implemented |
-| [#320](https://github.com/salty-vanilla/agentra/issues/320) | Preview cleanup and stale environment detection | Planned |
+| [#320](https://github.com/salty-vanilla/agentra/issues/320) | Preview cleanup and stale environment detection | Implemented |
 | [#321](https://github.com/salty-vanilla/agentra/issues/321) | AI agent operating guide | This document |
 
 > Status reflects intent at authoring time. Treat the linked issues as the live source
@@ -59,7 +59,12 @@ pnpm preview:smoke --stage <preview-stage>
 pnpm preview:destroy --stage <preview-stage> --profile minimal-api --dry-run
 pnpm preview:destroy --stage <preview-stage> --profile minimal-api --confirm <preview-stage>
 pnpm preview:cleanup --dry-run
+pnpm preview:cleanup --dry-run --stage <preview-stage>
 ```
+
+`pnpm preview:cleanup --execute` (and its `--confirm` form) is destructive and is **not**
+part of the routine AI-assisted surface — use dry-run for detection and reporting. See
+[Preview cleanup](#preview-cleanup-stale-environment-detection) below.
 
 `just preview-*` wrappers are **not** part of the allowed surface today. They may be added
 later as thin convenience wrappers over the `pnpm preview:*` commands; until they exist and
@@ -191,6 +196,51 @@ Behavior notes:
   at the same time. Each run uploads `.agentra/preview/<stage>/` artifacts.
 - Validate workflow changes with `pnpm test:preview`, `pnpm typecheck:preview`,
   `pnpm lint`.
+
+## Preview cleanup (stale environment detection)
+
+Disposable preview stacks outlive their usefulness when a run fails halfway, a PR closes
+without teardown, or a developer forgets to destroy. `pnpm preview:cleanup` detects stale
+stacks **account-wide** by TTL and safety status, and (in `--execute` mode) tears down only
+those that are both expired and safe.
+
+```bash
+pnpm preview:cleanup --dry-run                       # account-wide detection, no mutation
+pnpm preview:cleanup --dry-run --stage pr-307        # scope to one stage
+pnpm preview:cleanup --execute --confirm all         # destroy all expired+safe stacks
+pnpm preview:cleanup --execute --stage pr-307 --confirm pr-307
+```
+
+Each candidate is classified using **its own `Stage` tag** (validated before use) into one
+of four buckets, and a JSON report is written to
+`.agentra/preview/cleanup/<timestamp>/cleanup-{dry-run,result}.json`:
+
+| Bucket | Meaning | Deleted? |
+|--------|---------|----------|
+| `eligibleExpired` | passes name + tag + stage validation **and** `ExpiresAt < now` | yes (execute only) |
+| `activeNotExpired` | valid but still within TTL | no |
+| `rejectedUnsafe` | tags present but a safety check failed (wrong value, name/tag mismatch, malformed `Stage`/`ExpiresAt`) | no |
+| `missingTags` | a required identifying tag (`Project`, `EnvironmentType`, `Stage`, `ExpiresAt`) is absent | no |
+
+Safety properties:
+
+- A stack is only eligible when **both** its CloudFormation name is under
+  `AgentraPreview-<stage>-` **and** its tags identify it as an Agentra preview stack — the
+  same two-layer guard as `preview:destroy` (#317). Tags alone are never sufficient.
+- Dry-run is the default and never mutates. `--execute` requires `--confirm all`
+  (account-wide) or `--confirm <stage>` (scoped). An execute run with zero eligible stacks
+  is a clean no-op.
+- `--execute` destroys expired stacks via `cdk destroy` for explicit validated names (never
+  `--all`), grouped by stage. Because an account-wide run cannot know each stage's original
+  deploy profile, it synthesizes with the **`full`** profile. This **assumes a `full` synth
+  contains every preview profile's stack names** (deterministic `AgentraPreview-<stage>-<Suffix>`)
+  so `cdk destroy` can resolve them. Validate this against a throwaway expired stage before
+  relying on execute.
+
+A **manual** workflow, [`Preview Cleanup`](../../.github/workflows/preview-cleanup.yml)
+(`workflow_dispatch`), orchestrates the same command. **Scheduled destructive cleanup is
+intentionally not enabled** (no `cron` trigger); a scheduled `--execute` is a deliberate
+follow-up under #313, gated on the execute path being well exercised.
 
 ## Reporting format
 

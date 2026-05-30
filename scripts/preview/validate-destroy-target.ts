@@ -137,3 +137,34 @@ export function assertDestroyConfirmation(params: {
     );
   }
 }
+
+/** Fixed confirmation token required to execute an account-wide cleanup. */
+export const CLEANUP_ALL_CONFIRMATION = 'all';
+
+/**
+ * Enforce the cleanup execute confirmation policy. Dry-run requires no
+ * confirmation. A scoped execute (`--stage <stage>`) requires `--confirm <stage>`;
+ * an account-wide execute requires `--confirm all`. Strict equality also rejects
+ * empty and whitespace-padded values, mirroring `assertDestroyConfirmation`.
+ */
+export function assertCleanupConfirmation(params: {
+  mode: 'dry-run' | 'execute';
+  stageFilter: string | null;
+  confirm: string | undefined;
+}): void {
+  if (params.mode === 'dry-run') {
+    return;
+  }
+  const expected = params.stageFilter ?? CLEANUP_ALL_CONFIRMATION;
+  if (params.confirm === undefined) {
+    throw new Error(
+      `Refusing to execute cleanup without confirmation. Re-run with --confirm ${expected}.`,
+    );
+  }
+  if (params.confirm !== expected) {
+    throw new Error(
+      `Confirmation "${params.confirm}" does not match required "${expected}". ` +
+        `Re-run with --confirm ${expected}.`,
+    );
+  }
+}

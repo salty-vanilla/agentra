@@ -39,6 +39,7 @@
     "preview:deploy": "tsx scripts/preview/deploy.ts",
     "preview:outputs": "tsx scripts/preview/export-outputs.ts",
     "preview:destroy": "tsx scripts/preview/destroy.ts",
+    "preview:cleanup": "tsx scripts/preview/cleanup.ts",
     "preview:smoke": "tsx scripts/preview/smoke.ts"
   },
   "devDependencies": {

@@ -45,3 +45,20 @@ export function destroyDryRunPath(stage: string): string {
 export function smokeResultPath(stage: string): string {
   return join(previewDir(stage), 'smoke-result.json');
 }
+
+/**
+ * Cleanup is account-wide rather than per-stage, so its artifacts live under a
+ * timestamped directory: `.agentra/preview/cleanup/<timestamp>/`. `timestamp`
+ * must be filesystem-safe (e.g. ISO 8601 with `:`/`.` replaced by `-`).
+ */
+export function cleanupDir(timestamp: string): string {
+  return join(PREVIEW_ARTIFACT_ROOT, 'cleanup', timestamp);
+}
+
+export function cleanupDryRunPath(timestamp: string): string {
+  return join(cleanupDir(timestamp), 'cleanup-dry-run.json');
+}
+
+export function cleanupResultPath(timestamp: string): string {
+  return join(cleanupDir(timestamp), 'cleanup-result.json');
+}
