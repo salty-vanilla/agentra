@@ -15,7 +15,7 @@ import { listPreviewStacks, resolveAndReportIdentity, runCdk } from './cli-runti
 import { parseCommandArgs } from './command-args.js';
 import { ensurePreviewDir, readJsonFile, writeJsonFile } from './io.js';
 import { buildManifest, type CdkOutputs, normalizeOutputs } from './manifest.js';
-import { cdkOutputsPath, manifestPath } from './paths.js';
+import { cdkOutputsPathForCdk, manifestPath } from './paths.js';
 import { resolvePreviewConfig } from './preview-stage.js';
 
 function main(): void {
@@ -32,7 +32,9 @@ function main(): void {
     );
   }
 
-  const outputsFile = cdkOutputsPath(config.stage);
+  // Absolute path: cdk runs with cwd=infra/cdk, so a relative --outputs-file
+  // would be written there and the read-back below (at repo root) would miss it.
+  const outputsFile = cdkOutputsPathForCdk(config.stage);
   const deployArgs = buildCdkDeployArgs(config, stacks, outputsFile);
 
   // Create the artifact dir up front so `cdk deploy --outputs-file` can write

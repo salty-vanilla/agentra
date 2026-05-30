@@ -5,7 +5,7 @@
  * `.agentra/`). Paths are relative to the process working directory, which is
  * the repo root when commands run via the root `pnpm preview:*` scripts.
  */
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 
 /** Root directory under which per-stage preview artifacts are written. */
 export const PREVIEW_ARTIFACT_ROOT = join('.agentra', 'preview');
@@ -20,6 +20,20 @@ export function planPath(stage: string): string {
 
 export function cdkOutputsPath(stage: string): string {
   return join(previewDir(stage), 'cdk-outputs.json');
+}
+
+/**
+ * Absolute path for `cdk deploy --outputs-file`.
+ *
+ * The CDK CLI runs with its working directory set to `infra/cdk` (it is invoked
+ * via `pnpm --filter @agentra/infra-cdk exec cdk`), so a repo-root-relative
+ * `--outputs-file` would be written under `infra/cdk/.agentra/...` and the
+ * deploy command (running at the repo root) would fail to read it back. Passing
+ * an absolute path keeps the writer (cdk) and reader (preview:deploy) in sync
+ * regardless of working directory.
+ */
+export function cdkOutputsPathForCdk(stage: string): string {
+  return resolve(cdkOutputsPath(stage));
 }
 
 export function manifestPath(stage: string): string {
