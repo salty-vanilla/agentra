@@ -33,12 +33,12 @@ test.describe('Frontend smoke (mock API mode)', () => {
     await page.goto('/admin/users');
 
     // Page heading confirms the correct page rendered.
-    await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible({
+    await expect(page.getByRole('heading', { name: 'ユーザー' })).toBeVisible({
       timeout: MSW_TIMEOUT,
     });
 
-    // "Invite User" button appears only once the page has fully hydrated.
-    await expect(page.getByRole('button', { name: 'Invite User' })).toBeVisible();
+    // The invite button appears only once the page has fully hydrated.
+    await expect(page.getByRole('button', { name: 'ユーザーを招待' })).toBeVisible();
 
     // Mock handler returns users; at least one data row must be present.
     // The table is virtualized so only visible rows are in the DOM.

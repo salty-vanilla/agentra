@@ -32,7 +32,7 @@ export const WithRoles: Story = {
     docs: {
       description: {
         story:
-          'Shows active users from the selected period with role badges. Admin users display an Admin badge; others display a User badge. Users without a role field default to User.',
+          '選択期間のアクティブユーザーを表示します。管理者は管理者バッジ、それ以外は一般ユーザーバッジとして表示され、ロールなしのユーザーは一般ユーザーとして扱います。',
       },
     },
   },
@@ -49,12 +49,12 @@ export const Loading: Story = {
 };
 
 export const SearchAndClear: Story = {
-  name: 'Search → clear resets filter',
+  name: '検索 → クリアで絞り込みをリセット',
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const input = await canvas.findByPlaceholderText(/Search by user ID/);
+    const input = await canvas.findByPlaceholderText(/User ID、ロール/);
     await userEvent.type(input, 'admin');
-    const clearButton = await canvas.findByLabelText('Clear search');
+    const clearButton = await canvas.findByLabelText('検索条件をクリア');
     await userEvent.click(clearButton);
     expect(input).toHaveValue('');
   },

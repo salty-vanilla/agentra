@@ -21,7 +21,7 @@ vi.mock('@/components/ui/data-table', () => ({
   }) => (
     <div data-testid="data-table">
       {data.length === 0 ? (
-        <span>{emptyMessage ?? 'No data for this period.'}</span>
+        <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
       ) : (
         data.map((row, i) => (
           <button key={i} type="button" onClick={() => onRowClick?.(row)}>
@@ -78,7 +78,7 @@ describe('SkillsTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'web');
-    await user.click(screen.getByRole('button', { name: /clear search/i }));
+    await user.click(screen.getByRole('button', { name: /検索条件をクリア/ }));
     expect(screen.getByText('web_search')).toBeInTheDocument();
     expect(screen.getByText('slide_generation')).toBeInTheDocument();
   });
@@ -87,13 +87,13 @@ describe('SkillsTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'zzznomatch');
-    expect(screen.getByText('No skills match the search.')).toBeInTheDocument();
+    expect(screen.getByText('検索に一致するスキルはありません。')).toBeInTheDocument();
   });
 
   it('opens SkillDetailDrawer when a row is clicked', async () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByText('web_search'));
-    expect(screen.getByText('Skill Detail')).toBeInTheDocument();
+    expect(screen.getByText('スキル詳細')).toBeInTheDocument();
   });
 });

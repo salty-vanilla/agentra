@@ -85,7 +85,7 @@ const FLOWS: Flow[] = [
     slug: 'user-detail-drawer',
     route: '/admin/users',
     ready: async (page) => {
-      await expect(page.getByRole('heading', { name: 'Users' })).toBeVisible({
+      await expect(page.getByRole('heading', { name: 'ユーザー' })).toBeVisible({
         timeout: MSW_TIMEOUT,
       });
       await expect(page.getByRole('cell', { name: 'user001@example.com' })).toBeVisible({
@@ -97,12 +97,12 @@ const FLOWS: Flow[] = [
     open: async (page) => {
       await page.getByRole('cell', { name: 'user001@example.com' }).click();
     },
-    shell: (page) => page.getByRole('heading', { name: 'User Detail' }),
+    shell: (page) => page.getByRole('heading', { name: 'ユーザー詳細' }),
     scrollTarget: (page) => page.locator(SHEET_CONTENT),
     interact: (page) =>
       hoverCycle(page, [
         page.getByRole('button', { name: '招待メールを再送' }),
-        page.getByRole('button', { name: 'View traces' }),
+        page.getByRole('button', { name: 'トレースを表示' }),
       ]),
   },
   {
@@ -110,12 +110,12 @@ const FLOWS: Flow[] = [
     slug: 'invite-user-dialog',
     route: '/admin/users',
     ready: async (page) => {
-      await expect(page.getByRole('button', { name: 'Invite User' })).toBeVisible({
+      await expect(page.getByRole('button', { name: 'ユーザーを招待' })).toBeVisible({
         timeout: MSW_TIMEOUT,
       });
     },
     open: async (page) => {
-      await page.getByRole('button', { name: 'Invite User' }).click();
+      await page.getByRole('button', { name: 'ユーザーを招待' }).click();
     },
     shell: (page) => page.getByRole('heading', { name: 'ユーザーを招待' }),
     // Type into the email field char-by-char — the most direct "operating on the
@@ -132,7 +132,7 @@ const FLOWS: Flow[] = [
     route: '/admin/observability?tab=traces',
     ready: async (page) => {
       await expect(
-        page.getByRole('heading', { name: 'Observability Dashboard' }),
+        page.getByRole('heading', { name: '可観測性ダッシュボード' }),
       ).toBeVisible({ timeout: MSW_TIMEOUT });
       await expect(page.locator('table tbody tr').first()).toBeVisible({
         timeout: MSW_TIMEOUT,
@@ -150,14 +150,14 @@ const FLOWS: Flow[] = [
         .first()
         .click();
     },
-    shell: (page) => page.getByRole('heading', { name: 'Trace Detail' }),
+    shell: (page) => page.getByRole('heading', { name: 'トレース詳細' }),
     // Body section only renders after the detail query resolves.
-    content: (page) => page.getByRole('heading', { name: 'Timeline' }),
+    content: (page) => page.getByRole('heading', { name: 'タイムライン' }),
     scrollTarget: (page) => page.locator(SHEET_CONTENT),
     interact: (page) =>
       hoverCycle(page, [
-        page.getByRole('button', { name: 'Copy Trace ID' }),
-        page.getByRole('button', { name: 'Copy User ID' }),
+        page.getByRole('button', { name: 'Trace IDをコピー' }),
+        page.getByRole('button', { name: 'User IDをコピー' }),
       ]),
   },
   {

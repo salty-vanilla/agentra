@@ -13,36 +13,36 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    label: 'Observability',
-    description: 'Usage metrics, traces, and agent activity',
+    label: '可観測性',
+    description: '利用状況、トレース、エージェント活動を確認',
     href: '/admin/observability',
     icon: BarChart3,
     enabled: true,
   },
   {
-    label: 'Users',
-    description: 'Manage users and access',
+    label: 'ユーザー',
+    description: 'ユーザーとアクセス権を管理',
     href: '/admin/users',
     icon: Users,
     enabled: true,
   },
   {
-    label: 'Agents',
-    description: 'Configure agents and tools',
+    label: 'エージェント',
+    description: 'エージェントとツールを設定',
     href: '/admin/agents',
     icon: Bot,
     enabled: false,
   },
   {
     label: 'RAG / KB',
-    description: 'Knowledge base management',
+    description: 'ナレッジベースを管理',
     href: '/admin/rag',
     icon: BookOpen,
     enabled: false,
   },
   {
-    label: 'Settings',
-    description: 'System configuration',
+    label: '設定',
+    description: 'システム設定',
     href: '/admin/settings',
     icon: Settings,
     enabled: false,
@@ -62,7 +62,7 @@ function SectionCard({ section }: { section: Section }) {
       <CardHeader>
         <div className="flex items-center justify-between">
           <Icon className="size-5 text-primary" />
-          {!section.enabled && <Badge variant="secondary">Coming Soon</Badge>}
+          {!section.enabled && <Badge variant="secondary">準備中</Badge>}
         </div>
         <CardTitle className="mt-2">{section.label}</CardTitle>
         <CardDescription>{section.description}</CardDescription>
@@ -82,9 +82,9 @@ function SectionCard({ section }: { section: Section }) {
 export default function AdminHomePage() {
   return (
     <div className="container mx-auto max-w-5xl px-4 py-8">
-      <h1 className="text-2xl font-semibold mb-2">Admin Console</h1>
+      <h1 className="text-2xl font-semibold mb-2">管理コンソール</h1>
       <p className="text-sm text-muted-foreground mb-8">
-        Manage and monitor your Agentra deployment.
+        Agentra の運用状況を管理・監視します。
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {SECTIONS.map((section) => (

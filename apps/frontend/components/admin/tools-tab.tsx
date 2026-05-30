@@ -17,20 +17,20 @@ type Props = {
 const helper = createColumnHelper<AdminToolStats>();
 
 const columns = [
-  helper.accessor('toolName', { header: 'Tool', size: 180 }),
-  helper.accessor('callCount', { header: 'Calls', size: 80 }),
+  helper.accessor('toolName', { header: 'ツール', size: 180 }),
+  helper.accessor('callCount', { header: '呼び出し', size: 80 }),
   helper.accessor('failureRate', {
-    header: 'Failure Rate',
+    header: '失敗率',
     size: 110,
     cell: ({ getValue }) => `${(getValue<number>() * 100).toFixed(1)}%`,
   }),
   helper.accessor('avgDurationMs', {
-    header: 'Avg Duration',
+    header: '平均時間',
     size: 110,
     cell: ({ getValue }) => `${getValue<number>()}ms`,
   }),
   helper.accessor('lastError', {
-    header: 'Last Error',
+    header: '直近エラー',
     size: 250,
     enableSorting: false,
     cell: ({ getValue }) => {
@@ -66,7 +66,7 @@ export function ToolsTab({ from, to }: Props) {
         <SearchToolbar
           value={search}
           onChange={setSearch}
-          placeholder="Search by tool name or last error..."
+          placeholder="ツール名または直近エラーで検索..."
           className="w-full sm:w-72"
         />
       </div>
@@ -74,8 +74,10 @@ export function ToolsTab({ from, to }: Props) {
         data={filteredTools}
         columns={columns}
         isLoading={isLoading}
-        error={error ? 'Failed to load tools.' : null}
-        emptyMessage={search ? 'No tools match the search.' : 'No data for this period.'}
+        error={error ? 'ツールの読み込みに失敗しました。' : null}
+        emptyMessage={
+          search ? '検索に一致するツールはありません。' : 'この期間のデータはありません。'
+        }
         onRowClick={(tool) => setSelected(tool)}
         virtualized
         height="100%"

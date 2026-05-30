@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { CopyIcon } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { formatTraceCallKind, formatTraceStatus } from '@/lib/admin-labels';
 import type {
   AdminTraceAgentCall,
   AdminTraceSkillCall,
@@ -95,10 +96,10 @@ function CopyButton({ label, value }: { label: string; value: string }) {
   return (
     <button
       type="button"
-      aria-label={`Copy ${label}`}
+      aria-label={`${label}をコピー`}
       onClick={() => {
         navigator.clipboard.writeText(value).catch((err) => {
-          console.warn(`Failed to copy ${label}`, err);
+          console.warn(`${label}のコピーに失敗しました`, err);
         });
       }}
       className="ml-1 inline-flex items-center text-muted-foreground hover:text-foreground"
@@ -117,14 +118,16 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
     <Sheet open={traceId !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Trace Detail</SheetTitle>
+          <SheetTitle>トレース詳細</SheetTitle>
         </SheetHeader>
 
         {isLoading && (
-          <div className="px-4 text-muted-foreground text-sm">Loading...</div>
+          <div className="px-4 text-muted-foreground text-sm">読み込み中...</div>
         )}
         {error && (
-          <div className="px-4 text-destructive text-sm">Failed to load trace.</div>
+          <div className="px-4 text-destructive text-sm">
+            トレースの読み込みに失敗しました。
+          </div>
         )}
 
         {detail && (
@@ -150,15 +153,17 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
                 {detail.threadId}
                 <CopyButton label="Thread ID" value={detail.threadId} />
               </span>
-              <span className="text-muted-foreground">Status</span>
-              <Badge variant={statusVariant(detail.status)}>{detail.status}</Badge>
-              <span className="text-muted-foreground">Duration</span>
+              <span className="text-muted-foreground">状態</span>
+              <Badge variant={statusVariant(detail.status)}>
+                {formatTraceStatus(detail.status)}
+              </Badge>
+              <span className="text-muted-foreground">所要時間</span>
               <span>{detail.durationMs}ms</span>
-              <span className="text-muted-foreground">Model</span>
+              <span className="text-muted-foreground">モデル</span>
               <span>{detail.model ?? '—'}</span>
-              <span className="text-muted-foreground">Tokens</span>
+              <span className="text-muted-foreground">トークン</span>
               <span>{detail.totalTokens?.toLocaleString() ?? '—'}</span>
-              <span className="text-muted-foreground">Est. Cost</span>
+              <span className="text-muted-foreground">概算コスト</span>
               <span>
                 {detail.estimatedCostUsd != null
                   ? `$${detail.estimatedCostUsd.toFixed(5)}`
@@ -166,16 +171,16 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
               </span>
               {detail.tokenUsage && (
                 <>
-                  <span className="text-muted-foreground">Input tokens</span>
+                  <span className="text-muted-foreground">入力トークン</span>
                   <span>{detail.tokenUsage.inputTokens}</span>
-                  <span className="text-muted-foreground">Output tokens</span>
+                  <span className="text-muted-foreground">出力トークン</span>
                   <span>{detail.tokenUsage.outputTokens}</span>
                 </>
               )}
             </div>
 
             <div>
-              <h3 className="text-sm font-semibold mb-2">Timeline</h3>
+              <h3 className="text-sm font-semibold mb-2">タイムライン</h3>
               <div className="space-y-2">
                 {buildTimeline(
                   detail.toolCalls,
@@ -202,7 +207,7 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
                       <span
                         className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium ${kindBadgeClass(entry.kind)}`}
                       >
-                        {entry.kind}
+                        {formatTraceCallKind(entry.kind)}
                       </span>
                       <div className="flex-1 min-w-0">
                         <div className="font-medium truncate">{callLabel(entry)}</div>
@@ -228,7 +233,7 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
                         )}
                         {status && (
                           <Badge variant={statusVariant(status)} className="text-xs">
-                            {status}
+                            {formatTraceStatus(status)}
                           </Badge>
                         )}
                       </div>
@@ -239,7 +244,7 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
                   detail.agentCalls.length === 0 &&
                   detail.skillCalls.length === 0 && (
                     <div className="text-muted-foreground text-sm">
-                      No sub-calls recorded.
+                      サブ呼び出しは記録されていません。
                     </div>
                   )}
               </div>

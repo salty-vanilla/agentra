@@ -185,6 +185,9 @@ Restrained, not rounded-friendly.
   - **Line-height** for JA body text should be looser than Latin (~1.7–1.8) for legibility.
   - **Do not apply letter-spacing/tracking to Japanese text** — it harms readability.
   - Keep JA UI labels concise; avoid forced uppercasing (no effect on JA, noisy with EN).
+  - Admin surfaces use Japanese-first fixed UI labels. Preserve canonical technical/data
+    tokens such as Agentra, RAG / KB, API, ID, environment variables, model names,
+    file names, tool/agent/skill names, and raw backend/runtime values.
 - **Numerals:** use tabular/lining figures for tables, metrics, durations, and token
   counts so columns align.
 - Establish a small, restrained heading scale; lean on weight and color (`foreground` vs

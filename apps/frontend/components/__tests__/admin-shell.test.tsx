@@ -21,8 +21,8 @@ describe('admin responsive shell', () => {
   it('keeps the standalone AdminSidebarView renderable for Storybook stories', () => {
     render(<AdminSidebarView currentPath="/admin/users" />);
 
-    expect(screen.getByRole('link', { name: 'Admin Console' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Users/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '管理コンソール' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /ユーザー/ })).toBeInTheDocument();
   });
 
   it('renders a labelled mobile navigation trigger inside the admin shell', () => {
@@ -33,7 +33,7 @@ describe('admin responsive shell', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Open admin navigation' }),
+      screen.getByRole('button', { name: '管理ナビゲーションを開く' }),
     ).toBeInTheDocument();
     expect(screen.getByText('Admin content')).toBeInTheDocument();
   });
@@ -51,10 +51,10 @@ describe('admin responsive shell', () => {
     await waitFor(() =>
       expect(document.querySelector('[data-slot="sidebar"]')).not.toBeInTheDocument(),
     );
-    await user.click(screen.getByRole('button', { name: 'Open admin navigation' }));
+    await user.click(screen.getByRole('button', { name: '管理ナビゲーションを開く' }));
 
     expect(await screen.findByRole('dialog', { name: 'Sidebar' })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Users/ })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /ユーザー/ })).toBeInTheDocument();
   });
 
   it('keeps the desktop admin sidebar inline when the sidebar shortcut fires', () => {

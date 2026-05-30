@@ -42,7 +42,7 @@ export function AdminDashboard() {
   return (
     <div className="flex flex-col min-h-0 h-full gap-4">
       <div className="flex items-center justify-between flex-wrap gap-2 shrink-0">
-        <h1 className="text-xl font-semibold">Observability Dashboard</h1>
+        <h1 className="text-xl font-semibold">可観測性ダッシュボード</h1>
         <PeriodFilter period={period} from={from} to={to} onChange={handlePeriodChange} />
       </div>
 
@@ -52,12 +52,12 @@ export function AdminDashboard() {
         className="min-h-0 min-w-0 flex-1"
       >
         <TabsList className="max-w-full shrink-0 justify-start overflow-x-auto">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="agents">Agents</TabsTrigger>
-          <TabsTrigger value="tools">Tools</TabsTrigger>
-          <TabsTrigger value="skills">Skills</TabsTrigger>
-          <TabsTrigger value="traces">Traces</TabsTrigger>
+          <TabsTrigger value="overview">概要</TabsTrigger>
+          <TabsTrigger value="users">ユーザー</TabsTrigger>
+          <TabsTrigger value="agents">エージェント</TabsTrigger>
+          <TabsTrigger value="tools">ツール</TabsTrigger>
+          <TabsTrigger value="skills">スキル</TabsTrigger>
+          <TabsTrigger value="traces">トレース</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-2 overflow-auto">

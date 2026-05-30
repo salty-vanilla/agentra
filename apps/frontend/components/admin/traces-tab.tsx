@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
+import { formatTraceStatus } from '@/lib/admin-labels';
 import type { AdminTraceListItem } from '@/lib/generated/model';
 import { adminTracesQueryOptions } from '@/lib/query-options';
 import { SearchToolbar } from './search-toolbar';
@@ -35,7 +36,7 @@ const columns = [
     ),
   }),
   helper.accessor('userId', {
-    header: 'User',
+    header: 'ユーザー',
     size: 130,
     enableSorting: false,
     cell: ({ getValue }) => (
@@ -43,7 +44,7 @@ const columns = [
     ),
   }),
   helper.accessor('startedAt', {
-    header: 'Started',
+    header: '開始日時',
     size: 160,
     cell: ({ getValue }) => (
       <span className="text-xs text-muted-foreground">
@@ -52,26 +53,26 @@ const columns = [
     ),
   }),
   helper.accessor('durationMs', {
-    header: 'Duration',
+    header: '所要時間',
     size: 100,
     cell: ({ getValue }) => `${getValue<number>()}ms`,
   }),
   helper.accessor('status', {
-    header: 'Status',
+    header: '状態',
     size: 100,
     cell: ({ getValue }) => {
       const s = getValue<string>();
-      return <Badge variant={statusVariant(s)}>{s}</Badge>;
+      return <Badge variant={statusVariant(s)}>{formatTraceStatus(s)}</Badge>;
     },
   }),
   helper.accessor('totalTokens', {
-    header: 'Tokens',
+    header: 'トークン',
     size: 90,
     cell: ({ getValue }) => getValue<number | undefined>()?.toLocaleString() ?? '—',
   }),
-  helper.accessor('toolCallCount', { header: 'Tools', size: 70 }),
-  helper.accessor('agentCallCount', { header: 'Agents', size: 70 }),
-  helper.accessor('skillCallCount', { header: 'Skills', size: 70 }),
+  helper.accessor('toolCallCount', { header: 'ツール', size: 70 }),
+  helper.accessor('agentCallCount', { header: 'エージェント', size: 70 }),
+  helper.accessor('skillCallCount', { header: 'スキル', size: 70 }),
 ];
 
 function filterTraces(traces: AdminTraceListItem[], query: string): AdminTraceListItem[] {
@@ -156,16 +157,16 @@ export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props
           value={statusFilter}
           onChange={(e) => handleStatusChange(e.target.value)}
         >
-          <option value="">All statuses</option>
-          <option value="success">Success</option>
-          <option value="error">Error</option>
-          <option value="cancelled">Cancelled</option>
+          <option value="">すべての状態</option>
+          <option value="success">成功</option>
+          <option value="error">エラー</option>
+          <option value="cancelled">キャンセル</option>
         </select>
         <SearchToolbar
           value={traceSearch}
           onChange={handleTraceSearchChange}
           onEnter={handleTraceSearchEnter}
-          placeholder="Search trace ID or user ID…"
+          placeholder="Trace ID または User ID で検索..."
           className="w-full sm:w-64"
         />
       </div>
@@ -174,9 +175,11 @@ export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props
         data={filteredTraces}
         columns={columns}
         isLoading={isLoading}
-        error={error ? 'Failed to load traces.' : null}
+        error={error ? 'トレースの読み込みに失敗しました。' : null}
         emptyMessage={
-          traceSearch ? 'No traces match the search.' : 'No data for this period.'
+          traceSearch
+            ? '検索に一致するトレースはありません。'
+            : 'この期間のデータはありません。'
         }
         onRowClick={(t) => onSelectTrace(t.traceId)}
         virtualized
@@ -187,7 +190,7 @@ export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props
       {data?.cursor && (
         <div className="shrink-0">
           <Button variant="outline" size="sm" onClick={loadMore} disabled={isLoading}>
-            Load more
+            さらに読み込む
           </Button>
         </div>
       )}

@@ -21,7 +21,7 @@ vi.mock('@/components/ui/data-table', () => ({
   }) => (
     <div>
       {data.length === 0 ? (
-        <span>{emptyMessage ?? 'No data for this period.'}</span>
+        <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
       ) : (
         data.map((row, i) => (
           <button key={i} type="button" onClick={() => onRowClick?.(row)}>
@@ -82,7 +82,7 @@ describe('UsersTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'alice');
-    await user.click(screen.getByRole('button', { name: /clear search/i }));
+    await user.click(screen.getByRole('button', { name: /検索条件をクリア/ }));
     expect(screen.getByText(alice.userId)).toBeInTheDocument();
     expect(screen.getByText(bob.userId)).toBeInTheDocument();
   });
@@ -91,13 +91,13 @@ describe('UsersTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'zzznomatch');
-    expect(screen.getByText('No users match the search.')).toBeInTheDocument();
+    expect(screen.getByText('検索に一致するユーザーはいません。')).toBeInTheDocument();
   });
 
   it('opens UserDetailDrawer when a row is clicked', async () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByText(alice.userId));
-    expect(screen.getByText('User Detail')).toBeInTheDocument();
+    expect(screen.getByText('ユーザー詳細')).toBeInTheDocument();
   });
 });

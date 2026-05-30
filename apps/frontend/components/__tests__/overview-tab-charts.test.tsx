@@ -132,13 +132,16 @@ describe('OverviewTab charts', () => {
     setupHandlers();
     renderWithProviders(<OverviewTab from="2026-05-25" to="2026-05-25" />);
 
-    await waitFor(() => {
-      expect(screen.getAllByText('Requests').length).toBeGreaterThan(0);
-    });
+    await waitFor(
+      () => {
+        expect(screen.getAllByText('リクエスト').length).toBeGreaterThan(0);
+      },
+      { timeout: 3_000 },
+    );
 
-    expect(screen.getByText('Latency')).toBeInTheDocument();
-    expect(screen.getByText('Error / Failure Rate')).toBeInTheDocument();
-    expect(screen.getByText('Tokens')).toBeInTheDocument();
+    expect(screen.getByText('レイテンシ')).toBeInTheDocument();
+    expect(screen.getByText('エラー / 失敗率')).toBeInTheDocument();
+    expect(screen.getByText('トークン')).toBeInTheDocument();
   });
 
   it('renders ranking chart headings', async () => {
@@ -146,12 +149,12 @@ describe('OverviewTab charts', () => {
     renderWithProviders(<OverviewTab from="2026-05-25" to="2026-05-25" />);
 
     await waitFor(() => {
-      expect(screen.getByText('Top Agents by Calls')).toBeInTheDocument();
+      expect(screen.getByText('呼び出し数上位エージェント')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Top Tools by Calls')).toBeInTheDocument();
-    expect(screen.getByText('Top Skills by Requests')).toBeInTheDocument();
-    expect(screen.getByText('Top Users by Requests')).toBeInTheDocument();
+    expect(screen.getByText('呼び出し数上位ツール')).toBeInTheDocument();
+    expect(screen.getByText('リクエスト数上位スキル')).toBeInTheDocument();
+    expect(screen.getByText('リクエスト数上位ユーザー')).toBeInTheDocument();
   });
 
   it('shows empty state when timeseries has no buckets', async () => {
@@ -161,7 +164,9 @@ describe('OverviewTab charts', () => {
     renderWithProviders(<OverviewTab from="2026-05-25" to="2026-05-25" />);
 
     await waitFor(() => {
-      expect(screen.getAllByText('No data for this period.').length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByText('この期間のデータはありません。').length,
+      ).toBeGreaterThan(0);
     });
   });
 });

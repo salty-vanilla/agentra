@@ -17,20 +17,20 @@ type Props = {
 const helper = createColumnHelper<AdminSkillStats>();
 
 const columns = [
-  helper.accessor('skillName', { header: 'Skill', size: 180 }),
-  helper.accessor('requestCount', { header: 'Requests', size: 100 }),
+  helper.accessor('skillName', { header: 'スキル', size: 180 }),
+  helper.accessor('requestCount', { header: 'リクエスト', size: 100 }),
   helper.accessor('avgDurationMs', {
-    header: 'Avg Duration',
+    header: '平均時間',
     size: 110,
     cell: ({ getValue }) => `${getValue<number>()}ms`,
   }),
   helper.accessor('totalTokens', {
-    header: 'Tokens',
+    header: 'トークン',
     size: 100,
     cell: ({ getValue }) => getValue<number>().toLocaleString(),
   }),
   helper.accessor('errorRate', {
-    header: 'Error Rate',
+    header: 'エラー率',
     size: 100,
     cell: ({ getValue }) => `${(getValue<number>() * 100).toFixed(1)}%`,
   }),
@@ -58,7 +58,7 @@ export function SkillsTab({ from, to }: Props) {
         <SearchToolbar
           value={search}
           onChange={setSearch}
-          placeholder="Search by skill name..."
+          placeholder="スキル名で検索..."
           className="w-full sm:w-72"
         />
       </div>
@@ -66,8 +66,10 @@ export function SkillsTab({ from, to }: Props) {
         data={filteredSkills}
         columns={columns}
         isLoading={isLoading}
-        error={error ? 'Failed to load skills.' : null}
-        emptyMessage={search ? 'No skills match the search.' : 'No data for this period.'}
+        error={error ? 'スキルの読み込みに失敗しました。' : null}
+        emptyMessage={
+          search ? '検索に一致するスキルはありません。' : 'この期間のデータはありません。'
+        }
         onRowClick={(skill) => setSelected(skill)}
         virtualized
         height="100%"

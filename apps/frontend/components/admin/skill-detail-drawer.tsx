@@ -15,29 +15,29 @@ export function SkillDetailDrawer({ skill, onClose }: Props) {
     <Sheet open={skill !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>Skill Detail</SheetTitle>
+          <SheetTitle>スキル詳細</SheetTitle>
         </SheetHeader>
 
         {skill && (
           <div className="px-4 space-y-1">
             <dl>
-              <DetailRow label="Skill" value={skill.skillName} />
-              <DetailRow label="Requests" value={skill.requestCount.toLocaleString()} />
-              <DetailRow label="Avg Duration" value={`${skill.avgDurationMs}ms`} />
+              <DetailRow label="スキル" value={skill.skillName} />
+              <DetailRow label="リクエスト" value={skill.requestCount.toLocaleString()} />
+              <DetailRow label="平均時間" value={`${skill.avgDurationMs}ms`} />
               <DetailRow
-                label="Total Tokens"
+                label="合計トークン"
                 value={skill.totalTokens.toLocaleString()}
               />
               <DetailRow
-                label="Error Rate"
+                label="エラー率"
                 value={`${(skill.errorRate * 100).toFixed(1)}%`}
               />
             </dl>
 
             <div className="pt-4">
               <Button variant="outline" disabled>
-                View related traces →
-                <span className="ml-2 text-xs text-muted-foreground">(coming soon)</span>
+                関連トレースを表示
+                <span className="ml-2 text-xs text-muted-foreground">(準備中)</span>
               </Button>
             </div>
           </div>

@@ -76,7 +76,7 @@ export const SelfAdminActionsDisabled: Story = {
     docs: {
       description: {
         story:
-          '"Remove Admin" and "Disable" buttons are disabled when the drawer user is the current user.',
+          '表示中のユーザーが自分自身の場合、管理者権限の削除と無効化ボタンは無効になります。',
       },
     },
   },
@@ -94,7 +94,7 @@ export const LastAdminRemoveBlocked: Story = {
     docs: {
       description: {
         story:
-          'API returns 409 when removing the last enabled admin. Error toast shown; drawer stays open.',
+          '最後の有効な管理者を削除しようとすると API が 409 を返します。エラートーストが表示され、ドロワーは開いたままになります。',
       },
     },
   },
@@ -112,7 +112,7 @@ export const DisabledUserActions: Story = {
     docs: {
       description: {
         story:
-          '"Enable" button shown and "Disable" hidden. Status badge shows "Disabled".',
+          '有効化ボタンが表示され、無効化ボタンは非表示になります。状態バッジは無効を示します。',
       },
     },
   },
@@ -130,7 +130,7 @@ export const ConfirmPromoteAdmin: Story = {
     docs: {
       description: {
         story:
-          'Clicking "Admin に昇格" opens UserActionConfirmDialog before calling the API.',
+          '管理者に昇格をクリックすると、API 呼び出し前に UserActionConfirmDialog が開きます。',
       },
     },
   },
@@ -147,7 +147,7 @@ export const ConfirmDisableUser: Story = {
     },
     docs: {
       description: {
-        story: 'Disable action shows a destructive confirmation dialog.',
+        story: '無効化操作では destructive な確認ダイアログを表示します。',
       },
     },
   },
@@ -175,7 +175,7 @@ export const ConfirmResendInvite: Story = {
     docs: {
       description: {
         story:
-          'Resend Invite dialog includes the caveat: "すでにアカウントを有効化済みの場合は失敗することがあります".',
+          '招待メール再送ダイアログには「すでにアカウントを有効化済みの場合は失敗することがあります」という注意文を表示します。',
       },
     },
   },
@@ -192,7 +192,7 @@ export const RemoveAdminSuccess: Story = {
     },
     docs: {
       description: {
-        story: 'Removing admin role — confirmation dialog then success toast.',
+        story: '管理者権限の削除では、確認ダイアログの後に成功トーストを表示します。',
       },
     },
   },
@@ -206,7 +206,7 @@ export const NoUsageData: Story = {
   parameters: {
     docs: {
       description: {
-        story: 'User without observability data — usage section is hidden.',
+        story: '可観測性データがないユーザーでは利用状況セクションを非表示にします。',
       },
     },
   },

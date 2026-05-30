@@ -50,7 +50,7 @@ export function DataTable<T>({
   columns,
   isLoading,
   error,
-  emptyMessage = 'No data for this period.',
+  emptyMessage = 'この期間のデータはありません。',
   onRowClick,
   virtualized: isVirtualized = false,
   height,
@@ -106,7 +106,7 @@ export function DataTable<T>({
   ) : showLoading ? (
     <span className="inline-flex items-center gap-2 text-muted-foreground">
       <Loader2Icon className="size-3.5 animate-spin" />
-      Loading...
+      読み込み中...
     </span>
   ) : showEmpty ? (
     <span className="text-muted-foreground">{emptyMessage}</span>

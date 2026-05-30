@@ -40,7 +40,7 @@ export const Default: Story = {
     docs: {
       description: {
         story:
-          'UserTable-based user list. Admin users show an Admin badge. Users without observability data show dashes for usage columns.',
+          'ユーザー一覧。管理者は管理者バッジで表示し、可観測性データがないユーザーの利用状況列はダッシュで表示します。',
       },
     },
   },
@@ -52,7 +52,9 @@ export const Loading: Story = {
       handlers: [],
     },
     docs: {
-      description: { story: 'No MSW handler — request hangs, showing loading state.' },
+      description: {
+        story: 'MSW handler なしでリクエストを保留し、読み込み状態を表示します。',
+      },
     },
   },
 };
@@ -208,7 +210,7 @@ export const InviteDialogAdminRole: Story = {
     msw: {
       handlers: [storybookAdminUsersListHandler, storybookInviteAdminUserSuccessHandler],
     },
-    docs: { description: { story: 'role=Admin 選択時の warning 表示。' } },
+    docs: { description: { story: 'role=admin 選択時の warning 表示。' } },
   },
 };
 

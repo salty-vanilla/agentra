@@ -26,8 +26,8 @@ export function AdminShell({ children, sidebar = <AdminSidebar /> }: AdminShellP
 
         <SidebarInset className="min-w-0 bg-background">
           <header className="flex h-14 shrink-0 items-center gap-2 border-b border-border bg-background px-4 md:hidden">
-            <SidebarTrigger aria-label="Open admin navigation" className="-ml-1" />
-            <span className="truncate font-semibold text-sm">Admin Console</span>
+            <SidebarTrigger aria-label="管理ナビゲーションを開く" className="-ml-1" />
+            <span className="truncate font-semibold text-sm">管理コンソール</span>
           </header>
 
           <div className="min-h-0 flex-1 overflow-auto">{children}</div>

@@ -122,7 +122,7 @@ export function ChartLegendContent({ payload }: LegendContentProps) {
 // ── ChartEmptyState ───────────────────────────────────────────────────────────
 
 export function ChartEmptyState({
-  message = 'No data for this period.',
+  message = 'この期間のデータはありません。',
 }: {
   message?: string;
 }) {

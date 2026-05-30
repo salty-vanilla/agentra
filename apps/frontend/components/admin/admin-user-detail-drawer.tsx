@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { formatAdminRole, formatUserEnabled } from '@/lib/admin-labels';
 import type { AdminUser, AdminUserActionResponse } from '@/lib/api';
 import {
   disableAdminUser,
@@ -85,8 +86,8 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
     },
     onSuccess: (data, action) => {
       const labels: Record<ActionType, string> = {
-        promote: 'Admin に昇格しました',
-        'remove-admin': 'Admin 権限を削除しました',
+        promote: '管理者に昇格しました',
+        'remove-admin': '管理者権限を削除しました',
         disable: 'ユーザーを無効にしました',
         enable: 'ユーザーを有効にしました',
         'resend-invite': '招待メールを再送しました',
@@ -106,14 +107,14 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
   function openConfirm(action: ActionType) {
     const configs: Record<ActionType, Omit<ConfirmState, 'action'>> = {
       promote: {
-        title: 'Admin に昇格',
-        description: 'このユーザーを Admin グループに追加します。',
+        title: '管理者に昇格',
+        description: 'このユーザーを管理者グループに追加します。',
         confirmLabel: '昇格する',
         isDestructive: false,
       },
       'remove-admin': {
-        title: 'Admin 権限を削除',
-        description: 'このユーザーを Admin グループから削除します。',
+        title: '管理者権限を削除',
+        description: 'このユーザーを管理者グループから削除します。',
         confirmLabel: '削除する',
         isDestructive: true,
       },
@@ -153,7 +154,7 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
       <Sheet open={user !== null} onOpenChange={(open) => !open && onClose()}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>User Detail</SheetTitle>
+            <SheetTitle>ユーザー詳細</SheetTitle>
           </SheetHeader>
 
           {user && (
@@ -169,26 +170,26 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                   label="Sub"
                   value={<span className="font-mono text-xs break-all">{user.sub}</span>}
                 />
-                <DetailRow label="Email" value={user.email} />
+                <DetailRow label="メールアドレス" value={user.email} />
                 <DetailRow
-                  label="Role"
+                  label="ロール"
                   value={
                     <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                      {user.role === 'admin' ? 'Admin' : 'User'}
+                      {formatAdminRole(user.role)}
                     </Badge>
                   }
                 />
                 <DetailRow
-                  label="Status"
+                  label="状態"
                   value={
                     <Badge variant={user.enabled ? 'success' : 'destructive'}>
-                      {user.enabled ? 'Active' : 'Disabled'}
+                      {formatUserEnabled(user.enabled)}
                     </Badge>
                   }
                 />
-                <DetailRow label="Created" value={formatDate(user.createdAt)} />
+                <DetailRow label="作成日" value={formatDate(user.createdAt)} />
                 {user.lastSeenAt && (
-                  <DetailRow label="Last Seen" value={formatDate(user.lastSeenAt)} />
+                  <DetailRow label="最終利用" value={formatDate(user.lastSeenAt)} />
                 )}
               </dl>
 
@@ -197,40 +198,38 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                 user.errorRate !== undefined) && (
                 <>
                   <p className="text-xs font-medium text-muted-foreground pt-4 pb-1">
-                    Usage (last 30 days)
+                    利用状況 (過去30日)
                   </p>
                   <dl>
                     {user.requestCount !== undefined && (
                       <DetailRow
-                        label="Requests"
+                        label="リクエスト"
                         value={user.requestCount.toLocaleString()}
                       />
                     )}
                     {user.totalTokens !== undefined && (
                       <DetailRow
-                        label="Total Tokens"
+                        label="合計トークン"
                         value={user.totalTokens.toLocaleString()}
                       />
                     )}
                     {user.errorRate !== undefined && (
                       <DetailRow
-                        label="Error Rate"
+                        label="エラー率"
                         value={`${(user.errorRate * 100).toFixed(1)}%`}
                       />
                     )}
                     {user.mostUsedAgent && (
-                      <DetailRow label="Top Agent" value={user.mostUsedAgent} />
+                      <DetailRow label="上位エージェント" value={user.mostUsedAgent} />
                     )}
                     {user.mostUsedTool && (
-                      <DetailRow label="Top Tool" value={user.mostUsedTool} />
+                      <DetailRow label="上位ツール" value={user.mostUsedTool} />
                     )}
                   </dl>
                 </>
               )}
 
-              <p className="text-xs font-medium text-muted-foreground pt-4 pb-1">
-                Actions
-              </p>
+              <p className="text-xs font-medium text-muted-foreground pt-4 pb-1">操作</p>
               <div className="flex flex-col gap-2">
                 {user.role === 'user' && (
                   <Button
@@ -239,7 +238,7 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                     onClick={() => openConfirm('promote')}
                     disabled={mutation.isPending}
                   >
-                    Admin に昇格
+                    管理者に昇格
                   </Button>
                 )}
                 {user.role === 'admin' && (
@@ -248,9 +247,9 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                     size="sm"
                     onClick={() => openConfirm('remove-admin')}
                     disabled={mutation.isPending || isSelf}
-                    title={isSelf ? '自分自身の Admin 権限は削除できません' : undefined}
+                    title={isSelf ? '自分自身の管理者権限は削除できません' : undefined}
                   >
-                    Admin 権限を削除
+                    管理者権限を削除
                   </Button>
                 )}
                 {user.enabled && (
@@ -286,7 +285,7 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
 
               <div className="pt-4">
                 <Button variant="outline" onClick={handleViewTraces}>
-                  View traces
+                  トレースを表示
                 </Button>
               </div>
             </div>
