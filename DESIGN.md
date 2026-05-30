@@ -131,8 +131,11 @@ Token-level deltas are enumerated in
 
 > **Dark mode is a first-class design target.** Every surface, state, and component in
 > this guide must be designed for both themes; the current class-based strategy
-> (`@custom-variant dark`) stays. Dark-mode **implementation and verification** is
-> tracked by **#337** — design here, verify there.
+> (`@custom-variant dark`) stays. Dark-mode **implementation and verification** landed in
+> **#337**: a `next-themes` provider toggles `.dark` on `<html>` and a visible
+> Light/Dark/System switch ships in the chat and admin chrome. See
+> [`apps/frontend/docs/dark-mode.md`](apps/frontend/docs/dark-mode.md) for the toggle
+> decision and verification details.
 
 ### Semantic color usage
 

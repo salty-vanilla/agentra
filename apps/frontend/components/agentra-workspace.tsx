@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { Thread } from '@/components/assistant-ui/thread';
 import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import {
   classifyChatError,
@@ -793,6 +794,7 @@ export function AgentraWorkspace() {
                 >
                   {healthLabel[health]}
                 </span>
+                <ThemeToggle />
               </div>
             </header>
 
