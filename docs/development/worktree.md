@@ -1,12 +1,26 @@
-# Worktree workflow (GTR + Codex App bridge)
+# Worktree workflow (Claude Code hook + GTR + Codex App bridge)
 
-Agentra runs Claude Code, Codex CLI, and the Codex App side-by-side on parallel `git worktree`s. To keep `.env`, `direnv`, `pnpm install`, and per-worktree state from drifting between those tools, we drive worktree creation through [`git-worktree-runner`](https://github.com/coderabbitai/git-worktree-runner) (GTR) and have the Codex App's Local Environment call the same setup script.
+Agentra runs Claude Code, Codex CLI, and the Codex App side-by-side on parallel `git worktree`s. To keep `.env`, `direnv`, `pnpm install`, and per-worktree state consistent across all tools, every worktree creation path runs `scripts/worktree/setup.sh`.
 
 ```
-git gtr new ──┐
-              ├──► scripts/worktree/setup.sh
-Codex App ────┘
+Claude Code (WorktreeCreate hook) ──┐
+                                    │
+git gtr new ────────────────────────┼──► scripts/worktree/setup.sh
+                                    │
+Codex App ──────────────────────────┘
 ```
+
+## Claude Code hook
+
+The `WorktreeCreate` hook (`.claude/hooks/worktree-create.sh`) is registered in `.claude/settings.json` and **replaces** Claude Code's default worktree creation behavior. When Claude Code creates a worktree (e.g., via the Agent tool with `isolation: "worktree"`), the hook:
+
+1. Reads the worktree `name` from stdin JSON
+2. Creates `.worktrees/<name>` via `git worktree add`
+3. Copies gitignored bootstrap files from the repo root (`.env`, `.env.local`, `.envrc.local`, `.npmrc`)
+4. Runs `scripts/worktree/setup.sh` with `CODEX_WORKTREE_PATH` and `CODEX_SOURCE_TREE_PATH` set
+5. Outputs only the absolute worktree path to stdout (all other output goes to stderr)
+
+> **Note for hook authors**: the hook's stdout is consumed by Claude Code to locate the worktree. Never write anything other than the path to stdout. All progress and error messages must go to stderr.
 
 ## One-time setup
 
