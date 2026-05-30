@@ -15,11 +15,22 @@
 set -euo pipefail
 umask 077
 
+# ── Parse flags ───────────────────────────────────────────────────────────────
+SKIP_INSTALL=false
+for arg in "$@"; do
+  case "$arg" in
+    --no-install) SKIP_INSTALL=true ;;
+    *) echo "warning: unknown argument '$arg'; ignoring" >&2 ;;
+  esac
+done
+
 # ── Resolve worktree + source root ───────────────────────────────────────────
-WORKTREE_ROOT="${CODEX_WORKTREE_PATH:-$(pwd)}"
+# Priority: AGENTRA_WORKTREE_ROOT > CODEX_WORKTREE_PATH > $(pwd)
+WORKTREE_ROOT="${AGENTRA_WORKTREE_ROOT:-${CODEX_WORKTREE_PATH:-$(pwd)}}"
 cd "$WORKTREE_ROOT"
 
-SOURCE_ROOT="${CODEX_SOURCE_TREE_PATH:-${AGENTRA_SOURCE_ROOT:-}}"
+# Priority: AGENTRA_SOURCE_ROOT > CODEX_SOURCE_TREE_PATH > (git common-dir resolution)
+SOURCE_ROOT="${AGENTRA_SOURCE_ROOT:-${CODEX_SOURCE_TREE_PATH:-}}"
 if [ -z "$SOURCE_ROOT" ]; then
   # In a regular `git worktree`, the common dir of a worktree points at the
   # source repo's `.git`. dirname of that gives the source working tree.
@@ -107,15 +118,19 @@ else
 fi
 
 # ── Node toolchain ───────────────────────────────────────────────────────────
-if ! command -v pnpm >/dev/null 2>&1; then
-  echo "error: pnpm is not available. Run 'corepack enable' or 'npm install -g pnpm@10.9.0'." >&2
-  exit 1
-fi
-
-if command -v direnv >/dev/null 2>&1; then
-  direnv exec . pnpm install --frozen-lockfile
+if [ "$SKIP_INSTALL" = "true" ]; then
+  echo "skip pnpm install (--no-install)"
 else
-  pnpm install --frozen-lockfile
+  if ! command -v pnpm >/dev/null 2>&1; then
+    echo "error: pnpm is not available. Run 'corepack enable' or 'npm install -g pnpm@10.9.0'." >&2
+    exit 1
+  fi
+
+  if command -v direnv >/dev/null 2>&1; then
+    direnv exec . pnpm install --frozen-lockfile
+  else
+    pnpm install --frozen-lockfile
+  fi
 fi
 
 echo "worktree setup complete: $SAFE_NAME (stage: $AGENTRA_STAGE_VALUE)"

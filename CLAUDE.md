@@ -134,7 +134,17 @@ pnpm validate:openapi          # Validate OpenAPI schema
 
 ## Issue-Driven Parallel Development
 
-For manual worktree creation, prefer `git gtr new <N>-<slug>` over `git worktree add` — the `.gtrconfig` `postCreate` hook bootstraps `.env`, `.env.worktree`, `direnv`, and `pnpm install` automatically. See [`docs/development/worktree.md`](docs/development/worktree.md). The `github-issue-to-pr` skill continues to work with both flows.
+### Worktree initialization (enforced by hook)
+
+Claude Code worktree creation is handled by `.claude/hooks/worktree-create.sh` via the `WorktreeCreate` hook. The hook:
+1. Creates the git worktree under `.worktrees/<name>`
+2. Copies gitignored bootstrap files (`.env`, `.env.local`, `.envrc.local`, `.npmrc`) from the repo root
+3. Runs `scripts/worktree/setup.sh` (env files, direnv, pnpm install)
+4. Returns the worktree path to Claude Code
+
+This means `scripts/worktree/setup.sh` always runs when Claude Code creates a worktree — no manual step is needed.
+
+For **manual worktree creation** (outside Claude Code), use `git gtr new <N>-<slug>` — the `.gtrconfig` `postCreate` hook runs the same `setup.sh`. Or run `bash scripts/worktree/setup.sh` directly inside the worktree directory. See [`docs/development/worktree.md`](docs/development/worktree.md).
 
 ### Workflow overview
 
