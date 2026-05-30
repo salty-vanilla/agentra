@@ -21,5 +21,11 @@ beforeAll(() => mswServer.listen({ onUnhandledRequest: 'warn' }));
 afterEach(() => {
   cleanup();
   mswServer.resetHandlers();
+  // Reset theme side-effects: next-themes mutates the <html> class and
+  // color-scheme style and persists the choice to localStorage. Clear them so
+  // theme-aware tests never leak into later (light-assuming) tests.
+  document.documentElement.classList.remove('light', 'dark');
+  document.documentElement.style.colorScheme = '';
+  window.localStorage.removeItem('theme');
 });
 afterAll(() => mswServer.close());
