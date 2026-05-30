@@ -1,0 +1,239 @@
+name: Preview Environment
+run-name: preview ${{ inputs.action }} / ${{ inputs.stage }} / ${{ inputs.profile }}
+
+# Manual, controlled operation of disposable AWS preview environments.
+# All safety logic (stage validation, explicit stack targeting, destroy guards)
+# lives in the `pnpm preview:*` scripts under scripts/preview/. This workflow only
+# orchestrates them; it never invokes raw whole-account CDK mutation (cdk
+# deploy/destroy against every stack) and never calls aws/cdk directly.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Preview action to run
+        type: choice
+        required: true
+        options:
+          - plan
+          - deploy
+          - smoke
+          - destroy
+      stage:
+        description: Preview stage (pr-<n> | sandbox-<user>-<yyyymmddhhmm> | local-<user>-<sha>)
+        required: true
+      profile:
+        description: Preview profile
+        type: choice
+        default: minimal-api
+        options:
+          - minimal-api
+          - backend-ai
+          - full
+      ttlHours:
+        description: Preview TTL in hours (1-24)
+        required: false
+        default: "8"
+      prNumber:
+        description: Optional PR number to post a status comment on
+        required: false
+
+permissions:
+  id-token: write # GitHub OIDC to assume the preview AWS role
+  contents: read
+  actions: read # read Actions artifacts to restore the deploy manifest for smoke
+  pull-requests: write # optional PR status comment
+
+# Serialize all operations against the same stage. deploy and destroy running
+# concurrently against one stage is unsafe, so never cancel in progress.
+concurrency:
+  group: preview-${{ inputs.stage }}
+  cancel-in-progress: false
+
+jobs:
+  preview:
+    name: preview ${{ inputs.action }}
+    runs-on: ubuntu-latest
+    environment: preview
+    steps:
+      - name: Require preview role ARN
+        env:
+          ROLE_ARN: ${{ secrets.AWS_PREVIEW_ROLE_ARN }}
+        run: |
+          if [ -z "$ROLE_ARN" ]; then
+            echo "::error::AWS_PREVIEW_ROLE_ARN secret is not configured. Set it to the OIDC preview role ARN (e.g. agentra-github-preview-deploy-role)." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.9.0
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_PREVIEW_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
+          role-session-name: agentra-preview-${{ inputs.stage }}
+
+      # Standalone smoke runs on a fresh runner with no manifest on disk. Restore
+      # it from the latest successful deploy artifact for this stage. `gh run list
+      # --json` does not expose artifacts, so resolve a concrete run id by checking
+      # each candidate's artifacts via the REST endpoint (needs `actions: read`),
+      # then download by that id.
+      - name: Restore manifest from latest deploy artifact
+        if: inputs.action == 'smoke'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          STAGE: ${{ inputs.stage }}
+        run: |
+          set -euo pipefail
+          ARTIFACT_NAME="preview-${STAGE}-deploy"
+          DEST=".agentra/preview/${STAGE}"
+          echo "Searching for latest successful deploy run with artifact ${ARTIFACT_NAME}..."
+          CANDIDATES=$(gh run list --workflow preview-environment.yml --status success \
+            --limit 50 --json databaseId --jq '.[].databaseId')
+          RUN_ID=""
+          for CANDIDATE in $CANDIDATES; do
+            if gh api "repos/${REPO}/actions/runs/${CANDIDATE}/artifacts" \
+                 --jq '.artifacts[].name' | grep -qx "${ARTIFACT_NAME}"; then
+              RUN_ID="$CANDIDATE"
+              break
+            fi
+          done
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No deploy artifact ${ARTIFACT_NAME} found in recent runs. Run the deploy action for stage ${STAGE} first." >&2
+            exit 1
+          fi
+          echo "Found deploy artifact in run ${RUN_ID}; downloading..."
+          mkdir -p "$DEST"
+          gh run download "$RUN_ID" -n "${ARTIFACT_NAME}" -D "$DEST"
+          if [ ! -f "${DEST}/manifest.json" ]; then
+            echo "::error::Restored artifact for ${STAGE} has no manifest.json. Re-run deploy." >&2
+            exit 1
+          fi
+          echo "Restored ${DEST}/manifest.json"
+
+      # Single dispatch step. Inputs are passed via env (never interpolated into
+      # the script body) to avoid shell injection. The step always exits 0 after
+      # recording the command's exit code; a later step re-asserts it so artifacts
+      # and the PR comment are produced even on failure.
+      - name: Run preview ${{ inputs.action }}
+        id: run
+        env:
+          ACTION: ${{ inputs.action }}
+          STAGE: ${{ inputs.stage }}
+          PROFILE: ${{ inputs.profile }}
+          TTL: ${{ inputs.ttlHours }}
+          SMOKE_JWT_TOKEN: ${{ secrets.SMOKE_JWT_TOKEN }}
+          AGENTRA_PREVIEW_ALLOWED_ACCOUNTS: ${{ vars.AGENTRA_PREVIEW_ALLOWED_ACCOUNTS }}
+        run: |
+          set +e
+          case "$ACTION" in
+            plan)
+              pnpm preview:plan --stage "$STAGE" --profile "$PROFILE" --ttl-hours "$TTL" --source github-actions
+              ;;
+            deploy)
+              pnpm preview:deploy --stage "$STAGE" --profile "$PROFILE" --ttl-hours "$TTL" --source github-actions \
+                && pnpm preview:outputs --stage "$STAGE"
+              ;;
+            smoke)
+              pnpm preview:smoke --stage "$STAGE"
+              ;;
+            destroy)
+              pnpm preview:destroy --stage "$STAGE" --profile "$PROFILE" --confirm "$STAGE"
+              ;;
+            *)
+              echo "::error::Unknown action: $ACTION" >&2
+              exit 2
+              ;;
+          esac
+          CODE=$?
+          if [ "$CODE" -eq 0 ]; then
+            echo "status=success" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=failed" >> "$GITHUB_OUTPUT"
+          fi
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Upload preview artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: preview-${{ inputs.stage }}-${{ inputs.action }}
+          path: .agentra/preview/${{ inputs.stage }}/
+          if-no-files-found: warn
+          retention-days: 14
+
+      # Best-effort PR status comment. An invalid prNumber only skips the comment;
+      # it never fails or blocks the plan/deploy/smoke/destroy result.
+      - name: Comment preview status on PR
+        if: always() && inputs.prNumber != ''
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ inputs.prNumber }}
+          STAGE: ${{ inputs.stage }}
+          PROFILE: ${{ inputs.profile }}
+          ACTION: ${{ inputs.action }}
+          STATUS: ${{ steps.run.outputs.status }}
+          ARTIFACT: preview-${{ inputs.stage }}-${{ inputs.action }}
+        with:
+          script: |
+            const prNumber = Number(process.env.PR_NUMBER);
+            if (!Number.isInteger(prNumber) || prNumber <= 0) {
+              core.info(`Skipping PR comment: invalid prNumber "${process.env.PR_NUMBER}".`);
+              return;
+            }
+            const stage = process.env.STAGE;
+            const status = process.env.STATUS || 'failed';
+            const marker = `<!-- agentra-preview:${stage} -->`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              marker,
+              '### Preview environment',
+              '',
+              `- **Stage:** \`${stage}\``,
+              `- **Profile:** \`${process.env.PROFILE}\``,
+              `- **Action:** \`${process.env.ACTION}\``,
+              `- **Status:** ${status}`,
+              `- **Artifact:** \`${process.env.ARTIFACT}\``,
+              `- **Run:** ${runUrl}`,
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: prNumber,
+              per_page: 100,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+            }
+
+      # Re-assert the preview command's exit code so the job reflects real
+      # success/failure after artifacts and the PR comment have been handled.
+      - name: Reflect preview command status
+        if: always()
+        env:
+          EXIT_CODE: ${{ steps.run.outputs.exit_code }}
+        run: |
+          CODE="${EXIT_CODE:-1}"
+          if [ "$CODE" != "0" ]; then
+            echo "::error::Preview ${{ inputs.action }} for stage ${{ inputs.stage }} failed (exit ${CODE})." >&2
+          fi
+          exit "$CODE"
