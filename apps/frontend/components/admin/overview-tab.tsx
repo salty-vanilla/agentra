@@ -41,14 +41,14 @@ type StatCardProps = { label: string; value: string };
 
 function StatCard({ label, value }: StatCardProps) {
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
+        <CardTitle className="text-wrap text-sm font-medium leading-snug text-muted-foreground">
           {label}
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">{value}</div>
+        <div className="break-words text-xl font-bold sm:text-2xl">{value}</div>
       </CardContent>
     </Card>
   );

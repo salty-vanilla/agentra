@@ -161,9 +161,9 @@ export function AdminUsersPage() {
           value={search}
           onChange={setSearch}
           placeholder="Search by email, user ID, sub, or role..."
-          className="w-80"
+          className="w-full sm:w-80"
         />
-        <div className="flex gap-1">
+        <div className="flex flex-wrap gap-1">
           {ROLE_OPTIONS.map((opt) => (
             <Button
               key={opt}
@@ -175,7 +175,7 @@ export function AdminUsersPage() {
             </Button>
           ))}
         </div>
-        <span className="text-xs text-muted-foreground ml-auto">
+        <span className="text-xs text-muted-foreground sm:ml-auto">
           Usage stats: last 30 days
         </span>
       </div>

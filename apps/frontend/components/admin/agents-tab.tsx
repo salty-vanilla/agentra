@@ -79,7 +79,7 @@ export function AgentsTab({ from, to }: Props) {
           value={search}
           onChange={setSearch}
           placeholder="Search by agent name or related tools..."
-          className="w-72"
+          className="w-full sm:w-72"
         />
       </div>
       <DataTable

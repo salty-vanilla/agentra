@@ -121,7 +121,7 @@ export function UsersTab({ from, to }: Props) {
           value={search}
           onChange={setSearch}
           placeholder="Search by user ID, role, top agent, or top tool..."
-          className="w-72"
+          className="w-full sm:w-72"
         />
       </div>
       <DataTable

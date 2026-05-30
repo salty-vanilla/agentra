@@ -142,4 +142,28 @@ describe('DataTable', () => {
     expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
     expect(screen.getByText('Alice')).toBeInTheDocument();
   });
+
+  it('sets a table min-width from column sizes so narrow containers can scroll', () => {
+    const sizedColumns: ColumnDef<Row>[] = [
+      { accessorKey: 'id', header: 'ID', size: 120 },
+      { accessorKey: 'name', header: 'Name', size: 220 },
+      { accessorKey: 'count', header: 'Count', size: 90 },
+    ];
+
+    const { container } = render(<DataTable data={data} columns={sizedColumns} />);
+    expect(container.querySelector('table')).toHaveStyle({ minWidth: '430px' });
+  });
+
+  it('sets the same column-size min-width for virtualized tables', () => {
+    const sizedColumns: ColumnDef<Row>[] = [
+      { accessorKey: 'id', header: 'ID', size: 120 },
+      { accessorKey: 'name', header: 'Name', size: 220 },
+      { accessorKey: 'count', header: 'Count', size: 90 },
+    ];
+
+    const { container } = render(
+      <DataTable data={data} columns={sizedColumns} virtualized height={120} />,
+    );
+    expect(container.querySelector('table')).toHaveStyle({ minWidth: '430px' });
+  });
 });

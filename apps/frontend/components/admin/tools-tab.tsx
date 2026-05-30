@@ -67,7 +67,7 @@ export function ToolsTab({ from, to }: Props) {
           value={search}
           onChange={setSearch}
           placeholder="Search by tool name or last error..."
-          className="w-72"
+          className="w-full sm:w-72"
         />
       </div>
       <DataTable

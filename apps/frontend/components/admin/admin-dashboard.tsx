@@ -46,8 +46,12 @@ export function AdminDashboard() {
         <PeriodFilter period={period} from={from} to={to} onChange={handlePeriodChange} />
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 min-h-0">
-        <TabsList className="shrink-0">
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="min-h-0 min-w-0 flex-1"
+      >
+        <TabsList className="max-w-full shrink-0 justify-start overflow-x-auto">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="users">Users</TabsTrigger>
           <TabsTrigger value="agents">Agents</TabsTrigger>
