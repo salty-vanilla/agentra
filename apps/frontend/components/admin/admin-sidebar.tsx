@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { BarChart3, BookOpen, Bot, Settings, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ThemeToggle } from '@/components/theme-toggle';
 import { isAdminConsoleActive, isNavItemActive } from '@/lib/admin-routes';
 import { kbStatusQueryOptions } from '@/lib/query-options';
 import { cn } from '@/lib/utils';
@@ -94,6 +95,10 @@ export function AdminSidebarView({
           active={isNavItemActive(currentPath, item.href)}
         />
       ))}
+      <div className="mt-auto flex items-center justify-between gap-2 px-3 pt-2">
+        <span className="text-muted-foreground text-xs">Theme</span>
+        <ThemeToggle />
+      </div>
     </aside>
   );
 }
