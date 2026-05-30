@@ -4,6 +4,7 @@ import { NuqsAdapter } from 'nuqs/adapters/next/app';
 import { AuthProvider } from '@/components/auth-provider';
 import { MockProvider } from '@/components/mock-provider';
 import { QueryProvider } from '@/components/query-provider';
+import { ThemeProvider } from '@/components/theme-provider';
 import { SonnerToaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -25,20 +26,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className={cn('font-sans', geist.variable)}>
+    <html lang="ja" className={cn('font-sans', geist.variable)} suppressHydrationWarning>
       <body suppressHydrationWarning>
-        <NuqsAdapter>
-          <AuthProvider>
-            <MockProvider>
-              <QueryProvider>
-                <TooltipProvider>
-                  {children}
-                  <SonnerToaster />
-                </TooltipProvider>
-              </QueryProvider>
-            </MockProvider>
-          </AuthProvider>
-        </NuqsAdapter>
+        <ThemeProvider>
+          <NuqsAdapter>
+            <AuthProvider>
+              <MockProvider>
+                <QueryProvider>
+                  <TooltipProvider>
+                    {children}
+                    <SonnerToaster />
+                  </TooltipProvider>
+                </QueryProvider>
+              </MockProvider>
+            </AuthProvider>
+          </NuqsAdapter>
+        </ThemeProvider>
       </body>
     </html>
   );
