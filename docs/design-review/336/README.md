@@ -53,11 +53,18 @@ breaks a use case; everything else is polish or consistency.
 
 ## 2. Screenshot list
 
-All images in [`./screenshots/`](./screenshots), captured at desktop **1440×900** and
-narrow **390×844** (`deviceScaleFactor: 2`). Every desktop screen exists in **both
-[`./screenshots/light/`](./screenshots/light) and [`./screenshots/dark/`](./screenshots/dark)**
-(same filenames); narrow screens are light-only. 34 captures total (19 light + 15 dark).
-File references below name the screen; read the same filename under either theme dir.
+The individual screenshots are **generated artifacts, not committed to the repository** —
+running the capture script writes them to `./screenshots/{light,dark}/` (gitignored). They
+are captured at desktop **1440×900** and narrow **390×844** (`deviceScaleFactor: 2`); every
+desktop screen is produced in **both** `light/` and `dark/` (same filenames), narrow screens
+are light-only. 34 captures total (19 light + 15 dark).
+
+For at-a-glance review on the PR, two committed **contact sheets** index every screen:
+[`contact-sheet-light.png`](./contact-sheet-light.png) and
+[`contact-sheet-dark.png`](./contact-sheet-dark.png). File references in the tables and
+findings below name the screen (e.g. `dark/admin-08-invite-dialog.png`); regenerate the
+full-resolution image via the [§7 reproduce](#7-reproduce) steps, or locate it on the
+matching contact sheet.
 
 ### Chat / AI surfaces (desktop · light + dark)
 
@@ -215,7 +222,7 @@ Each finding is tagged with a **category**: `DESIGN.md violation`, `usability`,
   and clearly distinct from the page. The separation that reads fine in light is marginal
   in dark.
 - **Suggested fix:** In dark mode, slightly strengthen the dialog scrim and/or the panel
-  border/shadow so the modal boundary is unambiguous. Bundle with **F-2/F-5** polish.
+  border/shadow so the modal boundary is unambiguous. Tracked as proposed follow-up **F-6**.
 
 ---
 
@@ -277,7 +284,8 @@ These confirm the migration is working and should be preserved:
 | **F-2** | Right-align numeric table columns + apply semantic tier to high error-rate values | Medium | `traces-tab`, `users-tab` (observability), `admin-users-page` |
 | **F-3** | Resolve JA/EN labelling inconsistency on admin surfaces (pick a language or add i18n) | Medium | `components/admin/*` |
 | **F-4** | Capture loading + API-error states for admin tables via Storybook/MSW delay & error handlers | Low | `apps/frontend` Storybook + visual evidence |
-| **F-5** | Add "Clear filter" affordance to empty table states; verify "Coming Soon" badge contrast | Low | `data-table` empty state, `admin/page.tsx`, `admin-sidebar.tsx` |
+| **F-5** | Add "Clear filter" affordance to empty table states; verify "Coming Soon" badge contrast (light + dark) | Low | `data-table` empty state, `admin/page.tsx`, `admin-sidebar.tsx` |
+| **F-6** | Strengthen dark-mode dialog/modal elevation (scrim + panel border/shadow) so the modal boundary reads clearly | Low | `components/ui/dialog`, `components/ui/sheet` overlay tokens |
 
 ---
 
@@ -290,6 +298,16 @@ NEXT_PUBLIC_API_MODE=mock pnpm dev            # terminal 1 (serves 127.0.0.1:300
 node scripts/design-review-capture.mjs        # terminal 2 (writes screenshots)
 ```
 
-Screenshots are written to `docs/design-review/336/screenshots/{light,dark}/`. The script
-captures every desktop step in both themes (a fresh browser context per theme sets
-`colorScheme` and seeds `localStorage['theme']`); narrow steps run light-only.
+Screenshots are written to `docs/design-review/336/screenshots/{light,dark}/`, which is
+**gitignored** — the individual PNGs are generated review artifacts and are not committed.
+The script captures every desktop step in both themes (a fresh browser context per theme
+sets `colorScheme` and seeds `localStorage['theme']`); narrow steps run light-only. The two
+committed `contact-sheet-{light,dark}.png` files are regenerated with:
+
+```bash
+cd docs/design-review/336
+montage screenshots/light/*.png -label '%f' -tile 3x -geometry 360x270+6+8 \
+  -background white -fill black -title 'Issue #336 — Light theme (19 screens)' contact-sheet-light.png
+montage screenshots/dark/*.png -label '%f' -tile 3x -geometry 360x270+6+8 \
+  -background '#0c0a09' -fill '#e7e5e4' -title 'Issue #336 — Dark theme (15 screens)' contact-sheet-dark.png
+```
