@@ -132,7 +132,7 @@ const FLOWS: Flow[] = [
     route: '/admin/observability?tab=traces',
     ready: async (page) => {
       await expect(
-        page.getByRole('heading', { name: '可観測性ダッシュボード' }),
+        page.getByRole('heading', { name: '利用状況ダッシュボード' }),
       ).toBeVisible({ timeout: MSW_TIMEOUT });
       await expect(page.locator('table tbody tr').first()).toBeVisible({
         timeout: MSW_TIMEOUT,

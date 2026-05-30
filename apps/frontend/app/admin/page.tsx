@@ -13,7 +13,7 @@ interface Section {
 
 const SECTIONS: Section[] = [
   {
-    label: '可観測性',
+    label: '利用状況',
     description: '利用状況、トレース、エージェント活動を確認',
     href: '/admin/observability',
     icon: BarChart3,

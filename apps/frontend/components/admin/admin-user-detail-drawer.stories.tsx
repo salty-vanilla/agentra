@@ -206,7 +206,7 @@ export const NoUsageData: Story = {
   parameters: {
     docs: {
       description: {
-        story: '可観測性データがないユーザーでは利用状況セクションを非表示にします。',
+        story: '利用状況データがないユーザーでは利用状況セクションを非表示にします。',
       },
     },
   },

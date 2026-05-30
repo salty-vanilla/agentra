@@ -42,7 +42,7 @@ export function AdminDashboard() {
   return (
     <div className="flex flex-col min-h-0 h-full gap-4">
       <div className="flex items-center justify-between flex-wrap gap-2 shrink-0">
-        <h1 className="text-xl font-semibold">可観測性ダッシュボード</h1>
+        <h1 className="text-xl font-semibold">利用状況ダッシュボード</h1>
         <PeriodFilter period={period} from={from} to={to} onChange={handlePeriodChange} />
       </div>
 

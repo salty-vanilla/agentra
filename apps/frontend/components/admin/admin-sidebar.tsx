@@ -19,7 +19,7 @@ interface NavItem {
 
 const STATIC_NAV_ITEMS: NavItem[] = [
   {
-    label: '可観測性',
+    label: '利用状況',
     href: '/admin/observability',
     icon: BarChart3,
     enabled: true,
