@@ -218,7 +218,7 @@ const ThreadWelcome: FC<{ focusComposerInput: () => void }> = ({
     <div className="aui-thread-welcome-root my-auto flex grow flex-col">
       <div className="aui-thread-welcome-center flex w-full grow flex-col items-center justify-center">
         <div className="aui-thread-welcome-message flex size-full max-w-2xl flex-col justify-center px-4">
-          <p className="mb-4 font-semibold text-[0.7rem] tracking-[0.24em] text-teal-800/80 uppercase">
+          <p className="mb-4 font-semibold text-[0.7rem] tracking-[0.24em] text-muted-foreground uppercase">
             Internal Agent Workspace
           </p>
           <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-3xl duration-200">
@@ -524,7 +524,7 @@ const EditComposer: FC = () => {
       data-slot="aui_edit-composer-wrapper"
       className="flex flex-col px-2"
     >
-      <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-2xl bg-muted">
+      <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-lg bg-muted">
         <ComposerPrimitive.Input
           className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none"
           autoFocus

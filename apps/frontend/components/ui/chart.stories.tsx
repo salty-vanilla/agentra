@@ -62,8 +62,8 @@ const rankingData = [
 // ── Line chart ────────────────────────────────────────────────────────────────
 
 const lineConfig: ChartConfig = {
-  requests: { label: 'Requests', color: 'hsl(221 83% 53%)' },
-  errors: { label: 'Errors', color: 'hsl(0 84% 60%)' },
+  requests: { label: 'Requests', color: 'var(--chart-1)' },
+  errors: { label: 'Errors', color: 'var(--destructive)' },
 };
 
 export const LineChartStory: Story = {
@@ -77,7 +77,7 @@ export const LineChartStory: Story = {
         <ChartContainer config={lineConfig}>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={lineData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip content={<ChartTooltipContent />} />
@@ -109,8 +109,8 @@ export const LineChartStory: Story = {
 // ── Area chart ────────────────────────────────────────────────────────────────
 
 const tokenConfig: ChartConfig = {
-  inputTokens: { label: 'Input', color: 'hsl(221 83% 53%)' },
-  outputTokens: { label: 'Output', color: 'hsl(142 71% 45%)' },
+  inputTokens: { label: 'Input', color: 'var(--chart-2)' },
+  outputTokens: { label: 'Output', color: 'var(--chart-4)' },
 };
 
 export const AreaChartStory: Story = {
@@ -124,7 +124,7 @@ export const AreaChartStory: Story = {
         <ChartContainer config={tokenConfig}>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={tokenData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip content={<ChartTooltipContent />} />
@@ -157,7 +157,7 @@ export const AreaChartStory: Story = {
 // ── Horizontal bar chart ──────────────────────────────────────────────────────
 
 const rankingConfig: ChartConfig = {
-  value: { label: 'Calls', color: 'hsl(221 83% 53%)' },
+  value: { label: 'Calls', color: 'var(--chart-1)' },
 };
 
 export const HorizontalBarChartStory: Story = {
@@ -178,7 +178,7 @@ export const HorizontalBarChartStory: Story = {
               <CartesianGrid
                 strokeDasharray="3 3"
                 horizontal={false}
-                stroke="hsl(var(--border))"
+                stroke="var(--border)"
               />
               <XAxis type="number" tick={{ fontSize: 11 }} />
               <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={90} />
@@ -237,9 +237,9 @@ export const LegendContentStory: Story = {
     <div className="w-[400px] rounded border p-4">
       <ChartLegendContent
         payload={[
-          { value: 'Requests', color: 'hsl(221 83% 53%)' },
-          { value: 'Errors', color: 'hsl(0 84% 60%)' },
-          { value: 'Cancelled', color: 'hsl(38 92% 50%)' },
+          { value: 'Requests', color: 'var(--chart-1)' },
+          { value: 'Errors', color: 'var(--destructive)' },
+          { value: 'Cancelled', color: 'var(--chart-4)' },
         ]}
       />
     </div>
@@ -249,8 +249,8 @@ export const LegendContentStory: Story = {
 // ── Latency dual-line ─────────────────────────────────────────────────────────
 
 const durationConfig: ChartConfig = {
-  avgDurationMs: { label: 'Avg', color: 'hsl(221 83% 53%)' },
-  p95DurationMs: { label: 'P95', color: 'hsl(38 92% 50%)' },
+  avgDurationMs: { label: 'Avg', color: 'var(--chart-2)' },
+  p95DurationMs: { label: 'P95', color: 'var(--chart-4)' },
 };
 
 export const DurationChartStory: Story = {
@@ -264,7 +264,7 @@ export const DurationChartStory: Story = {
         <ChartContainer config={durationConfig}>
           <ResponsiveContainer width="100%" height={200}>
             <LineChart data={durationData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="label" tick={{ fontSize: 11 }} />
               <YAxis tick={{ fontSize: 11 }} tickFormatter={(v: number) => `${v}ms`} />
               <Tooltip
