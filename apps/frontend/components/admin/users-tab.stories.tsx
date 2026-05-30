@@ -32,7 +32,7 @@ export const WithRoles: Story = {
     docs: {
       description: {
         story:
-          'Shows active users from the selected period with role badges. Admin users display an Admin badge; others display a User badge. Users without a role field default to User.',
+          'Shows active users from the selected period with role badges, right-aligned numeric columns, and warning/destructive error-rate text tiers. Users without a role field default to User.',
       },
     },
   },

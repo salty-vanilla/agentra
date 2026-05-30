@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { UsersTab } from '@/components/admin/users-tab';
 
@@ -12,25 +13,60 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 vi.mock('@/components/ui/data-table', () => ({
   DataTable: ({
     data,
+    columns,
     onRowClick,
     emptyMessage,
   }: {
     data: Record<string, unknown>[];
+    columns: {
+      accessorKey?: string;
+      header?: unknown;
+      meta?: { align?: string };
+      cell?: (context: { getValue: () => unknown }) => ReactNode;
+    }[];
     onRowClick?: (row: Record<string, unknown>) => void;
     emptyMessage?: string;
-  }) => (
-    <div>
-      {data.length === 0 ? (
-        <span>{emptyMessage ?? 'No data for this period.'}</span>
-      ) : (
-        data.map((row, i) => (
-          <button key={i} type="button" onClick={() => onRowClick?.(row)}>
-            {String(row.userId)}
-          </button>
-        ))
-      )}
-    </div>
-  ),
+  }) => {
+    const columnLabel = (column: { accessorKey?: string; header?: unknown }) =>
+      typeof column.header === 'string'
+        ? column.header
+        : (column.accessorKey ?? 'column');
+    const errorRateColumn = columns.find(
+      (column) => columnLabel(column) === 'Error Rate',
+    );
+
+    return (
+      <div>
+        {columns.map((column) => (
+          <span
+            key={columnLabel(column)}
+            data-testid={`column-align-${columnLabel(column).replaceAll(' ', '-')}`}
+            data-align={column.meta?.align ?? 'left'}
+          />
+        ))}
+        {data.length === 0 ? (
+          <span>{emptyMessage ?? 'No data for this period.'}</span>
+        ) : (
+          <>
+            {data.map((row, i) => (
+              <button key={i} type="button" onClick={() => onRowClick?.(row)}>
+                {String(row.userId)}
+              </button>
+            ))}
+            {errorRateColumn
+              ? data.map((row, i) => (
+                  <div key={i} data-testid={`error-rate-cell-${i}`}>
+                    {errorRateColumn.cell?.({
+                      getValue: () => row[errorRateColumn.accessorKey ?? ''],
+                    }) ?? String(row[errorRateColumn.accessorKey ?? ''])}
+                  </div>
+                ))
+              : null}
+          </>
+        )}
+      </div>
+    );
+  },
 }));
 
 const alice = {
@@ -53,9 +89,19 @@ const bob = {
   mostUsedTool: 'run_code',
 };
 
+const charlie = {
+  userId: 'charlie-0000-0000-0000-000000000003',
+  requestCount: 9,
+  totalTokens: 1200,
+  avgDurationMs: 900,
+  errorRate: 0.333,
+  mostUsedAgent: 'ResearchAgent',
+  mostUsedTool: 'kb_search',
+};
+
 function setup() {
   vi.mocked(useQuery).mockReturnValue({
-    data: { users: [alice, bob] },
+    data: { users: [alice, bob, charlie] },
     isLoading: false,
     error: null,
   } as ReturnType<typeof useQuery>);
@@ -99,5 +145,33 @@ describe('UsersTab', () => {
     setup();
     await user.click(screen.getByText(alice.userId));
     expect(screen.getByText('User Detail')).toBeInTheDocument();
+  });
+
+  it('marks numeric columns for right alignment', () => {
+    setup();
+
+    for (const header of ['Requests', 'Tokens', 'Avg Duration', 'Error Rate']) {
+      expect(
+        screen.getByTestId(`column-align-${header.replaceAll(' ', '-')}`),
+      ).toHaveAttribute('data-align', 'right');
+    }
+    expect(screen.getByTestId('column-align-Top-Agent')).toHaveAttribute(
+      'data-align',
+      'left',
+    );
+  });
+
+  it('renders semantic text tiers for warning and destructive error rates', () => {
+    setup();
+
+    expect(screen.getByText('10.0%')).toHaveClass(
+      'text-amber-700',
+      'dark:text-amber-300',
+    );
+    expect(screen.getByText('33.3%')).toHaveClass('text-destructive');
+    expect(screen.getByText('0.0%')).not.toHaveClass(
+      'text-amber-700',
+      'text-destructive',
+    );
   });
 });
