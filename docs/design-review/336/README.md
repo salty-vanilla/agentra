@@ -7,10 +7,13 @@
 > **Method:** Real rendered screens captured with a headless Chromium browser driving
 > the Next.js app in **mock API mode** (`NEXT_PUBLIC_API_MODE=mock`, MSW). Interactions
 > (thread selection, dialog/drawer/popover opening, search, message send) were performed
-> against the live UI — this is not a code-only review. Capture is reproducible via
+> against the live UI — this is not a code-only review. Every desktop screen was captured
+> in **both light and dark themes** (`light/` + `dark/` subdirectories). Capture is
+> reproducible via
 > [`apps/frontend/scripts/design-review-capture.mjs`](../../../apps/frontend/scripts/design-review-capture.mjs).
 >
-> **Date:** 2026-05-30 · **Depends on:** #333 (DESIGN.md), #334 (tokens), #335 (component alignment) — all merged.
+> **Date:** 2026-05-30 · **Depends on:** #333 (DESIGN.md), #334 (tokens), #335 (component
+> alignment), #337 (dark mode) — all merged.
 >
 > **Scope guard:** Per the issue, this is a **review-and-report** task. No broad UI
 > refactors were made. The only code added is the capture script + this report.
@@ -25,7 +28,9 @@ The product reads as **calm, monochrome-first, and operational** exactly as `DES
 bordered cards/drawers/dialogs, and **semantic color reserved for state** (success green,
 error/destructive red, warning amber, cancelled muted). Chat error/cancelled/warning
 states, the observability KPI hierarchy, monochrome charts with a single accent, and the
-trace-detail drawer are all on-direction.
+trace-detail drawer are all on-direction. **Dark mode (#337)** is now verified across all
+desktop surfaces and is well executed (§13): semantic tiers, KPI hierarchy, monochrome
+charts, badges, and tabular numerics all hold their meaning after the theme inversion.
 
 The headline problem is **responsiveness of the admin area**: the admin sidebar does not
 collapse on narrow viewports, which breaks every `/admin/*` screen below ~768px. A second
@@ -49,9 +54,12 @@ breaks a use case; everything else is polish or consistency.
 ## 2. Screenshot list
 
 All images in [`./screenshots/`](./screenshots), captured at desktop **1440×900** and
-narrow **390×844** (`deviceScaleFactor: 2`).
+narrow **390×844** (`deviceScaleFactor: 2`). Every desktop screen exists in **both
+[`./screenshots/light/`](./screenshots/light) and [`./screenshots/dark/`](./screenshots/dark)**
+(same filenames); narrow screens are light-only. 34 captures total (19 light + 15 dark).
+File references below name the screen; read the same filename under either theme dir.
 
-### Chat / AI surfaces (desktop)
+### Chat / AI surfaces (desktop · light + dark)
 
 | # | File | Screen / state |
 |---|---|---|
@@ -62,7 +70,7 @@ narrow **390×844** (`deviceScaleFactor: 2`).
 | 5 | `chat-05-error-states.png` | Error / cancelled / warning message states |
 | 6 | `chat-06-artifact.png` | Artifact link card (`presentation.pptx`, PPTX • 1.2 MB) |
 
-### Admin / Observability (desktop)
+### Admin / Observability (desktop · light + dark)
 
 | # | File | Screen / state |
 |---|---|---|
@@ -76,7 +84,7 @@ narrow **390×844** (`deviceScaleFactor: 2`).
 | 14 | `admin-08-invite-dialog.png` | **Dialog** — Invite User |
 | 15 | `admin-09-users-search-empty.png` | **Empty state** — no users match the filter |
 
-### Narrow width (390px)
+### Narrow width (390px · light only)
 
 | # | File | Screen / state |
 |---|---|---|
@@ -85,6 +93,8 @@ narrow **390×844** (`deviceScaleFactor: 2`).
 | 18 | `narrow-03-admin-users.png` | Admin Users — **table truncated, columns clipped** |
 | 19 | `narrow-04-admin-observability.png` | Observability — **KPI labels/tabs clipped** |
 
+**Themes covered:** light + dark for all 15 desktop screens (`light/`, `dark/`). The H-1
+responsiveness defect is theme-independent, so narrow widths were captured light-only.
 **States covered:** default, empty (filter no-match), error / cancelled / warning (chat),
 long-ish multi-line content (error message body, KPI cards). **Loading** states were not
 reliably capturable in mock mode (MSW resolves near-instantly) — see
@@ -179,22 +189,33 @@ Each finding is tagged with a **category**: `DESIGN.md violation`, `usability`,
 - **What:** Disabled sections use `opacity-50`/`opacity-60` over muted-foreground. §12
   flags `muted-foreground` contrast specifically. Disabled controls are exempt from WCAG
   contrast minimums, but the **"Coming Soon" badge** text is informational, not a control,
-  so its contrast should be checked against AA (≥ 4.5:1).
-- **Suggested fix:** Measure the badge text contrast; raise if below AA.
+  so its contrast should be checked against AA (≥ 4.5:1). This applies in **both themes** —
+  in `dark/admin-01-home.png` the dimmed "Coming Soon" cards and disabled nav are darker
+  still, so the dark badge text is the more likely AA failure and should be measured first.
+- **Suggested fix:** Measure the badge text contrast in light and dark; raise if below AA.
 
 #### L-3 · Chat user-message surface uses a faint colored tint
 - **Category:** implementation inconsistency (§8) — minor/subjective
-- **Evidence:** `chat-02-conversation.png`, `chat-05-error-states.png`
+- **Evidence:** `chat-02-conversation.png`, `chat-05-error-states.png` (light + dark)
 - **What:** User bubbles use a faint tinted surface to distinguish from assistant text.
   §8 endorses "subtle surface" for this, so it is within direction — flagged only to
-  confirm the tint derives from a stone/neutral token (not a leftover brand hue) and to
-  keep it consistent in dark mode (#337).
+  confirm the tint derives from a stone/neutral token (not a leftover brand hue). In dark
+  mode (`dark/chat-02`, `dark/chat-05`) the tint reads as a neutral elevated stone surface,
+  consistent with the light treatment, so this is verified as on-direction.
 
-#### L-4 · Dark mode not verified
-- **Category:** method note (§2, §13) — out of scope here
-- **What:** All evidence is **light theme**. `DESIGN.md` §2/§13 make dark mode a
-  first-class target but explicitly defer implementation/verification to **#337**. Re-run
-  this capture in both themes once #337 lands.
+#### L-4 · Dialog/modal elevation is weak against the dark backdrop
+- **Category:** usability (§7) + accessibility-adjacent — dark mode, minor
+- **Evidence:** `dark/admin-08-invite-dialog.png` (cf. `light/admin-08`)
+- **What:** In dark mode the Invite-User dialog panel sits only slightly above the page
+  surface and the scrim barely dims the table behind it, so the modal boundary is harder to
+  read than in light mode, where the white panel separates clearly. Drawers (`dark/admin-04`,
+  `dark/admin-07`) separate better because their panel is visibly lighter than the dimmed
+  table; the centered dialog has less surrounding contrast to lean on.
+- **Why it matters:** §7 expects overlays to be "opaque, bordered, with subtle elevation"
+  and clearly distinct from the page. The separation that reads fine in light is marginal
+  in dark.
+- **Suggested fix:** In dark mode, slightly strengthen the dialog scrim and/or the panel
+  border/shadow so the modal boundary is unambiguous. Bundle with **F-2/F-5** polish.
 
 ---
 
@@ -216,6 +237,12 @@ These confirm the migration is working and should be preserved:
   not via spectacle — `chat-04`. (§8)
 - **Visible focus ring** on inputs — `admin-09`. (§12)
 - **Chat shell is correctly responsive** (collapsing sidebar + toggle) — `narrow-01`. (§11)
+- **Dark mode (#337) is a clean inversion, not a re-skin** — `dark/admin-02` (KPI cards +
+  charts invert without losing the single-accent rule), `dark/admin-06` / `dark/admin-04`
+  (success/role badges and tabular numerics keep their meaning), `dark/chat-05` (error /
+  cancelled / warning tiers stay distinguishable on the dark surface). A `ThemeToggle`
+  (light/dark/system) is present in both the chat composer and the admin sidebar footer
+  with an accessible label. (§2, §13)
 
 ---
 
@@ -233,7 +260,9 @@ These confirm the migration is working and should be preserved:
   the closest "evidence" surface is the observability/agent-activity popover
   (`chat-04`), which is what was reviewed. If a distinct citation UI is planned, it should
   get its own review pass.
-- **Dark mode:** deferred to #337 (see L-4).
+- **Dark mode:** now captured and reviewed for all desktop surfaces (#337 merged). Narrow
+  widths were captured light-only because the H-1 responsiveness defect is theme-independent;
+  a follow-up could add dark narrow shots once the admin shell is made responsive.
 
 ---
 
@@ -261,4 +290,6 @@ NEXT_PUBLIC_API_MODE=mock pnpm dev            # terminal 1 (serves 127.0.0.1:300
 node scripts/design-review-capture.mjs        # terminal 2 (writes screenshots)
 ```
 
-Screenshots are written to `docs/design-review/336/screenshots/`.
+Screenshots are written to `docs/design-review/336/screenshots/{light,dark}/`. The script
+captures every desktop step in both themes (a fresh browser context per theme sets
+`colorScheme` and seeds `localStorage['theme']`); narrow steps run light-only.
