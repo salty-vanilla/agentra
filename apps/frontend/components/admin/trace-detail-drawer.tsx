@@ -23,8 +23,8 @@ type TimelineEntry =
   | { kind: 'agent'; data: AdminTraceAgentCall }
   | { kind: 'skill'; data: AdminTraceSkillCall };
 
-function statusVariant(status?: string): 'default' | 'destructive' | 'secondary' {
-  if (status === 'success') return 'default';
+function statusVariant(status?: string): 'success' | 'destructive' | 'secondary' {
+  if (status === 'success') return 'success';
   if (status === 'error') return 'destructive';
   return 'secondary';
 }
@@ -56,10 +56,9 @@ function callStartedAt(entry: TimelineEntry): string | undefined {
 
 function kindBadgeClass(kind: CallKind): string {
   if (kind === 'tool')
-    return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-  if (kind === 'agent')
-    return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
-  return 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200';
+    return 'border border-border bg-secondary text-secondary-foreground';
+  if (kind === 'agent') return 'border border-border bg-background text-foreground';
+  return 'border border-border bg-muted text-muted-foreground';
 }
 
 function formatRelativeMs(diffMs: number): string {
@@ -198,10 +197,10 @@ export function TraceDetailDrawer({ traceId, onClose }: Props) {
                   return (
                     <div
                       key={i}
-                      className="flex items-start gap-2 text-sm border rounded px-3 py-2"
+                      className="flex items-start gap-2 rounded-md border px-3 py-2 text-sm"
                     >
                       <span
-                        className={`rounded px-1.5 py-0.5 text-xs font-medium shrink-0 ${kindBadgeClass(entry.kind)}`}
+                        className={`shrink-0 rounded-md px-1.5 py-0.5 text-xs font-medium ${kindBadgeClass(entry.kind)}`}
                       >
                         {entry.kind}
                       </span>

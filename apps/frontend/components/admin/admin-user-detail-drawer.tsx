@@ -181,7 +181,7 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                 <DetailRow
                   label="Status"
                   value={
-                    <Badge variant={user.enabled ? 'secondary' : 'destructive'}>
+                    <Badge variant={user.enabled ? 'success' : 'destructive'}>
                       {user.enabled ? 'Active' : 'Disabled'}
                     </Badge>
                   }

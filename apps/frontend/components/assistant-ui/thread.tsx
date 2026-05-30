@@ -123,7 +123,7 @@ export const Thread: FC<{
         className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
         style={{
           ['--thread-max-width' as string]: '44rem',
-          ['--composer-radius' as string]: '24px',
+          ['--composer-radius' as string]: '0.75rem',
           ['--composer-padding' as string]: '10px',
         }}
       >
@@ -195,7 +195,7 @@ const ThreadScrollToBottom: FC = () => {
         <TooltipIconButton
           tooltip="Scroll to bottom"
           variant="outline"
-          className="aui-thread-scroll-to-bottom absolute -top-12 z-10 self-center rounded-full p-4 disabled:invisible dark:border-border dark:bg-background dark:hover:bg-accent"
+          className="aui-thread-scroll-to-bottom absolute -top-12 z-10 size-8 self-center rounded-lg p-0 disabled:invisible dark:border-border dark:bg-background dark:hover:bg-accent"
         />
       }
     >
@@ -221,10 +221,10 @@ const ThreadWelcome: FC<{ focusComposerInput: () => void }> = ({
           <p className="mb-4 font-semibold text-[0.7rem] tracking-[0.24em] text-muted-foreground uppercase">
             Internal Agent Workspace
           </p>
-          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-3xl duration-200">
+          <h1 className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both font-semibold text-2xl duration-200">
             Frontend foundation, ready for AgentCore
           </h1>
-          <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-lg delay-75 duration-200">
+          <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-muted-foreground text-base delay-75 duration-200">
             Hono backend の `/chat` SSE を使いながら、thread UI・message actions・composer
             を assistant-ui ベースに統合しています。
           </p>
@@ -252,7 +252,7 @@ const Composer: FC<{
 const MessageError: FC = () => {
   return (
     <MessagePrimitive.Error>
-      <ErrorPrimitive.Root className="aui-message-error-root mt-2 rounded-md border border-destructive bg-destructive/10 p-3 text-destructive text-sm dark:bg-destructive/5 dark:text-red-200">
+      <ErrorPrimitive.Root className="aui-message-error-root mt-2 rounded-md border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm dark:bg-destructive/5">
         <ErrorPrimitive.Message className="aui-message-error-message line-clamp-2" />
       </ErrorPrimitive.Root>
     </MessagePrimitive.Error>
@@ -524,7 +524,7 @@ const EditComposer: FC = () => {
       data-slot="aui_edit-composer-wrapper"
       className="flex flex-col px-2"
     >
-      <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-lg bg-muted">
+      <ComposerPrimitive.Root className="aui-edit-composer-root ml-auto flex w-full max-w-[85%] flex-col rounded-lg border bg-card">
         <ComposerPrimitive.Input
           className="aui-edit-composer-input min-h-14 w-full resize-none bg-transparent p-4 text-foreground text-sm outline-none"
           autoFocus

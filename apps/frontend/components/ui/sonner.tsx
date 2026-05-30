@@ -26,7 +26,7 @@ export function SonnerToaster() {
           closeButton:
             'absolute top-3 right-3 inline-flex size-6 items-center justify-center rounded-full border border-border/70 bg-background/80 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
           error:
-            'border-red-200/80 bg-red-50 text-red-950 [&_[data-icon]]:text-red-600 [&_[data-title]]:text-red-700 [&_[data-description]]:text-red-700/80',
+            'border-destructive/25 bg-destructive/10 text-destructive [&_[data-description]]:text-destructive/80 [&_[data-icon]]:text-destructive [&_[data-title]]:text-destructive',
         },
       }}
     />

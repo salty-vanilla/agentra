@@ -9,7 +9,7 @@ import {
   useReactTable,
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { ChevronDown, ChevronsUpDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronsUpDown, ChevronUp, Loader2Icon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -93,9 +93,14 @@ export function DataTable<T>({
   const showError = isEmpty && !!error;
 
   const emptyCell = showError ? (
-    <span className="text-destructive">{error}</span>
+    <span className="inline-flex items-center rounded-md border border-destructive/25 bg-destructive/5 px-2 py-1 text-destructive">
+      {error}
+    </span>
   ) : showLoading ? (
-    <span className="text-muted-foreground">Loading...</span>
+    <span className="inline-flex items-center gap-2 text-muted-foreground">
+      <Loader2Icon className="size-3.5 animate-spin" />
+      Loading...
+    </span>
   ) : showEmpty ? (
     <span className="text-muted-foreground">{emptyMessage}</span>
   ) : null;
@@ -109,7 +114,7 @@ export function DataTable<T>({
     return (
       <div
         className={cn(
-          'flex flex-col min-h-0 rounded border overflow-hidden',
+          'flex flex-col min-h-0 overflow-hidden rounded-lg border border-border bg-card tabular-nums',
           (height === '100%' || (isVirtualized && height === undefined)) &&
             'h-full flex-1',
           containerClassName,
@@ -122,7 +127,7 @@ export function DataTable<T>({
         >
           <table style={{ display: 'grid', width: '100%' }}>
             <thead
-              className="bg-muted"
+              className="border-b bg-muted/70 text-muted-foreground"
               style={{ display: 'grid', position: 'sticky', top: 0, zIndex: 1 }}
             >
               {table.getHeaderGroups().map((headerGroup) => (
@@ -138,13 +143,13 @@ export function DataTable<T>({
                           display: 'flex',
                           minWidth: 0,
                         }}
-                        className="px-3 py-2 text-left text-sm font-medium"
+                        className="px-3 py-1.5 text-left text-sm font-medium"
                         aria-sort={ariaSort(canSort, sorted)}
                       >
                         {canSort ? (
                           <button
                             type="button"
-                            className="flex items-center gap-1 select-none hover:text-foreground"
+                            className="flex items-center gap-1 select-none text-muted-foreground hover:text-foreground"
                             onClick={header.column.getToggleSortingHandler()}
                           >
                             <span className="truncate">
@@ -200,7 +205,7 @@ export function DataTable<T>({
                         width: '100%',
                       }}
                       className={cn(
-                        'border-t hover:bg-muted/50',
+                        'border-t border-border hover:bg-muted/40',
                         onRowClick && 'cursor-pointer',
                       )}
                       onClick={() => onRowClick?.(row.original)}
@@ -214,7 +219,7 @@ export function DataTable<T>({
                             alignItems: 'center',
                             minWidth: 0,
                           }}
-                          className="px-3 py-2 text-sm"
+                          className="px-3 py-1.5 text-sm"
                         >
                           <span className="truncate">
                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -234,9 +239,14 @@ export function DataTable<T>({
 
   // Standard (non-virtualized) rendering
   return (
-    <div className={cn('overflow-x-auto rounded border', containerClassName)}>
+    <div
+      className={cn(
+        'overflow-x-auto rounded-lg border border-border bg-card tabular-nums',
+        containerClassName,
+      )}
+    >
       <table className="w-full text-sm">
-        <thead className="bg-muted">
+        <thead className="border-b bg-muted/70 text-muted-foreground">
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id}>
               {headerGroup.headers.map((header) => {
@@ -245,13 +255,13 @@ export function DataTable<T>({
                 return (
                   <th
                     key={header.id}
-                    className="px-3 py-2 text-left font-medium"
+                    className="px-3 py-1.5 text-left font-medium"
                     aria-sort={ariaSort(canSort, sorted)}
                   >
                     {canSort ? (
                       <button
                         type="button"
-                        className="flex items-center gap-1 select-none hover:text-foreground"
+                        className="flex items-center gap-1 select-none text-muted-foreground hover:text-foreground"
                         onClick={header.column.getToggleSortingHandler()}
                       >
                         {flexRender(header.column.columnDef.header, header.getContext())}
@@ -278,13 +288,13 @@ export function DataTable<T>({
               <tr
                 key={row.id}
                 className={cn(
-                  'border-t hover:bg-muted/50',
+                  'border-t border-border hover:bg-muted/40',
                   onRowClick && 'cursor-pointer',
                 )}
                 onClick={() => onRowClick?.(row.original)}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2">
+                  <td key={cell.id} className="px-3 py-1.5">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

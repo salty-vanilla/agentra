@@ -646,11 +646,11 @@ export function AgentraWorkspace() {
   const statusClassName = useMemo(() => {
     switch (health) {
       case 'online':
-        return 'border-emerald-500/20 bg-emerald-500/10 text-emerald-900';
+        return 'border-green-600/20 bg-green-600/10 text-green-700 dark:border-green-500/25 dark:bg-green-500/15 dark:text-green-300';
       case 'offline':
-        return 'border-rose-500/20 bg-rose-500/10 text-rose-900';
+        return 'border-destructive/25 bg-destructive/10 text-destructive';
       default:
-        return 'border-amber-500/20 bg-amber-500/10 text-amber-900';
+        return 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:border-amber-400/25 dark:bg-amber-400/15 dark:text-amber-300';
     }
   }, [health]);
 
@@ -787,7 +787,7 @@ export function AgentraWorkspace() {
                 )}
                 <span
                   className={cn(
-                    'inline-flex items-center rounded-full border px-3 py-1 font-medium text-xs',
+                    'inline-flex items-center rounded-md border px-2 py-1 font-medium text-xs',
                     statusClassName,
                   )}
                 >

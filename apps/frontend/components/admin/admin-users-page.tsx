@@ -54,7 +54,7 @@ const columns = [
     cell: ({ getValue }) => {
       const enabled = getValue<boolean>();
       return (
-        <Badge variant={enabled ? 'secondary' : 'destructive'}>
+        <Badge variant={enabled ? 'success' : 'destructive'}>
           {enabled ? 'Active' : 'Disabled'}
         </Badge>
       );

@@ -19,7 +19,7 @@ const SendButton = () => (
     type="button"
     variant="default"
     size="icon"
-    className="aui-composer-send size-8 rounded-full"
+    className="aui-composer-send size-8 rounded-lg"
     aria-label="Send message"
   >
     <ArrowUpIcon className="aui-composer-send-icon size-4" />
@@ -31,7 +31,7 @@ const CancelButton = () => (
     type="button"
     variant="default"
     size="icon"
-    className="aui-composer-cancel size-8 rounded-full"
+    className="aui-composer-cancel size-8 rounded-lg"
     aria-label="Stop generating"
   >
     <SquareIcon className="aui-composer-cancel-icon size-3 fill-current" />
@@ -85,7 +85,7 @@ export const MobileWidth: Story = {
       <div
         style={{
           width: '320px',
-          ['--composer-radius' as string]: '24px',
+          ['--composer-radius' as string]: '0.75rem',
           ['--composer-padding' as string]: '10px',
         }}
       >

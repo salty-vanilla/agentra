@@ -11,7 +11,7 @@ export const SlideCommandBadge: FC<{
   return (
     <span
       className={cn(
-        'inline-flex items-center gap-1 rounded-md border border-border bg-secondary px-2 py-0.5 text-secondary-foreground text-xs font-semibold',
+        'inline-flex items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-0.5 text-muted-foreground text-xs font-medium',
         className,
       )}
     >

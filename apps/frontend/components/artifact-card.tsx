@@ -67,7 +67,9 @@ export function ArtifactCard({
         className,
       )}
     >
-      <Icon className="size-8 shrink-0 text-muted-foreground" aria-hidden />
+      <div className="flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted/40">
+        <Icon className="size-4 text-muted-foreground" aria-hidden />
+      </div>
       <div className="min-w-0 flex-1">
         <p className="truncate font-medium" title={artifact.name}>
           {artifact.name}

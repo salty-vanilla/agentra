@@ -42,7 +42,7 @@ export function ComposerShellView({
   return (
     <div
       data-slot="aui_composer-shell"
-      className="flex w-full flex-col gap-1.5 rounded-(--composer-radius) border bg-card p-(--composer-padding) shadow-sm transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20"
+      className="flex w-full flex-col gap-1.5 rounded-(--composer-radius) border bg-card p-(--composer-padding) shadow-[0_10px_24px_-20px_rgba(0,0,0,0.35)] transition-shadow focus-within:border-ring/75 focus-within:ring-2 focus-within:ring-ring/20"
     >
       {showBadge && (
         <div className="px-1.5">

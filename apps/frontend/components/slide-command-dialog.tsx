@@ -94,7 +94,7 @@ function SelectField({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full rounded-md border bg-background px-2 py-1.5 text-sm"
+        className="h-8 w-full rounded-md border border-input bg-background px-2 py-1 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         {options.map((opt) => (
           <option key={opt.value} value={opt.value}>
@@ -144,7 +144,7 @@ export const SlideCommandDialog: FC<{
             type="button"
             variant="ghost"
             size="icon"
-            className="h-7 w-7 rounded-full"
+            className="h-7 w-7 rounded-md"
             aria-label="コマンド追加"
           >
             <PlusIcon className="h-4 w-4" />
