@@ -87,6 +87,7 @@ const columns = [
     header: 'Requests',
     size: 90,
     cell: ({ getValue }) => getValue<number | undefined>()?.toLocaleString() ?? '—',
+    meta: { align: 'right' },
   }),
 ];
 

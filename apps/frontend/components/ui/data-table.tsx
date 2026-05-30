@@ -5,6 +5,7 @@ import {
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  type RowData,
   type SortingState,
   useReactTable,
 } from '@tanstack/react-table';
@@ -12,6 +13,14 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown, ChevronsUpDown, ChevronUp, Loader2Icon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
+
+type ColumnAlignment = 'left' | 'right';
+
+declare module '@tanstack/react-table' {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    align?: ColumnAlignment;
+  }
+}
 
 export interface DataTableProps<T> {
   data: T[];
@@ -43,6 +52,24 @@ function ariaSort(
   if (sorted === 'asc') return 'ascending';
   if (sorted === 'desc') return 'descending';
   return 'none';
+}
+
+function columnAlignment(column: {
+  columnDef: { meta?: { align?: ColumnAlignment } };
+}): ColumnAlignment {
+  return column.columnDef.meta?.align === 'right' ? 'right' : 'left';
+}
+
+function textAlignClass(align: ColumnAlignment): string {
+  return align === 'right' ? 'text-right' : 'text-left';
+}
+
+function flexAlignClass(align: ColumnAlignment): string {
+  return align === 'right' ? 'justify-end text-right' : 'justify-start text-left';
+}
+
+function sortButtonAlignClass(align: ColumnAlignment): string {
+  return align === 'right' ? 'justify-end' : 'justify-start';
 }
 
 export function DataTable<T>({
@@ -142,6 +169,7 @@ export function DataTable<T>({
                   {headerGroup.headers.map((header) => {
                     const canSort = header.column.getCanSort();
                     const sorted = header.column.getIsSorted();
+                    const align = columnAlignment(header.column);
                     return (
                       <th
                         key={header.id}
@@ -150,13 +178,19 @@ export function DataTable<T>({
                           display: 'flex',
                           minWidth: 0,
                         }}
-                        className="px-3 py-1.5 text-left text-sm font-medium"
+                        className={cn(
+                          'px-3 py-1.5 text-sm font-medium',
+                          flexAlignClass(align),
+                        )}
                         aria-sort={ariaSort(canSort, sorted)}
                       >
                         {canSort ? (
                           <button
                             type="button"
-                            className="flex items-center gap-1 select-none text-muted-foreground hover:text-foreground"
+                            className={cn(
+                              'flex min-w-0 w-full max-w-full items-center gap-1 select-none text-muted-foreground hover:text-foreground',
+                              sortButtonAlignClass(align),
+                            )}
                             onClick={header.column.getToggleSortingHandler()}
                           >
                             <span className="truncate">
@@ -217,22 +251,30 @@ export function DataTable<T>({
                       )}
                       onClick={() => onRowClick?.(row.original)}
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <td
-                          key={cell.id}
-                          style={{
-                            flex: cell.column.getSize(),
-                            display: 'flex',
-                            alignItems: 'center',
-                            minWidth: 0,
-                          }}
-                          className="px-3 py-1.5 text-sm"
-                        >
-                          <span className="truncate">
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                          </span>
-                        </td>
-                      ))}
+                      {row.getVisibleCells().map((cell) => {
+                        const align = columnAlignment(cell.column);
+                        return (
+                          <td
+                            key={cell.id}
+                            style={{
+                              flex: cell.column.getSize(),
+                              display: 'flex',
+                              alignItems: 'center',
+                              minWidth: 0,
+                            }}
+                            className={cn('px-3 py-1.5 text-sm', flexAlignClass(align))}
+                          >
+                            <span
+                              className={cn(
+                                'truncate',
+                                align === 'right' && 'text-right',
+                              )}
+                            >
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </span>
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })
@@ -259,19 +301,28 @@ export function DataTable<T>({
               {headerGroup.headers.map((header) => {
                 const canSort = header.column.getCanSort();
                 const sorted = header.column.getIsSorted();
+                const align = columnAlignment(header.column);
                 return (
                   <th
                     key={header.id}
-                    className="px-3 py-1.5 text-left font-medium"
+                    className={cn('px-3 py-1.5 font-medium', textAlignClass(align))}
                     aria-sort={ariaSort(canSort, sorted)}
                   >
                     {canSort ? (
                       <button
                         type="button"
-                        className="flex items-center gap-1 select-none text-muted-foreground hover:text-foreground"
+                        className={cn(
+                          'flex min-w-0 w-full max-w-full items-center gap-1 select-none text-muted-foreground hover:text-foreground',
+                          sortButtonAlignClass(align),
+                        )}
                         onClick={header.column.getToggleSortingHandler()}
                       >
-                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        <span className="truncate">
+                          {flexRender(
+                            header.column.columnDef.header,
+                            header.getContext(),
+                          )}
+                        </span>
                         <SortIcon sorted={sorted} />
                       </button>
                     ) : (
@@ -300,11 +351,17 @@ export function DataTable<T>({
                 )}
                 onClick={() => onRowClick?.(row.original)}
               >
-                {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-1.5">
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
+                {row.getVisibleCells().map((cell) => {
+                  const align = columnAlignment(cell.column);
+                  return (
+                    <td
+                      key={cell.id}
+                      className={cn('px-3 py-1.5', textAlignClass(align))}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  );
+                })}
               </tr>
             ))
           )}

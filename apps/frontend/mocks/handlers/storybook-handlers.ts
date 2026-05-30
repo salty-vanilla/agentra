@@ -65,7 +65,17 @@ export const STORYBOOK_USERS_WITH_ROLES: AdminUsersResponse = {
       mostUsedTool: 'kb_retrieve',
     },
     {
-      userId: 'user-no-role-004',
+      userId: 'user-high-error-004',
+      role: 'user',
+      requestCount: 12,
+      totalTokens: 3400,
+      avgDurationMs: 1600,
+      errorRate: 0.333,
+      mostUsedAgent: 'research-agent',
+      mostUsedTool: 'web_search',
+    },
+    {
+      userId: 'user-no-role-005',
       requestCount: 3,
       totalTokens: 900,
       avgDurationMs: 500,

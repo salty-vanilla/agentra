@@ -7,7 +7,7 @@ type Row = { id: string; name: string; value: number; category: string };
 const columns: ColumnDef<Row>[] = [
   { accessorKey: 'id', header: 'ID', size: 80 },
   { accessorKey: 'name', header: 'Name', size: 200 },
-  { accessorKey: 'value', header: 'Value', size: 100 },
+  { accessorKey: 'value', header: 'Value', size: 100, meta: { align: 'right' } },
   {
     accessorKey: 'category',
     header: 'Category',

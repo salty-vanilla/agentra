@@ -4,12 +4,38 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { DataTable } from '@/components/ui/data-table';
 
+vi.mock('@tanstack/react-virtual', () => ({
+  useVirtualizer: ({
+    count,
+    estimateSize,
+  }: {
+    count: number;
+    estimateSize: () => number;
+  }) => ({
+    getTotalSize: () => count * estimateSize(),
+    getVirtualItems: () =>
+      Array.from({ length: count }, (_, index) => ({
+        index,
+        key: index,
+        size: estimateSize(),
+        start: index * estimateSize(),
+      })),
+    measureElement: vi.fn(),
+  }),
+}));
+
 type Row = { id: string; name: string; count: number };
 
 const columns: ColumnDef<Row>[] = [
   { accessorKey: 'id', header: 'ID' },
   { accessorKey: 'name', header: 'Name' },
   { accessorKey: 'count', header: 'Count' },
+];
+
+const alignedColumns: ColumnDef<Row>[] = [
+  { accessorKey: 'id', header: 'ID' },
+  { accessorKey: 'name', header: 'Name' },
+  { accessorKey: 'count', header: 'Count', meta: { align: 'right' } },
 ];
 
 const columnsWithNonSortable: ColumnDef<Row>[] = [
@@ -165,5 +191,24 @@ describe('DataTable', () => {
       <DataTable data={data} columns={sizedColumns} virtualized height={120} />,
     );
     expect(container.querySelector('table')).toHaveStyle({ minWidth: '430px' });
+  });
+
+  it('right-aligns standard headers and cells from column metadata', () => {
+    render(<DataTable data={data} columns={alignedColumns} />);
+
+    expect(screen.getByRole('columnheader', { name: /^Count/i })).toHaveClass(
+      'text-right',
+    );
+    expect(screen.getByText('5').closest('td')).toHaveClass('text-right');
+  });
+
+  it('right-aligns virtualized headers and cells from column metadata', () => {
+    render(<DataTable data={data} columns={alignedColumns} virtualized height={120} />);
+
+    expect(screen.getByRole('columnheader', { name: /^Count/i })).toHaveClass(
+      'text-right',
+      'justify-end',
+    );
+    expect(screen.getByText('5').closest('td')).toHaveClass('text-right', 'justify-end');
   });
 });
