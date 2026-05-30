@@ -19,7 +19,7 @@ referenced from future implementation prompts and PR review instructions.
 | [#316](https://github.com/salty-vanilla/agentra/issues/316) | Local preview plan/deploy/outputs commands | Planned |
 | [#317](https://github.com/salty-vanilla/agentra/issues/317) | Local preview destroy command with safety checks | Implemented |
 | [#318](https://github.com/salty-vanilla/agentra/issues/318) | Preview smoke tests for ephemeral environments | Planned |
-| [#319](https://github.com/salty-vanilla/agentra/issues/319) | GitHub Actions manual preview deploy/destroy workflow | Planned |
+| [#319](https://github.com/salty-vanilla/agentra/issues/319) | GitHub Actions manual preview deploy/destroy workflow | Implemented |
 | [#320](https://github.com/salty-vanilla/agentra/issues/320) | Preview cleanup and stale environment detection | Planned |
 | [#321](https://github.com/salty-vanilla/agentra/issues/321) | AI agent operating guide | This document |
 
@@ -154,6 +154,43 @@ ExpiresAt: <timestamp>
 Reason: <reason>
 Destroy command: pnpm preview:destroy --stage <stage> --profile <profile> --confirm <stage>
 ```
+
+## GitHub Actions workflow
+
+The same `pnpm preview:*` contract is exposed as a **manual** GitHub Actions workflow,
+[`Preview Environment`](../../.github/workflows/preview-environment.yml)
+(`workflow_dispatch`). It is the sanctioned CI path for preview work: it only orchestrates
+the preview scripts (no raw whole-account `cdk` mutation, no direct `aws` calls), uses
+**GitHub OIDC** to assume a preview role (no long-lived keys), runs under
+`environment: preview`, and serializes operations per stage.
+
+Run it from **Actions → Preview Environment → Run workflow** with inputs:
+
+| Input | Notes |
+|-------|-------|
+| `action` | `plan`, `deploy`, `smoke`, or `destroy` |
+| `stage` | a valid preview stage (`pr-*`, `sandbox-*`, `local-*`) |
+| `profile` | `minimal-api` (default), `backend-ai`, `full` |
+| `ttlHours` | 1-24, default `8` |
+| `prNumber` | optional; best-effort status comment on that PR |
+
+Configuration:
+
+- **Required secret:** `AWS_PREVIEW_ROLE_ARN` — OIDC preview role ARN (e.g.
+  `agentra-github-preview-deploy-role`); the workflow fails fast if unset.
+- **Optional vars/secrets:** `AWS_REGION` (default `us-east-1`),
+  `AGENTRA_PREVIEW_ALLOWED_ACCOUNTS`, `SMOKE_JWT_TOKEN`.
+
+Behavior notes:
+
+- **smoke needs a prior deploy.** A standalone `smoke` restores `manifest.json` from the
+  **latest successful `deploy` artifact for the same stage**, so deploy must have run for
+  that stage first.
+- **Per-stage serialization.** `concurrency: preview-<stage>` with
+  `cancel-in-progress: false` prevents deploy and destroy from running against one stage
+  at the same time. Each run uploads `.agentra/preview/<stage>/` artifacts.
+- Validate workflow changes with `pnpm test:preview`, `pnpm typecheck:preview`,
+  `pnpm lint`.
 
 ## Reporting format
 

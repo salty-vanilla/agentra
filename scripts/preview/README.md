@@ -181,6 +181,51 @@ Report `status`:
   destroy-result.json   # preview:destroy (real run)
 ```
 
+## GitHub Actions workflow
+
+The same commands can be driven from CI via the manual
+[`Preview Environment`](../../.github/workflows/preview-environment.yml) workflow
+(`workflow_dispatch`). It orchestrates the `pnpm preview:*` scripts only — all stage
+validation, stack targeting, and destroy guards stay in these scripts; the workflow
+never runs raw whole-account `cdk` mutation.
+
+Run it from **Actions → Preview Environment → Run workflow**, choosing:
+
+| Input | Notes |
+|-------|-------|
+| `action` | `plan`, `deploy`, `smoke`, or `destroy` |
+| `stage` | a valid preview stage (`pr-*`, `sandbox-*`, `local-*`) |
+| `profile` | `minimal-api` (default), `backend-ai`, or `full` |
+| `ttlHours` | 1-24, default `8` (used by plan/deploy) |
+| `prNumber` | optional; posts/updates a best-effort status comment on that PR |
+
+AWS access uses **GitHub OIDC** (no long-lived keys) and `environment: preview`, so
+repository environment protection rules can require approval.
+
+**Required secret**
+
+- `AWS_PREVIEW_ROLE_ARN` — ARN of the OIDC preview role to assume (e.g.
+  `agentra-github-preview-deploy-role`). The workflow fails fast if it is unset.
+
+**Optional vars / secrets**
+
+- `AWS_REGION` (repo variable) — target region; defaults to `us-east-1`.
+- `AGENTRA_PREVIEW_ALLOWED_ACCOUNTS` (repo variable) — comma-separated account allowlist
+  passed through to deploy/destroy.
+- `SMOKE_JWT_TOKEN` (secret) — Cognito access token for authed smoke checks.
+
+**deploy → smoke ordering.** `smoke` runs on a fresh runner with no manifest on disk, so
+it restores `manifest.json` from the **latest successful `deploy` artifact for the same
+stage** (resolved to a concrete run id, then downloaded by id). A standalone `smoke`
+therefore requires a prior successful `deploy` for that stage.
+
+**Concurrency.** Operations are serialized per stage (`concurrency: preview-<stage>`,
+`cancel-in-progress: false`), so deploy and destroy can never run against one stage at
+once. Every run uploads its `.agentra/preview/<stage>/` artifacts for auditability.
+
+Validate workflow changes locally with `pnpm test:preview`, `pnpm typecheck:preview`,
+and `pnpm lint`.
+
 ## AI Safety Requirements
 
 - AI agents (Claude Code / Codex) **may** use `preview:plan`, `preview:deploy`,
