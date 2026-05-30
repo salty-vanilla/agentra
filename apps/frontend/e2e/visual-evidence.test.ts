@@ -1,4 +1,4 @@
-import { expect, type Page, type TestInfo, test } from '@playwright/test';
+import { expect, type Page, type Response, type TestInfo, test } from '@playwright/test';
 
 // MSW browser worker takes a moment to start; this timeout covers that init.
 const MSW_TIMEOUT = 15_000;
@@ -6,6 +6,24 @@ const MSW_TIMEOUT = 15_000;
 type Theme = 'light' | 'dark';
 
 const NARROW_VIEWPORT = { width: 414, height: 896 } as const;
+
+function isApiResponse(response: Response, method: string, pathname: string) {
+  const url = new URL(response.url());
+  return (
+    response.request().method() === method && url.pathname === pathname && response.ok()
+  );
+}
+
+function threadMessagesResponseThreadId(response: Response) {
+  const url = new URL(response.url());
+
+  if (response.request().method() !== 'GET' || !response.ok()) {
+    return null;
+  }
+
+  const match = url.pathname.match(/^\/threads\/([^/]+)\/messages$/);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
 
 async function screenshot(page: Page, testInfo: TestInfo, name: string) {
   const path = testInfo.outputPath(`${name}.png`);
@@ -27,15 +45,80 @@ async function waitForWorkspace(page: Page) {
   });
 }
 
+async function waitForNewThread(page: Page) {
+  const threadMessagesResponses: Response[] = [];
+  const recordThreadMessagesResponse = (response: Response) => {
+    if (threadMessagesResponseThreadId(response)) {
+      threadMessagesResponses.push(response);
+    }
+  };
+
+  page.on('response', recordThreadMessagesResponse);
+
+  const threadResponsePromise = page.waitForResponse(
+    (response) => isApiResponse(response, 'POST', '/threads'),
+    { timeout: MSW_TIMEOUT },
+  );
+
+  try {
+    await page.getByRole('button', { name: 'New Thread' }).click();
+
+    const threadResponse = await threadResponsePromise;
+    const responseBody = (await threadResponse.json()) as {
+      thread?: { threadId?: unknown };
+    };
+    const threadId = responseBody.thread?.threadId;
+
+    if (typeof threadId !== 'string' || threadId.length === 0) {
+      throw new Error('Mock thread creation response did not include a threadId.');
+    }
+
+    await page.waitForURL((url) => url.searchParams.get('threadId') === threadId, {
+      timeout: MSW_TIMEOUT,
+    });
+
+    const threadMessagesResponse =
+      threadMessagesResponses.find(
+        (response) => threadMessagesResponseThreadId(response) === threadId,
+      ) ??
+      (await page.waitForResponse(
+        (response) => threadMessagesResponseThreadId(response) === threadId,
+        { timeout: MSW_TIMEOUT },
+      ));
+    await threadMessagesResponse.finished();
+
+    await expect(page.locator('[data-slot="aui_message-group"] [data-role]')).toHaveCount(
+      0,
+      {
+        timeout: MSW_TIMEOUT,
+      },
+    );
+  } finally {
+    page.off('response', recordThreadMessagesResponse);
+  }
+}
+
 async function sendMessage(page: Page) {
-  await page.getByRole('button', { name: 'New Thread' }).click();
+  await waitForNewThread(page);
+
   const message = 'Hello from visual evidence';
   const composer = page.getByRole('textbox');
   await expect(composer).toBeVisible();
   await composer.fill(message);
+
+  const chatResponsePromise = page.waitForResponse(
+    (response) => isApiResponse(response, 'POST', '/chat'),
+    { timeout: MSW_TIMEOUT },
+  );
   await page.getByRole('button', { name: 'Send message' }).click();
   await expect(composer).toHaveValue('', { timeout: MSW_TIMEOUT });
-  await expect(page.getByText(message).first()).toBeVisible({ timeout: MSW_TIMEOUT });
+  await chatResponsePromise;
+  await expect(
+    page.locator('[data-slot="aui_user-message-root"]').filter({ hasText: message }),
+  ).toBeVisible({ timeout: MSW_TIMEOUT });
+  await expect(page.getByText('サブエージェント実行中')).toBeVisible({
+    timeout: MSW_TIMEOUT,
+  });
 }
 
 function defineThemeSuite(theme: Theme) {
