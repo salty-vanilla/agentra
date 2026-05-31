@@ -80,7 +80,7 @@ function AgentraBrandMark() {
   return (
     <svg
       aria-hidden="true"
-      className="size-8 shrink-0"
+      className="size-11 shrink-0"
       fill="none"
       viewBox="0 0 1024 1024"
       xmlns="http://www.w3.org/2000/svg"
