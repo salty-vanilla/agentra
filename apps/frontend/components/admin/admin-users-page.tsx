@@ -146,6 +146,13 @@ export function AdminUsersPage() {
     [users, search, roleFilter],
   );
 
+  const isFiltered = search !== '' || roleFilter !== 'all';
+
+  function clearFilters() {
+    setSearch('');
+    setRoleFilter('all');
+  }
+
   function loadMore() {
     if (data?.cursor) {
       setAllUsers((prev) => [...prev, ...(data?.users ?? [])]);
@@ -192,9 +199,14 @@ export function AdminUsersPage() {
         isLoading={isLoading}
         error={error ? 'ユーザーの読み込みに失敗しました。' : null}
         emptyMessage={
-          search || roleFilter !== 'all'
-            ? '条件に一致するユーザーはいません。'
-            : 'ユーザーが見つかりません。'
+          isFiltered ? '条件に一致するユーザーはいません。' : 'ユーザーが見つかりません。'
+        }
+        emptyAction={
+          isFiltered ? (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              フィルターをクリア
+            </Button>
+          ) : undefined
         }
         onRowClick={(user) => setSelected(user)}
         virtualized

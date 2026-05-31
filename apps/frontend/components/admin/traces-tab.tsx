@@ -163,6 +163,16 @@ export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props
     }
   }
 
+  const isFiltered = traceSearch !== '' || statusFilter !== '';
+
+  function clearFilters() {
+    setStatusFilter('');
+    setTraceSearch('');
+    setAppliedUserId('');
+    setAllTraces([]);
+    setCursor(undefined);
+  }
+
   return (
     <div className="flex flex-col min-h-0 flex-1 gap-3">
       <div className="flex items-center gap-2 flex-wrap shrink-0">
@@ -191,9 +201,16 @@ export function TracesTab({ from, to, onSelectTrace, initialUserId = '' }: Props
         isLoading={isLoading}
         error={error ? 'トレースの読み込みに失敗しました。' : null}
         emptyMessage={
-          traceSearch
-            ? '検索に一致するトレースはありません。'
+          isFiltered
+            ? '条件に一致するトレースはありません。'
             : 'この期間のデータはありません。'
+        }
+        emptyAction={
+          isFiltered ? (
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              フィルターをクリア
+            </Button>
+          ) : undefined
         }
         onRowClick={(t) => onSelectTrace(t.traceId)}
         virtualized

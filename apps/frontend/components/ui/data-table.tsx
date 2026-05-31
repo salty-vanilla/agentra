@@ -11,7 +11,7 @@ import {
 } from '@tanstack/react-table';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { ChevronDown, ChevronsUpDown, ChevronUp, Loader2Icon } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 type ColumnAlignment = 'left' | 'right';
@@ -29,6 +29,13 @@ export interface DataTableProps<T> {
   isLoading?: boolean;
   error?: string | null;
   emptyMessage?: string;
+  /**
+   * Optional recovery affordance rendered beneath `emptyMessage` when the table
+   * is empty (e.g. a "clear filter" button). Only shown in the empty state, not
+   * while loading or on error. Defaults to nothing, preserving the plain
+   * message-only behavior.
+   */
+  emptyAction?: ReactNode;
   onRowClick?: (row: T) => void;
   virtualized?: boolean;
   height?: number | string;
@@ -78,6 +85,7 @@ export function DataTable<T>({
   isLoading,
   error,
   emptyMessage = 'この期間のデータはありません。',
+  emptyAction,
   onRowClick,
   virtualized: isVirtualized = false,
   height,
@@ -136,7 +144,10 @@ export function DataTable<T>({
       読み込み中...
     </span>
   ) : showEmpty ? (
-    <span className="text-muted-foreground">{emptyMessage}</span>
+    <div className="inline-flex flex-col items-center gap-2">
+      <span className="text-muted-foreground">{emptyMessage}</span>
+      {emptyAction}
+    </div>
   ) : null;
 
   if (shouldVirtualize) {
