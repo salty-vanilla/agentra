@@ -609,6 +609,8 @@ export const handlers = [
     users: [
       {
         userId: 'user-mock-001',
+        displayName: '山田 太郎',
+        email: 'yamada.taro@example.com',
         requestCount: 18,
         totalTokens: 56_000,
         avgDurationMs: 2100,
@@ -618,6 +620,8 @@ export const handlers = [
       },
       {
         userId: 'user-mock-002',
+        displayName: '佐藤 花子',
+        email: 'sato.hanako@example.com',
         requestCount: 12,
         totalTokens: 34_200,
         avgDurationMs: 1800,
@@ -627,6 +631,7 @@ export const handlers = [
       },
       {
         userId: 'user-mock-003',
+        email: 'tanaka@example.com',
         requestCount: 7,
         totalTokens: 21_000,
         avgDurationMs: 2800,
@@ -636,6 +641,8 @@ export const handlers = [
       },
       {
         userId: 'user-mock-004',
+        displayName: 'Bob Smith',
+        email: 'bob.smith@example.com',
         requestCount: 3,
         totalTokens: 8_100,
         avgDurationMs: 3200,

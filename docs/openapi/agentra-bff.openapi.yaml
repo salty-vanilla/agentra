@@ -1606,6 +1606,13 @@ components:
       properties:
         userId:
           type: string
+        displayName:
+          type: string
+          description: Human-readable display name (e.g. from Cognito profile)
+        email:
+          type: string
+          format: email
+          description: User email address for display and lookup
         role:
           type: string
           enum:
