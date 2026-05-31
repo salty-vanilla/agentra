@@ -38,13 +38,17 @@ describe('GET /admin/users', () => {
   beforeEach(() => {
     process.env.SKIP_AUTH = 'true';
     process.env.STORE_TYPE = 'memory';
+    delete process.env.COGNITO_USER_POOL_ID;
     resetObservabilityStore();
     resetUserStore();
+    _resetCognitoClient();
+    mockSend.mockReset();
   });
 
   afterEach(() => {
     delete process.env.SKIP_AUTH;
     delete process.env.STORE_TYPE;
+    delete process.env.COGNITO_USER_POOL_ID;
     resetObservabilityStore();
     resetUserStore();
   });
@@ -68,6 +72,127 @@ describe('GET /admin/users', () => {
     expect(user).toHaveProperty('email');
     expect(user).toHaveProperty('role');
     expect(user).toHaveProperty('createdAt');
+  });
+
+  it('returns displayName and email from Cognito profile attributes when present', async () => {
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    await userStore.createInvitedUser('named-sub', 'named@example.com', 'user');
+    mockSend.mockImplementation((command: { input?: { Username?: string } }) => {
+      if (command.input?.Username === 'named@example.com') {
+        return Promise.resolve({
+          UserAttributes: [
+            { Name: 'name', Value: 'Alice Agentra' },
+            { Name: 'preferred_username', Value: 'alice' },
+            { Name: 'email', Value: 'alice@example.com' },
+          ],
+        });
+      }
+      return Promise.resolve({ UserAttributes: [] });
+    });
+
+    const res = await app.request('/admin/users');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    const user = body.users.find(
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      (candidate: any) => candidate.sub === 'named-sub',
+    );
+    expect(user.displayName).toBe('Alice Agentra');
+    expect(user.email).toBe('alice@example.com');
+  });
+
+  it('uses preferred_username as displayName when name is absent', async () => {
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    await userStore.createInvitedUser('preferred-sub', 'preferred@example.com', 'user');
+    mockSend.mockImplementation((command: { input?: { Username?: string } }) => {
+      if (command.input?.Username === 'preferred@example.com') {
+        return Promise.resolve({
+          UserAttributes: [
+            { Name: 'preferred_username', Value: 'preferred-alice' },
+            { Name: 'email', Value: 'preferred@example.com' },
+          ],
+        });
+      }
+      return Promise.resolve({ UserAttributes: [] });
+    });
+
+    const res = await app.request('/admin/users');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    const user = body.users.find(
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      (candidate: any) => candidate.sub === 'preferred-sub',
+    );
+    expect(user.displayName).toBe('preferred-alice');
+  });
+
+  it('returns email from Cognito when no displayName attributes are present', async () => {
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    await userStore.createInvitedUser('email-only-sub', 'stale@example.com', 'user');
+    mockSend.mockImplementation((command: { input?: { Username?: string } }) => {
+      if (command.input?.Username === 'stale@example.com') {
+        return Promise.resolve({
+          UserAttributes: [{ Name: 'email', Value: 'fresh@example.com' }],
+        });
+      }
+      return Promise.resolve({ UserAttributes: [] });
+    });
+
+    const res = await app.request('/admin/users');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    const user = body.users.find(
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      (candidate: any) => candidate.sub === 'email-only-sub',
+    );
+    expect(user.displayName).toBeUndefined();
+    expect(user.email).toBe('fresh@example.com');
+  });
+
+  it('keeps userId and stored email fallback when Cognito has no profile attributes', async () => {
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    await userStore.createInvitedUser('fallback-sub', 'fallback@example.com', 'user');
+    mockSend.mockResolvedValue({ UserAttributes: [] });
+
+    const res = await app.request('/admin/users');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    const user = body.users.find(
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      (candidate: any) => candidate.sub === 'fallback-sub',
+    );
+    expect(user.userId).toBeDefined();
+    expect(user.displayName).toBeUndefined();
+    expect(user.email).toBe('fallback@example.com');
+  });
+
+  it('keeps userId and stored email fallback when Cognito user is missing', async () => {
+    process.env.COGNITO_USER_POOL_ID = 'us-east-1_test';
+    await userStore.createInvitedUser('missing-sub', 'missing@example.com', 'user');
+    mockSend.mockImplementation((command: { input?: { Username?: string } }) => {
+      if (command.input?.Username === 'missing@example.com') {
+        return Promise.reject(
+          Object.assign(new Error('missing'), { name: 'UserNotFoundException' }),
+        );
+      }
+      return Promise.resolve({ UserAttributes: [] });
+    });
+
+    const res = await app.request('/admin/users');
+    expect(res.status).toBe(200);
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    const user = body.users.find(
+      // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+      (candidate: any) => candidate.sub === 'missing-sub',
+    );
+    expect(user.userId).toBeDefined();
+    expect(user.displayName).toBeUndefined();
+    expect(user.email).toBe('missing@example.com');
   });
 
   it('returns role=user for the demo user', async () => {
@@ -263,6 +388,12 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => {
       this.input = input;
     }
   }
+  class MockAdminGetUserCommand {
+    input: unknown;
+    constructor(input: unknown) {
+      this.input = input;
+    }
+  }
   class MockListUsersInGroupCommand {
     input: unknown;
     constructor(input: unknown) {
@@ -279,6 +410,7 @@ vi.mock('@aws-sdk/client-cognito-identity-provider', () => {
     AdminRemoveUserFromGroupCommand: MockAdminRemoveUserFromGroupCommand,
     AdminDisableUserCommand: MockAdminDisableUserCommand,
     AdminEnableUserCommand: MockAdminEnableUserCommand,
+    AdminGetUserCommand: MockAdminGetUserCommand,
     ListUsersInGroupCommand: MockListUsersInGroupCommand,
   };
 });

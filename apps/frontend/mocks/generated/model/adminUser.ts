@@ -12,6 +12,9 @@ import type { AdminUserRole } from './adminUserRole';
 export interface AdminUser {
   userId: string;
   sub: string;
+  /** Human-readable display name from Cognito name or preferred_username attributes. */
+  displayName?: string;
+  /** User email address from Cognito email attribute when available, otherwise the UserTable projection. */
   email: string;
   role: AdminUserRole;
   /** Projection of Cognito user enabled status. Defaults to true for pre-existing records. */

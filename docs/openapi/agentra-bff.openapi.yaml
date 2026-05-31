@@ -1662,8 +1662,12 @@ components:
           type: string
         sub:
           type: string
+        displayName:
+          type: string
+          description: Human-readable display name from Cognito name or preferred_username attributes.
         email:
           type: string
+          description: User email address from Cognito email attribute when available, otherwise the UserTable projection.
         role:
           type: string
           enum:

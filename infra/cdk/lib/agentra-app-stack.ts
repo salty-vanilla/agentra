@@ -154,6 +154,7 @@ export class AgentraAppStack extends Stack {
         effect: Effect.ALLOW,
         actions: [
           'cognito-idp:AdminCreateUser',
+          'cognito-idp:AdminGetUser',
           'cognito-idp:AdminAddUserToGroup',
           'cognito-idp:AdminRemoveUserFromGroup',
           'cognito-idp:AdminDisableUser',

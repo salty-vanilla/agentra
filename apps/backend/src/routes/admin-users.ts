@@ -26,6 +26,7 @@ type HonoEnv = {
 type AdminUser = {
   userId: string;
   sub: string;
+  displayName?: string;
   email: string;
   role: 'admin' | 'user';
   enabled: boolean;
@@ -37,6 +38,70 @@ type AdminUser = {
   mostUsedAgent?: string;
   mostUsedTool?: string;
 };
+
+type CognitoAttribute = {
+  Name?: string | undefined;
+  Value?: string | undefined;
+};
+
+type UserProfile = {
+  displayName?: string;
+  email?: string;
+};
+
+function getAttributeValue(
+  attributes: CognitoAttribute[],
+  name: string,
+): string | undefined {
+  const value = attributes.find((attr) => attr.Name === name)?.Value?.trim();
+  return value || undefined;
+}
+
+function buildUserProfile(attributes: CognitoAttribute[]): UserProfile {
+  const displayName =
+    getAttributeValue(attributes, 'name') ??
+    getAttributeValue(attributes, 'preferred_username');
+  const email = getAttributeValue(attributes, 'email');
+
+  return {
+    ...(displayName ? { displayName } : {}),
+    ...(email ? { email } : {}),
+  };
+}
+
+async function fetchUserProfilesBySub(
+  users: Array<{ sub: string; email: string }>,
+): Promise<Map<string, UserProfile>> {
+  const userPoolId = process.env.COGNITO_USER_POOL_ID;
+  if (!userPoolId) return new Map();
+
+  const { AdminGetUserCommand } = await import(
+    '@aws-sdk/client-cognito-identity-provider'
+  );
+  const cognito = getCognitoClient();
+
+  const entries = await Promise.all(
+    users.map(async (user): Promise<[string, UserProfile] | undefined> => {
+      const username = user.email || user.sub;
+      try {
+        const result = await cognito.send(
+          new AdminGetUserCommand({
+            UserPoolId: userPoolId,
+            Username: username,
+          }),
+        );
+        return [user.sub, buildUserProfile(result.UserAttributes ?? [])];
+      } catch (err) {
+        if ((err as { name?: string }).name === 'UserNotFoundException') {
+          return undefined;
+        }
+        throw err;
+      }
+    }),
+  );
+
+  return new Map(entries.filter((entry): entry is [string, UserProfile] => !!entry));
+}
 
 function topByCount(counts: Map<string, number>): string | undefined {
   let best: string | undefined;
@@ -172,42 +237,46 @@ adminUsersRouter.get('/', async (c) => {
   const offset = cursorResult ?? 0;
 
   const userRecords = await userStore.listUsers();
+  const sortedUserRecords = [...userRecords].sort(
+    (a, b) => b.createdAt.localeCompare(a.createdAt) || a.userId.localeCompare(b.userId),
+  );
+  const { page: userPage, nextCursor } = applyOffsetPagination(
+    sortedUserRecords,
+    limit,
+    offset,
+  );
+  const profilesBySub = await fetchUserProfilesBySub(userPage);
 
   const obsWindow = buildObsWindow();
   const { records } = await listObservabilityRecordsInRange(obsWindow);
   const obsByUserId = buildObsStatsByUser(records);
 
-  const adminUsers: AdminUser[] = userRecords
-    .map((u) => {
-      const obs = obsByUserId.get(u.userId);
-      return {
-        userId: u.userId,
-        sub: u.sub,
-        email: u.email,
-        role: u.role,
-        enabled: u.enabled,
-        createdAt: u.createdAt,
-        ...(obs
-          ? {
-              lastSeenAt: obs.lastSeenAt,
-              requestCount: obs.requestCount,
-              totalTokens: obs.totalTokens,
-              errorRate: obs.errorRate,
-              ...(obs.mostUsedAgent ? { mostUsedAgent: obs.mostUsedAgent } : {}),
-              ...(obs.mostUsedTool ? { mostUsedTool: obs.mostUsedTool } : {}),
-            }
-          : {}),
-      };
-    })
-    .sort(
-      (a, b) =>
-        b.createdAt.localeCompare(a.createdAt) || a.userId.localeCompare(b.userId),
-    );
-
-  const { page, nextCursor } = applyOffsetPagination(adminUsers, limit, offset);
+  const adminUsers: AdminUser[] = userPage.map((u) => {
+    const obs = obsByUserId.get(u.userId);
+    const profile = profilesBySub.get(u.sub);
+    return {
+      userId: u.userId,
+      sub: u.sub,
+      ...(profile?.displayName ? { displayName: profile.displayName } : {}),
+      email: profile?.email ?? u.email,
+      role: u.role,
+      enabled: u.enabled,
+      createdAt: u.createdAt,
+      ...(obs
+        ? {
+            lastSeenAt: obs.lastSeenAt,
+            requestCount: obs.requestCount,
+            totalTokens: obs.totalTokens,
+            errorRate: obs.errorRate,
+            ...(obs.mostUsedAgent ? { mostUsedAgent: obs.mostUsedAgent } : {}),
+            ...(obs.mostUsedTool ? { mostUsedTool: obs.mostUsedTool } : {}),
+          }
+        : {}),
+    };
+  });
 
   return jsonWithValidation(c, 'listAdminUsers', 200, {
-    users: page,
+    users: adminUsers,
     ...(nextCursor ? { cursor: nextCursor } : {}),
   });
 });

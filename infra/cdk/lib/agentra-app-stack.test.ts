@@ -1,5 +1,5 @@
 import { App } from 'aws-cdk-lib';
-import { Template } from 'aws-cdk-lib/assertions';
+import { Match, Template } from 'aws-cdk-lib/assertions';
 import { describe, expect, it } from 'vitest';
 import { AgentraAppStack } from './agentra-app-stack.js';
 import { AgentraDataAuthStack } from './agentra-data-auth-stack.js';
@@ -109,5 +109,28 @@ describe('AgentraAppStack', () => {
 
     expect(envValues).toContain('buffered');
     expect(envValues).toContain('response_stream');
+  });
+
+  it('grants RestHandler Cognito profile lookup for admin user labels', () => {
+    const { template } = makeStacks();
+
+    template.hasResourceProperties('AWS::IAM::Policy', {
+      PolicyDocument: {
+        Statement: Match.arrayWith([
+          Match.objectLike({
+            Action: Match.arrayWith([
+              'cognito-idp:AdminCreateUser',
+              'cognito-idp:AdminGetUser',
+              'cognito-idp:AdminAddUserToGroup',
+              'cognito-idp:AdminRemoveUserFromGroup',
+              'cognito-idp:AdminDisableUser',
+              'cognito-idp:AdminEnableUser',
+              'cognito-idp:ListUsersInGroup',
+            ]),
+            Effect: 'Allow',
+          }),
+        ]),
+      },
+    });
   });
 });

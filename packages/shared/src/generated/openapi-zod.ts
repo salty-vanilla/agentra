@@ -756,7 +756,8 @@ export const ListAdminUsersResponse = zod.object({
   "users": zod.array(zod.object({
   "userId": zod.string(),
   "sub": zod.string(),
-  "email": zod.string(),
+  "displayName": zod.string().optional().describe('Human-readable display name from Cognito name or preferred_username attributes.'),
+  "email": zod.string().describe('User email address from Cognito email attribute when available, otherwise the UserTable projection.'),
   "role": zod.enum(['admin', 'user']),
   "enabled": zod.boolean().describe('Projection of Cognito user enabled status. Defaults to true for pre-existing records.'),
   "createdAt": zod.string().datetime({}),
