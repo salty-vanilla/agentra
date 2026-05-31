@@ -72,7 +72,11 @@ export function AdminDashboard() {
       <div className="md:hidden shrink-0">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full justify-between font-medium">
+            <Button
+              variant="outline"
+              className="w-full justify-between font-medium"
+              aria-label={`表示セクション: ${activeLabel}`}
+            >
               {activeLabel}
               <ChevronDownIcon className="size-4 shrink-0 opacity-60" />
             </Button>
@@ -101,7 +105,10 @@ export function AdminDashboard() {
         className="min-h-0 min-w-0 flex-1"
       >
         {/* Medium / Expanded Tabs — shown at md and above */}
-        <TabsList className="hidden md:flex w-full h-10 justify-start gap-1 rounded-none border-b border-border bg-transparent px-0 shrink-0">
+        <TabsList
+          variant="line"
+          className="hidden md:flex w-full h-10 justify-start gap-1 rounded-none border-b border-border bg-transparent p-0 shrink-0"
+        >
           {TAB_ITEMS.map((item) => (
             <TabsTrigger
               key={item.value}
