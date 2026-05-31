@@ -6,12 +6,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
+import { useLayoutMode } from '@/hooks/use-layout-mode';
 import { formatAdminRole, formatUserEnabled } from '@/lib/admin-labels';
 import type { AdminUser } from '@/lib/api';
 import { adminUsersListQueryOptions } from '@/lib/query-options';
-import { AdminUserDetailDrawer } from './admin-user-detail-drawer';
+import { AdminResponsiveDetail } from './admin-responsive-detail';
 import { AdminUserInviteDialog } from './admin-user-invite-dialog';
 import { SearchToolbar } from './search-toolbar';
+import { UserDetailContent } from './user-detail-content';
 
 const ROLE_OPTIONS = [
   { value: 'all', label: 'すべて' },
@@ -116,6 +118,7 @@ function filterUsers(users: AdminUser[], search: string, role: RoleFilter): Admi
 }
 
 export function AdminUsersPage() {
+  const layoutMode = useLayoutMode();
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
@@ -151,6 +154,10 @@ export function AdminUsersPage() {
   function clearFilters() {
     setSearch('');
     setRoleFilter('all');
+  }
+
+  function clearSelected() {
+    setSelected(null);
   }
 
   function loadMore() {
@@ -193,42 +200,60 @@ export function AdminUsersPage() {
         </span>
       </div>
 
-      <DataTable
-        data={filteredUsers}
-        columns={columns}
-        isLoading={isLoading}
-        error={error ? 'ユーザーの読み込みに失敗しました。' : null}
-        emptyMessage={
-          isFiltered ? '条件に一致するユーザーはいません。' : 'ユーザーが見つかりません。'
-        }
-        emptyAction={
-          isFiltered ? (
-            <Button variant="outline" size="sm" onClick={clearFilters}>
-              フィルターをクリア
-            </Button>
-          ) : undefined
-        }
-        onRowClick={(user) => setSelected(user)}
-        virtualized
-        height="100%"
-      />
+      <div className="flex min-h-0 flex-1 gap-4">
+        <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <DataTable
+            data={filteredUsers}
+            columns={columns}
+            isLoading={isLoading}
+            error={error ? 'ユーザーの読み込みに失敗しました。' : null}
+            emptyMessage={
+              isFiltered
+                ? '条件に一致するユーザーはいません。'
+                : 'ユーザーが見つかりません。'
+            }
+            emptyAction={
+              isFiltered ? (
+                <Button variant="outline" size="sm" onClick={clearFilters}>
+                  フィルターをクリア
+                </Button>
+              ) : undefined
+            }
+            onRowClick={(user) => setSelected(user)}
+            virtualized
+            height="100%"
+          />
 
-      {data?.cursor && (
-        <div className="shrink-0">
-          <Button variant="outline" size="sm" onClick={loadMore} disabled={isLoading}>
-            さらに読み込む
-          </Button>
+          {data?.cursor && (
+            <div className="shrink-0">
+              <Button variant="outline" size="sm" onClick={loadMore} disabled={isLoading}>
+                さらに読み込む
+              </Button>
+            </div>
+          )}
         </div>
-      )}
 
-      <AdminUserDetailDrawer
-        user={selected}
-        onClose={() => setSelected(null)}
-        onUserUpdated={(updated) => {
-          setSelected(updated);
-          setAllUsers((prev) => prev.map((u) => (u.sub === updated.sub ? updated : u)));
-        }}
-      />
+        <AdminResponsiveDetail
+          mode={layoutMode}
+          open={selected !== null}
+          title="ユーザー詳細"
+          onClose={clearSelected}
+        >
+          {selected && (
+            <UserDetailContent
+              user={selected}
+              onClose={clearSelected}
+              onUserUpdated={(updated) => {
+                setSelected(updated);
+                setAllUsers((prev) =>
+                  prev.map((u) => (u.sub === updated.sub ? updated : u)),
+                );
+              }}
+            />
+          )}
+        </AdminResponsiveDetail>
+      </div>
+
       <AdminUserInviteDialog
         open={inviteOpen}
         onClose={() => setInviteOpen(false)}
