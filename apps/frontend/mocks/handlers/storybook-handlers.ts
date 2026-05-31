@@ -227,6 +227,27 @@ export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
       enabled: false,
       createdAt: '2026-04-01T00:00:00.000Z',
     },
+    {
+      userId: 'user-long-email-005-uuvvwwxx',
+      sub: 'sub-user-005',
+      email:
+        'very.long.email.address.that.might.overflow@organization-subdomain.example.com',
+      role: 'user',
+      enabled: true,
+      createdAt: '2026-04-15T00:00:00.000Z',
+      requestCount: 7,
+      totalTokens: 2100,
+      errorRate: 0.0,
+      lastSeenAt: '2026-05-20T10:00:00.000Z',
+    },
+    {
+      userId: 'user-new-006-yyzz0011',
+      sub: 'sub-user-006',
+      email: 'new.user@example.com',
+      role: 'user',
+      enabled: true,
+      createdAt: '2026-05-28T00:00:00.000Z',
+    },
   ],
 };
 

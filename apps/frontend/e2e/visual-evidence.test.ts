@@ -158,7 +158,8 @@ function defineThemeSuite(theme: Theme) {
       });
       await expect(page.getByRole('button', { name: 'ユーザーを招待' })).toBeVisible();
       await expect(page.locator('table tbody tr').first()).toBeVisible();
-      await expect(page.getByText(/user-mock-001/i).first()).toBeVisible();
+      // User column now shows email local part as display name
+      await expect(page.getByText(/user001@example\.com/i).first()).toBeVisible();
       await screenshot(page, testInfo, `admin-users-${theme}`);
     });
 
@@ -167,9 +168,14 @@ function defineThemeSuite(theme: Theme) {
       await expect(page.getByRole('heading', { name: 'ユーザー' })).toBeVisible({
         timeout: MSW_TIMEOUT,
       });
-      // Click a data cell; the row onClick bubbles up to open the drawer.
-      await expect(page.getByRole('cell', { name: 'user001@example.com' })).toBeVisible();
-      await page.getByRole('cell', { name: 'user001@example.com' }).click();
+      // The User column cell contains both the display name and email as text.
+      // Click the td that contains the email to trigger onRowClick via event bubbling.
+      const userCell = page
+        .locator('td')
+        .filter({ hasText: /user001@example\.com/ })
+        .first();
+      await expect(userCell).toBeVisible();
+      await userCell.click();
       await expect(page.getByRole('heading', { name: 'ユーザー詳細' })).toBeVisible();
       await screenshot(page, testInfo, `admin-user-detail-drawer-${theme}`);
     });

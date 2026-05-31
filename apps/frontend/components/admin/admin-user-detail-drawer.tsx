@@ -1,6 +1,7 @@
 'use client';
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Copy } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -149,6 +150,15 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
 
   const isSelf = user?.sub === currentUserSub;
 
+  async function copyToClipboard(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast.success(`${label}をコピーしました`);
+    } catch {
+      toast.error(`${label}のコピーに失敗しました`);
+    }
+  }
+
   return (
     <>
       <Sheet open={user !== null} onOpenChange={(open) => !open && onClose()}>
@@ -160,16 +170,6 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
           {user && (
             <div className="px-4 space-y-1">
               <dl>
-                <DetailRow
-                  label="User ID"
-                  value={
-                    <span className="font-mono text-xs break-all">{user.userId}</span>
-                  }
-                />
-                <DetailRow
-                  label="Sub"
-                  value={<span className="font-mono text-xs break-all">{user.sub}</span>}
-                />
                 <DetailRow label="メールアドレス" value={user.email} />
                 <DetailRow
                   label="ロール"
@@ -191,6 +191,50 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                 {user.lastSeenAt && (
                   <DetailRow label="最終利用" value={formatDate(user.lastSeenAt)} />
                 )}
+              </dl>
+
+              <p className="text-xs font-medium text-muted-foreground pt-4 pb-1">
+                識別子
+              </p>
+              <dl>
+                <DetailRow
+                  label="User ID"
+                  value={
+                    <span className="flex items-center gap-1 min-w-0">
+                      <span className="font-mono text-xs min-w-0 flex-1 break-all">
+                        {user.userId}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-muted-foreground"
+                        onClick={() => copyToClipboard(user.userId, 'User ID')}
+                        aria-label="User IDをコピー"
+                      >
+                        <Copy className="size-3.5" />
+                      </Button>
+                    </span>
+                  }
+                />
+                <DetailRow
+                  label="Sub"
+                  value={
+                    <span className="flex items-center gap-1 min-w-0">
+                      <span className="font-mono text-xs min-w-0 flex-1 break-all">
+                        {user.sub}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-muted-foreground"
+                        onClick={() => copyToClipboard(user.sub, 'Sub')}
+                        aria-label="Subをコピー"
+                      >
+                        <Copy className="size-3.5" />
+                      </Button>
+                    </span>
+                  }
+                />
               </dl>
 
               {(user.requestCount !== undefined ||
