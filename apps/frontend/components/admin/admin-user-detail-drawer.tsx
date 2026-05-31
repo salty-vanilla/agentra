@@ -150,10 +150,13 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
 
   const isSelf = user?.sub === currentUserSub;
 
-  function copyToClipboard(text: string, label: string) {
-    navigator.clipboard.writeText(text).then(() => {
+  async function copyToClipboard(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
       toast.success(`${label}をコピーしました`);
-    });
+    } catch {
+      toast.error(`${label}のコピーに失敗しました`);
+    }
   }
 
   return (
@@ -198,15 +201,18 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                   label="User ID"
                   value={
                     <span className="flex items-center gap-1 min-w-0">
-                      <span className="font-mono text-xs break-all">{user.userId}</span>
-                      <button
-                        type="button"
+                      <span className="font-mono text-xs min-w-0 flex-1 break-all">
+                        {user.userId}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-muted-foreground"
                         onClick={() => copyToClipboard(user.userId, 'User ID')}
-                        className="shrink-0 text-muted-foreground hover:text-foreground"
                         aria-label="User IDをコピー"
                       >
-                        <Copy className="size-3" />
-                      </button>
+                        <Copy className="size-3.5" />
+                      </Button>
                     </span>
                   }
                 />
@@ -214,15 +220,18 @@ export function AdminUserDetailDrawer({ user, onClose, onUserUpdated }: Props) {
                   label="Sub"
                   value={
                     <span className="flex items-center gap-1 min-w-0">
-                      <span className="font-mono text-xs break-all">{user.sub}</span>
-                      <button
-                        type="button"
+                      <span className="font-mono text-xs min-w-0 flex-1 break-all">
+                        {user.sub}
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 shrink-0 text-muted-foreground"
                         onClick={() => copyToClipboard(user.sub, 'Sub')}
-                        className="shrink-0 text-muted-foreground hover:text-foreground"
                         aria-label="Subをコピー"
                       >
-                        <Copy className="size-3" />
-                      </button>
+                        <Copy className="size-3.5" />
+                      </Button>
                     </span>
                   }
                 />

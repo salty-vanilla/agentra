@@ -35,9 +35,9 @@ const columns = [
       const { email } = row.original;
       const displayName = emailLocalPart(email);
       return (
-        <span className="flex flex-col min-w-0">
-          <span className="text-sm font-medium leading-snug">{displayName}</span>
-          <span className="text-xs text-muted-foreground truncate">{email}</span>
+        <span className="flex min-w-0 w-full flex-col">
+          <span className="truncate text-sm font-medium leading-snug">{displayName}</span>
+          <span className="truncate text-xs text-muted-foreground">{email}</span>
         </span>
       );
     },
