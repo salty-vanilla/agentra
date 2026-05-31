@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckIcon, ChevronDownIcon } from 'lucide-react';
+import { ChevronDownIcon } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { AgentsTab } from '@/components/admin/agents-tab';
@@ -16,7 +16,8 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -80,16 +81,16 @@ export function AdminDashboard() {
             className="min-w-[var(--radix-dropdown-menu-trigger-width)]"
             align="start"
           >
-            {TAB_ITEMS.map((item) => (
-              <DropdownMenuItem
-                key={item.value}
-                onSelect={() => setActiveTab(item.value)}
-                className="justify-between"
-              >
-                {item.label}
-                {item.value === activeTab && <CheckIcon className="size-3.5" />}
-              </DropdownMenuItem>
-            ))}
+            <DropdownMenuRadioGroup
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as TabValue)}
+            >
+              {TAB_ITEMS.map((item) => (
+                <DropdownMenuRadioItem key={item.value} value={item.value}>
+                  {item.label}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
