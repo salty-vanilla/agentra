@@ -4,16 +4,10 @@ import type { ThreadSummary } from '@agentra/shared';
 import { APP_NAME } from '@agentra/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cva } from 'class-variance-authority';
-import {
-  MessageSquarePlus,
-  MessagesSquare,
-  MoreHorizontal,
-  Orbit,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { MessageSquarePlus, MoreHorizontal, Orbit, Pencil, Trash2 } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import type * as React from 'react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -73,6 +67,51 @@ const threadActionButtonVariants = cva(
   },
 );
 
+function AgentraBrandMark() {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isDark = mounted && resolvedTheme === 'dark';
+
+  return (
+    <svg
+      aria-hidden="true"
+      className="size-8 shrink-0"
+      fill="none"
+      viewBox="0 0 1024 1024"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <rect
+        fill={isDark ? '#e7e5e4' : '#1c1917'}
+        height="864"
+        rx="128"
+        width="864"
+        x="80"
+        y="80"
+      />
+      <path
+        d="M304 732 L468 348 C484 310 540 310 556 348 L720 732"
+        stroke={isDark ? '#1c1917' : '#fafaf9'}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth="116"
+      />
+      <rect
+        fill={isDark ? '#78716c' : '#a8a29e'}
+        height="100"
+        rx="16"
+        width="100"
+        x="462"
+        y="642"
+      />
+    </svg>
+  );
+}
+
 type ServerThreadSidebarProps = React.ComponentProps<typeof Sidebar> & {
   threads: ThreadSummary[];
   selectedThreadId?: string;
@@ -129,9 +168,7 @@ export function ServerThreadSidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton size="lg">
-                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    <MessagesSquare className="size-4" />
-                  </div>
+                  <AgentraBrandMark />
                   <div className="mr-6 flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold">{APP_NAME}</span>
                     <span className="text-xs">
