@@ -3,6 +3,7 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { formatAdminRole } from '@/lib/admin-labels';
 import type { AdminUserStats } from '@/lib/generated/model';
 import { DetailRow } from './detail-row';
 
@@ -16,7 +17,7 @@ export function UserDetailDrawer({ user, onClose }: Props) {
     <Sheet open={user !== null} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
         <SheetHeader>
-          <SheetTitle>User Detail</SheetTitle>
+          <SheetTitle>ユーザー詳細</SheetTitle>
         </SheetHeader>
 
         {user && (
@@ -27,30 +28,30 @@ export function UserDetailDrawer({ user, onClose }: Props) {
                 value={<span className="font-mono text-xs break-all">{user.userId}</span>}
               />
               <DetailRow
-                label="Role"
+                label="ロール"
                 value={
                   <Badge
                     variant={(user.role ?? 'user') === 'admin' ? 'default' : 'secondary'}
                   >
-                    {(user.role ?? 'user') === 'admin' ? 'Admin' : 'User'}
+                    {formatAdminRole(user.role ?? 'user')}
                   </Badge>
                 }
               />
-              <DetailRow label="Requests" value={user.requestCount.toLocaleString()} />
-              <DetailRow label="Total Tokens" value={user.totalTokens.toLocaleString()} />
-              <DetailRow label="Avg Duration" value={`${user.avgDurationMs}ms`} />
+              <DetailRow label="リクエスト" value={user.requestCount.toLocaleString()} />
+              <DetailRow label="合計トークン" value={user.totalTokens.toLocaleString()} />
+              <DetailRow label="平均時間" value={`${user.avgDurationMs}ms`} />
               <DetailRow
-                label="Error Rate"
+                label="エラー率"
                 value={`${(user.errorRate * 100).toFixed(1)}%`}
               />
-              <DetailRow label="Top Agent" value={user.mostUsedAgent ?? '—'} />
-              <DetailRow label="Top Tool" value={user.mostUsedTool ?? '—'} />
+              <DetailRow label="上位エージェント" value={user.mostUsedAgent ?? '—'} />
+              <DetailRow label="上位ツール" value={user.mostUsedTool ?? '—'} />
             </dl>
 
             <div className="pt-4">
               <Button variant="outline" disabled>
-                View related traces →
-                <span className="ml-2 text-xs text-muted-foreground">(coming soon)</span>
+                関連トレースを表示
+                <span className="ml-2 text-xs text-muted-foreground">(準備中)</span>
               </Button>
             </div>
           </div>

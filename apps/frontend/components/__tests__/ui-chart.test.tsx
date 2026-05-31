@@ -125,7 +125,7 @@ describe('ChartLegendContent', () => {
 describe('ChartEmptyState', () => {
   it('renders default message', () => {
     render(<ChartEmptyState />);
-    expect(screen.getByText('No data for this period.')).toBeInTheDocument();
+    expect(screen.getByText('この期間のデータはありません。')).toBeInTheDocument();
   });
 
   it('renders custom message', () => {

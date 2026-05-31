@@ -31,9 +31,7 @@ vi.mock('@/components/ui/data-table', () => ({
       typeof column.header === 'string'
         ? column.header
         : (column.accessorKey ?? 'column');
-    const errorRateColumn = columns.find(
-      (column) => columnLabel(column) === 'Error Rate',
-    );
+    const errorRateColumn = columns.find((column) => columnLabel(column) === 'エラー率');
 
     return (
       <div>
@@ -45,7 +43,7 @@ vi.mock('@/components/ui/data-table', () => ({
           />
         ))}
         {data.length === 0 ? (
-          <span>{emptyMessage ?? 'No data for this period.'}</span>
+          <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
         ) : (
           <>
             {data.map((row, i) => (
@@ -128,7 +126,7 @@ describe('UsersTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'alice');
-    await user.click(screen.getByRole('button', { name: /clear search/i }));
+    await user.click(screen.getByRole('button', { name: /検索条件をクリア/ }));
     expect(screen.getByText(alice.userId)).toBeInTheDocument();
     expect(screen.getByText(bob.userId)).toBeInTheDocument();
   });
@@ -137,25 +135,25 @@ describe('UsersTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'zzznomatch');
-    expect(screen.getByText('No users match the search.')).toBeInTheDocument();
+    expect(screen.getByText('検索に一致するユーザーはいません。')).toBeInTheDocument();
   });
 
   it('opens UserDetailDrawer when a row is clicked', async () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByText(alice.userId));
-    expect(screen.getByText('User Detail')).toBeInTheDocument();
+    expect(screen.getByText('ユーザー詳細')).toBeInTheDocument();
   });
 
   it('marks numeric columns for right alignment', () => {
     setup();
 
-    for (const header of ['Requests', 'Tokens', 'Avg Duration', 'Error Rate']) {
+    for (const header of ['リクエスト', 'トークン', '平均時間', 'エラー率']) {
       expect(
         screen.getByTestId(`column-align-${header.replaceAll(' ', '-')}`),
       ).toHaveAttribute('data-align', 'right');
     }
-    expect(screen.getByTestId('column-align-Top-Agent')).toHaveAttribute(
+    expect(screen.getByTestId('column-align-上位エージェント')).toHaveAttribute(
       'data-align',
       'left',
     );

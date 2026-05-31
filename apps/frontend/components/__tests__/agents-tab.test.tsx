@@ -21,7 +21,7 @@ vi.mock('@/components/ui/data-table', () => ({
   }) => (
     <div data-testid="data-table">
       {data.length === 0 ? (
-        <span>{emptyMessage ?? 'No data for this period.'}</span>
+        <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
       ) : (
         data.map((row, i) => (
           <button key={i} type="button" onClick={() => onRowClick?.(row)}>
@@ -82,7 +82,7 @@ describe('AgentsTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'chat');
-    await user.click(screen.getByRole('button', { name: /clear search/i }));
+    await user.click(screen.getByRole('button', { name: /検索条件をクリア/ }));
     expect(screen.getByText('ChatAgent')).toBeInTheDocument();
     expect(screen.getByText('CodeAgent')).toBeInTheDocument();
   });
@@ -91,13 +91,15 @@ describe('AgentsTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'zzznomatch');
-    expect(screen.getByText('No agents match the search.')).toBeInTheDocument();
+    expect(
+      screen.getByText('検索に一致するエージェントはいません。'),
+    ).toBeInTheDocument();
   });
 
   it('opens AgentDetailDrawer when a row is clicked', async () => {
     const user = userEvent.setup();
     setup();
     await user.click(screen.getByText('ChatAgent'));
-    expect(screen.getByText('Agent Detail')).toBeInTheDocument();
+    expect(screen.getByText('エージェント詳細')).toBeInTheDocument();
   });
 });

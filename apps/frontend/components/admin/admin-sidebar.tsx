@@ -19,15 +19,15 @@ interface NavItem {
 
 const STATIC_NAV_ITEMS: NavItem[] = [
   {
-    label: 'Observability',
+    label: '利用状況',
     href: '/admin/observability',
     icon: BarChart3,
     enabled: true,
   },
-  { label: 'Users', href: '/admin/users', icon: Users, enabled: true },
-  { label: 'Agents', href: '/admin/agents', icon: Bot, enabled: false },
+  { label: 'ユーザー', href: '/admin/users', icon: Users, enabled: true },
+  { label: 'エージェント', href: '/admin/agents', icon: Bot, enabled: false },
   { label: 'RAG / KB', href: '/admin/rag', icon: BookOpen, enabled: false },
-  { label: 'Settings', href: '/admin/settings', icon: Settings, enabled: false },
+  { label: '設定', href: '/admin/settings', icon: Settings, enabled: false },
 ];
 
 function useNavItems(): NavItem[] {
@@ -114,7 +114,7 @@ function AdminSidebarContent({
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
-        Admin Console
+        管理コンソール
       </Link>
       {navItems.map((item) => (
         <AdminNavItem
@@ -124,7 +124,7 @@ function AdminSidebarContent({
         />
       ))}
       <div className="mt-auto flex items-center justify-between gap-2 px-3 pt-2">
-        <span className="text-muted-foreground text-xs">Theme</span>
+        <span className="text-muted-foreground text-xs">テーマ</span>
         <ThemeToggle />
       </div>
     </>

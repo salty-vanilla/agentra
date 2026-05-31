@@ -44,7 +44,7 @@ export function PeriodFilter({ period, from, to, onChange }: Props) {
           size="sm"
           onClick={() => handlePeriodClick(p)}
         >
-          {p === 'today' ? 'Today' : p === '7d' ? 'Last 7 days' : 'Custom'}
+          {p === 'today' ? '今日' : p === '7d' ? '過去7日' : 'カスタム'}
         </Button>
       ))}
       {period === 'custom' && (

@@ -27,13 +27,13 @@ export function SearchToolbar({
         onKeyDown={(e) => {
           if (e.key === 'Enter') onEnter?.();
         }}
-        placeholder={placeholder ?? 'Search...'}
+        placeholder={placeholder ?? '検索...'}
         className="h-8 pr-8 text-sm"
       />
       {value !== '' && (
         <button
           type="button"
-          aria-label="Clear search"
+          aria-label="検索条件をクリア"
           onClick={() => onChange('')}
           className="absolute right-2 text-muted-foreground hover:text-foreground"
         >

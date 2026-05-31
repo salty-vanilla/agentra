@@ -20,20 +20,20 @@ describe('SearchToolbar', () => {
   it('hides clear button when value is empty', () => {
     render(<SearchToolbar value="" onChange={vi.fn()} />);
     expect(
-      screen.queryByRole('button', { name: /clear search/i }),
+      screen.queryByRole('button', { name: /検索条件をクリア/ }),
     ).not.toBeInTheDocument();
   });
 
   it('shows clear button when value is non-empty', () => {
     render(<SearchToolbar value="abc" onChange={vi.fn()} />);
-    expect(screen.getByRole('button', { name: /clear search/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /検索条件をクリア/ })).toBeInTheDocument();
   });
 
   it('calls onChange with empty string when clear button is clicked', async () => {
     const user = userEvent.setup();
     const onChange = vi.fn();
     render(<SearchToolbar value="abc" onChange={onChange} />);
-    await user.click(screen.getByRole('button', { name: /clear search/i }));
+    await user.click(screen.getByRole('button', { name: /検索条件をクリア/ }));
     expect(onChange).toHaveBeenCalledWith('');
   });
 });

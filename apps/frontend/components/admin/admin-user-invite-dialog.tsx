@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { formatAdminRole } from '@/lib/admin-labels';
 import { type InviteAdminUserRequest, inviteAdminUser } from '@/lib/api';
 import { ApiError } from '@/lib/api-error';
 import { agentraQueryKeys } from '@/lib/query-options';
@@ -162,7 +163,7 @@ export function AdminUserInviteDialog({
                     onClick={() => setForm((f) => ({ ...f, role: r }))}
                     disabled={mutation.isPending}
                   >
-                    {r === 'admin' ? 'Admin' : 'User'}
+                    {formatAdminRole(r)}
                   </Button>
                 ))}
               </div>

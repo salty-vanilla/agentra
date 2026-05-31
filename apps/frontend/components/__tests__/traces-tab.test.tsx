@@ -40,7 +40,7 @@ vi.mock('@/components/ui/data-table', () => ({
           />
         ))}
         {data.length === 0 ? (
-          <span>{emptyMessage ?? 'No data for this period.'}</span>
+          <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
         ) : (
           data.map((row, i) => (
             <button key={i} type="button" onClick={() => onRowClick?.(row)}>
@@ -104,7 +104,10 @@ describe('TracesTab', () => {
   it('filters loaded rows by trace ID using the SearchToolbar', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'alpha');
+    await user.type(
+      screen.getByPlaceholderText('Trace ID または User ID で検索...'),
+      'alpha',
+    );
     expect(screen.getByText(traceAlpha.traceId)).toBeInTheDocument();
     expect(screen.queryByText(traceBeta.traceId)).not.toBeInTheDocument();
   });
@@ -112,7 +115,10 @@ describe('TracesTab', () => {
   it('filters loaded rows by user ID using the SearchToolbar', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'bob');
+    await user.type(
+      screen.getByPlaceholderText('Trace ID または User ID で検索...'),
+      'bob',
+    );
     expect(screen.queryByText(traceAlpha.traceId)).not.toBeInTheDocument();
     expect(screen.getByText(traceBeta.traceId)).toBeInTheDocument();
   });
@@ -120,8 +126,11 @@ describe('TracesTab', () => {
   it('restores all rows when SearchToolbar is cleared', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'alpha');
-    await user.click(screen.getByRole('button', { name: /clear search/i }));
+    await user.type(
+      screen.getByPlaceholderText('Trace ID または User ID で検索...'),
+      'alpha',
+    );
+    await user.click(screen.getByRole('button', { name: /検索条件をクリア/ }));
     expect(screen.getByText(traceAlpha.traceId)).toBeInTheDocument();
     expect(screen.getByText(traceBeta.traceId)).toBeInTheDocument();
   });
@@ -130,10 +139,10 @@ describe('TracesTab', () => {
     const user = userEvent.setup();
     setup();
     await user.type(
-      screen.getByPlaceholderText('Search trace ID or user ID…'),
+      screen.getByPlaceholderText('Trace ID または User ID で検索...'),
       'zzznomatch',
     );
-    expect(screen.getByText('No traces match the search.')).toBeInTheDocument();
+    expect(screen.getByText('検索に一致するトレースはありません。')).toBeInTheDocument();
   });
 
   it('calls onSelectTrace with traceId when a row is clicked', async () => {
@@ -151,7 +160,10 @@ describe('TracesTab', () => {
   it('triggers server-side refetch on Enter', async () => {
     const user = userEvent.setup();
     setup();
-    await user.type(screen.getByPlaceholderText('Search trace ID or user ID…'), 'alice');
+    await user.type(
+      screen.getByPlaceholderText('Trace ID または User ID で検索...'),
+      'alice',
+    );
     await user.keyboard('{Enter}');
     expect(vi.mocked(useQuery)).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -163,7 +175,7 @@ describe('TracesTab', () => {
   it('marks numeric columns for right alignment', () => {
     setup();
 
-    for (const header of ['Duration', 'Tokens', 'Tools', 'Agents', 'Skills']) {
+    for (const header of ['所要時間', 'トークン', 'ツール', 'エージェント', 'スキル']) {
       expect(screen.getByTestId(`column-align-${header}`)).toHaveAttribute(
         'data-align',
         'right',

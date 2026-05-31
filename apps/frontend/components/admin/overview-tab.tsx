@@ -100,23 +100,23 @@ type TimeSeriesSectionProps = {
 };
 
 const requestConfig: ChartConfig = {
-  requestCount: { label: 'Requests', color: 'var(--chart-1)' },
+  requestCount: { label: 'リクエスト', color: 'var(--chart-1)' },
 };
 
 const durationConfig: ChartConfig = {
-  avgDurationMs: { label: 'Avg', color: 'var(--chart-2)' },
+  avgDurationMs: { label: '平均', color: 'var(--chart-2)' },
   p95DurationMs: { label: 'P95', color: 'var(--chart-4)' },
 };
 
 const errorConfig: ChartConfig = {
-  errorRate: { label: 'Error', color: 'var(--destructive)' },
-  cancelledRate: { label: 'Cancelled', color: 'var(--chart-3)' },
-  toolFailureRate: { label: 'Tool Failure', color: 'var(--chart-5)' },
+  errorRate: { label: 'エラー', color: 'var(--destructive)' },
+  cancelledRate: { label: 'キャンセル', color: 'var(--chart-3)' },
+  toolFailureRate: { label: 'ツール失敗', color: 'var(--chart-5)' },
 };
 
 const tokenConfig: ChartConfig = {
-  inputTokens: { label: 'Input', color: 'var(--chart-2)' },
-  outputTokens: { label: 'Output', color: 'var(--chart-4)' },
+  inputTokens: { label: '入力', color: 'var(--chart-2)' },
+  outputTokens: { label: '出力', color: 'var(--chart-4)' },
 };
 
 function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
@@ -135,7 +135,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Requests</CardTitle>
+          <CardTitle className="text-sm font-medium">リクエスト</CardTitle>
         </CardHeader>
         <CardContent>
           {isEmpty ? (
@@ -154,7 +154,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                   <Line
                     type="monotone"
                     dataKey="requestCount"
-                    name="Requests"
+                    name="リクエスト"
                     stroke="var(--color-requestCount)"
                     strokeWidth={2}
                     dot={false}
@@ -168,7 +168,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Latency</CardTitle>
+          <CardTitle className="text-sm font-medium">レイテンシ</CardTitle>
         </CardHeader>
         <CardContent>
           {isEmpty ? (
@@ -191,7 +191,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                   <Line
                     type="monotone"
                     dataKey="avgDurationMs"
-                    name="Avg"
+                    name="平均"
                     stroke="var(--color-avgDurationMs)"
                     strokeWidth={2}
                     dot={false}
@@ -214,7 +214,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Error / Failure Rate</CardTitle>
+          <CardTitle className="text-sm font-medium">エラー / 失敗率</CardTitle>
         </CardHeader>
         <CardContent>
           {isEmpty ? (
@@ -240,7 +240,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                   <Line
                     type="monotone"
                     dataKey="errorRate"
-                    name="Error"
+                    name="エラー"
                     stroke="var(--color-errorRate)"
                     strokeWidth={2}
                     dot={false}
@@ -248,7 +248,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                   <Line
                     type="monotone"
                     dataKey="cancelledRate"
-                    name="Cancelled"
+                    name="キャンセル"
                     stroke="var(--color-cancelledRate)"
                     strokeWidth={2}
                     dot={false}
@@ -257,7 +257,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                   <Line
                     type="monotone"
                     dataKey="toolFailureRate"
-                    name="Tool Failure"
+                    name="ツール失敗"
                     stroke="var(--color-toolFailureRate)"
                     strokeWidth={2}
                     dot={false}
@@ -272,7 +272,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Tokens</CardTitle>
+          <CardTitle className="text-sm font-medium">トークン</CardTitle>
         </CardHeader>
         <CardContent>
           {isEmpty ? (
@@ -291,7 +291,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                   <Area
                     type="monotone"
                     dataKey="inputTokens"
-                    name="Input"
+                    name="入力"
                     stroke="var(--color-inputTokens)"
                     fill="var(--color-inputTokens)"
                     fillOpacity={0.2}
@@ -300,7 +300,7 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
                   <Area
                     type="monotone"
                     dataKey="outputTokens"
-                    name="Output"
+                    name="出力"
                     stroke="var(--color-outputTokens)"
                     fill="var(--color-outputTokens)"
                     fillOpacity={0.2}
@@ -322,7 +322,7 @@ const TOP_N = 5;
 const RANKING_HEIGHT = 180;
 
 const rankingConfig: ChartConfig = {
-  value: { label: 'Count', color: 'var(--chart-1)' },
+  value: { label: '件数', color: 'var(--chart-1)' },
 };
 
 type RankingEntry = { name: string; value: number };
@@ -361,7 +361,7 @@ function RankingChart({ title, data }: { title: string; data: RankingEntry[] }) 
                 />
                 <Bar
                   dataKey="value"
-                  name="Count"
+                  name="件数"
                   fill="var(--color-value)"
                   radius={[0, 3, 3, 0]}
                 />
@@ -389,11 +389,11 @@ export function OverviewTab({ from, to }: Props) {
   const { data: usersData } = useQuery(adminUsersQueryOptions(dateRange));
 
   if (isLoading) {
-    return <div className="text-muted-foreground text-sm">Loading overview...</div>;
+    return <div className="text-muted-foreground text-sm">概要を読み込み中...</div>;
   }
 
   if (error || !data) {
-    return <div className="text-destructive text-sm">Failed to load overview.</div>;
+    return <div className="text-destructive text-sm">概要の読み込みに失敗しました。</div>;
   }
 
   const topAgents: RankingEntry[] = [...(agentsData?.agents ?? [])]
@@ -419,24 +419,24 @@ export function OverviewTab({ from, to }: Props) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-        <StatCard label="Requests" value={String(data.requestCount)} />
-        <StatCard label="Active Users" value={String(data.activeUserCount)} />
-        <StatCard label="Total Tokens" value={data.totalTokens.toLocaleString()} />
-        <StatCard label="Avg Duration" value={ms(data.avgDurationMs)} />
-        <StatCard label="P95 Duration" value={ms(data.p95DurationMs)} />
-        <StatCard label="Error Rate" value={pct(data.errorRate)} />
-        <StatCard label="Tool Calls" value={String(data.totalToolCalls)} />
-        <StatCard label="Tool Failure Rate" value={pct(data.toolFailureRate)} />
-        <StatCard label="Est. Cost" value={usd(data.estimatedCostUsd)} />
+        <StatCard label="リクエスト" value={String(data.requestCount)} />
+        <StatCard label="アクティブユーザー" value={String(data.activeUserCount)} />
+        <StatCard label="合計トークン" value={data.totalTokens.toLocaleString()} />
+        <StatCard label="平均時間" value={ms(data.avgDurationMs)} />
+        <StatCard label="P95時間" value={ms(data.p95DurationMs)} />
+        <StatCard label="エラー率" value={pct(data.errorRate)} />
+        <StatCard label="ツール呼び出し" value={String(data.totalToolCalls)} />
+        <StatCard label="ツール失敗率" value={pct(data.toolFailureRate)} />
+        <StatCard label="概算コスト" value={usd(data.estimatedCostUsd)} />
       </div>
 
       <TimeSeriesSection buckets={tsData?.buckets ?? []} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <RankingChart title="Top Agents by Calls" data={topAgents} />
-        <RankingChart title="Top Tools by Calls" data={topTools} />
-        <RankingChart title="Top Skills by Requests" data={topSkills} />
-        <RankingChart title="Top Users by Requests" data={topUsers} />
+        <RankingChart title="呼び出し数上位エージェント" data={topAgents} />
+        <RankingChart title="呼び出し数上位ツール" data={topTools} />
+        <RankingChart title="リクエスト数上位スキル" data={topSkills} />
+        <RankingChart title="リクエスト数上位ユーザー" data={topUsers} />
       </div>
     </div>
   );

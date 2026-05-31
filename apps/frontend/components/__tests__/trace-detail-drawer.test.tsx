@@ -65,25 +65,25 @@ describe('TraceDetailDrawer', () => {
   describe('click-to-copy', () => {
     it('copies Trace ID when the copy button is clicked', () => {
       setup();
-      fireEvent.click(screen.getByRole('button', { name: /copy trace id/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Trace IDをコピー/ }));
       expect(mockWriteText).toHaveBeenCalledWith(mockDetail.traceId);
     });
 
     it('copies User ID when the copy button is clicked', () => {
       setup();
-      fireEvent.click(screen.getByRole('button', { name: /copy user id/i }));
+      fireEvent.click(screen.getByRole('button', { name: /User IDをコピー/ }));
       expect(mockWriteText).toHaveBeenCalledWith(mockDetail.userId);
     });
 
     it('copies Request ID when the copy button is clicked', () => {
       setup();
-      fireEvent.click(screen.getByRole('button', { name: /copy request id/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Request IDをコピー/ }));
       expect(mockWriteText).toHaveBeenCalledWith(mockDetail.requestId);
     });
 
     it('copies Thread ID when the copy button is clicked', () => {
       setup();
-      fireEvent.click(screen.getByRole('button', { name: /copy thread id/i }));
+      fireEvent.click(screen.getByRole('button', { name: /Thread IDをコピー/ }));
       expect(mockWriteText).toHaveBeenCalledWith(mockDetail.threadId);
     });
   });
@@ -127,12 +127,12 @@ describe('TraceDetailDrawer', () => {
   describe('drawer open/close', () => {
     it('does not render content when traceId is null', () => {
       setup(null);
-      expect(screen.queryByText('Trace Detail')).not.toBeInTheDocument();
+      expect(screen.queryByText('トレース詳細')).not.toBeInTheDocument();
     });
 
     it('renders trace details when traceId is set', () => {
       setup();
-      expect(screen.getByText('Trace Detail')).toBeInTheDocument();
+      expect(screen.getByText('トレース詳細')).toBeInTheDocument();
       expect(screen.getByText(mockDetail.traceId)).toBeInTheDocument();
     });
   });

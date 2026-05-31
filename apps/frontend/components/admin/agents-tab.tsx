@@ -17,30 +17,30 @@ type Props = {
 const helper = createColumnHelper<AdminAgentStats>();
 
 const columns = [
-  helper.accessor('agentName', { header: 'Agent', size: 180 }),
-  helper.accessor('callCount', { header: 'Calls', size: 80 }),
+  helper.accessor('agentName', { header: 'エージェント', size: 180 }),
+  helper.accessor('callCount', { header: '呼び出し', size: 80 }),
   helper.accessor('successRate', {
-    header: 'Success Rate',
+    header: '成功率',
     size: 110,
     cell: ({ getValue }) => `${(getValue<number>() * 100).toFixed(1)}%`,
   }),
   helper.accessor('errorRate', {
-    header: 'Error Rate',
+    header: 'エラー率',
     size: 100,
     cell: ({ getValue }) => `${(getValue<number>() * 100).toFixed(1)}%`,
   }),
   helper.accessor('avgDurationMs', {
-    header: 'Avg Duration',
+    header: '平均時間',
     size: 110,
     cell: ({ getValue }) => `${getValue<number>()}ms`,
   }),
   helper.accessor('totalTokens', {
-    header: 'Tokens',
+    header: 'トークン',
     size: 100,
     cell: ({ getValue }) => getValue<number>().toLocaleString(),
   }),
   helper.accessor('relatedTools', {
-    header: 'Related Tools',
+    header: '関連ツール',
     size: 200,
     enableSorting: false,
     cell: ({ getValue }) => {
@@ -78,7 +78,7 @@ export function AgentsTab({ from, to }: Props) {
         <SearchToolbar
           value={search}
           onChange={setSearch}
-          placeholder="Search by agent name or related tools..."
+          placeholder="エージェント名または関連ツールで検索..."
           className="w-full sm:w-72"
         />
       </div>
@@ -86,8 +86,12 @@ export function AgentsTab({ from, to }: Props) {
         data={filteredAgents}
         columns={columns}
         isLoading={isLoading}
-        error={error ? 'Failed to load agents.' : null}
-        emptyMessage={search ? 'No agents match the search.' : 'No data for this period.'}
+        error={error ? 'エージェントの読み込みに失敗しました。' : null}
+        emptyMessage={
+          search
+            ? '検索に一致するエージェントはいません。'
+            : 'この期間のデータはありません。'
+        }
         onRowClick={(agent) => setSelected(agent)}
         virtualized
         height="100%"

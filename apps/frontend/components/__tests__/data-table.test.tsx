@@ -113,12 +113,12 @@ describe('DataTable', () => {
 
   it('shows default empty message when data is empty and no emptyMessage prop', () => {
     render(<DataTable data={[]} columns={columns} />);
-    expect(screen.getByText('No data for this period.')).toBeInTheDocument();
+    expect(screen.getByText('この期間のデータはありません。')).toBeInTheDocument();
   });
 
   it('shows loading message when isLoading=true and data is empty', () => {
     render(<DataTable data={[]} columns={columns} isLoading />);
-    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(screen.getByText('読み込み中...')).toBeInTheDocument();
   });
 
   it('shows error message when error is set and data is empty', () => {
@@ -165,7 +165,7 @@ describe('DataTable', () => {
 
   it('does not show loading message when data is present even with isLoading=true', () => {
     render(<DataTable data={data} columns={columns} isLoading />);
-    expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    expect(screen.queryByText('読み込み中...')).not.toBeInTheDocument();
     expect(screen.getByText('Alice')).toBeInTheDocument();
   });
 

@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatIngestionStatus } from '@/lib/admin-labels';
 import { presignKbUpload, removeKbDocument, triggerKbSync } from '@/lib/api';
 import type { IngestionJobSummary, KbDocument } from '@/lib/generated/model';
 import { PresignDocumentRequestContentType } from '@/lib/generated/model';
@@ -100,11 +101,11 @@ function NotConfiguredCard() {
     <Card>
       <CardContent className="flex flex-col items-center gap-3 py-12 text-center">
         <BookX className="size-10 text-muted-foreground/50" />
-        <p className="font-medium">Knowledge Base not configured</p>
+        <p className="font-medium">Knowledge Base が設定されていません</p>
         <p className="text-xs text-muted-foreground max-w-xs">
-          Set <code>BEDROCK_KB_ID</code>, <code>BEDROCK_KB_DATA_SOURCE_ID</code>, and{' '}
-          <code>KB_DATA_SOURCE_BUCKET_NAME</code> on the backend to enable document
-          management.
+          ドキュメント管理を有効にするには、バックエンドに
+          <code>BEDROCK_KB_ID</code>、<code>BEDROCK_KB_DATA_SOURCE_ID</code>、
+          <code>KB_DATA_SOURCE_BUCKET_NAME</code> を設定してください。
         </p>
       </CardContent>
     </Card>
@@ -128,19 +129,19 @@ function DeleteDocumentDialog({
     <Dialog open={document !== null} onOpenChange={(open) => !open && onClose()}>
       <DialogContent showCloseButton={false}>
         <DialogHeader>
-          <DialogTitle>Delete document?</DialogTitle>
+          <DialogTitle>ドキュメントを削除しますか?</DialogTitle>
           <DialogDescription>
-            <span className="font-medium">{document?.name}</span> will be permanently
-            deleted from the knowledge base. This cannot be undone.
+            <span className="font-medium">{document?.name}</span>{' '}
+            をナレッジベースから完全に削除します。この操作は元に戻せません。
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <Button variant="outline" onClick={onClose} disabled={isPending}>
-            Cancel
+            キャンセル
           </Button>
           <Button variant="destructive" onClick={onConfirm} disabled={isPending}>
             {isPending && <Loader2 className="size-4 animate-spin" />}
-            Delete
+            削除
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -166,7 +167,7 @@ function DocumentRow({ doc, onDeleteClick }: DocumentRowProps) {
         variant="ghost"
         size="icon-sm"
         onClick={() => onDeleteClick(doc)}
-        aria-label={`Delete ${doc.name}`}
+        aria-label={`${doc.name}を削除`}
       >
         <Trash2 className="size-4 text-muted-foreground" />
       </Button>
@@ -226,8 +227,9 @@ export function KbPanel() {
     mutationFn: async (file: File) => {
       const contentType = contentTypeForFile(file);
       if (!contentType)
-        throw new Error(`Unsupported file type: .${getExtension(file.name)}`);
-      if (file.size > MAX_UPLOAD_SIZE_BYTES) throw new Error('File exceeds 50 MB limit.');
+        throw new Error(`対応していないファイル形式です: .${getExtension(file.name)}`);
+      if (file.size > MAX_UPLOAD_SIZE_BYTES)
+        throw new Error('ファイルサイズは50 MB以下にしてください。');
 
       const { presignedUrl } = await presignKbUpload({
         fileName: file.name,
@@ -240,7 +242,8 @@ export function KbPanel() {
         body: file,
         headers: { 'Content-Type': contentType },
       });
-      if (!uploadResp.ok) throw new Error(`Upload failed: ${uploadResp.status}`);
+      if (!uploadResp.ok)
+        throw new Error(`アップロードに失敗しました: ${uploadResp.status}`);
     },
     onSuccess: async () => {
       setUploadError(null);
@@ -312,7 +315,7 @@ export function KbPanel() {
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Documents</CardTitle>
+            <CardTitle>ドキュメント</CardTitle>
             <div className="flex items-center gap-2">
               {uploadError && (
                 <p className="text-xs text-destructive max-w-xs truncate">
@@ -330,7 +333,7 @@ export function KbPanel() {
                 ) : (
                   <Upload className="size-4" />
                 )}
-                Upload
+                アップロード
               </Button>
               <input
                 ref={fileInputRef}
@@ -351,7 +354,7 @@ export function KbPanel() {
             </div>
           ) : allDocuments.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
-              No documents uploaded yet.
+              まだドキュメントはアップロードされていません。
             </p>
           ) : (
             <div>
@@ -370,7 +373,7 @@ export function KbPanel() {
                 disabled={documentsQuery.isFetching}
               >
                 {documentsQuery.isFetching && <Loader2 className="size-4 animate-spin" />}
-                Load more
+                さらに読み込む
               </Button>
             </div>
           )}
@@ -381,7 +384,7 @@ export function KbPanel() {
       <Card size="sm">
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Ingestion</CardTitle>
+            <CardTitle>取り込み</CardTitle>
             <Button
               size="sm"
               variant={latestJob?.status === 'FAILED' ? 'destructive' : 'outline'}
@@ -397,7 +400,7 @@ export function KbPanel() {
               ) : (
                 <RefreshCw className="size-4" />
               )}
-              Re-Sync
+              再同期
             </Button>
           </div>
         </CardHeader>
@@ -408,16 +411,17 @@ export function KbPanel() {
             <div className="flex flex-col gap-1">
               <Badge variant={jobStatusVariant(latestJob.status)} className="w-fit">
                 <JobStatusIcon status={latestJob.status} />
-                {latestJob.status.replace('_', ' ')}
+                {formatIngestionStatus(latestJob.status)}
               </Badge>
               <p className="text-xs text-muted-foreground">
-                Started {formatDate(latestJob.startedAt)}
-                {latestJob.completedAt &&
-                  ` · Completed ${formatDate(latestJob.completedAt)}`}
+                開始 {formatDate(latestJob.startedAt)}
+                {latestJob.completedAt && ` · 完了 ${formatDate(latestJob.completedAt)}`}
               </p>
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground">No ingestion jobs yet.</p>
+            <p className="text-sm text-muted-foreground">
+              取り込みジョブはまだありません。
+            </p>
           )}
         </CardContent>
       </Card>

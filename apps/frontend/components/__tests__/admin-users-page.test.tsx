@@ -82,11 +82,11 @@ describe('AdminUsersPage', () => {
   it('marks the request count column for right alignment', () => {
     setup();
 
-    expect(screen.getByTestId('column-align-Requests')).toHaveAttribute(
+    expect(screen.getByTestId('column-align-リクエスト')).toHaveAttribute(
       'data-align',
       'right',
     );
-    expect(screen.getByTestId('column-align-Email')).toHaveAttribute(
+    expect(screen.getByTestId('column-align-メールアドレス')).toHaveAttribute(
       'data-align',
       'left',
     );

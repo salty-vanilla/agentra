@@ -194,7 +194,7 @@ export const DeleteConfirmationOpen: Story = {
   },
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    const deleteButton = await canvas.findByLabelText('Delete machine-a-manual.pdf');
+    const deleteButton = await canvas.findByLabelText('machine-a-manual.pdfを削除');
     await userEvent.click(deleteButton);
   },
 };

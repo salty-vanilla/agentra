@@ -6,20 +6,25 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DataTable } from '@/components/ui/data-table';
+import { formatAdminRole, formatUserEnabled } from '@/lib/admin-labels';
 import type { AdminUser } from '@/lib/api';
 import { adminUsersListQueryOptions } from '@/lib/query-options';
 import { AdminUserDetailDrawer } from './admin-user-detail-drawer';
 import { AdminUserInviteDialog } from './admin-user-invite-dialog';
 import { SearchToolbar } from './search-toolbar';
 
-const ROLE_OPTIONS = ['All', 'Admin', 'User'] as const;
-type RoleFilter = (typeof ROLE_OPTIONS)[number];
+const ROLE_OPTIONS = [
+  { value: 'all', label: 'すべて' },
+  { value: 'admin', label: '管理者' },
+  { value: 'user', label: '一般ユーザー' },
+] as const;
+type RoleFilter = (typeof ROLE_OPTIONS)[number]['value'];
 
 const helper = createColumnHelper<AdminUser>();
 
 const columns = [
   helper.accessor('email', {
-    header: 'Email',
+    header: 'メールアドレス',
     size: 220,
   }),
   helper.accessor('userId', {
@@ -37,31 +42,31 @@ const columns = [
     ),
   }),
   helper.accessor('role', {
-    header: 'Role',
+    header: 'ロール',
     size: 90,
     cell: ({ getValue }) => {
       const role = getValue<'admin' | 'user'>();
       return (
         <Badge variant={role === 'admin' ? 'default' : 'secondary'}>
-          {role === 'admin' ? 'Admin' : 'User'}
+          {formatAdminRole(role)}
         </Badge>
       );
     },
   }),
   helper.accessor('enabled', {
-    header: 'Status',
+    header: '状態',
     size: 100,
     cell: ({ getValue }) => {
       const enabled = getValue<boolean>();
       return (
         <Badge variant={enabled ? 'success' : 'destructive'}>
-          {enabled ? 'Active' : 'Disabled'}
+          {formatUserEnabled(enabled)}
         </Badge>
       );
     },
   }),
   helper.accessor('createdAt', {
-    header: 'Created',
+    header: '作成日',
     size: 160,
     cell: ({ getValue }) => (
       <span className="text-xs text-muted-foreground">
@@ -70,7 +75,7 @@ const columns = [
     ),
   }),
   helper.accessor('lastSeenAt', {
-    header: 'Last Seen',
+    header: '最終利用',
     size: 160,
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
@@ -84,7 +89,7 @@ const columns = [
     },
   }),
   helper.accessor('requestCount', {
-    header: 'Requests',
+    header: 'リクエスト',
     size: 90,
     cell: ({ getValue }) => getValue<number | undefined>()?.toLocaleString() ?? '—',
     meta: { align: 'right' },
@@ -93,9 +98,8 @@ const columns = [
 
 function filterUsers(users: AdminUser[], search: string, role: RoleFilter): AdminUser[] {
   let result = users;
-  if (role !== 'All') {
-    const targetRole = role.toLowerCase() as 'admin' | 'user';
-    result = result.filter((u) => u.role === targetRole);
+  if (role !== 'all') {
+    result = result.filter((u) => u.role === role);
   }
   if (search) {
     const q = search.toLowerCase();
@@ -104,7 +108,8 @@ function filterUsers(users: AdminUser[], search: string, role: RoleFilter): Admi
         u.email.toLowerCase().includes(q) ||
         u.userId.toLowerCase().includes(q) ||
         u.sub.toLowerCase().includes(q) ||
-        u.role.toLowerCase().includes(q),
+        u.role.toLowerCase().includes(q) ||
+        formatAdminRole(u.role).toLowerCase().includes(q),
     );
   }
   return result;
@@ -114,7 +119,7 @@ export function AdminUsersPage() {
   const [cursor, setCursor] = useState<string | undefined>(undefined);
   const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('All');
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all');
   const [selected, setSelected] = useState<AdminUser | null>(null);
   const [inviteOpen, setInviteOpen] = useState(false);
 
@@ -151,9 +156,9 @@ export function AdminUsersPage() {
   return (
     <div className="flex flex-col min-h-0 flex-1 gap-3">
       <div className="shrink-0 flex items-center justify-between flex-wrap gap-2">
-        <h1 className="text-xl font-semibold">Users</h1>
+        <h1 className="text-xl font-semibold">ユーザー</h1>
         <Button size="sm" onClick={() => setInviteOpen(true)}>
-          Invite User
+          ユーザーを招待
         </Button>
       </div>
 
@@ -161,23 +166,23 @@ export function AdminUsersPage() {
         <SearchToolbar
           value={search}
           onChange={setSearch}
-          placeholder="Search by email, user ID, sub, or role..."
+          placeholder="メールアドレス、User ID、Sub、ロールで検索..."
           className="w-full sm:w-80"
         />
         <div className="flex flex-wrap gap-1">
           {ROLE_OPTIONS.map((opt) => (
             <Button
-              key={opt}
-              variant={roleFilter === opt ? 'default' : 'outline'}
+              key={opt.value}
+              variant={roleFilter === opt.value ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setRoleFilter(opt)}
+              onClick={() => setRoleFilter(opt.value)}
             >
-              {opt}
+              {opt.label}
             </Button>
           ))}
         </div>
         <span className="text-xs text-muted-foreground sm:ml-auto">
-          Usage stats: last 30 days
+          利用統計: 過去30日
         </span>
       </div>
 
@@ -185,11 +190,11 @@ export function AdminUsersPage() {
         data={filteredUsers}
         columns={columns}
         isLoading={isLoading}
-        error={error ? 'Failed to load users.' : null}
+        error={error ? 'ユーザーの読み込みに失敗しました。' : null}
         emptyMessage={
-          search || roleFilter !== 'All'
-            ? 'No users match the filter.'
-            : 'No users found.'
+          search || roleFilter !== 'all'
+            ? '条件に一致するユーザーはいません。'
+            : 'ユーザーが見つかりません。'
         }
         onRowClick={(user) => setSelected(user)}
         virtualized
@@ -199,7 +204,7 @@ export function AdminUsersPage() {
       {data?.cursor && (
         <div className="shrink-0">
           <Button variant="outline" size="sm" onClick={loadMore} disabled={isLoading}>
-            Load more
+            さらに読み込む
           </Button>
         </div>
       )}
