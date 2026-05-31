@@ -8,24 +8,41 @@
 //   3. observability users — search-empty with "検索をクリア" (Part A / L-1)
 //   4. observability traces — filtered-empty with "フィルターをクリア" (Part A / L-1)
 //
-// Usage (dev server must already be running on 127.0.0.1:3000 in mock mode):
-//   node scripts/issue-354-capture.mjs
+// Generated screenshots are review artifacts only and must NOT be committed.
+// Attach the contact sheet to the PR conversation instead.
+//
+// Usage (dev server must already be running in mock mode):
+//   node scripts/issue-354-capture.mjs [--out <dir>]
+//   CAPTURE_BASE_URL=http://127.0.0.1:3100 node scripts/issue-354-capture.mjs --out /tmp/pr-361
+//
+// Base URL resolution: CAPTURE_BASE_URL env var, else http://127.0.0.1:3000.
+//
+// Output dir resolution (first match wins), never under the repo:
+//   1. --out <dir> CLI argument
+//   2. CAPTURE_OUT environment variable
+//   3. default: <os tmpdir>/agentra-issue-354-evidence
+// Screenshots are written to <out>/{light,dark}/*.png.
 //
 // Then montage into contact sheets (ImageMagick):
-//   montage screenshots/light/*.png -label '%f' -tile 2x -geometry 700x440+8+10 \
-//     -background white -fill black -title 'Issue #354 — Light' contact-sheet-light.png
-//   montage screenshots/dark/*.png  -label '%f' -tile 2x -geometry 700x440+8+10 \
-//     -background '#0c0a09' -fill '#e7e5e4' -title 'Issue #354 — Dark' contact-sheet-dark.png
-//
-// Output: ../../docs/design-review/354/screenshots/{light,dark}/*.png
+//   montage "$OUT"/light/*.png -label '%f' -tile 2x -geometry 760x520+8+10 \
+//     -background white    -fill black     -title 'Issue #354 — Light' "$OUT"/contact-sheet-light.png
+//   montage "$OUT"/dark/*.png  -label '%f' -tile 2x -geometry 760x520+8+10 \
+//     -background '#0c0a09' -fill '#e7e5e4' -title 'Issue #354 — Dark'  "$OUT"/contact-sheet-dark.png
 
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { isAbsolute, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT_ROOT = resolve(__dirname, '../../../docs/design-review/354/screenshots');
+function resolveOutDir() {
+  const argIndex = process.argv.indexOf('--out');
+  const fromArg = argIndex !== -1 ? process.argv[argIndex + 1] : undefined;
+  const raw = fromArg ?? process.env.CAPTURE_OUT;
+  if (!raw) return resolve(tmpdir(), 'agentra-issue-354-evidence');
+  return isAbsolute(raw) ? raw : resolve(process.cwd(), raw);
+}
+
+const OUT_ROOT = resolveOutDir();
 const BASE = process.env.CAPTURE_BASE_URL ?? 'http://127.0.0.1:3000';
 const DESKTOP = { width: 1440, height: 900 };
 const T = 20_000;
@@ -141,6 +158,7 @@ const run = async () => {
 
   const okCount = results.filter((r) => r.ok).length;
   console.log(`\n${okCount}/${results.length} captures succeeded.`);
+  console.log(`Output: ${OUT_ROOT}/{light,dark} (review artifact — do not commit)`);
   for (const f of results.filter((r) => !r.ok))
     console.log(`  FAIL ${f.name}: ${f.error}`);
 };
