@@ -4,18 +4,35 @@
 // light and dark themes, so the strengthened scrim + panel border/shadow can
 // be verified at a glance (and light mode confirmed un-regressed).
 //
-// Usage (mock-mode dev server must be running; port via PORT env, default 3100):
-//   PORT=3100 node scripts/overlay-evidence-355.mjs
+// Generated screenshots are review artifacts only and must not be committed.
+// Attach the montaged contact sheet to the PR conversation instead.
 //
-// Output: ../../docs/design-review/355/screenshots/{light,dark}/*.png
+// Usage (mock-mode dev server must be running; port via PORT env, default 3100):
+//   PORT=3100 node scripts/overlay-evidence-355.mjs [--out <dir>]
+//
+// Output dir resolution (first match wins):
+//   1. --out <dir> CLI argument
+//   2. OVERLAY_EVIDENCE_OUT environment variable
+//   3. default: <tmp>/agentra-issue-355-evidence (outside the repo)
+// Screenshots land in {light,dark}/*.png under that dir; build the contact
+// sheet with:
+//   montage "$OUT"/light/*.png "$OUT"/dark/*.png -tile 2x -geometry 640x+10+12 \
+//     "$OUT"/contact-sheet.png
 
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT_ROOT = resolve(__dirname, '../../../docs/design-review/355/screenshots');
+function resolveOutRoot() {
+  const argIndex = process.argv.indexOf('--out');
+  const fromArg = argIndex !== -1 ? process.argv[argIndex + 1] : undefined;
+  const raw = fromArg ?? process.env.OVERLAY_EVIDENCE_OUT;
+  if (!raw) return resolve(tmpdir(), 'agentra-issue-355-evidence');
+  return resolve(process.cwd(), raw);
+}
+
+const OUT_ROOT = resolveOutRoot();
 const PORT = process.env.PORT ?? '3100';
 const BASE = `http://127.0.0.1:${PORT}`;
 const DESKTOP = { width: 1440, height: 900 };
@@ -111,6 +128,7 @@ async function runTheme(browser, theme) {
 }
 
 const run = async () => {
+  console.log(`Writing review artifacts to ${OUT_ROOT} (do not commit these)`);
   const browser = await chromium.launch();
   await runTheme(browser, 'light');
   await runTheme(browser, 'dark');
