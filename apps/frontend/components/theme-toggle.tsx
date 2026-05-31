@@ -1,6 +1,7 @@
 'use client';
 
-import { Monitor, Moon, Sun } from 'lucide-react';
+import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
+import { CheckIcon, Monitor, Moon, Sun } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
@@ -8,9 +9,9 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 const THEME_OPTIONS = [
   { value: 'light', label: 'Light', icon: Sun },
@@ -47,10 +48,27 @@ export function ThemeToggle() {
           onValueChange={setTheme}
         >
           {THEME_OPTIONS.map(({ value, label, icon: Icon }) => (
-            <DropdownMenuRadioItem key={value} value={value}>
+            <DropdownMenuPrimitive.RadioItem
+              key={value}
+              value={value}
+              className={cn(
+                'grid grid-cols-[1rem_1fr_1rem] items-center gap-2',
+                'cursor-default select-none rounded-sm px-2 py-1.5 text-sm outline-none',
+                'transition-colors focus:bg-accent focus:text-accent-foreground',
+                'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+              )}
+            >
               <Icon className="size-4" aria-hidden="true" />
-              {label}
-            </DropdownMenuRadioItem>
+              <span>{label}</span>
+              <span
+                className="flex size-4 items-center justify-center"
+                aria-hidden="true"
+              >
+                <DropdownMenuPrimitive.ItemIndicator>
+                  <CheckIcon className="size-3.5" />
+                </DropdownMenuPrimitive.ItemIndicator>
+              </span>
+            </DropdownMenuPrimitive.RadioItem>
           ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>
