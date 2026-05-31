@@ -5,7 +5,9 @@ import { expect, userEvent, within } from 'storybook/test';
 import type { AdminUser } from '@/lib/api';
 import {
   STORYBOOK_ADMIN_USERS_LIST,
+  storybookAdminUsersListErrorHandler,
   storybookAdminUsersListHandler,
+  storybookAdminUsersListLoadingHandler,
   storybookInviteAdminUserConflictHandler,
   storybookInviteAdminUserLoadingHandler,
   storybookInviteAdminUserSuccessHandler,
@@ -48,14 +50,17 @@ export const Default: Story = {
 
 export const Loading: Story = {
   parameters: {
-    msw: {
-      handlers: [],
-    },
+    msw: { handlers: [storybookAdminUsersListLoadingHandler] },
     docs: {
       description: {
-        story: 'MSW handler なしでリクエストを保留し、読み込み状態を表示します。',
+        story:
+          'MSW の遅延ハンドラでリクエストを保留し、DataTable の読み込み（スピナー）状態を安定して表示します。',
       },
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByText('読み込み中...')).toBeVisible();
   },
 };
 
@@ -72,16 +77,17 @@ export const Empty: Story = {
 
 export const ApiError: Story = {
   parameters: {
-    msw: {
-      handlers: [
-        http.get('*/admin/users', () =>
-          HttpResponse.json({ error: 'Internal Server Error' }, { status: 500 }),
-        ),
-      ],
-    },
+    msw: { handlers: [storybookAdminUsersListErrorHandler] },
     docs: {
-      description: { story: 'API error — shows error message in table area.' },
+      description: {
+        story:
+          'MSW の 500 ハンドラで API エラーを注入し、DataTable の destructive エラーセルを表示します。',
+      },
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByText('ユーザーの読み込みに失敗しました。')).toBeVisible();
   },
 };
 

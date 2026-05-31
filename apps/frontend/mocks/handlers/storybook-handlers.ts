@@ -1,9 +1,18 @@
-import { HttpResponse, http } from 'msw';
+import { delay, HttpResponse, http } from 'msw';
 import type {
+  AdminTracesResponse,
   AdminUsersListResponse,
   AdminUsersResponse,
   ThreadsResponse,
 } from '@/mocks/generated/model';
+
+/**
+ * Delay (ms) applied to "loading" story handlers so the DataTable skeleton /
+ * spinner branch stays on screen long enough to be captured deterministically
+ * in snapshot / visual evidence runs. Long enough to outlast any screenshot
+ * window, short enough that test-storybook still tears the story down promptly.
+ */
+export const STORYBOOK_LOADING_DELAY_MS = 60_000;
 
 const STORYBOOK_THREADS: ThreadsResponse = {
   threads: [
@@ -88,6 +97,92 @@ export const storybookUsersHandler = http.get('*/admin/observability/users', () 
   HttpResponse.json(STORYBOOK_USERS_WITH_ROLES),
 );
 
+export const storybookUsersLoadingHandler = http.get(
+  '*/admin/observability/users',
+  async () => {
+    await delay(STORYBOOK_LOADING_DELAY_MS);
+    return HttpResponse.json(STORYBOOK_USERS_WITH_ROLES);
+  },
+);
+
+export const storybookUsersErrorHandler = http.get('*/admin/observability/users', () =>
+  HttpResponse.json({ error: 'Internal Server Error' }, { status: 500 }),
+);
+
+export const STORYBOOK_TRACES: AdminTracesResponse = {
+  traces: [
+    {
+      traceId: 'trace-0001-aabbccddeeff00112233',
+      userId: 'user-admin-001-aabbccddeeff',
+      startedAt: '2026-05-26T09:00:00.000Z',
+      completedAt: '2026-05-26T09:00:01.200Z',
+      durationMs: 1200,
+      status: 'success',
+      model: 'claude-sonnet-4-6',
+      totalTokens: 4200,
+      estimatedCostUsd: 0.013,
+      toolCallCount: 2,
+      agentCallCount: 1,
+      skillCallCount: 0,
+    },
+    {
+      traceId: 'trace-0002-112233445566778899',
+      userId: 'user-regular-002-gghhiijjkkll',
+      startedAt: '2026-05-26T08:45:00.000Z',
+      completedAt: '2026-05-26T08:45:00.850Z',
+      durationMs: 850,
+      status: 'success',
+      model: 'claude-haiku-4-5',
+      totalTokens: 1800,
+      estimatedCostUsd: 0.004,
+      toolCallCount: 1,
+      agentCallCount: 0,
+      skillCallCount: 1,
+    },
+    {
+      traceId: 'trace-0003-99aabbccddeeff0011',
+      userId: 'user-high-error-004',
+      startedAt: '2026-05-26T08:30:00.000Z',
+      completedAt: '2026-05-26T08:30:03.400Z',
+      durationMs: 3400,
+      status: 'error',
+      model: 'claude-sonnet-4-6',
+      totalTokens: 5600,
+      estimatedCostUsd: 0.018,
+      toolCallCount: 3,
+      agentCallCount: 2,
+      skillCallCount: 0,
+    },
+    {
+      traceId: 'trace-0004-abcabcabcabcabcabc',
+      userId: 'user-regular-003-mmnnoopp',
+      startedAt: '2026-05-26T08:15:00.000Z',
+      completedAt: '2026-05-26T08:15:00.620Z',
+      durationMs: 620,
+      status: 'cancelled',
+      toolCallCount: 0,
+      agentCallCount: 0,
+      skillCallCount: 0,
+    },
+  ],
+};
+
+export const storybookTracesHandler = http.get('*/admin/observability/traces', () =>
+  HttpResponse.json(STORYBOOK_TRACES),
+);
+
+export const storybookTracesLoadingHandler = http.get(
+  '*/admin/observability/traces',
+  async () => {
+    await delay(STORYBOOK_LOADING_DELAY_MS);
+    return HttpResponse.json(STORYBOOK_TRACES);
+  },
+);
+
+export const storybookTracesErrorHandler = http.get('*/admin/observability/traces', () =>
+  HttpResponse.json({ error: 'Internal Server Error' }, { status: 500 }),
+);
+
 export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
   users: [
     {
@@ -137,6 +232,18 @@ export const STORYBOOK_ADMIN_USERS_LIST: AdminUsersListResponse = {
 
 export const storybookAdminUsersListHandler = http.get('*/admin/users', () =>
   HttpResponse.json(STORYBOOK_ADMIN_USERS_LIST),
+);
+
+export const storybookAdminUsersListLoadingHandler = http.get(
+  '*/admin/users',
+  async () => {
+    await delay(STORYBOOK_LOADING_DELAY_MS);
+    return HttpResponse.json(STORYBOOK_ADMIN_USERS_LIST);
+  },
+);
+
+export const storybookAdminUsersListErrorHandler = http.get('*/admin/users', () =>
+  HttpResponse.json({ error: 'Internal Server Error' }, { status: 500 }),
 );
 
 export const storybookInviteAdminUserSuccessHandler = http.post(
