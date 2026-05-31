@@ -34,6 +34,8 @@ function getExpectedUserPoolClientId(): string {
 type CognitoTokenClaims = {
   sub?: string | undefined;
   email?: string | undefined;
+  name?: string | undefined;
+  preferred_username?: string | undefined;
   token_use?: string | undefined;
   client_id?: string | undefined;
   aud?: string | undefined;
@@ -62,6 +64,9 @@ export function validateCognitoAccessTokenClaims(payload: CognitoTokenClaims) {
     sub: payload.sub,
     email: payload.email ?? '',
     groups: payload['cognito:groups'] ?? [],
+    // Profile claims used to project a human-readable displayName into UserTable.
+    name: payload.name,
+    preferredUsername: payload.preferred_username,
   };
 }
 
@@ -94,16 +99,22 @@ export const authMiddleware: MiddlewareHandler<any> = async (c, next) => {
       issuer: `https://cognito-idp.${cognitoRegion}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
     });
 
-    const { sub, email, groups } = validateCognitoAccessTokenClaims({
-      sub: payload.sub,
-      email: payload.email as string | undefined,
-      token_use: payload.token_use as string | undefined,
-      client_id: payload.client_id as string | undefined,
-      aud: payload.aud as string | undefined,
-      'cognito:groups': payload['cognito:groups'] as string[] | undefined,
-    });
+    const { sub, email, groups, name, preferredUsername } =
+      validateCognitoAccessTokenClaims({
+        sub: payload.sub,
+        email: payload.email as string | undefined,
+        name: payload.name as string | undefined,
+        preferred_username: payload.preferred_username as string | undefined,
+        token_use: payload.token_use as string | undefined,
+        client_id: payload.client_id as string | undefined,
+        aud: payload.aud as string | undefined,
+        'cognito:groups': payload['cognito:groups'] as string[] | undefined,
+      });
 
-    const user = await userStore.getOrCreateUser(sub, email, groups);
+    const user = await userStore.getOrCreateUser(sub, email, groups, {
+      name,
+      preferredUsername,
+    });
     c.set('userId', user.userId);
     c.set('userGroups', groups);
     c.set('callerSub', sub);

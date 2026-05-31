@@ -16,18 +16,74 @@ export type UserRecord = {
   createdAt: string;
   role: UserRole;
   enabled: boolean;
+  // Human-readable display label, projected from Cognito profile claims.
+  // Absent for pre-existing records that have never been synced.
+  displayName?: string;
+};
+
+// Profile claims available at authentication time (from the verified token).
+// Used to project a human-readable displayName into the UserTable.
+export type UserProfileClaims = {
+  name?: string | undefined;
+  preferredUsername?: string | undefined;
 };
 
 export interface UserStore {
-  getOrCreateUser(sub: string, email: string, groups: string[]): Promise<UserRecord>;
+  getOrCreateUser(
+    sub: string,
+    email: string,
+    groups: string[],
+    profile?: UserProfileClaims,
+  ): Promise<UserRecord>;
   listUsers(): Promise<UserRecord[]>;
-  createInvitedUser(sub: string, email: string, role: UserRole): Promise<UserRecord>;
+  createInvitedUser(
+    sub: string,
+    email: string,
+    role: UserRole,
+    displayName?: string,
+  ): Promise<UserRecord>;
   getUserBySub(sub: string): Promise<UserRecord | null>;
   updateRole(sub: string, role: UserRole): Promise<UserRecord>;
   updateEnabled(sub: string, enabled: boolean): Promise<UserRecord>;
 }
 
+// Derive the display label from profile claims.
+// Priority: name > preferred_username. Empty/whitespace values are ignored so a
+// blank claim never overwrites or stores a meaningless displayName.
+export function deriveDisplayName(profile?: UserProfileClaims): string | undefined {
+  const name = profile?.name?.trim();
+  if (name) return name;
+  const preferred = profile?.preferredUsername?.trim();
+  if (preferred) return preferred;
+  return undefined;
+}
+
+export type ProfileSync = {
+  displayName?: string;
+  email?: string;
+};
+
+// Compute which profile fields differ from the stored record and should be
+// written back. Only non-empty, changed values are included.
+export function computeProfileSync(
+  existing: UserRecord,
+  claimEmail: string,
+  derivedDisplayName: string | undefined,
+): ProfileSync {
+  const updates: ProfileSync = {};
+  if (derivedDisplayName && derivedDisplayName !== existing.displayName) {
+    updates.displayName = derivedDisplayName;
+  }
+  const trimmedEmail = claimEmail.trim();
+  if (trimmedEmail && trimmedEmail !== existing.email) {
+    updates.email = trimmedEmail;
+  }
+  return updates;
+}
+
 export function normalizeUserRecord(item: Record<string, unknown>): UserRecord {
+  const rawDisplayName =
+    typeof item.displayName === 'string' ? item.displayName.trim() : '';
   return {
     userId: String(item.userId),
     sub: String(item.sub),
@@ -35,6 +91,7 @@ export function normalizeUserRecord(item: Record<string, unknown>): UserRecord {
     createdAt: String(item.createdAt ?? ''),
     role: item.role === 'admin' || item.role === 'user' ? item.role : 'user',
     enabled: item.enabled !== false,
+    ...(rawDisplayName ? { displayName: rawDisplayName } : {}),
   };
 }
 
@@ -67,8 +124,10 @@ export class DynamoUserStore implements UserStore {
     sub: string,
     email: string,
     groups: string[],
+    profile?: UserProfileClaims,
   ): Promise<UserRecord> {
     const role = deriveUserRole(groups);
+    const derivedDisplayName = deriveDisplayName(profile);
 
     const existing = await this.client.send(
       new GetCommand({ TableName: getUsersTable(), Key: { sub } }),
@@ -77,21 +136,47 @@ export class DynamoUserStore implements UserStore {
     if (existing.Item) {
       const rawRole = existing.Item.role;
       const normalized = normalizeUserRecord(existing.Item as Record<string, unknown>);
+      const roleNeedsUpdate = shouldBackfillOrUpdateRole(rawRole, role);
+      const profileSync = computeProfileSync(normalized, email, derivedDisplayName);
 
-      if (!shouldBackfillOrUpdateRole(rawRole, role)) {
+      if (!roleNeedsUpdate && !profileSync.displayName && !profileSync.email) {
         return normalized;
       }
-      // Run UpdateCommand: backfill missing/invalid role, or sync changed role
+
+      // Coalesce role backfill/sync and profile sync into a single UpdateCommand.
+      const setClauses: string[] = [];
+      const names: Record<string, string> = {};
+      const values: Record<string, unknown> = {};
+      if (roleNeedsUpdate) {
+        setClauses.push('#role = :role');
+        names['#role'] = 'role';
+        values[':role'] = role;
+      }
+      if (profileSync.displayName) {
+        setClauses.push('displayName = :displayName');
+        values[':displayName'] = profileSync.displayName;
+      }
+      if (profileSync.email) {
+        setClauses.push('email = :email');
+        values[':email'] = profileSync.email;
+      }
+
       await this.client.send(
         new UpdateCommand({
           TableName: getUsersTable(),
           Key: { sub },
-          UpdateExpression: 'SET #role = :role',
-          ExpressionAttributeNames: { '#role': 'role' },
-          ExpressionAttributeValues: { ':role': role },
+          UpdateExpression: `SET ${setClauses.join(', ')}`,
+          ...(Object.keys(names).length > 0 ? { ExpressionAttributeNames: names } : {}),
+          ExpressionAttributeValues: values,
         }),
       );
-      return { ...normalized, role };
+
+      return {
+        ...normalized,
+        ...(roleNeedsUpdate ? { role } : {}),
+        ...(profileSync.displayName ? { displayName: profileSync.displayName } : {}),
+        ...(profileSync.email ? { email: profileSync.email } : {}),
+      };
     }
 
     const record: UserRecord = {
@@ -101,6 +186,7 @@ export class DynamoUserStore implements UserStore {
       createdAt: new Date().toISOString(),
       role,
       enabled: true,
+      ...(derivedDisplayName ? { displayName: derivedDisplayName } : {}),
     };
 
     await this.client.send(new PutCommand({ TableName: getUsersTable(), Item: record }));
@@ -115,7 +201,8 @@ export class DynamoUserStore implements UserStore {
       const result = await this.client.send(
         new ScanCommand({
           TableName: getUsersTable(),
-          ProjectionExpression: 'userId, sub, email, createdAt, #role, enabled',
+          ProjectionExpression:
+            'userId, sub, email, createdAt, #role, enabled, displayName',
           ExpressionAttributeNames: { '#role': 'role' },
           ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
         }),
@@ -131,7 +218,9 @@ export class DynamoUserStore implements UserStore {
     sub: string,
     email: string,
     role: UserRole,
+    displayName?: string,
   ): Promise<UserRecord> {
+    const trimmedDisplayName = displayName?.trim();
     const record: UserRecord = {
       sub,
       userId: uuidv7(),
@@ -139,6 +228,7 @@ export class DynamoUserStore implements UserStore {
       createdAt: new Date().toISOString(),
       role,
       enabled: true,
+      ...(trimmedDisplayName ? { displayName: trimmedDisplayName } : {}),
     };
     await this.client.send(
       new PutCommand({
@@ -197,6 +287,7 @@ const DEMO_USER: UserRecord = {
   createdAt: '2026-04-18T00:00:00.000Z',
   role: 'user',
   enabled: true,
+  displayName: 'Demo User',
 };
 
 export class MemoryUserStore implements UserStore {
@@ -210,13 +301,23 @@ export class MemoryUserStore implements UserStore {
     sub: string,
     email: string,
     groups: string[],
+    profile?: UserProfileClaims,
   ): Promise<UserRecord> {
     const role = deriveUserRole(groups);
+    const derivedDisplayName = deriveDisplayName(profile);
     const existing = this.store.get(sub);
 
     if (existing) {
-      if (existing.role === role) return existing;
-      const updated = { ...existing, role };
+      const profileSync = computeProfileSync(existing, email, derivedDisplayName);
+      if (existing.role === role && !profileSync.displayName && !profileSync.email) {
+        return existing;
+      }
+      const updated: UserRecord = {
+        ...existing,
+        role,
+        ...(profileSync.displayName ? { displayName: profileSync.displayName } : {}),
+        ...(profileSync.email ? { email: profileSync.email } : {}),
+      };
       this.store.set(sub, updated);
       return updated;
     }
@@ -228,6 +329,7 @@ export class MemoryUserStore implements UserStore {
       createdAt: new Date().toISOString(),
       role,
       enabled: true,
+      ...(derivedDisplayName ? { displayName: derivedDisplayName } : {}),
     };
     this.store.set(sub, record);
     return record;
@@ -241,7 +343,9 @@ export class MemoryUserStore implements UserStore {
     sub: string,
     email: string,
     role: UserRole,
+    displayName?: string,
   ): Promise<UserRecord> {
+    const trimmedDisplayName = displayName?.trim();
     const record: UserRecord = {
       sub,
       userId: uuidv7(),
@@ -249,6 +353,7 @@ export class MemoryUserStore implements UserStore {
       createdAt: new Date().toISOString(),
       role,
       enabled: true,
+      ...(trimmedDisplayName ? { displayName: trimmedDisplayName } : {}),
     };
     this.store.set(sub, record);
     return record;

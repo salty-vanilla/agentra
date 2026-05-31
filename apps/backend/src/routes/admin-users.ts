@@ -27,6 +27,7 @@ type AdminUser = {
   userId: string;
   sub: string;
   email: string;
+  displayName?: string;
   role: 'admin' | 'user';
   enabled: boolean;
   createdAt: string;
@@ -184,6 +185,7 @@ adminUsersRouter.get('/', async (c) => {
         userId: u.userId,
         sub: u.sub,
         email: u.email,
+        ...(u.displayName ? { displayName: u.displayName } : {}),
         role: u.role,
         enabled: u.enabled,
         createdAt: u.createdAt,
@@ -272,8 +274,9 @@ adminUsersRouter.post('/invite', async (c) => {
   }
 
   // Write projection record so the invited user appears in /admin/users before first login.
-  // getOrCreateUser will sync the role from Cognito group membership on first login.
-  const record = await userStore.createInvitedUser(sub, email, role);
+  // getOrCreateUser will sync the role from Cognito group membership on first login,
+  // and refresh displayName from profile claims if the invite name was absent.
+  const record = await userStore.createInvitedUser(sub, email, role, name);
 
   return jsonWithValidation(c, 'inviteAdminUser', 201, {
     email,
