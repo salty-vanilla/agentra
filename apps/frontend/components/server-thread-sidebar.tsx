@@ -5,9 +5,9 @@ import { APP_NAME } from '@agentra/shared';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { cva } from 'class-variance-authority';
 import { MessageSquarePlus, MoreHorizontal, Orbit, Pencil, Trash2 } from 'lucide-react';
-import Image from 'next/image';
 import type * as React from 'react';
 import { useRef, useState } from 'react';
+import { BrandMark } from '@/components/brand-mark';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -123,17 +123,7 @@ export function ServerThreadSidebar({
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton size="lg">
-                  <div className="flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-sidebar-border/60 bg-background">
-                    <Image
-                      alt=""
-                      aria-hidden="true"
-                      className="size-full"
-                      height={44}
-                      unoptimized
-                      src="/icon.svg"
-                      width={44}
-                    />
-                  </div>
+                  <BrandMark adaptive className="!size-11 shrink-0" />
                   <div className="mr-6 flex flex-col gap-0.5 leading-none">
                     <span className="font-semibold">{APP_NAME}</span>
                     <span className="text-xs">
