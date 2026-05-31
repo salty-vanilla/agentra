@@ -319,15 +319,72 @@ function TimeSeriesSection({ buckets }: TimeSeriesSectionProps) {
 // ── Ranking charts ────────────────────────────────────────────────────────────
 
 const TOP_N = 5;
-const RANKING_HEIGHT = 180;
+const RANKING_HEIGHT = 200;
 
 const rankingConfig: ChartConfig = {
-  value: { label: '件数', color: 'var(--chart-1)' },
+  value: { label: '件数', color: 'var(--chart-3)' },
 };
 
-type RankingEntry = { name: string; value: number };
+type RankingDatum = {
+  name: string;
+  value: number;
+  userId?: string | undefined;
+  email?: string | undefined;
+};
 
-function RankingChart({ title, data }: { title: string; data: RankingEntry[] }) {
+type UserTooltipPayload = {
+  name: string;
+  value: number;
+  color?: string;
+  payload?: RankingDatum;
+};
+
+function UserRankingTooltipContent({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: UserTooltipPayload[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const entry = payload[0];
+  if (!entry) return null;
+  const datum = entry.payload;
+
+  return (
+    <div className="min-w-[160px] rounded-lg border border-border bg-background px-3 py-2 text-sm shadow-sm">
+      <p className="mb-1 font-medium text-foreground">{label}</p>
+      {datum?.email && datum.email !== label && (
+        <p className="text-xs text-muted-foreground">{datum.email}</p>
+      )}
+      {datum?.userId && (
+        <p className="font-mono text-xs text-muted-foreground">ID: {datum.userId}</p>
+      )}
+      <div className="mt-1.5 flex items-center gap-2">
+        {entry.color && (
+          <span
+            className="inline-block h-2 w-2 shrink-0 rounded-full"
+            style={{ backgroundColor: entry.color }}
+          />
+        )}
+        <span className="font-medium">{entry.value}</span>
+        <span className="text-muted-foreground">件</span>
+      </div>
+    </div>
+  );
+}
+
+function RankingChart({
+  title,
+  data,
+  showUserTooltip = false,
+}: {
+  title: string;
+  data: RankingDatum[];
+  showUserTooltip?: boolean;
+}) {
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -337,9 +394,9 @@ function RankingChart({ title, data }: { title: string; data: RankingEntry[] }) 
         {data.length === 0 ? (
           <ChartEmptyState />
         ) : (
-          <ChartContainer config={rankingConfig}>
+          <ChartContainer config={rankingConfig} className="overflow-hidden">
             <ResponsiveContainer width="100%" height={RANKING_HEIGHT}>
-              <BarChart data={data} layout="vertical" margin={{ left: 4, right: 16 }}>
+              <BarChart data={data} layout="vertical" margin={{ left: 8, right: 16 }}>
                 <CartesianGrid
                   strokeDasharray="3 3"
                   horizontal={false}
@@ -350,20 +407,28 @@ function RankingChart({ title, data }: { title: string; data: RankingEntry[] }) 
                   type="category"
                   dataKey="name"
                   tick={{ fontSize: 11 }}
-                  width={80}
+                  width={120}
                   tickFormatter={(v: string) =>
-                    v.length > 12 ? `${v.slice(0, 12)}…` : v
+                    v.length > 16 ? `${v.slice(0, 16)}…` : v
                   }
                 />
                 <Tooltip
-                  content={<ChartTooltipContent />}
+                  content={
+                    showUserTooltip ? (
+                      <UserRankingTooltipContent />
+                    ) : (
+                      <ChartTooltipContent />
+                    )
+                  }
                   cursor={{ fill: 'var(--muted)', opacity: 0.5 }}
                 />
                 <Bar
                   dataKey="value"
                   name="件数"
                   fill="var(--color-value)"
+                  fillOpacity={0.85}
                   radius={[0, 3, 3, 0]}
+                  activeBar={{ fillOpacity: 1, fill: 'var(--color-value)' }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -396,25 +461,30 @@ export function OverviewTab({ from, to }: Props) {
     return <div className="text-destructive text-sm">概要の読み込みに失敗しました。</div>;
   }
 
-  const topAgents: RankingEntry[] = [...(agentsData?.agents ?? [])]
+  const topAgents: RankingDatum[] = [...(agentsData?.agents ?? [])]
     .sort((a, b) => b.callCount - a.callCount)
     .slice(0, TOP_N)
     .map((a) => ({ name: a.agentName, value: a.callCount }));
 
-  const topTools: RankingEntry[] = [...(toolsData?.tools ?? [])]
+  const topTools: RankingDatum[] = [...(toolsData?.tools ?? [])]
     .sort((a, b) => b.callCount - a.callCount)
     .slice(0, TOP_N)
     .map((t) => ({ name: t.toolName, value: t.callCount }));
 
-  const topSkills: RankingEntry[] = [...(skillsData?.skills ?? [])]
+  const topSkills: RankingDatum[] = [...(skillsData?.skills ?? [])]
     .sort((a, b) => b.requestCount - a.requestCount)
     .slice(0, TOP_N)
     .map((s) => ({ name: s.skillName, value: s.requestCount }));
 
-  const topUsers: RankingEntry[] = [...(usersData?.users ?? [])]
+  const topUsers: RankingDatum[] = [...(usersData?.users ?? [])]
     .sort((a, b) => b.requestCount - a.requestCount)
     .slice(0, TOP_N)
-    .map((u) => ({ name: u.userId, value: u.requestCount }));
+    .map((u) => ({
+      name: u.displayName ?? u.email ?? u.userId,
+      value: u.requestCount,
+      userId: u.userId,
+      email: u.email,
+    }));
 
   return (
     <div className="space-y-6">
@@ -436,7 +506,7 @@ export function OverviewTab({ from, to }: Props) {
         <RankingChart title="呼び出し数上位エージェント" data={topAgents} />
         <RankingChart title="呼び出し数上位ツール" data={topTools} />
         <RankingChart title="リクエスト数上位スキル" data={topSkills} />
-        <RankingChart title="リクエスト数上位ユーザー" data={topUsers} />
+        <RankingChart title="リクエスト数上位ユーザー" data={topUsers} showUserTooltip />
       </div>
     </div>
   );

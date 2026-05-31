@@ -47,6 +47,8 @@ export const STORYBOOK_USERS_WITH_ROLES: AdminUsersResponse = {
   users: [
     {
       userId: 'user-admin-001',
+      displayName: 'Alice Admin',
+      email: 'alice@example.com',
       role: 'admin',
       requestCount: 42,
       totalTokens: 15000,
@@ -57,6 +59,8 @@ export const STORYBOOK_USERS_WITH_ROLES: AdminUsersResponse = {
     },
     {
       userId: 'user-regular-002',
+      displayName: 'Bob Regular',
+      email: 'bob@example.com',
       role: 'user',
       requestCount: 18,
       totalTokens: 6200,
@@ -66,6 +70,7 @@ export const STORYBOOK_USERS_WITH_ROLES: AdminUsersResponse = {
     },
     {
       userId: 'user-regular-003',
+      email: 'carol@example.com',
       role: 'user',
       requestCount: 7,
       totalTokens: 2100,
@@ -75,6 +80,8 @@ export const STORYBOOK_USERS_WITH_ROLES: AdminUsersResponse = {
     },
     {
       userId: 'user-high-error-004',
+      displayName: 'Dave Error',
+      email: 'dave@example.com',
       role: 'user',
       requestCount: 12,
       totalTokens: 3400,

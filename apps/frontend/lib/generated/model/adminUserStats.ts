@@ -11,6 +11,10 @@ import type { AdminUserStatsRole } from './adminUserStatsRole';
 
 export interface AdminUserStats {
   userId: string;
+  /** Human-readable display name (e.g. from Cognito profile) */
+  displayName?: string;
+  /** User email address for display and lookup */
+  email?: string;
   role?: AdminUserStatsRole;
   /** @minimum 0 */
   requestCount: number;

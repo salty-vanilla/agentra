@@ -93,6 +93,8 @@ const usersResponse = {
   users: [
     {
       userId: 'user-001',
+      displayName: '山田 太郎',
+      email: 'yamada@example.com',
       requestCount: 6,
       totalTokens: 2000,
       avgDurationMs: 700,
@@ -100,6 +102,7 @@ const usersResponse = {
     },
     {
       userId: 'user-002',
+      email: 'sato@example.com',
       requestCount: 4,
       totalTokens: 3000,
       avgDurationMs: 900,

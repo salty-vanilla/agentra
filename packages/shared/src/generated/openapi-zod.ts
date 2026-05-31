@@ -476,6 +476,8 @@ export const getAdminUsersResponseUsersItemErrorRateMax = 1;
 export const GetAdminUsersResponse = zod.object({
   "users": zod.array(zod.object({
   "userId": zod.string(),
+  "displayName": zod.string().optional().describe('Human-readable display name (e.g. from Cognito profile)'),
+  "email": zod.string().email().optional().describe('User email address for display and lookup'),
   "role": zod.enum(['admin', 'user']).optional(),
   "requestCount": zod.number().min(getAdminUsersResponseUsersItemRequestCountMin),
   "totalTokens": zod.number().min(getAdminUsersResponseUsersItemTotalTokensMin),
