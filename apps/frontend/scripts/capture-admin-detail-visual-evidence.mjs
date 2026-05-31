@@ -1,8 +1,10 @@
-// Visual-evidence capture for Issue #366 — Admin Console Compact / Medium /
-// Expanded responsive layout.
+// Visual-evidence capture for the Admin Console responsive detail view
+// (Compact / Medium / Expanded layout modes). Reusable across Admin detail UI
+// PRs — the Issue/PR number lives in the --out path and the PR comment, not in
+// this filename.
 //
 // Drives a running mock-mode dev server with a real Chromium browser and saves
-// the six review screenshots the issue requires, in both light and dark themes:
+// six review screenshots, in both light and dark themes:
 //
 //   01 compact   — list (mobile / narrow viewport)
 //   02 compact   — detail (full-screen sheet)
@@ -12,33 +14,63 @@
 //   06 expanded  — detail panel (non-modal inline side panel)
 //
 // Generated screenshots are review artifacts only and must NOT be committed.
-// Attach the contact sheet to the PR conversation instead.
+// Writing under the repository is refused. Attach the contact sheet to the PR
+// conversation instead.
 //
 // Usage (dev server must already be running in mock mode):
-//   CAPTURE_BASE_URL=http://127.0.0.1:3166 node scripts/issue-366-capture.mjs --out /tmp/pr-366
+//   CAPTURE_BASE_URL=http://127.0.0.1:3166 \
+//     node scripts/capture-admin-detail-visual-evidence.mjs --out /tmp/pr-366
 //
 // Base URL resolution: CAPTURE_BASE_URL env var, else http://127.0.0.1:3000.
 //
-// Output dir resolution (first match wins), never under the repo:
+// Output dir resolution (first match wins), and must be outside the repo:
 //   1. --out <dir> CLI argument
 //   2. CAPTURE_OUT environment variable
-//   3. default: <os tmpdir>/agentra-issue-366-evidence
+//   3. default: <os tmpdir>/agentra-admin-detail-evidence
 // Screenshots are written to <out>/{light,dark}/*.png.
 
+import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { isAbsolute, resolve } from 'node:path';
+import { isAbsolute, relative, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
+
+function repoRoot() {
+  try {
+    return resolve(
+      execFileSync('git', ['rev-parse', '--show-toplevel'], {
+        encoding: 'utf8',
+      }).trim(),
+    );
+  } catch {
+    return resolve(process.cwd());
+  }
+}
+
+// Screenshots are review artifacts, never committed. Refuse any output path that
+// resolves inside the repository so a stray --out cannot leak shots into git.
+function assertOutsideRepo(outDir) {
+  const rel = relative(repoRoot(), outDir);
+  const insideRepo = rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
+  if (insideRepo) {
+    throw new Error(
+      `Refusing to write screenshots inside the repository: ${outDir}\n` +
+        'Screenshots are review artifacts and must not be committed. ' +
+        'Pass --out with a path outside the repo (e.g. /tmp/pr-366).',
+    );
+  }
+}
 
 function resolveOutDir() {
   const argIndex = process.argv.indexOf('--out');
   const fromArg = argIndex !== -1 ? process.argv[argIndex + 1] : undefined;
   const raw = fromArg ?? process.env.CAPTURE_OUT;
-  if (!raw) return resolve(tmpdir(), 'agentra-issue-366-evidence');
+  if (!raw) return resolve(tmpdir(), 'agentra-admin-detail-evidence');
   return isAbsolute(raw) ? raw : resolve(process.cwd(), raw);
 }
 
 const OUT_ROOT = resolveOutDir();
+assertOutsideRepo(OUT_ROOT);
 const BASE = process.env.CAPTURE_BASE_URL ?? 'http://127.0.0.1:3000';
 const T = 20_000;
 

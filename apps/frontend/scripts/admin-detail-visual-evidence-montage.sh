@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
-# Contact sheets for Issue #366 — Admin Console Compact / Medium / Expanded.
+# Contact sheets for the Admin Console responsive detail view
+# (Compact / Medium / Expanded). Reusable across Admin detail UI PRs.
 #
-# Tiles the six review screenshots from issue-366-capture.mjs into one labeled
-# contact sheet per theme (light / dark). Requires ImageMagick 7.
+# Tiles the six review screenshots from capture-admin-detail-visual-evidence.mjs
+# into one labeled contact sheet per theme (light / dark). Requires ImageMagick 7.
 # Output PNGs are review artifacts and are NOT git-managed.
 #
-# Usage (after running issue-366-capture.mjs --out "$SHOTS"):
-#   SHOTS=/tmp/pr-366 bash scripts/issue-366-montage.sh
+# The Issue/PR number belongs in the SHOTS path and the PR comment; pass a custom
+# TITLE to embed it in the sheet heading if you want.
+#
+# Usage (after running capture-admin-detail-visual-evidence.mjs --out "$SHOTS"):
+#   SHOTS=/tmp/pr-366 bash scripts/admin-detail-visual-evidence-montage.sh
+#   SHOTS=/tmp/pr-366 TITLE='PR #372 — Admin detail responsive' bash ... montage.sh
 set -euo pipefail
 
-SHOTS="${SHOTS:-/tmp/agentra-issue-366-evidence}"
+SHOTS="${SHOTS:-/tmp/agentra-admin-detail-evidence}"
 OUT="${OUT:-$SHOTS}"
+TITLE="${TITLE:-Admin Console — Compact / Medium / Expanded}"
 mkdir -p "$OUT"
 
 # screen id : label, in the 2x3 tile order they should appear.
@@ -39,7 +45,7 @@ build_sheet() {
     -background "$bg" \
     -bordercolor '#9ca3af' -border 1 \
     -font Helvetica -pointsize 20 -fill "$fill" \
-    -title "Issue #366 — Admin Console Compact / Medium / Expanded  [$theme]" \
+    -title "$TITLE  [$theme]" \
     "$OUT/contact-sheet-${theme}.png"
   echo "built $OUT/contact-sheet-${theme}.png"
   magick identify -format '%wx%h  %f\n' "$OUT/contact-sheet-${theme}.png"

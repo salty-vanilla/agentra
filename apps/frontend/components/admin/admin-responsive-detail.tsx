@@ -49,9 +49,19 @@ export function AdminResponsiveDetail({ mode, open, title, onClose, children }: 
     );
   }
 
+  // `compact` is a full-screen modal; `medium` is a right-edge Drawer capped at
+  // `sm:max-w-xl`. The compact classes intentionally repeat the `data-[side=right]:`
+  // variant so tailwind-merge strips SheetContent's own `data-[side=right]:w-3/4`
+  // and `data-[side=right]:sm:max-w-sm` — a plain `w-full` loses to them on
+  // specificity and would leave the list peeking behind the sheet.
+  const contentClassName =
+    mode === 'compact'
+      ? 'inset-0 w-screen overflow-y-auto data-[side=right]:w-screen data-[side=right]:max-w-none data-[side=right]:sm:max-w-none'
+      : 'w-full overflow-y-auto sm:max-w-xl';
+
   return (
     <Sheet open={open} onOpenChange={(next) => !next && onClose()}>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+      <SheetContent className={contentClassName}>
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
         </SheetHeader>
