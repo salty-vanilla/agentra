@@ -201,9 +201,10 @@ export class DynamoUserStore implements UserStore {
       const result = await this.client.send(
         new ScanCommand({
           TableName: getUsersTable(),
+          // `sub` and `role` are DynamoDB reserved words — alias both.
           ProjectionExpression:
-            'userId, sub, email, createdAt, #role, enabled, displayName',
-          ExpressionAttributeNames: { '#role': 'role' },
+            'userId, #sub, email, createdAt, #role, enabled, displayName',
+          ExpressionAttributeNames: { '#role': 'role', '#sub': 'sub' },
           ...(lastKey ? { ExclusiveStartKey: lastKey } : {}),
         }),
       );
@@ -234,7 +235,9 @@ export class DynamoUserStore implements UserStore {
       new PutCommand({
         TableName: getUsersTable(),
         Item: record,
-        ConditionExpression: 'attribute_not_exists(sub)',
+        // `sub` is a DynamoDB reserved word — alias it in the condition.
+        ConditionExpression: 'attribute_not_exists(#sub)',
+        ExpressionAttributeNames: { '#sub': 'sub' },
       }),
     );
     return record;
@@ -253,9 +256,9 @@ export class DynamoUserStore implements UserStore {
       new UpdateCommand({
         TableName: getUsersTable(),
         Key: { sub },
-        ConditionExpression: 'attribute_exists(sub)',
+        ConditionExpression: 'attribute_exists(#sub)',
         UpdateExpression: 'SET #role = :role',
-        ExpressionAttributeNames: { '#role': 'role' },
+        ExpressionAttributeNames: { '#role': 'role', '#sub': 'sub' },
         ExpressionAttributeValues: { ':role': role },
         ReturnValues: 'ALL_NEW',
       }),
@@ -268,8 +271,9 @@ export class DynamoUserStore implements UserStore {
       new UpdateCommand({
         TableName: getUsersTable(),
         Key: { sub },
-        ConditionExpression: 'attribute_exists(sub)',
+        ConditionExpression: 'attribute_exists(#sub)',
         UpdateExpression: 'SET enabled = :enabled',
+        ExpressionAttributeNames: { '#sub': 'sub' },
         ExpressionAttributeValues: { ':enabled': enabled },
         ReturnValues: 'ALL_NEW',
       }),
