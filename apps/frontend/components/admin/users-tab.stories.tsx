@@ -1,6 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { expect, userEvent, within } from 'storybook/test';
-import { storybookUsersHandler } from '@/mocks/handlers/storybook-handlers';
+import {
+  storybookUsersErrorHandler,
+  storybookUsersHandler,
+  storybookUsersLoadingHandler,
+} from '@/mocks/handlers/storybook-handlers';
 import { UsersTab } from './users-tab';
 
 const meta = {
@@ -40,11 +44,33 @@ export const WithRoles: Story = {
 
 export const Loading: Story = {
   parameters: {
-    msw: {
-      handlers: [
-        // Intentionally no handler — let request hang to show loading state
-      ],
+    msw: { handlers: [storybookUsersLoadingHandler] },
+    docs: {
+      description: {
+        story:
+          'MSW の遅延ハンドラでリクエストを保留し、DataTable の読み込み（スピナー）状態を安定して表示します。',
+      },
     },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByText('読み込み中...')).toBeVisible();
+  },
+};
+
+export const ApiError: Story = {
+  parameters: {
+    msw: { handlers: [storybookUsersErrorHandler] },
+    docs: {
+      description: {
+        story:
+          'MSW の 500 ハンドラで API エラーを注入し、DataTable の destructive エラーセルを表示します。',
+      },
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    expect(await canvas.findByText('ユーザーの読み込みに失敗しました。')).toBeVisible();
   },
 };
 
