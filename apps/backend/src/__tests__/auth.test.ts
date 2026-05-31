@@ -1,24 +1,26 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { authMiddleware, validateCognitoAccessTokenClaims } from '../middleware/auth.js';
+import {
+  authMiddleware,
+  validateCognitoAccessTokenClaims,
+  validateCognitoIdTokenClaims,
+} from '../middleware/auth.js';
 
 describe('validateCognitoAccessTokenClaims', () => {
   afterEach(() => {
     delete process.env.COGNITO_USER_POOL_CLIENT_ID;
   });
 
-  it('accepts access tokens for the configured client', () => {
+  it('accepts access tokens for the configured client (authorization only)', () => {
     process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
 
     expect(
       validateCognitoAccessTokenClaims({
         sub: 'user-123',
-        email: 'user@example.com',
         token_use: 'access',
         client_id: 'client-123',
       }),
     ).toEqual({
       sub: 'user-123',
-      email: 'user@example.com',
       groups: [],
     });
   });
@@ -29,16 +31,26 @@ describe('validateCognitoAccessTokenClaims', () => {
     expect(
       validateCognitoAccessTokenClaims({
         sub: 'user-123',
-        email: 'user@example.com',
         token_use: 'access',
         client_id: 'client-123',
         'cognito:groups': ['agentra-admin', 'editors'],
       }),
     ).toEqual({
       sub: 'user-123',
-      email: 'user@example.com',
       groups: ['agentra-admin', 'editors'],
     });
+  });
+
+  it('does not derive profile fields (email/name) from the access token', () => {
+    process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
+
+    const result = validateCognitoAccessTokenClaims({
+      sub: 'user-123',
+      token_use: 'access',
+      client_id: 'client-123',
+    });
+    expect(result).not.toHaveProperty('email');
+    expect(result).not.toHaveProperty('name');
   });
 
   it('rejects tokens issued for a different client', () => {
@@ -63,6 +75,67 @@ describe('validateCognitoAccessTokenClaims', () => {
         aud: 'client-123',
       }),
     ).toThrow('Invalid Cognito token type.');
+  });
+});
+
+describe('validateCognitoIdTokenClaims', () => {
+  afterEach(() => {
+    delete process.env.COGNITO_USER_POOL_CLIENT_ID;
+  });
+
+  it('extracts email and profile claims from an ID token for the configured client', () => {
+    process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
+
+    expect(
+      validateCognitoIdTokenClaims({
+        sub: 'user-123',
+        token_use: 'id',
+        aud: 'client-123',
+        email: 'user@example.com',
+        name: 'Yamada Taro',
+        preferred_username: 'taro',
+      }),
+    ).toEqual({
+      sub: 'user-123',
+      email: 'user@example.com',
+      profile: { name: 'Yamada Taro', preferredUsername: 'taro' },
+    });
+  });
+
+  it('rejects an access token presented as an ID token (token_use mismatch)', () => {
+    process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
+
+    expect(() =>
+      validateCognitoIdTokenClaims({
+        sub: 'user-123',
+        token_use: 'access',
+        aud: 'client-123',
+      }),
+    ).toThrow('Invalid Cognito ID token type.');
+  });
+
+  it('rejects an ID token issued for a different audience', () => {
+    process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
+
+    expect(() =>
+      validateCognitoIdTokenClaims({
+        sub: 'user-123',
+        token_use: 'id',
+        aud: 'client-999',
+      }),
+    ).toThrow('Invalid Cognito ID token audience.');
+  });
+
+  it('defaults email to empty string when the ID token omits it', () => {
+    process.env.COGNITO_USER_POOL_CLIENT_ID = 'client-123';
+
+    const result = validateCognitoIdTokenClaims({
+      sub: 'user-123',
+      token_use: 'id',
+      aud: 'client-123',
+    });
+    expect(result.email).toBe('');
+    expect(result.profile).toEqual({ name: undefined, preferredUsername: undefined });
   });
 });
 

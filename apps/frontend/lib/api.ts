@@ -102,7 +102,14 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     const { fetchAuthSession } = await import('aws-amplify/auth');
     const session = await fetchAuthSession();
     const token = session.tokens?.accessToken?.toString();
-    if (token) return { Authorization: `Bearer ${token}` };
+    if (token) {
+      const headers: Record<string, string> = { Authorization: `Bearer ${token}` };
+      // Forward the ID token so the backend can project profile claims
+      // (email / displayName) into the UserTable. It is verified server-side.
+      const idToken = session.tokens?.idToken?.toString();
+      if (idToken) headers['X-Id-Token'] = idToken;
+      return headers;
+    }
   } catch {
     // Not authenticated yet — the AuthProvider will redirect
   }
