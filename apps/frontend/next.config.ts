@@ -35,11 +35,32 @@ const nextConfig: NextConfig = {
       // Everything else imports the SVG as a React component via SVGR.
       // `__next_metadata__` is excluded so Next.js can still treat
       // `app/icon.svg` as a favicon via its metadata image loader.
+      //
+      // `removeViewBox: false` keeps the source `viewBox` that SVGO's
+      // `preset-default` would otherwise strip when an SVG also carries
+      // `width`/`height` (as `app/icon.svg` does). Without the `viewBox`, the
+      // 1024-unit shapes render at raw coordinates inside the CSS-shrunk box
+      // (`BrandMark` sizes it to `!size-11`) and get clipped out of view — the
+      // dev-only "BrandMark invisible" bug. Mirrored in `.storybook/main.ts`.
       {
         test: /\.svg$/i,
         issuer: fileLoaderRule.issuer,
         resourceQuery: { not: [/url/, /__next_metadata__/] },
-        use: ['@svgr/webpack'],
+        use: [
+          {
+            loader: '@svgr/webpack',
+            options: {
+              svgoConfig: {
+                plugins: [
+                  {
+                    name: 'preset-default',
+                    params: { overrides: { removeViewBox: false } },
+                  },
+                ],
+              },
+            },
+          },
+        ],
       },
     );
 

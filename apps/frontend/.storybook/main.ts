@@ -63,7 +63,26 @@ const config: StorybookConfig = {
   // next-image emulation from intercepting those imports first.
   viteFinal: async (config) => {
     config.plugins ??= [];
-    config.plugins.unshift(svgr({ include: '**/*.svg', exclude: '**/*.svg?url' }));
+    config.plugins.unshift(
+      svgr({
+        include: '**/*.svg',
+        exclude: '**/*.svg?url',
+        // Keep the source `viewBox` (see `next.config.ts`): SVGO's
+        // `preset-default` strips it from SVGs that also carry `width`/`height`,
+        // which clips the CSS-shrunk BrandMark. Mirrors the webpack SVGR rule so
+        // the favicon SSOT renders identically in Storybook and Next dev.
+        svgrOptions: {
+          svgoConfig: {
+            plugins: [
+              {
+                name: 'preset-default',
+                params: { overrides: { removeViewBox: false } },
+              },
+            ],
+          },
+        },
+      }),
+    );
     deferSvgToSvgr(config.plugins);
     return config;
   },
