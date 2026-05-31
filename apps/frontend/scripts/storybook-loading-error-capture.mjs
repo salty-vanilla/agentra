@@ -1,21 +1,36 @@
-// Contact-sheet capture for Issue #353.
-// Screenshots the admin-table loading / API-error Storybook stories (served
-// statically on :6006) so the DataTable skeleton/spinner and destructive error
-// cell become reproducible visual evidence.
+// Visual-evidence capture for the admin-table loading / API-error Storybook
+// stories (served statically on :6006), so the DataTable skeleton/spinner and
+// destructive error cell become reproducible screenshots.
+//
+// Generated screenshots are review artifacts only and must not be committed.
+// Attach the contact sheet to the PR conversation instead.
 //
 // Usage (storybook-static must be served on 127.0.0.1:6006):
 //   pnpm storybook:serve-static &
-//   node scripts/storybook-loading-error-capture.mjs
+//   node scripts/storybook-loading-error-capture.mjs [--out <dir>]
 //
-// Output: ../../docs/design-review/353/screenshots/*.png
+// Output dir resolution (first match wins):
+//   1. --out <dir> CLI argument
+//   2. STORYBOOK_EVIDENCE_OUT environment variable
+//   3. default: /tmp/agentra-storybook-loading-error-evidence (outside the repo)
+//
+// Compose the captured PNGs into a contact sheet with ImageMagick, e.g.:
+//   montage "$OUT"/*.png -tile 2x4 -geometry 680x+14+14 "$OUT"/contact-sheet.png
 
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { tmpdir } from 'node:os';
+import { isAbsolute, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = resolve(__dirname, '../../../docs/design-review/353/screenshots');
+function resolveOutDir() {
+  const argIndex = process.argv.indexOf('--out');
+  const fromArg = argIndex !== -1 ? process.argv[argIndex + 1] : undefined;
+  const raw = fromArg ?? process.env.STORYBOOK_EVIDENCE_OUT;
+  if (!raw) return resolve(tmpdir(), 'agentra-storybook-loading-error-evidence');
+  return isAbsolute(raw) ? raw : resolve(process.cwd(), raw);
+}
+
+const OUT_DIR = resolveOutDir();
 const BASE = 'http://127.0.0.1:6006';
 const VIEWPORT = { width: 900, height: 560 };
 const T = 20_000;
@@ -67,6 +82,7 @@ async function capture(page, story) {
 
 const run = async () => {
   mkdirSync(OUT_DIR, { recursive: true });
+  console.log(`Writing review artifacts to ${OUT_DIR} (do not commit these)`);
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: VIEWPORT, deviceScaleFactor: 2 });
   const page = await ctx.newPage();
