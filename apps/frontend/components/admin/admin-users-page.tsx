@@ -22,24 +22,25 @@ type RoleFilter = (typeof ROLE_OPTIONS)[number]['value'];
 
 const helper = createColumnHelper<AdminUser>();
 
+function emailLocalPart(email: string): string {
+  return email.split('@')[0] ?? email;
+}
+
 const columns = [
-  helper.accessor('email', {
-    header: 'メールアドレス',
-    size: 220,
-  }),
-  helper.accessor('userId', {
-    header: 'User ID',
-    size: 160,
-    cell: ({ getValue }) => (
-      <span className="font-mono text-xs">{getValue<string>().slice(0, 16)}…</span>
-    ),
-  }),
-  helper.accessor('sub', {
-    header: 'Sub',
-    size: 160,
-    cell: ({ getValue }) => (
-      <span className="font-mono text-xs">{getValue<string>().slice(0, 16)}…</span>
-    ),
+  helper.display({
+    id: 'user',
+    header: 'ユーザー',
+    size: 240,
+    cell: ({ row }) => {
+      const { email } = row.original;
+      const displayName = emailLocalPart(email);
+      return (
+        <div className="flex flex-col min-w-0">
+          <span className="text-sm font-medium leading-snug">{displayName}</span>
+          <span className="text-xs text-muted-foreground truncate">{email}</span>
+        </div>
+      );
+    },
   }),
   helper.accessor('role', {
     header: 'ロール',
@@ -55,7 +56,7 @@ const columns = [
   }),
   helper.accessor('enabled', {
     header: '状態',
-    size: 100,
+    size: 90,
     cell: ({ getValue }) => {
       const enabled = getValue<boolean>();
       return (
@@ -65,18 +66,9 @@ const columns = [
       );
     },
   }),
-  helper.accessor('createdAt', {
-    header: '作成日',
-    size: 160,
-    cell: ({ getValue }) => (
-      <span className="text-xs text-muted-foreground">
-        {new Date(getValue<string>()).toLocaleDateString()}
-      </span>
-    ),
-  }),
   helper.accessor('lastSeenAt', {
     header: '最終利用',
-    size: 160,
+    size: 130,
     cell: ({ getValue }) => {
       const v = getValue<string | undefined>();
       return v ? (
@@ -90,9 +82,18 @@ const columns = [
   }),
   helper.accessor('requestCount', {
     header: 'リクエスト',
-    size: 90,
+    size: 110,
     cell: ({ getValue }) => getValue<number | undefined>()?.toLocaleString() ?? '—',
     meta: { align: 'right' },
+  }),
+  helper.accessor('createdAt', {
+    header: '作成日',
+    size: 130,
+    cell: ({ getValue }) => (
+      <span className="text-xs text-muted-foreground">
+        {new Date(getValue<string>()).toLocaleDateString()}
+      </span>
+    ),
   }),
 ];
 
@@ -106,8 +107,7 @@ function filterUsers(users: AdminUser[], search: string, role: RoleFilter): Admi
     result = result.filter(
       (u) =>
         u.email.toLowerCase().includes(q) ||
-        u.userId.toLowerCase().includes(q) ||
-        u.sub.toLowerCase().includes(q) ||
+        emailLocalPart(u.email).toLowerCase().includes(q) ||
         u.role.toLowerCase().includes(q) ||
         formatAdminRole(u.role).toLowerCase().includes(q),
     );
@@ -173,7 +173,7 @@ export function AdminUsersPage() {
         <SearchToolbar
           value={search}
           onChange={setSearch}
-          placeholder="メールアドレス、User ID、Sub、ロールで検索..."
+          placeholder="ユーザー、メールアドレス、ロールで検索..."
           className="w-full sm:w-80"
         />
         <div className="flex flex-wrap gap-1">

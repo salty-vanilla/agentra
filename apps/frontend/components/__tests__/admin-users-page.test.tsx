@@ -34,6 +34,7 @@ vi.mock('@/components/ui/data-table', () => ({
   }: {
     data: Record<string, unknown>[];
     columns: {
+      id?: string;
       accessorKey?: string;
       header?: unknown;
       meta?: { align?: string };
@@ -41,10 +42,14 @@ vi.mock('@/components/ui/data-table', () => ({
     emptyMessage?: string;
     emptyAction?: ReactNode;
   }) => {
-    const columnLabel = (column: { accessorKey?: string; header?: unknown }) =>
+    const columnLabel = (column: {
+      id?: string;
+      accessorKey?: string;
+      header?: unknown;
+    }) =>
       typeof column.header === 'string'
         ? column.header
-        : (column.accessorKey ?? 'column');
+        : (column.id ?? column.accessorKey ?? 'column');
 
     return (
       <div data-testid="data-table">
@@ -106,10 +111,22 @@ describe('AdminUsersPage', () => {
       'data-align',
       'right',
     );
-    expect(screen.getByTestId('column-align-メールアドレス')).toHaveAttribute(
+  });
+
+  it('shows the User column with left alignment', () => {
+    setup();
+
+    expect(screen.getByTestId('column-align-ユーザー')).toHaveAttribute(
       'data-align',
       'left',
     );
+  });
+
+  it('does not show User ID or Sub as standalone columns', () => {
+    setup();
+
+    expect(screen.queryByTestId('column-align-User-ID')).toBeNull();
+    expect(screen.queryByTestId('column-align-Sub')).toBeNull();
   });
 
   it('offers a clear-filter action when a search matches no users', async () => {
@@ -117,7 +134,7 @@ describe('AdminUsersPage', () => {
     setup();
 
     await user.type(
-      screen.getByPlaceholderText('メールアドレス、User ID、Sub、ロールで検索...'),
+      screen.getByPlaceholderText('ユーザー、メールアドレス、ロールで検索...'),
       'zzz-no-such-user-zzz',
     );
 
@@ -132,12 +149,24 @@ describe('AdminUsersPage', () => {
     setup();
 
     const search = screen.getByPlaceholderText(
-      'メールアドレス、User ID、Sub、ロールで検索...',
+      'ユーザー、メールアドレス、ロールで検索...',
     );
     await user.type(search, 'zzz-no-such-user-zzz');
     await user.click(screen.getByRole('button', { name: 'フィルターをクリア' }));
 
     expect(search).toHaveValue('');
+    expect(screen.getByTestId('data-row')).toHaveTextContent('admin@example.com');
+  });
+
+  it('filters by email local part (display name)', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const search = screen.getByPlaceholderText(
+      'ユーザー、メールアドレス、ロールで検索...',
+    );
+    await user.type(search, 'admin');
+
     expect(screen.getByTestId('data-row')).toHaveTextContent('admin@example.com');
   });
 });
