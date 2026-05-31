@@ -17,6 +17,30 @@ set -euo pipefail
 SHOTS="${SHOTS:-/tmp/agentra-admin-detail-evidence}"
 OUT="${OUT:-$SHOTS}"
 TITLE="${TITLE:-Admin Console — Compact / Medium / Expanded}"
+
+# Contact sheets are review artifacts, never committed. Refuse any OUT that
+# resolves inside the repository so a stray OUT cannot leak PNGs into git.
+# (mirrors the same guard in capture-admin-detail-visual-evidence.mjs)
+assert_outside_repo() {
+  local target="$1"
+  local repo_root
+  repo_root="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+  [[ -z "$repo_root" ]] && return 0
+  repo_root="$(cd "$repo_root" && pwd -P)"
+  # Resolve target to an absolute, symlink-free path even if it doesn't exist yet.
+  local abs_target
+  abs_target="$(cd "$(dirname "$target")" 2>/dev/null && pwd -P)/$(basename "$target")"
+  case "$abs_target/" in
+    "$repo_root"/*)
+      echo "Refusing to write contact sheets inside the repository: $abs_target" >&2
+      echo "Contact sheets are review artifacts and must not be committed." >&2
+      echo "Set OUT (and SHOTS) to a path outside the repo, e.g. /tmp/pr-366." >&2
+      exit 1
+      ;;
+  esac
+}
+
+assert_outside_repo "$OUT"
 mkdir -p "$OUT"
 
 # screen id : label, in the 2x3 tile order they should appear.
