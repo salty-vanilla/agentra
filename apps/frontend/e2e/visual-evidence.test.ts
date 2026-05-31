@@ -168,9 +168,14 @@ function defineThemeSuite(theme: Theme) {
       await expect(page.getByRole('heading', { name: 'ユーザー' })).toBeVisible({
         timeout: MSW_TIMEOUT,
       });
-      // User column contains email; click the first data row to open the drawer.
-      await expect(page.locator('table tbody tr').first()).toBeVisible();
-      await page.locator('table tbody tr').first().click();
+      // The User column cell contains both the display name and email as text.
+      // Click the td that contains the email to trigger onRowClick via event bubbling.
+      const userCell = page
+        .locator('td')
+        .filter({ hasText: /user001@example\.com/ })
+        .first();
+      await expect(userCell).toBeVisible();
+      await userCell.click();
       await expect(page.getByRole('heading', { name: 'ユーザー詳細' })).toBeVisible();
       await screenshot(page, testInfo, `admin-user-detail-drawer-${theme}`);
     });
