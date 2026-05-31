@@ -116,6 +116,60 @@ describe('DataTable', () => {
     expect(screen.getByText('この期間のデータはありません。')).toBeInTheDocument();
   });
 
+  it('renders emptyAction beneath the message when data is empty', () => {
+    render(
+      <DataTable
+        data={[]}
+        columns={columns}
+        emptyMessage="No match."
+        emptyAction={<button type="button">Clear filter</button>}
+      />,
+    );
+    expect(screen.getByText('No match.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear filter' })).toBeInTheDocument();
+  });
+
+  it('does not render emptyAction when data is present', () => {
+    render(
+      <DataTable
+        data={data}
+        columns={columns}
+        emptyAction={<button type="button">Clear filter</button>}
+      />,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Clear filter' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not render emptyAction while loading', () => {
+    render(
+      <DataTable
+        data={[]}
+        columns={columns}
+        isLoading
+        emptyAction={<button type="button">Clear filter</button>}
+      />,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Clear filter' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not render emptyAction when an error is shown', () => {
+    render(
+      <DataTable
+        data={[]}
+        columns={columns}
+        error="Boom"
+        emptyAction={<button type="button">Clear filter</button>}
+      />,
+    );
+    expect(
+      screen.queryByRole('button', { name: 'Clear filter' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('shows loading message when isLoading=true and data is empty', () => {
     render(<DataTable data={[]} columns={columns} isLoading />);
     expect(screen.getByText('読み込み中...')).toBeInTheDocument();

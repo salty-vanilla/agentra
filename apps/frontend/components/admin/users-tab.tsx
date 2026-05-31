@@ -159,6 +159,13 @@ export function UsersTab({ from, to }: Props) {
         emptyMessage={
           search ? '検索に一致するユーザーはいません。' : 'この期間のデータはありません。'
         }
+        emptyAction={
+          search ? (
+            <Button variant="outline" size="sm" onClick={() => setSearch('')}>
+              検索をクリア
+            </Button>
+          ) : undefined
+        }
         onRowClick={(user) => setSelected(user)}
         virtualized
         height="100%"

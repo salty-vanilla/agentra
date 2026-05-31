@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { TracesTab } from '@/components/admin/traces-tab';
 
@@ -15,6 +16,7 @@ vi.mock('@/components/ui/data-table', () => ({
     columns,
     onRowClick,
     emptyMessage,
+    emptyAction,
   }: {
     data: Record<string, unknown>[];
     columns: {
@@ -24,6 +26,7 @@ vi.mock('@/components/ui/data-table', () => ({
     }[];
     onRowClick?: (row: Record<string, unknown>) => void;
     emptyMessage?: string;
+    emptyAction?: ReactNode;
   }) => {
     const columnLabel = (column: { accessorKey?: string; header?: unknown }) =>
       typeof column.header === 'string'
@@ -40,7 +43,10 @@ vi.mock('@/components/ui/data-table', () => ({
           />
         ))}
         {data.length === 0 ? (
-          <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
+          <>
+            <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
+            {emptyAction}
+          </>
         ) : (
           data.map((row, i) => (
             <button key={i} type="button" onClick={() => onRowClick?.(row)}>
@@ -135,14 +141,29 @@ describe('TracesTab', () => {
     expect(screen.getByText(traceBeta.traceId)).toBeInTheDocument();
   });
 
-  it('shows empty state when no traces match the search', async () => {
+  it('shows empty state with a clear-filter action when no traces match', async () => {
     const user = userEvent.setup();
     setup();
     await user.type(
       screen.getByPlaceholderText('Trace ID または User ID で検索...'),
       'zzznomatch',
     );
-    expect(screen.getByText('検索に一致するトレースはありません。')).toBeInTheDocument();
+    expect(screen.getByText('条件に一致するトレースはありません。')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'フィルターをクリア' }),
+    ).toBeInTheDocument();
+  });
+
+  it('clearing filters from the empty state restores all rows', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.type(
+      screen.getByPlaceholderText('Trace ID または User ID で検索...'),
+      'zzznomatch',
+    );
+    await user.click(screen.getByRole('button', { name: 'フィルターをクリア' }));
+    expect(screen.getByText(traceAlpha.traceId)).toBeInTheDocument();
+    expect(screen.getByText(traceBeta.traceId)).toBeInTheDocument();
   });
 
   it('calls onSelectTrace with traceId when a row is clicked', async () => {

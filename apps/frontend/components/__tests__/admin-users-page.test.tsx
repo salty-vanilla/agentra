@@ -1,5 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { AdminUsersPage } from '@/components/admin/admin-users-page';
 
@@ -25,13 +27,19 @@ vi.mock('@tanstack/react-query', async (importOriginal) => {
 
 vi.mock('@/components/ui/data-table', () => ({
   DataTable: ({
+    data,
     columns,
+    emptyMessage,
+    emptyAction,
   }: {
+    data: Record<string, unknown>[];
     columns: {
       accessorKey?: string;
       header?: unknown;
       meta?: { align?: string };
     }[];
+    emptyMessage?: string;
+    emptyAction?: ReactNode;
   }) => {
     const columnLabel = (column: { accessorKey?: string; header?: unknown }) =>
       typeof column.header === 'string'
@@ -47,6 +55,18 @@ vi.mock('@/components/ui/data-table', () => ({
             data-align={column.meta?.align ?? 'left'}
           />
         ))}
+        {data.length === 0 ? (
+          <>
+            <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
+            {emptyAction}
+          </>
+        ) : (
+          data.map((row, i) => (
+            <span key={i} data-testid="data-row">
+              {String(row.email)}
+            </span>
+          ))
+        )}
       </div>
     );
   },
@@ -90,5 +110,34 @@ describe('AdminUsersPage', () => {
       'data-align',
       'left',
     );
+  });
+
+  it('offers a clear-filter action when a search matches no users', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    await user.type(
+      screen.getByPlaceholderText('メールアドレス、User ID、Sub、ロールで検索...'),
+      'zzz-no-such-user-zzz',
+    );
+
+    expect(screen.getByText('条件に一致するユーザーはいません。')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'フィルターをクリア' }),
+    ).toBeInTheDocument();
+  });
+
+  it('clearing the filter restores the user row', async () => {
+    const user = userEvent.setup();
+    setup();
+
+    const search = screen.getByPlaceholderText(
+      'メールアドレス、User ID、Sub、ロールで検索...',
+    );
+    await user.type(search, 'zzz-no-such-user-zzz');
+    await user.click(screen.getByRole('button', { name: 'フィルターをクリア' }));
+
+    expect(search).toHaveValue('');
+    expect(screen.getByTestId('data-row')).toHaveTextContent('admin@example.com');
   });
 });

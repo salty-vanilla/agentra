@@ -16,6 +16,7 @@ vi.mock('@/components/ui/data-table', () => ({
     columns,
     onRowClick,
     emptyMessage,
+    emptyAction,
   }: {
     data: Record<string, unknown>[];
     columns: {
@@ -26,6 +27,7 @@ vi.mock('@/components/ui/data-table', () => ({
     }[];
     onRowClick?: (row: Record<string, unknown>) => void;
     emptyMessage?: string;
+    emptyAction?: ReactNode;
   }) => {
     const columnLabel = (column: { accessorKey?: string; header?: unknown }) =>
       typeof column.header === 'string'
@@ -43,7 +45,10 @@ vi.mock('@/components/ui/data-table', () => ({
           />
         ))}
         {data.length === 0 ? (
-          <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
+          <>
+            <span>{emptyMessage ?? 'この期間のデータはありません。'}</span>
+            {emptyAction}
+          </>
         ) : (
           <>
             {data.map((row, i) => (
@@ -131,11 +136,21 @@ describe('UsersTab', () => {
     expect(screen.getByText(bob.userId)).toBeInTheDocument();
   });
 
-  it('shows empty state when no rows match', async () => {
+  it('shows empty state with a clear-search action when no rows match', async () => {
     const user = userEvent.setup();
     setup();
     await user.type(screen.getByRole('textbox'), 'zzznomatch');
     expect(screen.getByText('検索に一致するユーザーはいません。')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '検索をクリア' })).toBeInTheDocument();
+  });
+
+  it('clearing the search from the empty state restores all rows', async () => {
+    const user = userEvent.setup();
+    setup();
+    await user.type(screen.getByRole('textbox'), 'zzznomatch');
+    await user.click(screen.getByRole('button', { name: '検索をクリア' }));
+    expect(screen.getByText(alice.userId)).toBeInTheDocument();
+    expect(screen.getByText(bob.userId)).toBeInTheDocument();
   });
 
   it('opens UserDetailDrawer when a row is clicked', async () => {

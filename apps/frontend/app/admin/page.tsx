@@ -2,6 +2,7 @@ import { BarChart3, BookOpen, Bot, Settings, Users } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 interface Section {
   label: string;
@@ -51,21 +52,26 @@ const SECTIONS: Section[] = [
 
 function SectionCard({ section }: { section: Section }) {
   const Icon = section.icon;
+  const disabled = !section.enabled;
+  // Dim only the informational icon/title/description on disabled cards. The
+  // "準備中" badge is informational text (not a disabled control), so it must
+  // keep full token contrast to meet WCAG AA — see issue #354 (L-2).
+  const dimClass = disabled ? 'opacity-60' : undefined;
   const card = (
     <Card
       className={
         section.enabled
           ? 'hover:ring-2 hover:ring-primary/40 transition-all cursor-pointer'
-          : 'opacity-60'
+          : undefined
       }
     >
       <CardHeader>
         <div className="flex items-center justify-between">
-          <Icon className="size-5 text-primary" />
-          {!section.enabled && <Badge variant="secondary">準備中</Badge>}
+          <Icon className={cn('size-5 text-primary', dimClass)} />
+          {disabled && <Badge variant="secondary">準備中</Badge>}
         </div>
-        <CardTitle className="mt-2">{section.label}</CardTitle>
-        <CardDescription>{section.description}</CardDescription>
+        <CardTitle className={cn('mt-2', dimClass)}>{section.label}</CardTitle>
+        <CardDescription className={dimClass}>{section.description}</CardDescription>
       </CardHeader>
     </Card>
   );
