@@ -40,3 +40,6 @@ everything-claude-code/
 # Design-review evidence is a point-in-time artifact, not committed docs.
 # Regenerate via apps/frontend/scripts/design-review-capture.mjs; attach to the PR.
 docs/design-review/
+
+# Favicon / brand-mark visual evidence is a point-in-time artifact; attach to the PR.
+.visual-evidence/

@@ -47,3 +47,14 @@ export const AdaptiveDark: Story = {
     ),
   ],
 };
+
+/**
+ * Matches the sidebar header treatment: `adaptive` plus the `!size-11`
+ * override used in `server-thread-sidebar.tsx`.
+ */
+export const SidebarSize: Story = {
+  args: {
+    adaptive: true,
+    className: '!size-11',
+  },
+};
