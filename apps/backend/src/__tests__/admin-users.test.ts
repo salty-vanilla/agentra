@@ -70,11 +70,58 @@ describe('GET /admin/users', () => {
     expect(user).toHaveProperty('createdAt');
   });
 
+  it('returns displayName from UserTable when the user has one', async () => {
+    // DEMO_USER carries displayName='Demo User' in the projection.
+    const res = await app.request('/admin/users');
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    expect(body.users[0].displayName).toBe('Demo User');
+  });
+
+  it('omits displayName but still returns email for users without one', async () => {
+    // A freshly created user (no profile claims) has no displayName projection.
+    await userStore.getOrCreateUser('sub-no-dn', 'plain@example.com', []);
+
+    const res = await app.request('/admin/users?limit=200');
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const user = body.users.find((u: any) => u.sub === 'sub-no-dn');
+    expect(user).toBeDefined();
+    expect(user.displayName).toBeUndefined();
+    expect(user.email).toBe('plain@example.com');
+  });
+
+  it('returns synced displayName after a login carries profile claims', async () => {
+    await userStore.getOrCreateUser('sub-synced', 'synced@example.com', [], {
+      name: 'Synced User',
+    });
+
+    const res = await app.request('/admin/users?limit=200');
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const body = (await res.json()) as any;
+    // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
+    const user = body.users.find((u: any) => u.sub === 'sub-synced');
+    expect(user.displayName).toBe('Synced User');
+  });
+
   it('returns role=user for the demo user', async () => {
     const res = await app.request('/admin/users');
     // biome-ignore lint/suspicious/noExplicitAny: test assertion helper
     const body = (await res.json()) as any;
     expect(body.users[0].role).toBe('user');
+  });
+
+  it('does not call Cognito (AdminGetUser) when listing users', async () => {
+    // The normal listing path must read only the UserTable projection — no
+    // per-user Cognito lookups, regardless of how many users exist.
+    mockSend.mockClear();
+    await userStore.getOrCreateUser('sub-c1', 'c1@example.com', [], { name: 'C1' });
+    await userStore.getOrCreateUser('sub-c2', 'c2@example.com', [], { name: 'C2' });
+
+    const res = await app.request('/admin/users?limit=200');
+    expect(res.status).toBe(200);
+    expect(mockSend).not.toHaveBeenCalled();
   });
 
   it('includes users with no observability records (no requestCount or lastSeenAt)', async () => {

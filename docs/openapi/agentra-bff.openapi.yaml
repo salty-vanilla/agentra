@@ -1664,6 +1664,13 @@ components:
           type: string
         email:
           type: string
+          description: User email address (UserTable projection of the Cognito email claim).
+        displayName:
+          type: string
+          description: >-
+            Human-readable display name (UserTable projection of the Cognito name
+            or preferred_username claim). Absent for pre-existing records that
+            have not yet been synced; clients fall back to email or userId.
         role:
           type: string
           enum:

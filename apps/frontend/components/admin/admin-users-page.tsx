@@ -28,6 +28,15 @@ function emailLocalPart(email: string): string {
   return email.split('@')[0] ?? email;
 }
 
+// Resolve the primary label for a user row.
+// Priority: displayName (UserTable projection) > email local part > userId.
+function resolveUserLabel(user: AdminUser): string {
+  const displayName = user.displayName?.trim();
+  if (displayName) return displayName;
+  if (user.email) return emailLocalPart(user.email);
+  return user.userId;
+}
+
 const columns = [
   helper.display({
     id: 'user',
@@ -35,10 +44,10 @@ const columns = [
     size: 240,
     cell: ({ row }) => {
       const { email } = row.original;
-      const displayName = emailLocalPart(email);
+      const label = resolveUserLabel(row.original);
       return (
         <span className="flex min-w-0 w-full flex-col">
-          <span className="truncate text-sm font-medium leading-snug">{displayName}</span>
+          <span className="truncate text-sm font-medium leading-snug">{label}</span>
           <span className="truncate text-xs text-muted-foreground">{email}</span>
         </span>
       );
@@ -110,6 +119,7 @@ function filterUsers(users: AdminUser[], search: string, role: RoleFilter): Admi
       (u) =>
         u.email.toLowerCase().includes(q) ||
         emailLocalPart(u.email).toLowerCase().includes(q) ||
+        (u.displayName?.toLowerCase().includes(q) ?? false) ||
         u.role.toLowerCase().includes(q) ||
         formatAdminRole(u.role).toLowerCase().includes(q),
     );

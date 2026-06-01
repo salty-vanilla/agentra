@@ -1,8 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
+  computeProfileSync,
+  deriveDisplayName,
   MemoryUserStore,
   normalizeUserRecord,
   shouldBackfillOrUpdateRole,
+  type UserRecord,
 } from '../store/user-store.js';
 
 describe('normalizeUserRecord', () => {
@@ -73,6 +76,165 @@ describe('shouldBackfillOrUpdateRole', () => {
 
   it('returns true when valid role differs from derived role (admin→user)', () => {
     expect(shouldBackfillOrUpdateRole('admin', 'user')).toBe(true);
+  });
+});
+
+describe('deriveDisplayName', () => {
+  it('returns name when name is present', () => {
+    expect(deriveDisplayName({ name: 'Alice', preferredUsername: 'al' })).toBe('Alice');
+  });
+
+  it('falls back to preferredUsername when name is absent', () => {
+    expect(deriveDisplayName({ preferredUsername: 'al' })).toBe('al');
+  });
+
+  it('trims whitespace from name', () => {
+    expect(deriveDisplayName({ name: '  Bob  ' })).toBe('Bob');
+  });
+
+  it('ignores empty/whitespace name and falls back to preferredUsername', () => {
+    expect(deriveDisplayName({ name: '   ', preferredUsername: 'carol' })).toBe('carol');
+  });
+
+  it('returns undefined when neither name nor preferredUsername is present', () => {
+    expect(deriveDisplayName({})).toBeUndefined();
+    expect(deriveDisplayName(undefined)).toBeUndefined();
+  });
+
+  it('returns undefined when both values are empty', () => {
+    expect(deriveDisplayName({ name: '', preferredUsername: '  ' })).toBeUndefined();
+  });
+});
+
+describe('normalizeUserRecord — displayName field', () => {
+  const base = {
+    userId: 'u1',
+    sub: 's1',
+    email: 'a@b.com',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    role: 'user',
+  };
+
+  it('reads displayName when present', () => {
+    const result = normalizeUserRecord({ ...base, displayName: 'Alice' });
+    expect(result.displayName).toBe('Alice');
+  });
+
+  it('omits displayName when absent (existing record without it)', () => {
+    const result = normalizeUserRecord(base);
+    expect(result.displayName).toBeUndefined();
+    expect('displayName' in result).toBe(false);
+  });
+
+  it('omits displayName when stored value is an empty string', () => {
+    const result = normalizeUserRecord({ ...base, displayName: '   ' });
+    expect(result.displayName).toBeUndefined();
+  });
+});
+
+describe('computeProfileSync', () => {
+  const existing: UserRecord = {
+    userId: 'u1',
+    sub: 's1',
+    email: 'old@b.com',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    role: 'user',
+    enabled: true,
+    displayName: 'Old Name',
+  };
+
+  it('returns displayName when derived value differs from stored', () => {
+    expect(computeProfileSync(existing, 'old@b.com', 'New Name')).toEqual({
+      displayName: 'New Name',
+    });
+  });
+
+  it('does not return displayName when derived value matches stored', () => {
+    expect(computeProfileSync(existing, 'old@b.com', 'Old Name')).toEqual({});
+  });
+
+  it('does not return displayName when derived is undefined', () => {
+    expect(computeProfileSync(existing, 'old@b.com', undefined)).toEqual({});
+  });
+
+  it('returns email when claim email differs and is non-empty', () => {
+    expect(computeProfileSync(existing, 'new@b.com', undefined)).toEqual({
+      email: 'new@b.com',
+    });
+  });
+
+  it('does not return email when claim email is empty', () => {
+    expect(computeProfileSync(existing, '   ', undefined)).toEqual({});
+  });
+
+  it('returns both displayName and email when both changed', () => {
+    expect(computeProfileSync(existing, 'new@b.com', 'New Name')).toEqual({
+      displayName: 'New Name',
+      email: 'new@b.com',
+    });
+  });
+});
+
+describe('MemoryUserStore — displayName profile sync', () => {
+  let store: MemoryUserStore;
+
+  beforeEach(() => {
+    store = new MemoryUserStore();
+  });
+
+  it('stores displayName from name on new user creation', async () => {
+    const user = await store.getOrCreateUser('sub-dn1', 'a@b.com', [], {
+      name: 'Alice',
+    });
+    expect(user.displayName).toBe('Alice');
+  });
+
+  it('stores displayName from preferredUsername when name is absent', async () => {
+    const user = await store.getOrCreateUser('sub-dn2', 'a@b.com', [], {
+      preferredUsername: 'al',
+    });
+    expect(user.displayName).toBe('al');
+  });
+
+  it('leaves displayName unset for a new user with no profile claims', async () => {
+    const user = await store.getOrCreateUser('sub-dn3', 'a@b.com', []);
+    expect(user.displayName).toBeUndefined();
+  });
+
+  it('syncs displayName on a later login when it was missing before', async () => {
+    await store.getOrCreateUser('sub-dn4', 'a@b.com', []);
+    const updated = await store.getOrCreateUser('sub-dn4', 'a@b.com', [], {
+      name: 'Dana',
+    });
+    expect(updated.displayName).toBe('Dana');
+  });
+
+  it('does not store an empty displayName', async () => {
+    const user = await store.getOrCreateUser('sub-dn5', 'a@b.com', [], {
+      name: '   ',
+    });
+    expect(user.displayName).toBeUndefined();
+  });
+
+  it('updates email when the claim email differs from the stored value', async () => {
+    await store.getOrCreateUser('sub-dn6', 'old@b.com', []);
+    const updated = await store.getOrCreateUser('sub-dn6', 'new@b.com', []);
+    expect(updated.email).toBe('new@b.com');
+  });
+
+  it('stores displayName provided to createInvitedUser', async () => {
+    const record = await store.createInvitedUser(
+      'inv-dn',
+      'inv@b.com',
+      'user',
+      'Invited Person',
+    );
+    expect(record.displayName).toBe('Invited Person');
+  });
+
+  it('omits displayName for createInvitedUser when not provided', async () => {
+    const record = await store.createInvitedUser('inv-dn2', 'inv2@b.com', 'user');
+    expect(record.displayName).toBeUndefined();
   });
 });
 

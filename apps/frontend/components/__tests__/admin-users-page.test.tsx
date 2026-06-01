@@ -169,4 +169,21 @@ describe('AdminUsersPage', () => {
 
     expect(screen.getByTestId('data-row')).toHaveTextContent('admin@example.com');
   });
+
+  it('filters by displayName when it differs from the email', async () => {
+    const user = userEvent.setup();
+    vi.mocked(useQuery).mockReturnValue({
+      data: { users: [{ ...adminUser, displayName: 'Yamada Taro' }] },
+      isLoading: false,
+      error: null,
+    } as ReturnType<typeof useQuery>);
+    render(<AdminUsersPage />);
+
+    const search = screen.getByPlaceholderText(
+      'ユーザー、メールアドレス、ロールで検索...',
+    );
+    await user.type(search, 'yamada');
+
+    expect(screen.getByTestId('data-row')).toHaveTextContent('admin@example.com');
+  });
 });

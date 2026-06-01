@@ -1,6 +1,12 @@
 import type { MiddlewareHandler } from 'hono';
 import { createRemoteJWKSet, jwtVerify } from 'jose';
+import type { UserProfileClaims } from '../store/user-store.js';
 import { userStore } from '../store/user-store.js';
+
+// Header carrying the Cognito ID token. The access token authorizes the
+// request; the ID token (verified separately) is the source of profile
+// claims (email / name / preferred_username) for the UserTable projection.
+export const ID_TOKEN_HEADER = 'x-id-token';
 
 // HonoEnv is defined in app.ts — this file only uses the c.set interface
 // Cached across Lambda warm starts
@@ -31,16 +37,19 @@ function getExpectedUserPoolClientId(): string {
   return clientId;
 }
 
-type CognitoTokenClaims = {
+type CognitoAccessTokenClaims = {
   sub?: string | undefined;
-  email?: string | undefined;
   token_use?: string | undefined;
   client_id?: string | undefined;
   aud?: string | undefined;
   'cognito:groups'?: string[] | undefined;
 };
 
-export function validateCognitoAccessTokenClaims(payload: CognitoTokenClaims) {
+// The access token authorizes the request: it establishes the caller's `sub`
+// and group membership. Per Cognito's token model, identity/profile claims
+// (email, name, preferred_username) belong to the ID token, not the access
+// token, so they are intentionally NOT read here.
+export function validateCognitoAccessTokenClaims(payload: CognitoAccessTokenClaims) {
   const expectedClientId = getExpectedUserPoolClientId();
 
   // Agentra accepts Cognito access tokens only; browser auth should forward the
@@ -60,8 +69,47 @@ export function validateCognitoAccessTokenClaims(payload: CognitoTokenClaims) {
 
   return {
     sub: payload.sub,
-    email: payload.email ?? '',
     groups: payload['cognito:groups'] ?? [],
+  };
+}
+
+type CognitoIdTokenClaims = {
+  sub?: string | undefined;
+  token_use?: string | undefined;
+  aud?: string | undefined;
+  email?: string | undefined;
+  name?: string | undefined;
+  preferred_username?: string | undefined;
+};
+
+// Validates a Cognito ID token used solely to project profile claims into the
+// UserTable. The signature/issuer are checked by jwtVerify before this runs;
+// here we enforce token_use === 'id' and the audience binding so a forged or
+// mismatched token cannot inject profile data.
+export function validateCognitoIdTokenClaims(payload: CognitoIdTokenClaims): {
+  sub: string;
+  email: string;
+  profile: UserProfileClaims;
+} {
+  const expectedClientId = getExpectedUserPoolClientId();
+
+  if (payload.token_use !== 'id') {
+    throw new Error('Invalid Cognito ID token type.');
+  }
+  if (payload.aud !== expectedClientId) {
+    throw new Error('Invalid Cognito ID token audience.');
+  }
+  if (!payload.sub) {
+    throw new Error('Invalid Cognito ID token subject.');
+  }
+
+  return {
+    sub: payload.sub,
+    email: payload.email ?? '',
+    profile: {
+      name: payload.name,
+      preferredUsername: payload.preferred_username,
+    },
   };
 }
 
@@ -94,16 +142,42 @@ export const authMiddleware: MiddlewareHandler<any> = async (c, next) => {
       issuer: `https://cognito-idp.${cognitoRegion}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
     });
 
-    const { sub, email, groups } = validateCognitoAccessTokenClaims({
+    const { sub, groups } = validateCognitoAccessTokenClaims({
       sub: payload.sub,
-      email: payload.email as string | undefined,
       token_use: payload.token_use as string | undefined,
       client_id: payload.client_id as string | undefined,
       aud: payload.aud as string | undefined,
       'cognito:groups': payload['cognito:groups'] as string[] | undefined,
     });
 
-    const user = await userStore.getOrCreateUser(sub, email, groups);
+    // Profile projection (email / displayName) comes from the verified ID token
+    // when the client forwards one. The access token alone never carries these
+    // identity claims, so without an ID token we sync role only.
+    let email = '';
+    let profile: UserProfileClaims = {};
+    const idToken = c.req.header(ID_TOKEN_HEADER);
+    if (idToken) {
+      const { payload: idPayload } = await jwtVerify(idToken, getJwks(), {
+        issuer: `https://cognito-idp.${cognitoRegion}.amazonaws.com/${process.env.COGNITO_USER_POOL_ID}`,
+      });
+      const idClaims = validateCognitoIdTokenClaims({
+        sub: idPayload.sub,
+        token_use: idPayload.token_use as string | undefined,
+        aud: idPayload.aud as string | undefined,
+        email: idPayload.email as string | undefined,
+        name: idPayload.name as string | undefined,
+        preferred_username: idPayload.preferred_username as string | undefined,
+      });
+      // The ID token must belong to the same authenticated user as the access
+      // token; otherwise it is not a trustworthy source for this user's profile.
+      if (idClaims.sub !== sub) {
+        throw new Error('Cognito ID token subject does not match access token.');
+      }
+      email = idClaims.email;
+      profile = idClaims.profile;
+    }
+
+    const user = await userStore.getOrCreateUser(sub, email, groups, profile);
     c.set('userId', user.userId);
     c.set('userGroups', groups);
     c.set('callerSub', sub);

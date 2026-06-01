@@ -154,7 +154,9 @@ app.use(
   '*',
   cors({
     origin: allowedOrigins,
-    allowHeaders: ['content-type', 'authorization'],
+    // `x-id-token` carries the verified Cognito ID token used only for
+    // projecting profile claims (email / displayName) into the UserTable.
+    allowHeaders: ['content-type', 'authorization', 'x-id-token'],
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     credentials: true,
   }),
