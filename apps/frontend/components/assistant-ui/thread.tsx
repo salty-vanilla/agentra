@@ -44,6 +44,7 @@ import {
 } from '@/components/assistant-ui/message-view';
 import { ToolFallback } from '@/components/assistant-ui/tool-fallback';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
+import { DeckPreview } from '@/components/deck-preview';
 import type { ModelKey } from '@/components/model-selector';
 import { ProgressSummaryCard } from '@/components/progress-summary-card';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
@@ -65,6 +66,7 @@ const ArtifactDataRenderer: DataMessagePartComponent = ({ data }) => {
   const manifest = data as ArtifactManifest;
   return (
     <div className="mt-2 flex flex-col gap-2">
+      {manifest.deck ? <DeckPreview deck={manifest.deck} /> : null}
       {manifest.artifacts.map((artifact) => (
         <ArtifactCard key={artifact.id} artifact={artifact} threadId={threadId} />
       ))}
