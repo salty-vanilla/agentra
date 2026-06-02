@@ -2,6 +2,7 @@ import {
   type CreatePresentationToolInput,
   type CreatePresentationToolOutput,
   createPresentation,
+  type DeckResult,
 } from '@agentra/presentation-author';
 import { S3Client } from '@aws-sdk/client-s3';
 import { tool } from '@strands-agents/sdk';
@@ -9,6 +10,7 @@ import { uuidv7 } from 'uuidv7';
 import { z } from 'zod';
 import type { UploadedPresentationArtifact } from '../artifacts/artifact-upload-types.js';
 import { uploadPresentationArtifacts } from '../artifacts/s3-artifact-uploader.js';
+import { deriveDeckName, generateDeckPreview } from '../deck/deck-preview.js';
 import { FONT_POLICY_STYLE_GUIDE } from '../font-policy.js';
 import { createPresentationAuthorLlmClient } from '../llm-adapter.js';
 import { logger } from '../logger.js';
@@ -50,6 +52,16 @@ const envImageRetrievalEnabled =
   process.env.PRESENTATION_IMAGE_RETRIEVAL_ENABLED === 'true';
 const envImageGenerationEnabled =
   process.env.PRESENTATION_IMAGE_GENERATION_ENABLED === 'true';
+// Opt-in (default off): build the SDPM-compatible deck Live Preview.
+const envDeckPreviewEnabled = process.env.PRESENTATION_DECK_PREVIEW_ENABLED === 'true';
+// Hard budget for deck preview. It runs after PPTX success but before return,
+// inside the runtime invocation cap (~120s), so a slow-but-succeeding soffice
+// could otherwise push the whole call over the limit and lose the PPTX too.
+// On budget exhaustion we drop the deck and still return the PPTX.
+const envDeckPreviewBudgetMs = Number.parseInt(
+  process.env.PRESENTATION_DECK_PREVIEW_BUDGET_MS ?? '45000',
+  10,
+);
 
 const llmClient = createPresentationAuthorLlmClient();
 const s3Client = envBucketName ? new S3Client({}) : undefined;
@@ -58,6 +70,7 @@ export interface SlideRuntimePresentationResult extends CreatePresentationToolOu
   uploadedArtifacts?: UserFacingArtifact[] | undefined;
   pptxDownloadUrl?: string | undefined;
   contactSheetDownloadUrl?: string | undefined;
+  deck?: DeckResult | undefined;
 }
 
 export async function executeCreatePresentationTool(
@@ -178,6 +191,62 @@ export async function executeCreatePresentationTool(
         );
       }
 
+      // --- Deck Live Preview (opt-in, degrades — never blocks the PPTX) ---
+      let deck: DeckResult | undefined;
+      if (envDeckPreviewEnabled && envBucketName && s3Client && result.pptxPath) {
+        try {
+          // Race against a hard budget: a slow-but-succeeding deck preview must
+          // not push the whole invocation past the runtime cap and lose the PPTX.
+          const previewPromise = generateDeckPreview(
+            {
+              pptxPath: result.pptxPath,
+              workDir: result.workDir,
+              deckId: uuidv7(),
+              name: deriveDeckName(input.prompt),
+              language: input.language ?? 'ja',
+              bucketName: envBucketName,
+              presignExpiresSeconds: envUrlExpires,
+            },
+            { s3Client },
+          );
+          const budget = new Promise<'timeout'>((resolve) => {
+            setTimeout(() => resolve('timeout'), envDeckPreviewBudgetMs).unref?.();
+          });
+          const outcome = await Promise.race([previewPromise, budget]);
+
+          if (outcome === 'timeout') {
+            uploadWarnings.push(
+              `Deck preview dropped: exceeded ${envDeckPreviewBudgetMs}ms budget`,
+            );
+            logger.warn({
+              component: 'create-presentation-tool',
+              runId,
+              step: 'deck_preview_timeout',
+              budgetMs: envDeckPreviewBudgetMs,
+            });
+          } else {
+            deck = outcome.deck;
+            uploadWarnings.push(...outcome.warnings);
+            logger.info({
+              component: 'create-presentation-tool',
+              runId,
+              step: 'deck_preview_done',
+              hasDeck: Boolean(deck),
+              slideCount: deck?.slides.length ?? 0,
+            });
+          }
+        } catch (deckErr) {
+          const msg = deckErr instanceof Error ? deckErr.message : String(deckErr);
+          uploadWarnings.push(`Deck preview failed: ${msg}`);
+          logger.error({
+            component: 'create-presentation-tool',
+            runId,
+            step: 'deck_preview_error',
+            error: msg,
+          });
+        }
+      }
+
       return {
         ...result,
         warnings: [...result.warnings, ...uploadWarnings],
@@ -186,6 +255,7 @@ export async function executeCreatePresentationTool(
           : undefined,
         pptxDownloadUrl,
         contactSheetDownloadUrl,
+        deck,
       };
     }
 
