@@ -78,9 +78,9 @@ describe('deck types', () => {
       defsUrl: 'https://example/defs.json?sig',
       pptxDownloadUrl: 'https://example/deck.pptx?sig',
       specs: {
-        brief: null,
-        outline: 'https://example/outline.md?sig',
-        artDirection: null,
+        briefUrl: null,
+        outlineUrl: 'https://example/outline.md?sig',
+        artDirectionUrl: null,
       },
       slides: [
         { slug: 'intro', previewUrl: 'https://example/intro.webp?sig', composeUrl: null },
@@ -90,6 +90,6 @@ describe('deck types', () => {
 
     expect(deck.slideOrder).toHaveLength(2);
     expect(deck.slides[0]?.composeUrl).toBeNull();
-    expect(deck.specs.outline).toContain('outline.md');
+    expect(deck.specs.outlineUrl).toContain('outline.md');
   });
 });

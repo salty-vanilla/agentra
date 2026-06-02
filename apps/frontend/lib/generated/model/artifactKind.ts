@@ -26,5 +26,8 @@ export const ArtifactKind = {
   'work-dir': 'work-dir',
   'diagnostics-json': 'diagnostics-json',
   'image-asset': 'image-asset',
+  'deck-compose': 'deck-compose',
+  'deck-defs': 'deck-defs',
+  'deck-preview': 'deck-preview',
   other: 'other',
 } as const;

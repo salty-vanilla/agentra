@@ -4,6 +4,7 @@ import {
   artifactManifestSchema,
   artifactRefSchema,
   artifactUploadResultSchema,
+  deckResultSchema,
   uploadedArtifactSchema,
 } from './artifacts.js';
 
@@ -25,6 +26,13 @@ describe('Artifact types', () => {
 
     it('accepts all generic artifact kinds', () => {
       const kinds = ['pdf', 'html', 'png', 'jpg', 'json', 'text', 'other'];
+      kinds.forEach((kind) => {
+        expect(() => artifactKindSchema.parse(kind)).not.toThrow();
+      });
+    });
+
+    it('accepts deck Live Preview kinds', () => {
+      const kinds = ['deck-compose', 'deck-defs', 'deck-preview'];
       kinds.forEach((kind) => {
         expect(() => artifactKindSchema.parse(kind)).not.toThrow();
       });
@@ -129,6 +137,62 @@ describe('Artifact types', () => {
         ],
       };
       expect(() => artifactManifestSchema.parse(manifest)).not.toThrow();
+    });
+
+    it('accepts an optional typed deck on the manifest (additive)', () => {
+      const manifest = {
+        id: 'manifest-1',
+        createdAt: '2025-05-15T10:00:00Z',
+        artifacts: [],
+        deck: {
+          deckId: 'deck-1',
+          name: 'AgentCore 入門',
+          language: 'ja',
+          slideOrder: ['intro', 'problem'],
+          defsUrl: 'https://example.com/defs.json?sig',
+          pptxDownloadUrl: null,
+          specs: {
+            briefUrl: null,
+            outlineUrl: 'https://example.com/outline.md?sig',
+            artDirectionUrl: null,
+          },
+          slides: [
+            {
+              slug: 'intro',
+              previewUrl: 'https://example.com/intro.webp?sig',
+              composeUrl: null,
+            },
+          ],
+          version: 1,
+        },
+      };
+      expect(() => artifactManifestSchema.parse(manifest)).not.toThrow();
+    });
+
+    it('still accepts a manifest without a deck (backward compatible)', () => {
+      const manifest = {
+        id: 'manifest-1',
+        createdAt: '2025-05-15T10:00:00Z',
+        artifacts: [],
+      };
+      expect(() => artifactManifestSchema.parse(manifest)).not.toThrow();
+    });
+  });
+
+  describe('deckResultSchema', () => {
+    it('rejects an unsupported version', () => {
+      const deck = {
+        deckId: 'deck-1',
+        name: 'x',
+        language: 'ja',
+        slideOrder: [],
+        defsUrl: null,
+        pptxDownloadUrl: null,
+        specs: { briefUrl: null, outlineUrl: null, artDirectionUrl: null },
+        slides: [],
+        version: 2,
+      };
+      expect(() => deckResultSchema.parse(deck)).toThrow();
     });
   });
 
