@@ -88,6 +88,8 @@ COPY --from=build /app/packages/presentation-author/dist packages/presentation-a
 COPY packages/presentation-author/vendor packages/presentation-author/vendor
 COPY packages/presentation-author/templates packages/presentation-author/templates
 COPY packages/presentation-author/assets packages/presentation-author/assets
+# Deck Live Preview python scripts (export_svg.py / compose_slides.py)
+COPY packages/presentation-author/python packages/presentation-author/python
 
 COPY --from=build /app/apps/presentation-author-runtime/dist apps/presentation-author-runtime/dist
 

@@ -14,7 +14,8 @@
     "dist",
     "vendor",
     "templates",
-    "assets"
+    "assets",
+    "python"
   ],
   "scripts": {
     "build": "tsc -b",
