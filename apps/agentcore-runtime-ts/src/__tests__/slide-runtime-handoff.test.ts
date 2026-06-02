@@ -51,6 +51,34 @@ describe('parseSlideRuntimeResponse', () => {
     );
   });
 
+  it('passes a deck through the structured result', () => {
+    const structured = {
+      success: true,
+      summary: 'Created a 3-slide deck.',
+      workDir: '/tmp/wd',
+      artifacts: [],
+      warnings: [],
+      deck: {
+        deckId: 'deck-1',
+        name: 'Demo',
+        language: 'ja',
+        slideOrder: ['intro'],
+        defsUrl: 'https://example.com/defs.json?sig',
+        pptxDownloadUrl: null,
+        specs: { briefUrl: null, outlineUrl: null, artDirectionUrl: null },
+        slides: [
+          { slug: 'intro', previewUrl: null, composeUrl: 'https://example.com/c?sig' },
+        ],
+        version: 1,
+      },
+    };
+
+    const result = parseSlideRuntimeResponse(JSON.stringify(structured));
+    expect(result.success).toBe(true);
+    expect(result.result?.deck?.deckId).toBe('deck-1');
+    expect(result.result?.deck?.slides[0]?.slug).toBe('intro');
+  });
+
   it('preserves structured failure payloads', () => {
     const structured = {
       success: false,

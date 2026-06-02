@@ -1,3 +1,4 @@
+import type { DeckResult } from '@agentra/agent-tools';
 import {
   BedrockAgentCoreClient,
   InvokeAgentRuntimeCommand,
@@ -39,6 +40,7 @@ export interface SlideRuntimePresentationResult {
   uploadedArtifacts?: Array<Record<string, unknown>> | undefined;
   pptxDownloadUrl?: string | undefined;
   contactSheetDownloadUrl?: string | undefined;
+  deck?: DeckResult | undefined;
   error?: SlideRuntimeStructuredError | undefined;
 }
 
@@ -182,7 +184,19 @@ export function parseSlideRuntimeResponse(rawText: string): InvokeSlideRuntimeRe
 
 // --- Invocation ---
 
-const SLIDE_RUNTIME_TIMEOUT_MS = 120000; // 2 minutes
+// Slide generation (PptxGenJS authoring + optional deck Live Preview, which adds
+// a LibreOffice SVG export + compose pass) can take well over 2 minutes. Default
+// to 20 minutes and allow override via SLIDE_RUNTIME_TIMEOUT_MS.
+//
+// Note: Bedrock AgentCore InvokeAgentRuntime has its own server-side ceiling
+// (~15 min). If a call runs past that, AgentCore may abort the stream before
+// this client timer fires; lower SLIDE_RUNTIME_TIMEOUT_MS to ~840000 if you want
+// a clean client-side TimeoutError (with telemetry) instead of an AWS abort.
+const DEFAULT_SLIDE_RUNTIME_TIMEOUT_MS = 1_200_000; // 20 minutes
+const SLIDE_RUNTIME_TIMEOUT_MS = (() => {
+  const raw = Number.parseInt(process.env.SLIDE_RUNTIME_TIMEOUT_MS ?? '', 10);
+  return Number.isFinite(raw) && raw > 0 ? raw : DEFAULT_SLIDE_RUNTIME_TIMEOUT_MS;
+})();
 
 export async function invokeSlideRuntime(
   input: InvokeSlideRuntimeInput,
