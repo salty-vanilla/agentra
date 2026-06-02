@@ -210,6 +210,8 @@ export const listThreadMessagesResponseMessagesItemArtifactManifestArtifactsItem
 
 
 
+
+
 export const ListThreadMessagesResponse = zod.object({
   "thread": zod.object({
   "threadId": zod.string().min(1),
@@ -261,7 +263,7 @@ export const ListThreadMessagesResponse = zod.object({
   "createdAt": zod.string().datetime({}),
   "artifacts": zod.array(zod.object({
   "id": zod.string().min(1),
-  "kind": zod.enum(['pptx', 'pdf', 'html', 'png', 'jpg', 'json', 'text', 'source-js', 'contact-sheet', 'rendered-slide', 'render-dir', 'work-dir', 'diagnostics-json', 'image-asset', 'other']),
+  "kind": zod.enum(['pptx', 'pdf', 'html', 'png', 'jpg', 'json', 'text', 'source-js', 'contact-sheet', 'rendered-slide', 'render-dir', 'work-dir', 'diagnostics-json', 'image-asset', 'deck-compose', 'deck-defs', 'deck-preview', 'other']),
   "name": zod.string().min(1),
   "path": zod.string().optional(),
   "url": zod.string().url().optional(),
@@ -272,7 +274,26 @@ export const ListThreadMessagesResponse = zod.object({
   "label": zod.string().optional(),
   "exists": zod.boolean().optional()
 })),
-  "metadata": zod.record(zod.string(), zod.unknown()).optional()
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "deck": zod.object({
+  "deckId": zod.string().min(1),
+  "name": zod.string(),
+  "language": zod.enum(['ja', 'en']),
+  "slideOrder": zod.array(zod.string()),
+  "defsUrl": zod.string().url().nullable(),
+  "pptxDownloadUrl": zod.string().url().nullable(),
+  "specs": zod.object({
+  "briefUrl": zod.string().url().nullable(),
+  "outlineUrl": zod.string().url().nullable(),
+  "artDirectionUrl": zod.string().url().nullable()
+}),
+  "slides": zod.array(zod.object({
+  "slug": zod.string().min(1),
+  "previewUrl": zod.string().url().nullable(),
+  "composeUrl": zod.string().url().nullable()
+})),
+  "version": zod.literal(1)
+}).optional().describe('Structured Live Preview view of a generated slide deck. Attached additively to the artifact manifest. All URL fields are presigned and may be null on degrade.')
 }).optional()
 }))
 })
@@ -295,13 +316,15 @@ export const listThreadArtifactsResponseManifestsItemArtifactsItemSizeBytesMin =
 
 
 
+
+
 export const ListThreadArtifactsResponse = zod.object({
   "manifests": zod.array(zod.object({
   "id": zod.string().min(1),
   "createdAt": zod.string().datetime({}),
   "artifacts": zod.array(zod.object({
   "id": zod.string().min(1),
-  "kind": zod.enum(['pptx', 'pdf', 'html', 'png', 'jpg', 'json', 'text', 'source-js', 'contact-sheet', 'rendered-slide', 'render-dir', 'work-dir', 'diagnostics-json', 'image-asset', 'other']),
+  "kind": zod.enum(['pptx', 'pdf', 'html', 'png', 'jpg', 'json', 'text', 'source-js', 'contact-sheet', 'rendered-slide', 'render-dir', 'work-dir', 'diagnostics-json', 'image-asset', 'deck-compose', 'deck-defs', 'deck-preview', 'other']),
   "name": zod.string().min(1),
   "path": zod.string().optional(),
   "url": zod.string().url().optional(),
@@ -312,7 +335,26 @@ export const ListThreadArtifactsResponse = zod.object({
   "label": zod.string().optional(),
   "exists": zod.boolean().optional()
 })),
-  "metadata": zod.record(zod.string(), zod.unknown()).optional()
+  "metadata": zod.record(zod.string(), zod.unknown()).optional(),
+  "deck": zod.object({
+  "deckId": zod.string().min(1),
+  "name": zod.string(),
+  "language": zod.enum(['ja', 'en']),
+  "slideOrder": zod.array(zod.string()),
+  "defsUrl": zod.string().url().nullable(),
+  "pptxDownloadUrl": zod.string().url().nullable(),
+  "specs": zod.object({
+  "briefUrl": zod.string().url().nullable(),
+  "outlineUrl": zod.string().url().nullable(),
+  "artDirectionUrl": zod.string().url().nullable()
+}),
+  "slides": zod.array(zod.object({
+  "slug": zod.string().min(1),
+  "previewUrl": zod.string().url().nullable(),
+  "composeUrl": zod.string().url().nullable()
+})),
+  "version": zod.literal(1)
+}).optional().describe('Structured Live Preview view of a generated slide deck. Attached additively to the artifact manifest. All URL fields are presigned and may be null on degrade.')
 }))
 })
 

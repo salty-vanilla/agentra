@@ -84,9 +84,9 @@ export interface DeckSlideManifest {
 
 /** Presigned URLs for spec files (null when absent). */
 export interface DeckSpecUrls {
-  brief: string | null;
-  outline: string | null;
-  artDirection: string | null;
+  briefUrl: string | null;
+  outlineUrl: string | null;
+  artDirectionUrl: string | null;
 }
 
 /** Per-slide preview entry returned to the client (presigned URLs). */

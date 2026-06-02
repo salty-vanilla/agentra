@@ -15,10 +15,45 @@ export const artifactKindSchema = z.enum([
   'work-dir',
   'diagnostics-json',
   'image-asset',
+  'deck-compose',
+  'deck-defs',
+  'deck-preview',
   'other',
 ]);
 
 export type ArtifactKind = z.infer<typeof artifactKindSchema>;
+
+// --- Deck Live Preview ---
+
+export const deckSpecUrlsSchema = z.object({
+  briefUrl: z.string().url().nullable(),
+  outlineUrl: z.string().url().nullable(),
+  artDirectionUrl: z.string().url().nullable(),
+});
+
+export type DeckSpecUrls = z.infer<typeof deckSpecUrlsSchema>;
+
+export const deckSlidePreviewSchema = z.object({
+  slug: z.string().min(1),
+  previewUrl: z.string().url().nullable(),
+  composeUrl: z.string().url().nullable(),
+});
+
+export type DeckSlidePreview = z.infer<typeof deckSlidePreviewSchema>;
+
+export const deckResultSchema = z.object({
+  deckId: z.string().min(1),
+  name: z.string(),
+  language: z.enum(['ja', 'en']),
+  slideOrder: z.array(z.string()),
+  defsUrl: z.string().url().nullable(),
+  pptxDownloadUrl: z.string().url().nullable(),
+  specs: deckSpecUrlsSchema,
+  slides: z.array(deckSlidePreviewSchema),
+  version: z.literal(1),
+});
+
+export type DeckResult = z.infer<typeof deckResultSchema>;
 
 export const artifactRefSchema = z.object({
   id: z.string().min(1),
@@ -41,6 +76,8 @@ export const artifactManifestSchema = z.object({
   createdAt: z.string().datetime(),
   artifacts: z.array(artifactRefSchema),
   metadata: z.record(z.string(), z.unknown()).optional(),
+  /** Structured Live Preview view of the deck, when this run produced slides. */
+  deck: deckResultSchema.optional(),
 });
 
 export type ArtifactManifest = z.infer<typeof artifactManifestSchema>;

@@ -9,6 +9,7 @@ This spec is the source of truth for frontend client generation and API mocks.
  */
 import type { ArtifactManifestMetadata } from './artifactManifestMetadata';
 import type { ArtifactRef } from './artifactRef';
+import type { DeckResult } from './deckResult';
 
 export interface ArtifactManifest {
   /** @minLength 1 */
@@ -16,4 +17,5 @@ export interface ArtifactManifest {
   createdAt: string;
   artifacts: ArtifactRef[];
   metadata?: ArtifactManifestMetadata;
+  deck?: DeckResult;
 }

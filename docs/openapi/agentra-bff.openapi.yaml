@@ -2135,6 +2135,9 @@ components:
         - work-dir
         - diagnostics-json
         - image-asset
+        - deck-compose
+        - deck-defs
+        - deck-preview
         - other
     ArtifactRef:
       type: object
@@ -2194,6 +2197,97 @@ components:
         metadata:
           type: object
           additionalProperties: true
+        deck:
+          $ref: '#/components/schemas/DeckResult'
+    DeckSpecUrls:
+      type: object
+      additionalProperties: false
+      required:
+        - briefUrl
+        - outlineUrl
+        - artDirectionUrl
+      properties:
+        briefUrl:
+          type: string
+          format: uri
+          nullable: true
+        outlineUrl:
+          type: string
+          format: uri
+          nullable: true
+        artDirectionUrl:
+          type: string
+          format: uri
+          nullable: true
+    DeckSlidePreview:
+      type: object
+      additionalProperties: false
+      required:
+        - slug
+        - previewUrl
+        - composeUrl
+      properties:
+        slug:
+          type: string
+          minLength: 1
+        previewUrl:
+          type: string
+          format: uri
+          nullable: true
+        composeUrl:
+          type: string
+          format: uri
+          nullable: true
+    DeckResult:
+      type: object
+      description: >-
+        Structured Live Preview view of a generated slide deck. Attached
+        additively to the artifact manifest. All URL fields are presigned and
+        may be null on degrade.
+      additionalProperties: false
+      required:
+        - deckId
+        - name
+        - language
+        - slideOrder
+        - defsUrl
+        - pptxDownloadUrl
+        - specs
+        - slides
+        - version
+      properties:
+        deckId:
+          type: string
+          minLength: 1
+        name:
+          type: string
+        language:
+          type: string
+          enum:
+            - ja
+            - en
+        slideOrder:
+          type: array
+          items:
+            type: string
+        defsUrl:
+          type: string
+          format: uri
+          nullable: true
+        pptxDownloadUrl:
+          type: string
+          format: uri
+          nullable: true
+        specs:
+          $ref: '#/components/schemas/DeckSpecUrls'
+        slides:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeckSlidePreview'
+        version:
+          type: integer
+          enum:
+            - 1
     ThreadArtifactsResponse:
       type: object
       additionalProperties: false
