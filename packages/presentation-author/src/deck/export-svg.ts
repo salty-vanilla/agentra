@@ -1,6 +1,7 @@
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPythonScript } from '../python-runner.js';
+import { isWithinDir } from './path-utils.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -97,8 +98,7 @@ export async function exportSvg(input: ExportSvgInput): Promise<ExportSvgResult>
   }
 
   // Defense in depth: the script should only ever write inside outputDir.
-  const resolvedSvg = resolve(payload.svgPath);
-  if (!resolvedSvg.startsWith(resolve(input.outputDir))) {
+  if (!isWithinDir(payload.svgPath, input.outputDir)) {
     warnings.push(`export_svg.py returned a path outside outputDir: ${payload.svgPath}`);
     return { success: false, svgPath: null, ...base, warnings };
   }

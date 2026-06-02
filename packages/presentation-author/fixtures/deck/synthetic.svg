@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:ooo="http://xml.openoffice.org/svg/export" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 33867 19050">
+ <defs class="EmbeddedFont"><font horiz-adv-x="2048"><font-face font-family="Mei"/></font></defs>
+ <g id="ooo:meta_slides"><g id="ooo:meta_slide_0" ooo:master="master0"/></g>
+ <g class="Master_Slide"><g id="master0"><g class="Background"><rect fill="#232F3E" x="0" y="0" width="33867" height="19050"/></g><g class="BackgroundObjects"/></g></g>
+ <g class="Slide"><g class="Page"/></g>
+ <g class="Slide"><g class="Page">
+   <g class="com.sun.star.drawing.CustomShape"><rect class="BoundingBox" x="1000" y="500" width="20000" height="3000"/><text>Hello Title</text></g>
+   <g class="com.sun.star.drawing.GraphicObject"><rect class="BoundingBox" x="1000" y="4000" width="8000" height="8000"/><image xlink:href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAE0lEQVR4nGM8ISfHAANMcBZeDgA0dgEMydTl/QAAAABJRU5ErkJggg==" x="1000" y="4000" width="8000" height="8000"/></g>
+ </g></g>
+</svg>
