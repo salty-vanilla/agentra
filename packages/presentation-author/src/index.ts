@@ -3,6 +3,7 @@ export * from './authoring-script.js';
 export * from './brand-frame/index.js';
 export * from './contact-sheet.js';
 export * from './create-presentation-tool.js';
+export * from './deck/index.js';
 export * from './diagnostics.js';
 export * from './executor.js';
 export * from './icons/index.js';
