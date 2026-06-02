@@ -1,4 +1,9 @@
-import { type ArtifactManifest, artifactManifestSchema } from '@agentra/agent-tools';
+import {
+  type ArtifactManifest,
+  artifactManifestSchema,
+  type DeckResult,
+  deckResultSchema,
+} from '@agentra/agent-tools';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { uuidv7 } from 'uuidv7';
 import { buildRouterPrompt, createRouterAgent } from './agents/router/index.js';
@@ -22,6 +27,39 @@ function parseArtifactManifestContent(content: unknown): ArtifactManifest | unde
   } catch {
     return undefined;
   }
+}
+
+/**
+ * Extract a validated DeckResult from a `create_slide_presentation` tool result.
+ *
+ * The slide tool returns `content: [{ text: JSON.stringify(payload) }]` where
+ * payload may carry an optional `deck`. We attach it deterministically to the
+ * emitted artifact manifest rather than relying on the LLM to copy it.
+ */
+export function parseDeckFromSlideResult(content: unknown): DeckResult | undefined {
+  if (!Array.isArray(content)) return undefined;
+  const first = content.find(
+    (c) =>
+      c && typeof c === 'object' && typeof (c as { text?: unknown }).text === 'string',
+  ) as { text?: string } | undefined;
+  if (!first?.text) return undefined;
+  try {
+    const payload = JSON.parse(first.text) as { deck?: unknown };
+    if (!payload || typeof payload !== 'object' || !('deck' in payload)) return undefined;
+    const parsed = deckResultSchema.safeParse(payload.deck);
+    return parsed.success ? parsed.data : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+/** Attach a captured deck to a manifest without clobbering an existing one. */
+export function attachDeckToManifest(
+  manifest: ArtifactManifest,
+  deck: DeckResult | undefined,
+): ArtifactManifest {
+  if (!deck || manifest.deck) return manifest;
+  return { ...manifest, deck };
 }
 
 export type {
@@ -168,6 +206,9 @@ const app = new BedrockAgentCoreApp({
       const toolStartTimes = new Map<string, { name: string; startedAt: number }>();
       let currentStreamingToolUseId: string | undefined;
       let currentStreamingToolName: string | undefined;
+      // Deck Live Preview captured from a create_slide_presentation result, to be
+      // attached to the next artifact manifest the model emits.
+      let pendingDeck: DeckResult | undefined;
 
       logger.logInvocationStart({
         userId,
@@ -296,13 +337,29 @@ const app = new BedrockAgentCoreApp({
             } else {
               logger.logToolCallEnd(toolUseId, toolName, toolDuration);
             }
+            if (toolName === 'create_slide_presentation' && toolStatus === 'success') {
+              const capturedDeck = parseDeckFromSlideResult(event.result.content);
+              if (capturedDeck) {
+                pendingDeck = capturedDeck;
+              }
+            }
             if (toolName === 'create_artifact_manifest' && toolStatus === 'success') {
               const manifest = parseArtifactManifestContent(event.result.content);
               if (manifest) {
+                // Deterministically attach the captured deck (the LLM never sees
+                // or copies the presigned-URL payload).
+                const manifestWithDeck = attachDeckToManifest(manifest, pendingDeck);
+                // Consume the captured deck once a manifest call has resolved, so
+                // a stale deck can't ghost-attach to a later, unrelated manifest.
+                pendingDeck = undefined;
                 yield {
                   event: 'message',
-                  data: { type: 'artifact_manifest', manifest },
+                  data: { type: 'artifact_manifest', manifest: manifestWithDeck },
                 };
+              } else {
+                // Manifest JSON was malformed; drop the captured deck rather than
+                // letting it attach to a subsequent unrelated manifest.
+                pendingDeck = undefined;
               }
             }
             yield {
