@@ -25,6 +25,20 @@ export interface SmokeCheckResult {
   latencyMs?: number;
   /** SSE event names received, captured even on partial/failed streams. */
   events?: string[];
+  /** Correlation id from the `/chat` terminal `done` payload. */
+  requestId?: string;
+  /** Trace id from the `/chat` terminal `done` payload, when present. */
+  traceId?: string;
+  /** Thread id from the `/chat` terminal `done` payload, when present. */
+  threadId?: string;
+  /** CloudWatch log groups in which the requestId was found (correlation check). */
+  matchedLogGroupNames?: string[];
+  /** Whether an `agent_request_start` log was seen for the requestId. */
+  sawRequestStart?: boolean;
+  /** Whether an `agent_request_end` log was seen for the requestId. */
+  sawRequestEnd?: boolean;
+  /** Whether an `agent_request_error` log was seen for the requestId. */
+  sawRequestError?: boolean;
 }
 
 export interface SmokeSummaryCounts {

@@ -119,18 +119,96 @@ the rest are recorded as `skipped` with a reason. Results are written to
 `smoke-result.json` with an overall `status` plus a `{ passed, failed, skipped }`
 summary; the command exits non-zero when the overall status is `failed`.
 
-| Check | Runs when | Verifies |
-|-------|-----------|----------|
-| `bff.health` | `bffApiUrl` present | `GET /health` returns 2xx with `status: ok` |
-| `bff.threads` | `bffApiUrl` present and `SMOKE_JWT_TOKEN` set | `GET /threads` returns 200 with a `threads` array |
-| `bff.chatSse` | `streamingApiUrl` present and `SMOKE_JWT_TOKEN` set | `POST /chat` SSE opens and reaches a terminal `done` event |
-| `agentcore.invoke` | profile `backend-ai`/`full` and `agentCoreRuntimeArn` present | AgentCore runtime invocation returns a usable, error-free stream |
+| Check | Tier | Runs when | Verifies |
+|-------|------|-----------|----------|
+| `bff.health` | core | `bffApiUrl` present | `GET /health` returns 2xx with `status: ok` |
+| `bff.threads` | core | `bffApiUrl` present and `SMOKE_JWT_TOKEN` set | `GET /threads` returns 200 with a `threads` array |
+| `bff.chatSse` | full | `--mode full`, `streamingApiUrl` present and `SMOKE_JWT_TOKEN` set | `POST /chat` SSE opens, reaches a terminal `done` event, and the `done` payload carries a `requestId` (its `traceId` / `threadId` are recorded when present) |
+| `bff.chatLogCorrelation` | full | `--mode full` **and** `--with-log-correlation` (or `SMOKE_LOG_CORRELATION=true`) **and** `bff.chatSse` produced a `requestId` **and** log groups are configured | The `requestId` appears in AgentCore Runtime CloudWatch Logs with `agent_request_start` and `agent_request_end` (or `agent_request_error`) |
+| `agentcore.invoke` | full | `--mode full`, profile `backend-ai`/`full` and `agentCoreRuntimeArn` present | AgentCore runtime invocation returns a usable, error-free stream |
+
+#### Smoke depth: `--mode core` (default) vs `--mode full`
+
+`core`-tier checks are cheap GETs (`bff.health`, `bff.threads`); `full`-tier checks invoke
+the agent / Bedrock or query CloudWatch (`bff.chatSse`, `agentcore.invoke`,
+`bff.chatLogCorrelation`). To keep routine runs fast and cost-free, **smoke defaults to
+`--mode core`** — the full-tier checks are recorded as `skipped` with a reason (never
+silently dropped) and their probes are not invoked. Pass `--mode full` to run them.
+
+```bash
+# Light: every PR / CI — health + authenticated threads only
+pnpm preview:smoke --stage pr-123
+
+# Heavy: nightly / pre-demo / label-gated — adds chat SSE + AgentCore invoke
+pnpm preview:smoke --stage pr-123 --mode full
+
+# Heavy + requestId CloudWatch correlation
+pnpm preview:smoke --stage pr-123 --mode full --with-log-correlation
+```
 
 Auth uses `SMOKE_JWT_TOKEN` (a Cognito access token); checks that need it `skip` with
 an explicit reason when it is absent — no real test users are created. Optional env:
 `SMOKE_PROMPT`, `SMOKE_THREAD_ID`, `AGENTCORE_RUNTIME_QUALIFIER` /
 `SMOKE_AGENTCORE_QUALIFIER` (default `prod`), `SMOKE_AGENTCORE_TIMEOUT_MS` (default
 120000).
+
+#### requestId / traceId log correlation (`--with-log-correlation`)
+
+`bff.chatSse` always extracts the terminal `done` payload's `requestId` (and `traceId` /
+`threadId` when present) and records them in `smoke-result.json`. By default that is as
+far as it goes. Passing `--with-log-correlation` (or `SMOKE_LOG_CORRELATION=true`) adds an
+opt-in `bff.chatLogCorrelation` check that polls CloudWatch Logs for that same `requestId`
+in the AgentCore Runtime structured logs, confirming end-to-end propagation through
+API Gateway → Lambda Web Adapter → BFF → AgentCore Runtime → CloudWatch.
+
+`bff.chatLogCorrelation` is a `full`-tier check, so it also needs `--mode full` (see
+[Smoke depth](#smoke-depth---mode-core-default-vs---mode-full) above).
+
+```bash
+# core mode (default) — captures requestId/traceId via bff.chatSse only under
+# --mode full; in core mode no chat/correlation runs at all
+pnpm preview:smoke --stage pr-123
+
+# Add the CloudWatch Logs requestId correlation check (full mode)
+SMOKE_JWT_TOKEN=... \
+SMOKE_CLOUDWATCH_LOG_GROUP_NAMES=/aws/bedrock-agentcore/runtimes/agentcore-pr-123 \
+pnpm preview:smoke --stage pr-123 --mode full --with-log-correlation
+
+# Env-var equivalent of the flag (still requires --mode full)
+SMOKE_LOG_CORRELATION=true pnpm preview:smoke --stage pr-123 --mode full
+```
+
+The check passes when both `agent_request_start` and a terminal marker
+(`agent_request_end` **or** `agent_request_error`) are found for the `requestId` — an error
+terminal still proves the id propagated, so it counts as correlated. It **skips** (never
+silently passes) when correlation is disabled, when `bff.chatSse` did not run (e.g. no
+`SMOKE_JWT_TOKEN`), or when no log groups are configured; it **fails** when `bff.chatSse`
+produced no `requestId` or the id cannot be correlated within the poll budget.
+
+Log groups are resolved from the manifest output `agentCoreLogGroupNames` if present,
+otherwise from the comma-separated `SMOKE_CLOUDWATCH_LOG_GROUP_NAMES` env var. CloudWatch
+ingestion lags the request, so the check polls/retries.
+
+| Env var | Default | Meaning |
+|---------|---------|---------|
+| `SMOKE_LOG_CORRELATION` | unset | `true`/`1`/`yes` enables the correlation check (same as `--with-log-correlation`) |
+| `SMOKE_CLOUDWATCH_LOG_GROUP_NAMES` | unset | Comma-separated CloudWatch log group names to search |
+| `SMOKE_LOG_WAIT_SECONDS` | `60` | Total poll budget before giving up |
+| `SMOKE_LOG_POLL_INTERVAL_SECONDS` | `5` | Delay between CloudWatch Logs polls |
+
+Requires IAM `logs:StartQuery`, `logs:GetQueryResults` (and, if you later add discovery,
+`logs:DescribeLogGroups`) on the AgentCore Runtime log groups.
+
+**Safety:** only safe diagnostics are written to `smoke-result.json` — check `name` /
+`status` / `reason` / `endpoint` / `latencyMs` / `events`, plus `requestId` / `traceId` /
+`threadId`, `matchedLogGroupNames`, and the `sawRequestStart` / `sawRequestEnd` /
+`sawRequestError` booleans. Raw prompt, raw response text, `Authorization` headers, JWTs,
+secrets, and full CloudWatch log message bodies are never logged or persisted.
+
+**When to require it.** Treat a passing `bff.chatLogCorrelation` as an acceptance condition
+for changes to: API Gateway / Streaming API, Lambda Web Adapter / SSE transport, `postChat`,
+requestId / traceId propagation, AgentCore Runtime structured logs, or CloudWatch Logs /
+observability wiring.
 
 ### `preview:destroy`
 

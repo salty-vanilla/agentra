@@ -10,26 +10,50 @@
  * `--profile` — the preview profile is read from the manifest itself.
  */
 
+/** Smoke depth: `core` runs only the cheap GET checks; `full` adds the heavy ones. */
+export type SmokeMode = 'core' | 'full';
+
+export const SMOKE_MODES: readonly SmokeMode[] = ['core', 'full'];
+export const DEFAULT_SMOKE_MODE: SmokeMode = 'core';
+
 export interface RawSmokeArgs {
   stage: string;
   manifest?: string;
+  /**
+   * Smoke depth. `core` (default) runs only `bff.health` / `bff.threads`. `full`
+   * additionally runs the heavy checks (`bff.chatSse`, `agentcore.invoke`, and —
+   * with `--with-log-correlation` — `bff.chatLogCorrelation`).
+   */
+  mode: SmokeMode;
+  /** Opt-in: enable the CloudWatch Logs requestId correlation check (full mode). */
+  withLogCorrelation: boolean;
 }
 
-/** Long flags accepted by `preview:smoke` (without the `--` prefix). */
-const KNOWN_FLAGS = new Set(['stage', 'manifest']);
+/** Long flags that take a value (without the `--` prefix). */
+const VALUE_FLAGS = new Set(['stage', 'manifest', 'mode']);
+/** Long boolean flags that take no value (presence = `true`). */
+const BOOLEAN_FLAGS = new Set(['with-log-correlation']);
 
 function knownFlagList(): string {
-  return [...KNOWN_FLAGS].map((flag) => `--${flag}`).join(', ');
+  return [...VALUE_FLAGS, ...BOOLEAN_FLAGS].map((flag) => `--${flag}`).join(', ');
+}
+
+function isSmokeMode(value: string): value is SmokeMode {
+  return (SMOKE_MODES as readonly string[]).includes(value);
 }
 
 /**
- * Parse `--flag value` / `--flag=value` pairs from an argv slice.
+ * Parse `--flag value` / `--flag=value` pairs and boolean `--flag` switches from
+ * an argv slice.
  *
- * Throws on unknown flags, missing values, positional arguments, or a missing
- * required `--stage`. Returns a new object; never mutates the input.
+ * Throws on unknown flags, missing values for value flags, positional arguments,
+ * or a missing required `--stage`. Boolean flags (`--with-log-correlation`) take
+ * no value; an explicit `--with-log-correlation=false` disables it. Returns a new
+ * object; never mutates the input.
  */
 export function parseSmokeArgs(argv: readonly string[]): RawSmokeArgs {
   const values: Record<string, string> = {};
+  let withLogCorrelation = false;
 
   for (let i = 0; i < argv.length; i++) {
     const token = argv[i];
@@ -43,24 +67,27 @@ export function parseSmokeArgs(argv: readonly string[]): RawSmokeArgs {
     }
 
     const eqIndex = token.indexOf('=');
-    let key: string;
-    let value: string;
+    const key = eqIndex !== -1 ? token.slice(2, eqIndex) : token.slice(2);
 
+    if (BOOLEAN_FLAGS.has(key)) {
+      withLogCorrelation = eqIndex !== -1 ? token.slice(eqIndex + 1) !== 'false' : true;
+      continue;
+    }
+
+    if (!VALUE_FLAGS.has(key)) {
+      throw new Error(`Unknown flag "--${key}". Known flags: ${knownFlagList()}.`);
+    }
+
+    let value: string;
     if (eqIndex !== -1) {
-      key = token.slice(2, eqIndex);
       value = token.slice(eqIndex + 1);
     } else {
-      key = token.slice(2);
       const next = argv[i + 1];
       if (next === undefined || next.startsWith('--')) {
         throw new Error(`Missing value for flag "--${key}".`);
       }
       value = next;
       i++;
-    }
-
-    if (!KNOWN_FLAGS.has(key)) {
-      throw new Error(`Unknown flag "--${key}". Known flags: ${knownFlagList()}.`);
     }
     values[key] = value;
   }
@@ -69,7 +96,17 @@ export function parseSmokeArgs(argv: readonly string[]): RawSmokeArgs {
     throw new Error(`Missing required flag "--stage". Known flags: ${knownFlagList()}.`);
   }
 
-  const result: RawSmokeArgs = { stage: values.stage };
+  let mode: SmokeMode = DEFAULT_SMOKE_MODE;
+  if (values.mode !== undefined) {
+    if (!isSmokeMode(values.mode)) {
+      throw new Error(
+        `Invalid --mode "${values.mode}". Allowed: ${SMOKE_MODES.join(', ')}.`,
+      );
+    }
+    mode = values.mode;
+  }
+
+  const result: RawSmokeArgs = { stage: values.stage, mode, withLogCorrelation };
   if (values.manifest !== undefined) {
     result.manifest = values.manifest;
   }
