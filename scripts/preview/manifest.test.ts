@@ -108,6 +108,19 @@ describe('normalizeOutputs', () => {
         'arn:aws:bedrock-agentcore:ap-northeast-1:111122223333:runtime/abc',
     });
   });
+
+  test('maps AgentCore log group names for the log-correlation smoke check', () => {
+    const withLogGroups: CdkOutputs = {
+      'AgentraPreview-pr-1-AgentCoreRuntime': {
+        AgentCoreLogGroupNames:
+          '/aws/bedrock-agentcore/runtimes/r-DEFAULT,/aws/bedrock-agentcore/runtimes/r-prod',
+      },
+    };
+    expect(normalizeOutputs(withLogGroups)).toEqual({
+      agentCoreLogGroupNames:
+        '/aws/bedrock-agentcore/runtimes/r-DEFAULT,/aws/bedrock-agentcore/runtimes/r-prod',
+    });
+  });
 });
 
 describe('buildManifest', () => {
