@@ -41,6 +41,52 @@ export function isSuccessTerminal(name: SseEventName): boolean {
 }
 
 /**
+ * Safe diagnostic fields extracted from a terminal `done` event payload. Only
+ * these correlation identifiers are surfaced — never the raw response body,
+ * prompt, or any free-text content.
+ */
+export interface TerminalDiagnostics {
+  requestId?: string;
+  traceId?: string;
+  threadId?: string;
+}
+
+function nonEmptyString(value: unknown): string | undefined {
+  return typeof value === 'string' && value.length > 0 ? value : undefined;
+}
+
+/**
+ * Pull `requestId`, `traceId`, and `threadId` from a terminal event payload.
+ *
+ * Tolerates payload-shape drift: `traceId` is read either from the top level or
+ * from `observabilitySummary.traceId`. Non-object payloads yield an empty object.
+ * Deliberately does NOT retain the raw payload — only the three identifiers are
+ * returned so callers cannot accidentally persist response content.
+ */
+export function extractTerminalDiagnostics(data: unknown): TerminalDiagnostics {
+  if (data === null || typeof data !== 'object') {
+    return {};
+  }
+  const record = data as Record<string, unknown>;
+
+  let traceId = nonEmptyString(record.traceId);
+  if (traceId === undefined) {
+    const summary = record.observabilitySummary;
+    if (summary !== null && typeof summary === 'object') {
+      traceId = nonEmptyString((summary as Record<string, unknown>).traceId);
+    }
+  }
+
+  const result: TerminalDiagnostics = {};
+  const requestId = nonEmptyString(record.requestId);
+  const threadId = nonEmptyString(record.threadId);
+  if (requestId !== undefined) result.requestId = requestId;
+  if (traceId !== undefined) result.traceId = traceId;
+  if (threadId !== undefined) result.threadId = threadId;
+  return result;
+}
+
+/**
  * Incremental SSE parser. Call `push(chunk)` for each decoded text chunk; the
  * returned events are those completed by that chunk. Lines split across chunk
  * boundaries (and event/data names spanning chunks) are handled via the
