@@ -300,12 +300,24 @@ preview-outputs STAGE:
 # comes from the manifest). Exports AWS creds so the optional AgentCore probe can
 # authenticate on backend-ai / full. Set SMOKE_JWT_TOKEN to exercise /threads and
 # /chat; without it those checks skip with an explicit reason.
-preview-smoke STAGE profile=aws_profile:
+#
+# MODE=core (default) runs only health/threads; MODE=full adds chat SSE / AgentCore.
+# CORRELATION=true adds the CloudWatch requestId correlation check and requires
+# MODE=full (log groups come from the manifest's agentCoreLogGroupNames).
+preview-smoke STAGE MODE="core" CORRELATION="false" profile=aws_profile:
     #!/usr/bin/env bash
     set -euo pipefail
+    case '{{MODE}}' in core|full) ;; *) echo "MODE must be core|full" >&2; exit 2 ;; esac
+    if [ '{{CORRELATION}}' = 'true' ] && [ '{{MODE}}' != 'full' ]; then
+      echo "CORRELATION=true requires MODE=full" >&2; exit 2
+    fi
     eval "$(aws configure export-credentials --profile '{{profile}}' --format env)"
     export AWS_REGION="${AWS_REGION:-$(aws configure get region --profile '{{profile}}')}"
-    pnpm preview:smoke --stage '{{STAGE}}'
+    if [ '{{CORRELATION}}' = 'true' ]; then
+      pnpm preview:smoke --stage '{{STAGE}}' --mode '{{MODE}}' --with-log-correlation
+    else
+      pnpm preview:smoke --stage '{{STAGE}}' --mode '{{MODE}}'
+    fi
 
 # Dry-run preview destroy: validate + list accepted/rejected stacks, no AWS mutation.
 # PROFILE must be the same preview profile used for preview-deploy.

@@ -169,6 +169,13 @@ jobs:
                 core|full) ;;
                 *) echo "::error::Invalid smokeMode: $SMOKE_MODE" >&2; exit 2 ;;
               esac
+              # Fail fast on a misleading combo: bff.chatLogCorrelation is a
+              # full-tier check, so withLogCorrelation=true under smokeMode=core
+              # would silently skip correlation and still go green.
+              if [ "$WITH_LOG_CORRELATION" = "true" ] && [ "$SMOKE_MODE" != "full" ]; then
+                echo "::error::withLogCorrelation=true requires smokeMode=full" >&2
+                exit 2
+              fi
               if [ "$WITH_LOG_CORRELATION" = "true" ]; then
                 pnpm preview:smoke --stage "$STAGE" --mode "$SMOKE_MODE" --with-log-correlation
               else
