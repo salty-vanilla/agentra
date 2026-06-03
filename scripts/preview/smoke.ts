@@ -1,11 +1,16 @@
 /**
- * `pnpm preview:smoke --stage <preview-stage> [--manifest <path>]`
+ * `pnpm preview:smoke --stage <preview-stage> [--manifest <path>] [--mode core|full]
+ *  [--with-log-correlation]`
  *
  * Reads `.agentra/preview/<stage>/manifest.json` (or an explicit --manifest path)
- * and runs a fast liveness smoke against the deployed preview environment:
- * BFF `/health`, authenticated `/threads`, `/chat` SSE to a terminal event, and
- * (on backend-ai / full profiles) an AgentCore invoke. Writes a machine-readable
- * `.agentra/preview/<stage>/smoke-result.json` and exits non-zero on failure.
+ * and runs a fast liveness smoke against the deployed preview environment. By
+ * default (`--mode core`) it runs only the cheap GET checks: BFF `/health` and the
+ * authenticated `/threads`. Pass `--mode full` to also run the heavy checks —
+ * `/chat` SSE to a terminal `done` (extracting requestId/traceId/threadId) and
+ * (on backend-ai / full profiles) an AgentCore invoke — and `--with-log-correlation`
+ * to correlate the `/chat` requestId with AgentCore Runtime CloudWatch Logs. Writes
+ * a machine-readable `.agentra/preview/<stage>/smoke-result.json` and exits non-zero
+ * on failure.
  *
  * This command performs NO deploy or destroy. Auth uses SMOKE_JWT_TOKEN; checks
  * that require auth skip with an explicit reason when it is absent. No real test

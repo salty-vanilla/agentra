@@ -13,6 +13,7 @@ import {
   QueryStatus,
   type ResultField,
   StartQueryCommand,
+  StopQueryCommand,
 } from '@aws-sdk/client-cloudwatch-logs';
 import type {
   CloudWatchLogCorrelationParams,
@@ -86,13 +87,21 @@ function inspectRows(rows: ResultField[][]): RowFlags {
   };
 }
 
-/** Run one Logs Insights query filtering by the (regex-escaped) requestId. */
+/**
+ * Run one Logs Insights query filtering by the (regex-escaped) requestId.
+ *
+ * Returns `null` when the overall `deadlineMs` poll budget is exhausted while the
+ * query is still Scheduled/Running — in that case the in-flight query is stopped
+ * (best effort) so the caller can report a clean timeout instead of hanging on a
+ * slow/stuck CloudWatch query.
+ */
 async function runInsightsQuery(
   client: CloudWatchLogsClient,
   logGroupNames: string[],
   requestId: string,
   startTimeSec: number,
-): Promise<ResultField[][]> {
+  deadlineMs: number,
+): Promise<ResultField[][] | null> {
   const escaped = requestId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const queryString = [
     'fields @timestamp, @log, @message',
@@ -116,6 +125,16 @@ async function runInsightsQuery(
 
   let pollMs = QUERY_POLL_INITIAL_MS;
   while (true) {
+    if (Date.now() >= deadlineMs) {
+      // Best-effort: stop the in-flight query so it does not keep running server
+      // side, then signal timeout to the caller.
+      try {
+        await client.send(new StopQueryCommand({ queryId }));
+      } catch {
+        // ignore — the query may already be complete/failed
+      }
+      return null;
+    }
     await sleep(pollMs);
     pollMs = Math.min(pollMs * 1.5, QUERY_POLL_MAX_MS);
     const resp = await client.send(new GetQueryResultsCommand({ queryId }));
@@ -157,7 +176,17 @@ export async function searchCloudWatchLogsByRequestId(
 
   try {
     while (true) {
-      const rows = await runInsightsQuery(client, logGroupNames, requestId, startTimeSec);
+      const rows = await runInsightsQuery(
+        client,
+        logGroupNames,
+        requestId,
+        startTimeSec,
+        deadline,
+      );
+      if (rows === null) {
+        // Inner query exhausted the deadline while still running.
+        return { ...lastFlags, ok: false, latencyMs: Date.now() - start, timedOut: true };
+      }
       lastFlags = inspectRows(rows);
       const sawTerminal = lastFlags.sawRequestEnd || lastFlags.sawRequestError;
 

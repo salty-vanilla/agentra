@@ -36,6 +36,17 @@ on:
       prNumber:
         description: Optional PR number to post a status comment on
         required: false
+      smokeMode:
+        description: Smoke depth for the smoke action (core = health/threads; full = + chat SSE / AgentCore / log correlation)
+        type: choice
+        default: core
+        options:
+          - core
+          - full
+      withLogCorrelation:
+        description: With smokeMode=full, also correlate the /chat requestId with AgentCore CloudWatch Logs
+        type: boolean
+        default: false
 
 permissions:
   id-token: write # GitHub OIDC to assume the preview AWS role
@@ -135,6 +146,8 @@ jobs:
           STAGE: ${{ inputs.stage }}
           PROFILE: ${{ inputs.profile }}
           TTL: ${{ inputs.ttlHours }}
+          SMOKE_MODE: ${{ inputs.smokeMode }}
+          WITH_LOG_CORRELATION: ${{ inputs.withLogCorrelation }}
           SMOKE_JWT_TOKEN: ${{ secrets.SMOKE_JWT_TOKEN }}
           AGENTRA_PREVIEW_ALLOWED_ACCOUNTS: ${{ vars.AGENTRA_PREVIEW_ALLOWED_ACCOUNTS }}
         run: |
@@ -148,7 +161,19 @@ jobs:
                 && pnpm preview:outputs --stage "$STAGE"
               ;;
             smoke)
-              pnpm preview:smoke --stage "$STAGE"
+              # Validate inputs against a fixed allow-list (no interpolation into
+              # the command) to keep this injection-safe. Log groups come from the
+              # manifest (agentCoreLogGroupNames), so no log-group input is needed.
+              SMOKE_MODE="${SMOKE_MODE:-core}"
+              case "$SMOKE_MODE" in
+                core|full) ;;
+                *) echo "::error::Invalid smokeMode: $SMOKE_MODE" >&2; exit 2 ;;
+              esac
+              if [ "$WITH_LOG_CORRELATION" = "true" ]; then
+                pnpm preview:smoke --stage "$STAGE" --mode "$SMOKE_MODE" --with-log-correlation
+              else
+                pnpm preview:smoke --stage "$STAGE" --mode "$SMOKE_MODE"
+              fi
               ;;
             destroy)
               pnpm preview:destroy --stage "$STAGE" --profile "$PROFILE" --confirm "$STAGE"

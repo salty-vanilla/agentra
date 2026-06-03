@@ -257,10 +257,11 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       runtime.node.addDependency(rolePolicyResource);
     }
 
+    const endpointName = 'prod';
     const endpoint = new CfnRuntimeEndpoint(this, 'AgentCoreRuntimeEndpoint', {
       agentRuntimeId: runtime.attrAgentRuntimeId,
       agentRuntimeVersion: runtime.attrAgentRuntimeVersion,
-      name: 'prod',
+      name: endpointName,
       description: 'Production endpoint for Agentra AgentCore Runtime.',
     });
     endpoint.node.addDependency(runtime);
@@ -274,6 +275,15 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     new CfnOutput(this, 'AgentCoreRuntimeId', { value: this.runtimeId });
     new CfnOutput(this, 'AgentCoreRuntimeVersion', { value: this.runtimeVersion });
     new CfnOutput(this, 'AgentCoreRuntimeEndpointArn', { value: this.endpointArn });
+    // AgentCore writes structured logs to
+    // /aws/bedrock-agentcore/runtimes/<runtimeId>-<endpoint>. The service always
+    // provisions a `-DEFAULT` group plus one per named endpoint, so surface both
+    // as the SSOT for `preview:smoke --with-log-correlation` (manifest
+    // `agentCoreLogGroupNames` -> SMOKE_CLOUDWATCH_LOG_GROUP_NAMES fallback).
+    const logGroupPrefix = `/aws/bedrock-agentcore/runtimes/${this.runtimeId}`;
+    new CfnOutput(this, 'AgentCoreLogGroupNames', {
+      value: `${logGroupPrefix}-DEFAULT,${logGroupPrefix}-${endpointName}`,
+    });
     new CfnOutput(this, 'ThirdPartyApiKeysSecretArn', {
       value: thirdPartyApiKeysSecret.secretArn,
     });
