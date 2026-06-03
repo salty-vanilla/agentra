@@ -64,6 +64,12 @@ if (previewContext) {
     app.node.tryGetContext('thirdPartyApiKeysSecretArn') as string | undefined
   )?.trim();
 
+  // Opt-in deck Live Preview (issue #412). Default off; enable per ephemeral env
+  // with `-c deckPreviewEnabled=true`.
+  const deckPreviewEnabledCtx = app.node.tryGetContext('deckPreviewEnabled');
+  const deckPreviewEnabled =
+    deckPreviewEnabledCtx === true || deckPreviewEnabledCtx === 'true';
+
   const parseCsvContext = (key: string): string[] => {
     const value = app.node.tryGetContext(key);
     if (!value || typeof value !== 'string') {
@@ -130,6 +136,7 @@ if (previewContext) {
       description: `Agentra ${stageLabel} slide generation runtime stack.`,
       stage: stageLabel,
       environmentKind,
+      deckPreviewEnabled,
       ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),
     },
   );

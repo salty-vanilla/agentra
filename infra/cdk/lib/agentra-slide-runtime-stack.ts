@@ -26,6 +26,12 @@ export interface AgentraSlideRuntimeStackProps extends StackProps {
   stage: string;
   environmentKind?: EnvironmentKind;
   thirdPartyApiKeysSecretArn?: string;
+  /**
+   * Enable the SDPM-compatible deck Live Preview (PPTX→SVG→compose→S3 under
+   * `decks/`). Default off — opt in per ephemeral environment only, never in
+   * shared dev/stg until smoke-tested (see issue #412).
+   */
+  deckPreviewEnabled?: boolean;
 }
 
 export class AgentraSlideRuntimeStack extends Stack {
@@ -58,6 +64,11 @@ export class AgentraSlideRuntimeStack extends Stack {
       lifecycleRules: [
         {
           prefix: 'runs/',
+          expiration: Duration.days(isDev ? 7 : 30),
+        },
+        {
+          // Deck Live Preview workspaces (compose/defs/preview/pptx).
+          prefix: 'decks/',
           expiration: Duration.days(isDev ? 7 : 30),
         },
       ],
@@ -103,7 +114,12 @@ export class AgentraSlideRuntimeStack extends Stack {
       new PolicyStatement({
         effect: Effect.ALLOW,
         actions: ['s3:GetObject', 's3:PutObject', 's3:DeleteObject'],
-        resources: [`${artifactsBucket.bucketArn}/runs/*`],
+        // `decks/*` is required by the deck Live Preview (deck-store); without it
+        // PutObject/presign under decks/ is denied and the deck silently degrades.
+        resources: [
+          `${artifactsBucket.bucketArn}/runs/*`,
+          `${artifactsBucket.bucketArn}/decks/*`,
+        ],
       }),
     );
     runtimeRole.addToPolicy(
@@ -113,7 +129,7 @@ export class AgentraSlideRuntimeStack extends Stack {
         resources: [artifactsBucket.bucketArn],
         conditions: {
           StringLike: {
-            's3:prefix': ['runs/*', 'runs'],
+            's3:prefix': ['runs/*', 'runs', 'decks/*', 'decks'],
           },
         },
       }),
@@ -210,6 +226,9 @@ export class AgentraSlideRuntimeStack extends Stack {
         PRESENTATION_ARTIFACT_PREFIX: 'runs',
         PRESENTATION_ARTIFACT_PRESIGNED_URLS: 'true',
         PRESENTATION_ARTIFACT_URL_EXPIRES_SECONDS: '3600',
+        // Deck Live Preview (opt-in per environment; default off — issue #412).
+        PRESENTATION_DECK_PREVIEW_ENABLED: props.deckPreviewEnabled ? 'true' : 'false',
+        PRESENTATION_DECK_PREVIEW_BUDGET_MS: '45000',
         PRESENTATION_IMAGE_RETRIEVAL_ENABLED: thirdPartyApiKeysSecret ? 'true' : 'false',
         PRESENTATION_IMAGE_GENERATION_ENABLED: 'false',
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentra-slide-${props.stage}`,

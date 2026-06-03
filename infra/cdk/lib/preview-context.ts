@@ -103,6 +103,7 @@ export interface PreviewCdkContext {
   readonly logoutUrls: string[];
   readonly corsOrigins: string[];
   readonly thirdPartyApiKeysSecretArn?: string;
+  readonly deckPreviewEnabled: boolean;
 }
 
 function readContextString(app: App, key: string): string | undefined {
@@ -215,6 +216,8 @@ export function resolvePreviewCdkContext(app: App): PreviewCdkContext | null {
   const logoutUrls = readCsvContext(app, 'logoutUrls');
   const corsOrigins = readCsvContext(app, 'corsOrigins');
   const thirdPartyApiKeysSecretArn = readContextString(app, 'thirdPartyApiKeysSecretArn');
+  const deckPreviewCtx = app.node.tryGetContext('deckPreviewEnabled');
+  const deckPreviewEnabled = deckPreviewCtx === true || deckPreviewCtx === 'true';
 
   return {
     config,
@@ -225,6 +228,7 @@ export function resolvePreviewCdkContext(app: App): PreviewCdkContext | null {
     logoutUrls: logoutUrls.length > 0 ? logoutUrls : DEFAULT_LOCAL_CALLBACK_URLS,
     corsOrigins: corsOrigins.length > 0 ? corsOrigins : DEFAULT_LOCAL_CORS_ORIGINS,
     ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),
+    deckPreviewEnabled,
   };
 }
 
@@ -281,6 +285,7 @@ export function addPreviewStacks(app: App, context: PreviewCdkContext): void {
         ...sharedProps('slideRuntime'),
         stage: config.stage,
         environmentKind,
+        deckPreviewEnabled: context.deckPreviewEnabled,
         ...(context.thirdPartyApiKeysSecretArn
           ? { thirdPartyApiKeysSecretArn: context.thirdPartyApiKeysSecretArn }
           : {}),
