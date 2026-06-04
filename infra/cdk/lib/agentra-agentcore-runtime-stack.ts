@@ -38,6 +38,11 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
    * visible (e.g. for dogfood/demos). '0' disables pacing.
    */
   deckPreviewReplayPacingMs?: string;
+  /**
+   * Opt-in (Epic #421): relay the slide-runtime's real-time deck-progress events
+   * instead of replaying the completed deck (Route A). Sets ROUTER_DECK_STREAMING.
+   */
+  routerDeckStreaming?: boolean;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -232,6 +237,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
         SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
         DECK_PREVIEW_REPLAY_PACING_MS: props.deckPreviewReplayPacingMs ?? '200',
+        ROUTER_DECK_STREAMING: props.routerDeckStreaming ? 'true' : 'false',
         AGENT_MEMORY_ENABLED: memoryEnabled ? 'true' : 'false',
         AGENT_SESSION_S3_BUCKET: sessionBucket?.bucketName ?? '',
         AGENT_SESSION_S3_PREFIX: sessionS3Prefix,

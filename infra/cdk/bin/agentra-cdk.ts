@@ -77,6 +77,16 @@ if (previewContext) {
       ? deckPreviewPacingCtx.trim()
       : undefined;
 
+  // Opt-in true per-slide streaming (Epic #417: #419 per-slide pipeline,
+  // #420 slide-runtime SSE, #421 router relay). Default off — Route A replay.
+  const boolCtx = (key: string): boolean => {
+    const value = app.node.tryGetContext(key);
+    return value === true || value === 'true';
+  };
+  const slideRuntimeStreaming = boolCtx('slideRuntimeStreaming');
+  const deckPreviewStreaming = boolCtx('deckPreviewStreaming');
+  const routerDeckStreaming = boolCtx('routerDeckStreaming');
+
   const parseCsvContext = (key: string): string[] => {
     const value = app.node.tryGetContext(key);
     if (!value || typeof value !== 'string') {
@@ -144,6 +154,8 @@ if (previewContext) {
       stage: stageLabel,
       environmentKind,
       deckPreviewEnabled,
+      slideRuntimeStreaming,
+      deckPreviewStreaming,
       ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),
     },
   );
@@ -173,6 +185,7 @@ if (previewContext) {
       normalKbArn: bedrockKbStack.knowledgeBaseArn,
       normalKbId: bedrockKbStack.knowledgeBaseId,
       ...(deckPreviewReplayPacingMs ? { deckPreviewReplayPacingMs } : {}),
+      routerDeckStreaming,
     },
   );
   agentCoreRuntimeStack.addDependency(slideRuntimeStack);
