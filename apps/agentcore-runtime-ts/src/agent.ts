@@ -1,6 +1,7 @@
 import {
   type ArtifactManifest,
   artifactManifestSchema,
+  buildDeckPreviewEvents,
   type DeckResult,
   deckResultSchema,
 } from '@agentra/agent-tools';
@@ -14,43 +15,78 @@ import { RequestSchema } from './request-schema.js';
 import { RuntimeLogger } from './runtime-logger.js';
 import type { SubAgentProgressEvent } from './tools/invoke-manufacturing-line-agent.tool.js';
 
-function parseArtifactManifestContent(content: unknown): ArtifactManifest | undefined {
-  if (!Array.isArray(content)) return undefined;
-  const first = content.find(
-    (c) =>
-      c && typeof c === 'object' && typeof (c as { text?: unknown }).text === 'string',
-  ) as { text?: string } | undefined;
-  if (!first?.text) return undefined;
-  try {
-    const result = artifactManifestSchema.safeParse(JSON.parse(first.text));
-    return result.success ? result.data : undefined;
-  } catch {
-    return undefined;
+/**
+ * Walk a tool-result content structure and yield every plain object that could
+ * carry a structured payload, regardless of how the Strands SDK wrapped it.
+ *
+ * Live (#403) the SDK surfaced the slide tool's
+ * `content: [{ text: JSON.stringify(payload) }]` as a nested
+ * `[{ type: 'json', json: { status, content: [{ text }] } }]` — i.e. the tool's
+ * *return object* (not the inner payload), with the deck buried two levels down.
+ * Rather than hard-code one shape, this bounded walk descends through arrays,
+ * `json` blocks, JSON-valued `text` strings, and nested `content` arrays so a
+ * matcher can find its target wherever it ends up.
+ */
+function* walkToolResultObjects(
+  value: unknown,
+  depth = 0,
+): Generator<Record<string, unknown>> {
+  if (depth > 6 || value === null) return;
+  if (Array.isArray(value)) {
+    for (const item of value) yield* walkToolResultObjects(item, depth + 1);
+    return;
   }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        yield* walkToolResultObjects(JSON.parse(trimmed), depth + 1);
+      } catch {
+        // not JSON — ignore
+      }
+    }
+    return;
+  }
+  if (typeof value === 'object') {
+    const rec = value as Record<string, unknown>;
+    yield rec;
+    // Descend into the SDK/tool wrapper fields that can nest the real payload.
+    if ('json' in rec) yield* walkToolResultObjects(rec.json, depth + 1);
+    if ('text' in rec) yield* walkToolResultObjects(rec.text, depth + 1);
+    if ('content' in rec) yield* walkToolResultObjects(rec.content, depth + 1);
+  }
+}
+
+/** Find the first object in a tool result that validates under `schema`. */
+function findInToolResult<T>(
+  content: unknown,
+  schema: { safeParse: (v: unknown) => { success: true; data: T } | { success: false } },
+  pick: (o: Record<string, unknown>) => unknown,
+): T | undefined {
+  for (const obj of walkToolResultObjects(content)) {
+    const candidate = pick(obj);
+    if (candidate === undefined) continue;
+    const parsed = schema.safeParse(candidate);
+    if (parsed.success) return parsed.data;
+  }
+  return undefined;
+}
+
+function parseArtifactManifestContent(content: unknown): ArtifactManifest | undefined {
+  return findInToolResult(content, artifactManifestSchema, (o) => o);
 }
 
 /**
  * Extract a validated DeckResult from a `create_slide_presentation` tool result.
  *
- * The slide tool returns `content: [{ text: JSON.stringify(payload) }]` where
- * payload may carry an optional `deck`. We attach it deterministically to the
- * emitted artifact manifest rather than relying on the LLM to copy it.
+ * Captured deterministically (the LLM never copies the presigned-URL payload)
+ * and attached to the artifact manifest. Robust to the SDK's content wrapping
+ * (see {@link walkToolResultObjects}).
  */
 export function parseDeckFromSlideResult(content: unknown): DeckResult | undefined {
-  if (!Array.isArray(content)) return undefined;
-  const first = content.find(
-    (c) =>
-      c && typeof c === 'object' && typeof (c as { text?: unknown }).text === 'string',
-  ) as { text?: string } | undefined;
-  if (!first?.text) return undefined;
-  try {
-    const payload = JSON.parse(first.text) as { deck?: unknown };
-    if (!payload || typeof payload !== 'object' || !('deck' in payload)) return undefined;
-    const parsed = deckResultSchema.safeParse(payload.deck);
-    return parsed.success ? parsed.data : undefined;
-  } catch {
-    return undefined;
-  }
+  return findInToolResult(content, deckResultSchema, (o) =>
+    'deck' in o ? o.deck : undefined,
+  );
 }
 
 /** Attach a captured deck to a manifest without clobbering an existing one. */
@@ -60,6 +96,41 @@ export function attachDeckToManifest(
 ): ArtifactManifest {
   if (!deck || manifest.deck) return manifest;
   return { ...manifest, deck };
+}
+
+/** Default pacing between replayed deck slide events (ms); 0 disables. */
+const DECK_PREVIEW_REPLAY_PACING_MS = (() => {
+  const raw = Number.parseInt(process.env.DECK_PREVIEW_REPLAY_PACING_MS ?? '200', 10);
+  return Number.isFinite(raw) && raw >= 0 ? raw : 200;
+})();
+
+const sleep = (ms: number): Promise<void> =>
+  ms > 0 ? new Promise((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
+
+/**
+ * Stream Deck Preview progress for a captured deck as wrapped runtime SSE events
+ * (Epic #403, Route A — deterministic replay). The deck is fully generated by
+ * the time we replay, so a small pace between slide events gives the SDPM-like
+ * "slides appear one by one" reveal without the LLM ever touching the payload.
+ *
+ * Pure relative to the deck (no I/O beyond the injectable pacing); degradable —
+ * an empty/odd deck simply yields started + completed.
+ */
+export async function* emitDeckProgressEvents(
+  deck: DeckResult,
+  options: { paceMs?: number; sleepFn?: (ms: number) => Promise<void> } = {},
+): AsyncGenerator<{ event: 'message'; data: { type: 'deck_progress'; event: unknown } }> {
+  const paceMs = options.paceMs ?? DECK_PREVIEW_REPLAY_PACING_MS;
+  const sleepFn = options.sleepFn ?? sleep;
+  const events = buildDeckPreviewEvents(deck);
+
+  for (const event of events) {
+    yield { event: 'message', data: { type: 'deck_progress', event } };
+    // Pace only between per-slide reveals, not after started/before completed.
+    if (event.type === 'deck_slide_compose_ready') {
+      await sleepFn(paceMs);
+    }
+  }
 }
 
 export type {
@@ -292,6 +363,17 @@ const app = new BedrockAgentCoreApp({
               event.contentBlock.toolUseId,
               event.contentBlock.name,
             );
+            // Some tools arrive as a complete toolUseBlock rather than a streamed
+            // `toolUseStart`, so toolStartTimes (populated only there) misses them
+            // and the later toolResultEvent resolves toolName to 'unknown_tool' —
+            // which silently skips deck capture / manifest attach. Record the name
+            // here too (without clobbering an existing streamed start time).
+            if (!toolStartTimes.has(event.contentBlock.toolUseId)) {
+              toolStartTimes.set(event.contentBlock.toolUseId, {
+                name: event.contentBlock.name,
+                startedAt: Date.now(),
+              });
+            }
             continue;
           }
 
@@ -341,6 +423,10 @@ const app = new BedrockAgentCoreApp({
               const capturedDeck = parseDeckFromSlideResult(event.result.content);
               if (capturedDeck) {
                 pendingDeck = capturedDeck;
+                // Streaming Deck Preview (Epic #403): replay deck progress so the
+                // client reveals slides incrementally. The authoritative deck is
+                // still attached to the artifact manifest below.
+                yield* emitDeckProgressEvents(capturedDeck);
               }
             }
             if (toolName === 'create_artifact_manifest' && toolStatus === 'success') {

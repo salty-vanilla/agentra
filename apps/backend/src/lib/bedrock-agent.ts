@@ -3,6 +3,8 @@ import {
   artifactManifestSchema,
   type ChatObservationSummary,
   chatObservationSummarySchema,
+  type DeckPreviewEvent,
+  deckPreviewEventSchema,
 } from '@agentra/shared';
 import {
   BedrockAgentCoreClient,
@@ -25,6 +27,7 @@ export type RuntimeStreamEvent =
       subAgentStage?: SubAgentStage;
     }
   | { type: 'artifact_manifest'; manifest: ArtifactManifest }
+  | { type: 'deck_progress'; event: DeckPreviewEvent }
   | { type: 'done'; observabilitySummary?: ChatObservationSummary }
   | { type: 'error'; error: string; observabilitySummary?: ChatObservationSummary };
 
@@ -74,7 +77,7 @@ function parseObservationSummary(raw: unknown): ChatObservationSummary | undefin
   return result.data;
 }
 
-function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
+export function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
   try {
     const parsed = JSON.parse(raw) as
       | {
@@ -90,8 +93,17 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
           error?: string;
         };
 
-    const payload =
-      parsed && typeof parsed === 'object' && 'event' in parsed ? parsed.data : parsed;
+    // Unwrap the AgentCore SSE envelope `{ event: '<string>', data: {...} }`.
+    // Detect it precisely: the envelope's `event` is a STRING tag (e.g. 'message')
+    // and it carries `data`. A `deck_progress` payload also has an `event` key, but
+    // there it is the nested DeckPreviewEvent OBJECT — so a naive `'event' in parsed`
+    // check would mis-unwrap it to `undefined`. Require a string `event` + `data`.
+    const isEnvelope =
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      typeof (parsed as { event?: unknown }).event === 'string' &&
+      'data' in parsed;
+    const payload = isEnvelope ? (parsed as { data?: unknown }).data : parsed;
     if (!payload || typeof payload !== 'object') {
       return undefined;
     }
@@ -104,7 +116,15 @@ function parseWrappedRuntimeEvent(raw: string): RuntimeStreamEvent | undefined {
       observabilitySummary?: ChatObservationSummary;
       error?: string;
       manifest?: unknown;
+      event?: unknown;
     };
+
+    if (typed.type === 'deck_progress' && typed.event !== undefined) {
+      const result = deckPreviewEventSchema.safeParse(typed.event);
+      // Malformed deck progress is dropped (degrade), never crashing the stream.
+      if (result.success) return { type: 'deck_progress', event: result.data };
+      return undefined;
+    }
 
     if (typed.type === 'text' && typeof typed.text === 'string') {
       return { type: 'text', text: typed.text };

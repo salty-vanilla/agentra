@@ -388,6 +388,17 @@ app.post('/chat', async (context) => {
             continue;
           }
 
+          if (runtimeEvent.type === 'deck_progress') {
+            // Streaming Deck Preview (Epic #403): forward progress so the client
+            // can reveal slides incrementally. Additive and degradable — the
+            // final `artifact` event still carries the authoritative deck.
+            await stream.writeEvent({
+              event: 'deck_progress',
+              data: { type: 'deck_progress', event: runtimeEvent.event },
+            });
+            continue;
+          }
+
           if (runtimeEvent.type === 'done') {
             latestObservabilitySummary =
               runtimeEvent.observabilitySummary ?? latestObservabilitySummary;

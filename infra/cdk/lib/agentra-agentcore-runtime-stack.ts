@@ -32,6 +32,12 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   sessionS3Prefix?: string;
   normalKbArn?: string;
   normalKbId?: string;
+  /**
+   * Pace (ms) between replayed Streaming Deck Preview slide events (Epic #403).
+   * Default 200 in the runtime; raise it to make the incremental reveal more
+   * visible (e.g. for dogfood/demos). '0' disables pacing.
+   */
+  deckPreviewReplayPacingMs?: string;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -225,6 +231,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         PEXELS_API_KEY_SECRET_ID: thirdPartyApiKeysSecret.secretArn,
         SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
         SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
+        DECK_PREVIEW_REPLAY_PACING_MS: props.deckPreviewReplayPacingMs ?? '200',
         AGENT_MEMORY_ENABLED: memoryEnabled ? 'true' : 'false',
         AGENT_SESSION_S3_BUCKET: sessionBucket?.bucketName ?? '',
         AGENT_SESSION_S3_PREFIX: sessionS3Prefix,

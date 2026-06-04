@@ -207,7 +207,22 @@ export async function executeCreatePresentationTool(
               bucketName: envBucketName,
               presignExpiresSeconds: envUrlExpires,
             },
-            { s3Client },
+            {
+              s3Client,
+              // Record the real deck-build timeline (Epic #403). The live SSE
+              // stream is produced by the router's replay; this is for logging
+              // and as the seam for future true streaming.
+              onDeckEvent: (event) => {
+                logger.info({
+                  component: 'create-presentation-tool',
+                  runId,
+                  step: 'deck_preview_event',
+                  deckEventType: event.type,
+                  ...('index' in event ? { slideIndex: event.index } : {}),
+                  ...('totalSlides' in event ? { totalSlides: event.totalSlides } : {}),
+                });
+              },
+            },
           );
           const budget = new Promise<'timeout'>((resolve) => {
             setTimeout(() => resolve('timeout'), envDeckPreviewBudgetMs).unref?.();
