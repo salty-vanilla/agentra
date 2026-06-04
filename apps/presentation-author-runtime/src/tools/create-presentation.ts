@@ -80,8 +80,18 @@ export interface SlideRuntimePresentationResult extends CreatePresentationToolOu
   deck?: DeckResult | undefined;
 }
 
+export interface ExecuteCreatePresentationOptions {
+  /**
+   * Real-time deck event sink (Epic #420). When the streaming slide-runtime
+   * handler is active it forwards these out as SSE; otherwise events are only
+   * logged. Always invoked in addition to logging; must not throw.
+   */
+  onDeckEvent?: ((event: DeckPreviewEvent) => void) | undefined;
+}
+
 export async function executeCreatePresentationTool(
   input: CreatePresentationToolInput,
+  opts: ExecuteCreatePresentationOptions = {},
 ): Promise<SlideRuntimePresentationResult> {
   const runId = uuidv7();
   const startTime = Date.now();
@@ -219,6 +229,12 @@ export async function executeCreatePresentationTool(
               ...('index' in event ? { slideIndex: event.index } : {}),
               ...('totalSlides' in event ? { totalSlides: event.totalSlides } : {}),
             });
+            // Forward to the streaming handler's sink (Epic #420), if any.
+            try {
+              opts.onDeckEvent?.(event);
+            } catch {
+              // a throwing sink must never break PPTX generation
+            }
           };
           const previewInput = {
             pptxPath: result.pptxPath,
