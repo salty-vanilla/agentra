@@ -4,6 +4,7 @@ import { Agent, BedrockModel } from '@strands-agents/sdk';
 import { AgentSkills } from '@strands-agents/sdk/vended-plugins/skills';
 import { BedrockAgentCoreApp } from 'bedrock-agentcore/runtime';
 import { z } from 'zod';
+import { streamPresentation } from './streaming/stream-presentation.js';
 import {
   createPresentationTool,
   executeCreatePresentationTool,
@@ -55,41 +56,67 @@ const RequestSchema = z.object({
   revision: z.boolean().optional(),
 });
 
-const app = new BedrockAgentCoreApp({
-  invocationHandler: {
-    requestSchema: RequestSchema,
+// Opt-in (default off): stream deck-progress events as SSE while the deck is
+// built, instead of returning a single JSON result. Requires the router to
+// invoke with `accept: text/event-stream` and relay the events (#421); until
+// then the default non-streaming path is unchanged.
+const STREAMING_ENABLED = process.env.SLIDE_RUNTIME_STREAMING === 'true';
 
-    // Non-streaming handler — the router calls with accept: application/json,
-    // so we must NOT return an async generator (which requires SSE / text/event-stream).
-    process: async (request) => {
-      try {
-        const result = await executeCreatePresentationTool({
-          prompt: request.prompt,
-          language: request.language,
-          traceId: request.traceId,
-          diagnostics: request.diagnostics,
-          revision: request.revision,
-        });
+type SlideRequest = z.infer<typeof RequestSchema>;
 
-        return result;
-      } catch (error: unknown) {
-        console.error('[slide-runtime] process() error:', error);
-        return {
-          success: false,
-          summary:
-            'Presentation creation failed during an unknown error. No PPTX artifact was produced.',
-          workDir: '',
-          artifacts: [],
-          warnings: [],
-          error: {
-            message: error instanceof Error ? error.message : String(error),
-            phase: 'unknown' as const,
-          },
-        };
-      }
-    },
-  },
-});
+// Non-streaming handler — the router calls with accept: application/json, so we
+// must NOT return an async generator (which requires SSE / text/event-stream).
+const nonStreamingProcess = async (request: SlideRequest) => {
+  try {
+    return await executeCreatePresentationTool({
+      prompt: request.prompt,
+      language: request.language,
+      traceId: request.traceId,
+      diagnostics: request.diagnostics,
+      revision: request.revision,
+    });
+  } catch (error: unknown) {
+    console.error('[slide-runtime] process() error:', error);
+    return {
+      success: false,
+      summary:
+        'Presentation creation failed during an unknown error. No PPTX artifact was produced.',
+      workDir: '',
+      artifacts: [],
+      warnings: [],
+      error: {
+        message: error instanceof Error ? error.message : String(error),
+        phase: 'unknown' as const,
+      },
+    };
+  }
+};
+
+// Streaming handler (Epic #420) — yields deck-progress events in real time, then
+// the final result, as wrapped `{ event: 'message', data }` SSE messages.
+async function* streamingProcess(request: SlideRequest) {
+  yield* streamPresentation(request, {
+    runTool: (req, sink) =>
+      executeCreatePresentationTool(
+        {
+          prompt: req.prompt,
+          language: req.language,
+          traceId: req.traceId,
+          diagnostics: req.diagnostics,
+          revision: req.revision,
+        },
+        { onDeckEvent: sink.onDeckEvent },
+      ),
+  });
+}
+
+const app = STREAMING_ENABLED
+  ? new BedrockAgentCoreApp({
+      invocationHandler: { requestSchema: RequestSchema, process: streamingProcess },
+    })
+  : new BedrockAgentCoreApp({
+      invocationHandler: { requestSchema: RequestSchema, process: nonStreamingProcess },
+    });
 
 const isDirectExecution =
   process.argv[1] !== undefined &&
