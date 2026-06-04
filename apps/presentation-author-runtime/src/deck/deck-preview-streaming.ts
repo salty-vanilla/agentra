@@ -17,8 +17,11 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 
 const DEFAULT_PRESIGN_EXPIRES_SECONDS = 3600;
 const JSON_CONTENT_TYPE = 'application/json';
-/** Safe S3 key segment: letters, digits, dot, dash, underscore (no `/` or `..`). */
-const SAFE_SEGMENT = /^[A-Za-z0-9._-]+$/;
+/**
+ * Safe S3 key segment: must start alphanumeric, then letters/digits/dot/dash/
+ * underscore (no leading dot, no `/`, no `..`).
+ */
+const SAFE_SEGMENT = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 
 function isSafeSegment(value: string): boolean {
   return SAFE_SEGMENT.test(value) && !value.includes('..');
@@ -66,6 +69,10 @@ export function createS3SlidePersist(opts: {
   warnings: string[];
 }): PerSlideDeckDeps['persistSlide'] {
   const expiresIn = opts.presignExpiresSeconds ?? DEFAULT_PRESIGN_EXPIRES_SECONDS;
+  // One epoch per run (not per slide) so a deck's compose + defs keys share the
+  // same version stamp — the basis for the epoch-keyed defs union in #422. A
+  // later re-run (revision, #426) mints a new epoch, changing every URL.
+  const epoch = Date.now();
 
   async function put(key: string, body: Uint8Array, deckId: string, role: string) {
     await opts.s3Client.send(
@@ -87,7 +94,9 @@ export function createS3SlidePersist(opts: {
         { expiresIn },
       );
     } catch (err) {
-      opts.warnings.push(`Failed to presign ${key}: ${errMsg(err)}`);
+      // Don't leak the full S3 key (bucket layout / epoch) into warnings, which
+      // are serialized back into the LLM tool result. Keep the reason generic.
+      opts.warnings.push(`Failed to presign a deck artifact: ${errMsg(err)}`);
       return null;
     }
   }
@@ -99,14 +108,15 @@ export function createS3SlidePersist(opts: {
       opts.warnings.push(`slide ${input.index} skipped: unsafe deckId/slug`);
       return null;
     }
-    // Epoch versions the key so a re-upload (revision) changes the URL — the
-    // client's change detection keys off this (SDPM-style epoch workspace).
-    const epoch = Date.now();
     const composeKey = `${DECK_PREFIX}/${input.deckId}/slides/${input.slug}.${epoch}.compose.json`;
     try {
       await put(composeKey, await readFile(input.composePath), input.deckId, 'compose');
       const composeUrl = await presign(composeKey);
 
+      // Deck-wide defs uploaded once (from the first slide). NOTE (#422): a
+      // single-slide SVG's defs only covers that slide, so slides 2..N can
+      // reference ids absent here — the proper fix is a per-run defs *union*,
+      // tracked in #422. Until then the per-slide path is opt-in and dormant.
       let defsUrl: string | null = null;
       if (input.isFirst) {
         const defsKey = `${DECK_PREFIX}/${input.deckId}/preview/defs.${epoch}.json`;

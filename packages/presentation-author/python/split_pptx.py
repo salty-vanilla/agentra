@@ -59,6 +59,7 @@ def split_pptx(pptx_path: Path, output_dir: Path) -> list[dict]:
 
     probe = Presentation(str(pptx_path))
     slide_count = len(probe.slides._sldIdLst)
+    del probe  # release the parsed tree before copying the package N times
     if slide_count == 0:
         return []
 
@@ -66,12 +67,16 @@ def split_pptx(pptx_path: Path, output_dir: Path) -> list[dict]:
     with tempfile.TemporaryDirectory(prefix="split_pptx_") as work:
         for index in range(slide_count):
             # Copy the package per slide so each deck keeps masters/layouts/theme.
+            # (Dropped slides' XML parts remain orphaned in the saved ZIP; soffice
+            # ignores unreferenced slides when exporting.)
             tmp_copy = Path(work) / f"copy-{index}.pptx"
             shutil.copyfile(pptx_path, tmp_copy)
             prs = Presentation(str(tmp_copy))
             _keep_only(prs, index)
             out_path = output_dir / f"slide-{index + 1}.pptx"
             prs.save(str(out_path))
+            # Free the copy immediately so peak /tmp stays ~1 copy, not N.
+            tmp_copy.unlink(missing_ok=True)
             slides.append({"index": index + 1, "pptxPath": str(out_path)})
     return slides
 
