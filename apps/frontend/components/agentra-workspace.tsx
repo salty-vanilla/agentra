@@ -27,9 +27,15 @@ import {
   updateThreadTitle,
 } from '@/lib/api';
 import { isMockApiMode } from '@/lib/api-config';
+import {
+  deckStreamReducer,
+  initialDeckStreamState,
+  type StreamingDeckState,
+} from '@/lib/deck-stream';
 import type {
   ArtifactManifest,
   ChatCommand,
+  DeckPreviewEvent,
   ChatRequest as FrontendChatRequest,
   ProgressSummaryEvent,
   SubAgentProgressEvent,
@@ -101,6 +107,9 @@ export function AgentraWorkspace() {
   const [subAgentProgressEvents, setSubAgentProgressEvents] = useState<
     SubAgentProgressEvent[]
   >([]);
+  // Streaming Deck Preview (Epic #403): live state folded from deck_progress events.
+  const [streamingDeckState, setStreamingDeckState] =
+    useState<StreamingDeckState>(initialDeckStreamState);
   const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressIndexRef = useRef(0);
   // Use a ref so the memoized modelAdapter can read the latest model key without
@@ -168,6 +177,10 @@ export function AgentraWorkspace() {
 
       return prev.map((item, index) => (index === existingIndex ? event : item));
     });
+  }, []);
+
+  const handleDeckProgressEvent = useCallback((event: DeckPreviewEvent) => {
+    setStreamingDeckState((prev) => deckStreamReducer(prev, event));
   }, []);
 
   const stopProgressSimulation = useCallback(
@@ -352,6 +365,7 @@ export function AgentraWorkspace() {
             clearProgressTimer();
             setProgressEvents([]);
             setActiveProgressPhase(undefined);
+            setStreamingDeckState(initialDeckStreamState);
           }
         }
 
@@ -487,6 +501,8 @@ export function AgentraWorkspace() {
               handleProgressEvent(event.event);
             } else if (event.type === 'sub_agent_progress') {
               handleSubAgentProgressEvent(event.event);
+            } else if (event.type === 'deck_progress') {
+              handleDeckProgressEvent(event.event);
             } else if (event.type === 'observation') {
               doneObservabilitySummary = event.observation;
               setLiveObservabilitySummary(event.observation);
@@ -512,6 +528,8 @@ export function AgentraWorkspace() {
         } catch (error: unknown) {
           stopProgressSimulation(true);
           setSubAgentProgressEvents([]);
+          // A stream failure must not leave the deck shell stuck in `generating`.
+          setStreamingDeckState(initialDeckStreamState);
           const threadIdForInvalidation = selectedThreadId ?? streamThreadId;
           if (threadIdForInvalidation) {
             await queryClient.invalidateQueries({ queryKey: agentraQueryKeys.threads });
@@ -572,6 +590,7 @@ export function AgentraWorkspace() {
       clearProgressTimer,
       handleProgressEvent,
       handleSubAgentProgressEvent,
+      handleDeckProgressEvent,
       startProgressSimulation,
       stopProgressSimulation,
     ],
@@ -592,6 +611,8 @@ export function AgentraWorkspace() {
     setProgressEvents([]);
     setActiveProgressPhase(undefined);
     setSubAgentProgressEvents([]);
+    // Drop any in-flight streaming deck so it can't bleed into another thread.
+    setStreamingDeckState(initialDeckStreamState);
     setSlideCommandActive(false);
     setPendingSlideCommand(null);
   }, [selectedThreadId, clearProgressTimer]);
@@ -811,6 +832,7 @@ export function AgentraWorkspace() {
                   onSlideDialogOpenChange={setSlideDialogOpen}
                   progressEvents={progressEvents}
                   subAgentProgressEvents={subAgentProgressEvents}
+                  streamingDeckState={streamingDeckState}
                   {...(activeProgressPhase ? { activeProgressPhase } : {})}
                 />
               </section>

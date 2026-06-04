@@ -21,8 +21,44 @@ async function fetchJson(url: string, signal: AbortSignal): Promise<unknown> {
   return res.json();
 }
 
+/**
+ * Fetch the deck-wide shared defs once. With no URL we resolve to empty defs
+ * (slides still draw; shared gradients/fonts are simply unavailable). Shared by
+ * the static {@link DeckPreview} and the streaming shell so both render slides
+ * identically.
+ */
+export function useDeckDefs(defsUrl: string | null | undefined): {
+  defs: DefsData | null;
+  defsErrored: boolean;
+} {
+  const [defs, setDefs] = useState<DefsData | null>(null);
+  const [defsErrored, setDefsErrored] = useState(false);
+
+  useEffect(() => {
+    if (!defsUrl) {
+      setDefs({ version: COMPOSE_VERSION, defs: '' });
+      setDefsErrored(false);
+      return;
+    }
+    const ctrl = new AbortController();
+    setDefs(null);
+    setDefsErrored(false);
+    fetchJson(defsUrl, ctrl.signal)
+      .then((data) => {
+        if (isDefsData(data) && data.version === COMPOSE_VERSION) setDefs(data);
+        else setDefsErrored(true);
+      })
+      .catch(() => {
+        if (!ctrl.signal.aborted) setDefsErrored(true);
+      });
+    return () => ctrl.abort();
+  }, [defsUrl]);
+
+  return { defs, defsErrored };
+}
+
 /** Renders one slide by building a sanitized static SVG from compose + defs. */
-function DeckSlideFrame({
+export function DeckSlideFrame({
   defs,
   defsErrored,
   slide,
@@ -96,29 +132,8 @@ export interface DeckPreviewProps {
 }
 
 export function DeckPreview({ deck, className }: DeckPreviewProps) {
-  const [defs, setDefs] = useState<DefsData | null>(null);
-  const [defsErrored, setDefsErrored] = useState(false);
+  const { defs, defsErrored } = useDeckDefs(deck.defsUrl);
   const [active, setActive] = useState(0);
-
-  // Fetch the deck-wide defs once. With no defs URL we render with empty defs
-  // (slides still draw; shared gradients/fonts are simply unavailable).
-  useEffect(() => {
-    if (!deck.defsUrl) {
-      setDefs({ version: COMPOSE_VERSION, defs: '' });
-      return;
-    }
-    const ctrl = new AbortController();
-    setDefsErrored(false);
-    fetchJson(deck.defsUrl, ctrl.signal)
-      .then((data) => {
-        if (isDefsData(data) && data.version === COMPOSE_VERSION) setDefs(data);
-        else setDefsErrored(true);
-      })
-      .catch(() => {
-        if (!ctrl.signal.aborted) setDefsErrored(true);
-      });
-    return () => ctrl.abort();
-  }, [deck.defsUrl]);
 
   const slides = deck.slides;
   if (slides.length === 0) return null;

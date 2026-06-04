@@ -32,6 +32,12 @@ export interface AgentraAgentCoreRuntimeStackProps extends StackProps {
   sessionS3Prefix?: string;
   normalKbArn?: string;
   normalKbId?: string;
+  /**
+   * Pace (ms) between replayed Streaming Deck Preview slide events (Epic #403).
+   * Default 200 in the runtime; raise it to make the incremental reveal more
+   * visible (e.g. for dogfood/demos). '0' disables pacing.
+   */
+  deckPreviewReplayPacingMs?: string;
 }
 
 export class AgentraAgentCoreRuntimeStack extends Stack {
@@ -225,6 +231,7 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
         PEXELS_API_KEY_SECRET_ID: thirdPartyApiKeysSecret.secretArn,
         SLIDE_AGENTCORE_RUNTIME_ARN: props.slideRuntimeArn ?? '',
         SLIDE_AGENTCORE_RUNTIME_QUALIFIER: props.slideRuntimeQualifier ?? '',
+        DECK_PREVIEW_REPLAY_PACING_MS: props.deckPreviewReplayPacingMs ?? '200',
         AGENT_MEMORY_ENABLED: memoryEnabled ? 'true' : 'false',
         AGENT_SESSION_S3_BUCKET: sessionBucket?.bucketName ?? '',
         AGENT_SESSION_S3_PREFIX: sessionS3Prefix,
@@ -257,10 +264,11 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
       runtime.node.addDependency(rolePolicyResource);
     }
 
+    const endpointName = 'prod';
     const endpoint = new CfnRuntimeEndpoint(this, 'AgentCoreRuntimeEndpoint', {
       agentRuntimeId: runtime.attrAgentRuntimeId,
       agentRuntimeVersion: runtime.attrAgentRuntimeVersion,
-      name: 'prod',
+      name: endpointName,
       description: 'Production endpoint for Agentra AgentCore Runtime.',
     });
     endpoint.node.addDependency(runtime);
@@ -274,6 +282,15 @@ export class AgentraAgentCoreRuntimeStack extends Stack {
     new CfnOutput(this, 'AgentCoreRuntimeId', { value: this.runtimeId });
     new CfnOutput(this, 'AgentCoreRuntimeVersion', { value: this.runtimeVersion });
     new CfnOutput(this, 'AgentCoreRuntimeEndpointArn', { value: this.endpointArn });
+    // AgentCore writes structured logs to
+    // /aws/bedrock-agentcore/runtimes/<runtimeId>-<endpoint>. The service always
+    // provisions a `-DEFAULT` group plus one per named endpoint, so surface both
+    // as the SSOT for `preview:smoke --with-log-correlation` (manifest
+    // `agentCoreLogGroupNames` -> SMOKE_CLOUDWATCH_LOG_GROUP_NAMES fallback).
+    const logGroupPrefix = `/aws/bedrock-agentcore/runtimes/${this.runtimeId}`;
+    new CfnOutput(this, 'AgentCoreLogGroupNames', {
+      value: `${logGroupPrefix}-DEFAULT,${logGroupPrefix}-${endpointName}`,
+    });
     new CfnOutput(this, 'ThirdPartyApiKeysSecretArn', {
       value: thirdPartyApiKeysSecret.secretArn,
     });

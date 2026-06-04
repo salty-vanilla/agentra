@@ -1,4 +1,8 @@
-import { artifactManifestSchema, ListThreadMessagesResponse } from '@agentra/shared';
+import {
+  artifactManifestSchema,
+  deckPreviewEventSchema,
+  ListThreadMessagesResponse,
+} from '@agentra/shared';
 import { z } from 'zod';
 
 const chatObservationSummarySchema =
@@ -89,6 +93,16 @@ export const chatStreamArtifactEventSchema = z.object({
   manifest: artifactManifestSchema,
 });
 
+/**
+ * Streaming Deck Preview progress (Epic #403). Wraps a {@link deckPreviewEventSchema}
+ * payload so the frontend can reveal slides incrementally before the final
+ * `artifact` event. Additive and degradable — never required for a deck to render.
+ */
+export const chatStreamDeckProgressEventSchema = z.object({
+  type: z.literal('deck_progress'),
+  event: deckPreviewEventSchema,
+});
+
 export const chatStreamEventSchema = z.union([
   chatStreamThreadStartedEventSchema,
   chatStreamTextEventSchema,
@@ -96,6 +110,7 @@ export const chatStreamEventSchema = z.union([
   chatStreamSubAgentProgressEventSchema,
   chatStreamObservationEventSchema,
   chatStreamArtifactEventSchema,
+  chatStreamDeckProgressEventSchema,
   chatStreamDoneEventSchema,
   chatStreamErrorEventSchema,
   chatStreamCancelledEventSchema,
@@ -103,5 +118,8 @@ export const chatStreamEventSchema = z.union([
 
 export type ProgressSummaryEvent = z.infer<typeof progressSummaryEventSchema>;
 export type SubAgentProgressEvent = z.infer<typeof subAgentProgressEventSchema>;
+export type ChatStreamDeckProgressEvent = z.infer<
+  typeof chatStreamDeckProgressEventSchema
+>;
 export type ChatStreamEvent = z.infer<typeof chatStreamEventSchema>;
 export type ChatObservationSummary = z.infer<typeof chatObservationSummarySchema>;

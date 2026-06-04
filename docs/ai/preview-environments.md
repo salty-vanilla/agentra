@@ -160,6 +160,53 @@ Reason: <reason>
 Destroy command: pnpm preview:destroy --stage <stage> --profile <profile> --confirm <stage>
 ```
 
+## requestId / traceId log correlation smoke
+
+`preview:smoke` is the sanctioned way to validate live AWS behavior for the chat path,
+including end-to-end `requestId` propagation into AgentCore Runtime CloudWatch Logs. There
+is **no** separate standalone live-smoke script or workflow — this capability is integrated
+into the existing preview smoke.
+
+- **Smoke depth (`--mode`).** Smoke defaults to `--mode core` (cheap GETs: `bff.health`,
+  `bff.threads`). The heavy checks that invoke the agent / Bedrock or query CloudWatch
+  (`bff.chatSse`, `agentcore.invoke`, `bff.chatLogCorrelation`) only run under `--mode full`;
+  in core mode they are recorded as `skipped` with a reason. Use `core` for routine/CI runs
+  and `full` for nightly / pre-demo / label-gated live validation.
+- **Auth.** The `/chat` and `/threads` checks need a Cognito access token in
+  `SMOKE_JWT_TOKEN`; without it they `skip` with a reason (no test users are created).
+- **Default smoke** (`pnpm preview:smoke --stage <stage>`) runs core mode only. Add
+  `--mode full` to verify `/chat` SSE reaches a terminal `done` and extract the `requestId`
+  (plus `traceId` / `threadId` when present) into `smoke-result.json`. It makes no CloudWatch
+  calls unless log correlation is also enabled.
+- **Opt-in log correlation.** With `--mode full`, add `--with-log-correlation` (or
+  `SMOKE_LOG_CORRELATION=true`) to run the `bff.chatLogCorrelation` check, which polls
+  CloudWatch Logs for the same `requestId` and confirms `agent_request_start` plus
+  `agent_request_end` / `agent_request_error`:
+
+  ```bash
+  SMOKE_JWT_TOKEN=... \
+  SMOKE_CLOUDWATCH_LOG_GROUP_NAMES=/aws/bedrock-agentcore/runtimes/agentcore-<stage> \
+  pnpm preview:smoke --stage <stage> --mode full --with-log-correlation
+  ```
+
+  Log groups come from the manifest output `agentCoreLogGroupNames` if present, else the
+  comma-separated `SMOKE_CLOUDWATCH_LOG_GROUP_NAMES`. Tune timing with
+  `SMOKE_LOG_WAIT_SECONDS` (default 60) and `SMOKE_LOG_POLL_INTERVAL_SECONDS` (default 5);
+  CloudWatch ingestion lags, so the check polls/retries.
+- **Secrets never leak.** Only safe diagnostics (check name/status/reason/endpoint/latency,
+  `events`, `requestId` / `traceId` / `threadId`, `matchedLogGroupNames`, and the
+  `sawRequestStart` / `sawRequestEnd` / `sawRequestError` booleans) are written. Raw prompts,
+  raw responses, auth tokens, JWTs, secrets, and full log message bodies are not.
+
+**Require `--with-log-correlation` as an acceptance condition** for changes touching:
+
+- API Gateway / Streaming API
+- Lambda Web Adapter / SSE transport
+- `postChat`
+- requestId / traceId propagation
+- AgentCore Runtime structured logs
+- CloudWatch Logs / observability wiring
+
 ## GitHub Actions workflow
 
 The same `pnpm preview:*` contract is exposed as a **manual** GitHub Actions workflow,

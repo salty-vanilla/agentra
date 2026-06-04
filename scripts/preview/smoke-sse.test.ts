@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import {
+  extractTerminalDiagnostics,
   isSuccessTerminal,
   isTerminalEvent,
   type SseEvent,
@@ -100,5 +101,63 @@ describe('terminal helpers', () => {
     expect(isSuccessTerminal('done')).toBe(true);
     expect(isSuccessTerminal('error')).toBe(false);
     expect(isSuccessTerminal('cancelled')).toBe(false);
+  });
+});
+
+describe('extractTerminalDiagnostics', () => {
+  test('reads requestId, traceId, and threadId from a flat payload', () => {
+    expect(
+      extractTerminalDiagnostics({
+        threadId: 't-1',
+        requestId: 'req-1',
+        traceId: 'trace-1',
+      }),
+    ).toEqual({ requestId: 'req-1', traceId: 'trace-1', threadId: 't-1' });
+  });
+
+  test('reads traceId from observabilitySummary when not at the top level', () => {
+    expect(
+      extractTerminalDiagnostics({
+        threadId: 't-2',
+        requestId: 'req-2',
+        observabilitySummary: { traceId: 'trace-2' },
+      }),
+    ).toEqual({ requestId: 'req-2', traceId: 'trace-2', threadId: 't-2' });
+  });
+
+  test('prefers a top-level traceId over observabilitySummary.traceId', () => {
+    const diagnostics = extractTerminalDiagnostics({
+      requestId: 'req-3',
+      traceId: 'top',
+      observabilitySummary: { traceId: 'nested' },
+    });
+    expect(diagnostics.traceId).toBe('top');
+  });
+
+  test('omits fields that are absent or not non-empty strings', () => {
+    expect(extractTerminalDiagnostics({ requestId: 'req-4', traceId: '' })).toEqual({
+      requestId: 'req-4',
+    });
+  });
+
+  test('returns an empty object for non-object payloads', () => {
+    expect(extractTerminalDiagnostics(null)).toEqual({});
+    expect(extractTerminalDiagnostics('done')).toEqual({});
+    expect(extractTerminalDiagnostics(undefined)).toEqual({});
+  });
+
+  test('extracts diagnostics from a done payload split across chunk boundaries', () => {
+    const parser = new SseParser();
+    parser.push('event: done\ndata: {"threadId":"t-5","requ');
+    const events = parser.push(
+      'estId":"req-5","observabilitySummary":{"traceId":"tr-5"}}\n',
+    );
+    const done = events.find((e) => e.name === 'done');
+
+    expect(extractTerminalDiagnostics(done?.data)).toEqual({
+      requestId: 'req-5',
+      traceId: 'tr-5',
+      threadId: 't-5',
+    });
   });
 });

@@ -10,16 +10,31 @@
  * inapplicable profile) produce an explicit `skipped` result with a reason —
  * never a silent pass.
  */
-import type { PreviewManifest } from './manifest.js';
-import type { SmokeRuntime } from './run-smoke.js';
-import type { SmokeCheckResult } from './smoke-report.js';
+import type { NormalizedOutputs, PreviewManifest } from './manifest.js';
+import type {
+  CloudWatchLogCorrelationResult,
+  SmokeCheckContext,
+  SmokeRuntime,
+} from './run-smoke.js';
+import type { CheckStatus, SmokeCheckResult } from './smoke-report.js';
 
 export const HEALTH_TIMEOUT_MS = 5_000;
 export const THREADS_TIMEOUT_MS = 10_000;
 export const CHAT_SSE_TIMEOUT_MS = 60_000;
 
+/**
+ * How far back the CloudWatch Logs Insights query window opens relative to now.
+ * The chat request happened seconds ago; a generous lookback absorbs clock skew
+ * and CloudWatch ingestion delay without widening cost meaningfully.
+ */
+export const LOG_CORRELATION_LOOKBACK_MS = 10 * 60_000;
+
 const AGENTCORE_PROFILES: ReadonlySet<string> = new Set(['backend-ai', 'full']);
 const TEST_AUTH_NOT_CONFIGURED = 'test auth is not configured (set SMOKE_JWT_TOKEN)';
+const LOG_CORRELATION_DISABLED =
+  'log correlation not enabled (pass --with-log-correlation or set SMOKE_LOG_CORRELATION=true)';
+const NO_LOG_GROUPS =
+  'no CloudWatch log groups configured (set SMOKE_CLOUDWATCH_LOG_GROUP_NAMES)';
 
 function joinUrl(base: string, path: string): string {
   return `${base.replace(/\/$/, '')}${path}`;
@@ -244,8 +259,166 @@ export async function checkChatSse(
       latencyMs: probe.latencyMs,
     };
   }
+  if (!probe.requestId) {
+    return {
+      name,
+      status: 'failed',
+      reason: 'terminal done event did not include a requestId',
+      endpoint,
+      events,
+      latencyMs: probe.latencyMs,
+    };
+  }
 
-  return { name, status: 'passed', endpoint, events, latencyMs: probe.latencyMs };
+  // traceId/threadId are surfaced when present but not required: some
+  // environments may not yet propagate a traceId on the done event.
+  const result: SmokeCheckResult = {
+    name,
+    status: 'passed',
+    endpoint,
+    events,
+    latencyMs: probe.latencyMs,
+    requestId: probe.requestId,
+  };
+  if (probe.traceId) result.traceId = probe.traceId;
+  if (probe.threadId) result.threadId = probe.threadId;
+  return result;
+}
+
+function parseCommaList(value: string | undefined): string[] {
+  if (!value) {
+    return [];
+  }
+  const seen = new Set<string>();
+  for (const part of value.split(',')) {
+    const trimmed = part.trim();
+    if (trimmed.length > 0) {
+      seen.add(trimmed);
+    }
+  }
+  return [...seen];
+}
+
+/**
+ * Resolve which CloudWatch log groups the correlation check should search.
+ * Prefers an explicit manifest output (`agentCoreLogGroupNames`) when present,
+ * otherwise the comma-separated `SMOKE_CLOUDWATCH_LOG_GROUP_NAMES` env value.
+ * Returns an empty list when neither is set, so the check skips rather than
+ * guessing log group names.
+ */
+export function resolveLogGroupNames(
+  outputs: NormalizedOutputs,
+  envValue: string | undefined,
+): string[] {
+  const fromManifest = parseCommaList(outputs.agentCoreLogGroupNames);
+  return fromManifest.length > 0 ? fromManifest : parseCommaList(envValue);
+}
+
+/**
+ * Decide the correlation check status from a CloudWatch search result.
+ *
+ * Spec: a requestId is considered correlated when `agent_request_start` AND a
+ * terminal log (`agent_request_end` OR `agent_request_error`) are both present
+ * for it — an error terminal still proves the requestId propagated end to end,
+ * so it counts as a pass, not a failure. Errors and timeouts fail.
+ */
+export function evaluateLogCorrelation(result: CloudWatchLogCorrelationResult): {
+  status: CheckStatus;
+  reason?: string;
+} {
+  if (result.error) {
+    return { status: 'failed', reason: result.error };
+  }
+  if (result.timedOut) {
+    return {
+      status: 'failed',
+      reason: 'timed out before correlating requestId in CloudWatch Logs',
+    };
+  }
+  if (!result.sawRequestStart) {
+    return {
+      status: 'failed',
+      reason: 'agent_request_start not found for requestId in CloudWatch Logs',
+    };
+  }
+  if (!result.sawRequestEnd && !result.sawRequestError) {
+    return {
+      status: 'failed',
+      reason: 'no agent_request_end or agent_request_error found for requestId',
+    };
+  }
+  return { status: 'passed' };
+}
+
+function findPreviousResult(
+  context: SmokeCheckContext,
+  name: string,
+): SmokeCheckResult | undefined {
+  return context.previousResults.find((result) => result.name === name);
+}
+
+/**
+ * Opt-in: correlate the `bff.chatSse` requestId with AgentCore Runtime structured
+ * logs in CloudWatch. Skips (never silently passes) when correlation is disabled,
+ * when `bff.chatSse` did not run, or when no log groups are configured. Fails when
+ * `bff.chatSse` ran but produced no requestId, or when the requestId cannot be
+ * correlated within the poll budget.
+ */
+export async function checkChatLogCorrelation(
+  _manifest: PreviewManifest,
+  runtime: SmokeRuntime,
+  context: SmokeCheckContext,
+): Promise<SmokeCheckResult> {
+  const name = 'bff.chatLogCorrelation';
+
+  if (!runtime.logCorrelationEnabled) {
+    return { name, status: 'skipped', reason: LOG_CORRELATION_DISABLED };
+  }
+
+  const chat = findPreviousResult(context, 'bff.chatSse');
+  if (!chat || chat.status === 'skipped') {
+    return {
+      name,
+      status: 'skipped',
+      reason: `bff.chatSse did not run (${chat?.reason ?? 'no result'})`,
+    };
+  }
+  const requestId = chat.requestId;
+  if (!requestId) {
+    return {
+      name,
+      status: 'failed',
+      reason: 'no requestId captured from bff.chatSse',
+    };
+  }
+
+  if (runtime.logGroupNames.length === 0) {
+    return { name, status: 'skipped', reason: NO_LOG_GROUPS, requestId };
+  }
+
+  const correlation = await runtime.searchCloudWatchLogsByRequestId({
+    requestId,
+    region: runtime.region,
+    logGroupNames: runtime.logGroupNames,
+    startTimeMs: runtime.now().getTime() - LOG_CORRELATION_LOOKBACK_MS,
+    timeoutMs: runtime.logWaitMs,
+    pollIntervalMs: runtime.logPollIntervalMs,
+  });
+
+  const { status, reason } = evaluateLogCorrelation(correlation);
+  const result: SmokeCheckResult = {
+    name,
+    status,
+    requestId,
+    latencyMs: correlation.latencyMs,
+    matchedLogGroupNames: correlation.matchedLogGroupNames,
+    sawRequestStart: correlation.sawRequestStart,
+    sawRequestEnd: correlation.sawRequestEnd,
+    sawRequestError: correlation.sawRequestError,
+  };
+  if (reason !== undefined) result.reason = reason;
+  if (chat.traceId) result.traceId = chat.traceId;
+  return result;
 }
 
 /** Optional: invoke the AgentCore runtime on backend-ai / full profiles. */

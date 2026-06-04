@@ -18,10 +18,12 @@ import type {
   SseProbeResult,
 } from './run-smoke.js';
 import {
+  extractTerminalDiagnostics,
   isSuccessTerminal,
   isTerminalEvent,
   type SseEventName,
   SseParser,
+  type TerminalDiagnostics,
 } from './smoke-sse.js';
 
 function errorMessage(error: unknown): string {
@@ -71,6 +73,7 @@ export async function consumeSse(
   let gotTerminal = false;
   let terminalIsSuccess = false;
   let opened = false;
+  let diagnostics: TerminalDiagnostics = {};
 
   try {
     const res = await fetch(url, {
@@ -104,6 +107,8 @@ export async function consumeSse(
           if (isTerminalEvent(event.name)) {
             gotTerminal = true;
             terminalIsSuccess = isSuccessTerminal(event.name);
+            // Capture only the safe correlation ids, never the raw payload.
+            diagnostics = extractTerminalDiagnostics(event.data);
             break;
           }
         }
@@ -119,6 +124,7 @@ export async function consumeSse(
       terminalIsSuccess,
       latencyMs: Date.now() - start,
       timedOut: false,
+      ...diagnostics,
     };
   } catch (error) {
     const latencyMs = Date.now() - start;
