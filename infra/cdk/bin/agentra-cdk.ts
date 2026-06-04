@@ -69,6 +69,13 @@ if (previewContext) {
   const deckPreviewEnabledCtx = app.node.tryGetContext('deckPreviewEnabled');
   const deckPreviewEnabled =
     deckPreviewEnabledCtx === true || deckPreviewEnabledCtx === 'true';
+  // Optional: slow the Streaming Deck Preview replay so the reveal is more
+  // visible (dogfood/demo). `-c deckPreviewPacingMs=2500`. Default 200 in runtime.
+  const deckPreviewPacingCtx = app.node.tryGetContext('deckPreviewPacingMs');
+  const deckPreviewReplayPacingMs =
+    typeof deckPreviewPacingCtx === 'string' && deckPreviewPacingCtx.trim().length > 0
+      ? deckPreviewPacingCtx.trim()
+      : undefined;
 
   const parseCsvContext = (key: string): string[] => {
     const value = app.node.tryGetContext(key);
@@ -165,6 +172,7 @@ if (previewContext) {
       memoryEnabled: true,
       normalKbArn: bedrockKbStack.knowledgeBaseArn,
       normalKbId: bedrockKbStack.knowledgeBaseId,
+      ...(deckPreviewReplayPacingMs ? { deckPreviewReplayPacingMs } : {}),
     },
   );
   agentCoreRuntimeStack.addDependency(slideRuntimeStack);

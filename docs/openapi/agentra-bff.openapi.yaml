@@ -49,7 +49,8 @@ paths:
                   Server-Sent Events stream. Each line is `data: <json>`.
                   JSON payload is one of ChatStreamTextEvent, ChatStreamProgressSummaryEvent,
                   ChatStreamSubAgentProgressEvent, ChatStreamObservationEvent,
-                  ChatStreamArtifactEvent, ChatStreamDoneEvent, ChatStreamErrorEvent.
+                  ChatStreamArtifactEvent, ChatStreamDeckProgressEvent, ChatStreamDoneEvent,
+                  ChatStreamErrorEvent.
         '400':
           description: Invalid request
           content:
@@ -2324,6 +2325,124 @@ components:
             - artifact
         manifest:
           $ref: '#/components/schemas/ArtifactManifest'
+    DeckPreviewStartedEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - deckId
+        - name
+      properties:
+        type:
+          type: string
+          enum:
+            - deck_preview_started
+        deckId:
+          type: string
+          minLength: 1
+        name:
+          type: string
+        totalSlides:
+          type: integer
+          minimum: 0
+    DeckSlideComposeReadyEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - deckId
+        - slug
+        - index
+        - composeUrl
+        - defsUrl
+        - previewUrl
+      properties:
+        type:
+          type: string
+          enum:
+            - deck_slide_compose_ready
+        deckId:
+          type: string
+          minLength: 1
+        slug:
+          type: string
+          minLength: 1
+        index:
+          type: integer
+          minimum: 1
+          description: 1-based content-slide index.
+        totalSlides:
+          type: integer
+          minimum: 0
+        composeUrl:
+          type: string
+          format: uri
+          nullable: true
+        defsUrl:
+          type: string
+          format: uri
+          nullable: true
+        previewUrl:
+          type: string
+          format: uri
+          nullable: true
+    DeckPreviewCompletedEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - deckId
+        - totalSlides
+      properties:
+        type:
+          type: string
+          enum:
+            - deck_preview_completed
+        deckId:
+          type: string
+          minLength: 1
+        totalSlides:
+          type: integer
+          minimum: 0
+    DeckPreviewFailedEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - deckId
+        - reason
+      properties:
+        type:
+          type: string
+          enum:
+            - deck_preview_failed
+        deckId:
+          type: string
+          minLength: 1
+        reason:
+          type: string
+          minLength: 1
+    DeckPreviewEvent:
+      oneOf:
+        - $ref: '#/components/schemas/DeckPreviewStartedEvent'
+        - $ref: '#/components/schemas/DeckSlideComposeReadyEvent'
+        - $ref: '#/components/schemas/DeckPreviewCompletedEvent'
+        - $ref: '#/components/schemas/DeckPreviewFailedEvent'
+      discriminator:
+        propertyName: type
+    ChatStreamDeckProgressEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - event
+      properties:
+        type:
+          type: string
+          enum:
+            - deck_progress
+        event:
+          $ref: '#/components/schemas/DeckPreviewEvent'
     KbStatusResponse:
       type: object
       additionalProperties: false

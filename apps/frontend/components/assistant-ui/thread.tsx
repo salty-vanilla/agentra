@@ -47,9 +47,12 @@ import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button
 import { DeckPreview } from '@/components/deck-preview';
 import type { ModelKey } from '@/components/model-selector';
 import { ProgressSummaryCard } from '@/components/progress-summary-card';
+import { StreamingDeckPreview } from '@/components/streaming-deck-preview';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
 import { WelcomePromptCards } from '@/components/welcome-prompt-cards';
+import type { StreamingDeckState } from '@/lib/deck-stream';
+import { isStreamingDeckActive } from '@/lib/deck-stream';
 import type {
   ArtifactManifest,
   ChatCommand,
@@ -101,6 +104,7 @@ export const Thread: FC<{
   progressEvents?: ProgressSummaryEvent[];
   activeProgressPhase?: string;
   subAgentProgressEvents?: SubAgentProgressEvent[];
+  streamingDeckState?: StreamingDeckState;
 }> = ({
   modelValue,
   onModelChange,
@@ -113,6 +117,7 @@ export const Thread: FC<{
   progressEvents,
   activeProgressPhase,
   subAgentProgressEvents,
+  streamingDeckState,
 }) => {
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const focusComposerInput = useCallback(() => {
@@ -162,6 +167,15 @@ export const Thread: FC<{
                   <SubAgentProgressCard events={subAgentProgressEvents} />
                 </div>
               )}
+              {/* Streaming Deck Preview while a deck is being built. Once it
+                  completes, the static DeckPreview (artifact data part) takes over. */}
+              {streamingDeckState &&
+                isStreamingDeckActive(streamingDeckState) &&
+                streamingDeckState.phase !== 'completed' && (
+                  <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
+                    <StreamingDeckPreview state={streamingDeckState} />
+                  </div>
+                )}
               <ThreadScrollToBottom />
               <Composer
                 modelValue={modelValue}

@@ -145,4 +145,41 @@ describe('chat stream contract', () => {
       }).success,
     ).toBe(false);
   });
+
+  it('accepts deck_progress wrapping each deck preview event variant', () => {
+    const events = [
+      {
+        type: 'deck_preview_started',
+        deckId: 'deck-1',
+        name: '四半期レビュー',
+        totalSlides: 3,
+      },
+      {
+        type: 'deck_slide_compose_ready',
+        deckId: 'deck-1',
+        slug: 'cover',
+        index: 1,
+        totalSlides: 3,
+        composeUrl: 'https://example.com/cover.json',
+        defsUrl: 'https://example.com/defs.json',
+        previewUrl: null,
+      },
+      { type: 'deck_preview_completed', deckId: 'deck-1', totalSlides: 3 },
+      { type: 'deck_preview_failed', deckId: 'deck-1', reason: 'compose failed' },
+    ];
+    for (const event of events) {
+      expect(
+        chatStreamEventSchema.safeParse({ type: 'deck_progress', event }).success,
+      ).toBe(true);
+    }
+  });
+
+  it('rejects deck_progress with an unknown inner event type', () => {
+    expect(
+      chatStreamEventSchema.safeParse({
+        type: 'deck_progress',
+        event: { type: 'deck_bogus', deckId: 'deck-1' },
+      }).success,
+    ).toBe(false);
+  });
 });

@@ -46,6 +46,7 @@ import type {
   ChatObservationSummary,
   ChatRequest,
   ChatStreamArtifactEvent,
+  ChatStreamDeckProgressEvent,
   ChatStreamDoneEvent,
   ChatStreamErrorEvent,
   ChatStreamObservationEvent,
@@ -77,6 +78,7 @@ export type ChatStreamEvent =
   | ChatStreamSubAgentProgressEvent
   | ChatStreamObservationEvent
   | ChatStreamArtifactEvent
+  | ChatStreamDeckProgressEvent
   | ChatStreamDoneEvent
   | ChatStreamErrorEvent;
 
