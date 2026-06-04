@@ -47,24 +47,25 @@ export async function* streamPresentation(
   deps: { runTool: RunPresentationTool },
 ): AsyncGenerator<RuntimeStreamMessage> {
   const channel = createEventChannel<DeckPreviewEvent>();
-  let result: CreatePresentationToolOutput | undefined;
-  let failure: string | undefined;
 
-  const toolPromise = deps
+  // Resolves to a discriminated outcome and NEVER rejects, so the tool promise
+  // can never surface as an unhandled rejection even if the consumer abandons
+  // this generator early (client disconnect). The tool itself has no cancel
+  // path, so an abandoned run keeps going until it finishes — a known limitation.
+  const settled = deps
     .runTool(request, { onDeckEvent: (event) => channel.push(event) })
-    .then((r) => {
-      result = r;
-    })
-    .catch((err: unknown) => {
-      failure = err instanceof Error ? err.message : String(err);
-    })
+    .then((result) => ({ ok: result }) as const)
+    .catch(
+      (err: unknown) =>
+        ({ err: err instanceof Error ? err.message : String(err) }) as const,
+    )
     .finally(() => channel.close());
 
   for await (const event of channel) {
     yield { event: 'message', data: { type: 'deck_progress', event } };
   }
-  await toolPromise;
 
-  const finalResult = result ?? failureResult(failure ?? 'unknown error');
+  const outcome = await settled;
+  const finalResult = 'ok' in outcome ? outcome.ok : failureResult(outcome.err);
   yield { event: 'message', data: { type: 'result', result: finalResult } };
 }

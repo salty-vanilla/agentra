@@ -22,6 +22,7 @@ export interface EventChannel<T> extends AsyncIterable<T> {
 export function createEventChannel<T>(): EventChannel<T> {
   const queue: T[] = [];
   let closed = false;
+  let consuming = false;
   // Set when the consumer is parked waiting for the next item; calling it wakes
   // the consumer so it re-checks the queue / closed flag.
   let wake: (() => void) | null = null;
@@ -46,16 +47,28 @@ export function createEventChannel<T>(): EventChannel<T> {
       signal();
     },
     async *[Symbol.asyncIterator](): AsyncIterator<T> {
-      while (true) {
-        if (queue.length > 0) {
-          yield queue.shift() as T;
-          continue;
+      // Single-consumer: a second concurrent iterator would overwrite `wake` and
+      // silently hang the first. Fail loudly instead of hanging.
+      if (consuming) {
+        throw new Error('EventChannel supports a single concurrent consumer');
+      }
+      consuming = true;
+      try {
+        while (true) {
+          if (queue.length > 0) {
+            yield queue.shift() as T;
+            continue;
+          }
+          if (closed) return;
+          // Park until a push or close wakes us. `wake` is assigned synchronously
+          // here (the executor runs sync), so no push/close can be lost between
+          // the `closed` check and suspension.
+          await new Promise<void>((resolve) => {
+            wake = resolve;
+          });
         }
-        if (closed) return;
-        // Park until a push or close wakes us.
-        await new Promise<void>((resolve) => {
-          wake = resolve;
-        });
+      } finally {
+        consuming = false;
       }
     },
   };

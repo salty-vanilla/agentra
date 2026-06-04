@@ -52,4 +52,14 @@ describe('createEventChannel', () => {
     ch.close();
     expect(await drain(ch)).toEqual([]);
   });
+
+  it('rejects a second concurrent consumer instead of hanging silently', async () => {
+    const ch = createEventChannel<number>();
+    const first = drain(ch); // parks on the empty channel
+    await Promise.resolve();
+    const second = ch[Symbol.asyncIterator]();
+    await expect(second.next()).rejects.toThrow('single concurrent consumer');
+    ch.close();
+    expect(await first).toEqual([]);
+  });
 });
