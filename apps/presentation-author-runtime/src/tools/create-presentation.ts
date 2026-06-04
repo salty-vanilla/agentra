@@ -4,6 +4,7 @@ import {
   createPresentation,
   type DeckResult,
 } from '@agentra/presentation-author';
+import type { DeckPreviewEvent } from '@agentra/shared';
 import { S3Client } from '@aws-sdk/client-s3';
 import { tool } from '@strands-agents/sdk';
 import { uuidv7 } from 'uuidv7';
@@ -11,6 +12,7 @@ import { z } from 'zod';
 import type { UploadedPresentationArtifact } from '../artifacts/artifact-upload-types.js';
 import { uploadPresentationArtifacts } from '../artifacts/s3-artifact-uploader.js';
 import { deriveDeckName, generateDeckPreview } from '../deck/deck-preview.js';
+import { generateDeckPreviewStreaming } from '../deck/deck-preview-streaming.js';
 import { FONT_POLICY_STYLE_GUIDE } from '../font-policy.js';
 import { createPresentationAuthorLlmClient } from '../llm-adapter.js';
 import { logger } from '../logger.js';
@@ -54,6 +56,11 @@ const envImageGenerationEnabled =
   process.env.PRESENTATION_IMAGE_GENERATION_ENABLED === 'true';
 // Opt-in (default off): build the SDPM-compatible deck Live Preview.
 const envDeckPreviewEnabled = process.env.PRESENTATION_DECK_PREVIEW_ENABLED === 'true';
+// Opt-in (default off): use the per-slide ("R4", Epic #419) pipeline that splits
+// the PPTX and uploads/emits one slide at a time, instead of the batch pipeline.
+// Degrades to the batch path automatically if it can't produce any slide.
+const envDeckPreviewStreaming =
+  process.env.PRESENTATION_DECK_PREVIEW_STREAMING === 'true';
 // Hard budget for deck preview. It runs after PPTX success but before return,
 // inside the runtime invocation cap (~120s), so a slow-but-succeeding soffice
 // could otherwise push the whole call over the limit and lose the PPTX too.
@@ -195,35 +202,56 @@ export async function executeCreatePresentationTool(
       let deck: DeckResult | undefined;
       if (envDeckPreviewEnabled && envBucketName && s3Client && result.pptxPath) {
         try {
+          // Stable across the streaming attempt and any batch fallback so the
+          // emitted events and the attached deck share one identity.
+          const deckId = uuidv7();
+          const deckName = deriveDeckName(input.prompt);
+          const deckLanguage = input.language ?? 'ja';
+          // Record the real deck-build timeline (Epic #403/#419). With streaming
+          // these fire in real time per slide; the router relays them as
+          // deck_progress, otherwise it replays the completed deck.
+          const onDeckEvent = (event: DeckPreviewEvent): void => {
+            logger.info({
+              component: 'create-presentation-tool',
+              runId,
+              step: 'deck_preview_event',
+              deckEventType: event.type,
+              ...('index' in event ? { slideIndex: event.index } : {}),
+              ...('totalSlides' in event ? { totalSlides: event.totalSlides } : {}),
+            });
+          };
+          const previewInput = {
+            pptxPath: result.pptxPath,
+            workDir: result.workDir,
+            deckId,
+            name: deckName,
+            language: deckLanguage,
+            bucketName: envBucketName,
+            presignExpiresSeconds: envUrlExpires,
+          };
+
           // Race against a hard budget: a slow-but-succeeding deck preview must
           // not push the whole invocation past the runtime cap and lose the PPTX.
-          const previewPromise = generateDeckPreview(
-            {
-              pptxPath: result.pptxPath,
-              workDir: result.workDir,
-              deckId: uuidv7(),
-              name: deriveDeckName(input.prompt),
-              language: input.language ?? 'ja',
-              bucketName: envBucketName,
-              presignExpiresSeconds: envUrlExpires,
-            },
-            {
-              s3Client,
-              // Record the real deck-build timeline (Epic #403). The live SSE
-              // stream is produced by the router's replay; this is for logging
-              // and as the seam for future true streaming.
-              onDeckEvent: (event) => {
-                logger.info({
-                  component: 'create-presentation-tool',
-                  runId,
-                  step: 'deck_preview_event',
-                  deckEventType: event.type,
-                  ...('index' in event ? { slideIndex: event.index } : {}),
-                  ...('totalSlides' in event ? { totalSlides: event.totalSlides } : {}),
-                });
-              },
-            },
-          );
+          // Per-slide (#419) is opt-in and self-degrades to the batch pipeline.
+          const previewPromise: Promise<{
+            deck?: DeckResult | undefined;
+            warnings: string[];
+          }> = envDeckPreviewStreaming
+            ? generateDeckPreviewStreaming(previewInput, { s3Client, onDeckEvent }).then(
+                async (streamed) => {
+                  if (streamed.streamed && streamed.deck) return streamed;
+                  // No slide produced — fall back to the batch pipeline.
+                  const batch = await generateDeckPreview(previewInput, {
+                    s3Client,
+                    onDeckEvent,
+                  });
+                  return {
+                    deck: batch.deck,
+                    warnings: [...streamed.warnings, ...batch.warnings],
+                  };
+                },
+              )
+            : generateDeckPreview(previewInput, { s3Client, onDeckEvent });
           const budget = new Promise<'timeout'>((resolve) => {
             setTimeout(() => resolve('timeout'), envDeckPreviewBudgetMs).unref?.();
           });
