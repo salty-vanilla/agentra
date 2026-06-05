@@ -36,6 +36,9 @@ export function createDeckMergedStream<V, D = V>(
   // just forwards agent events (deck queue stays empty). Default off keeps the
   // pre-#421 behavior unchanged.
   const relayEnabled = options.relay === true;
+  // Bounded in practice by O(deck slides) — deck preview emits started + one
+  // event per slide + completed (single digits). This is NOT a general-purpose
+  // unbounded relay; do not route high-frequency events through this sink.
   const deckQueue: DeckPreviewEvent[] = [];
   let wakeDeck: (() => void) | null = null;
 

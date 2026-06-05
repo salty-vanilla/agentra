@@ -92,4 +92,16 @@ describe('createDeckMergedStream', () => {
     const fourth = await it.next();
     expect(fourth.done).toBe(true);
   });
+
+  it('does not lose a deck event pushed in the null-resolver window', async () => {
+    // Push a deck event before the consumer ever parks (wakeDeck is null): it must
+    // still be delivered via the top-of-loop queue re-check, not dropped.
+    const { sink, stream } = createDeckMergedStream(arrayStream(['a']));
+    const it = stream[Symbol.asyncIterator]();
+    sink.onDeckEvent(ev('early')); // wakeDeck === null at this point
+    const first = await it.next();
+    expect(first.value).toEqual({ source: 'deck', event: ev('early') });
+    const second = await it.next();
+    expect(second.value).toEqual({ source: 'agent', value: 'a' });
+  });
 });

@@ -285,6 +285,10 @@ const app = new BedrockAgentCoreApp({
       // Deck Live Preview captured from a create_slide_presentation result, to be
       // attached to the next artifact manifest the model emits.
       let pendingDeck: DeckResult | undefined;
+      // Whether any *live* deck event was relayed this turn (#421). If streaming
+      // was on but nothing streamed (e.g. the slide runtime wasn't streaming),
+      // we fall back to the Route A replay so we never do worse than replaying.
+      let relayedDeckEvent = false;
 
       logger.logInvocationStart({
         userId,
@@ -302,6 +306,7 @@ const app = new BedrockAgentCoreApp({
         });
         for await (const item of merged) {
           if (item.source === 'deck') {
+            relayedDeckEvent = true;
             yield {
               event: 'message',
               data: { type: 'deck_progress', event: item.event },
@@ -442,9 +447,12 @@ const app = new BedrockAgentCoreApp({
                 // Route A (Epic #403): replay the completed deck's progress so the
                 // client reveals slides incrementally. With ROUTER_DECK_STREAMING
                 // on (#421) the real per-slide events already streamed live through
-                // the merge, so skip the replay to avoid duplicate events. The
+                // the merge, so skip the replay to avoid duplicate events — but
+                // only if we actually relayed something. If streaming was on yet no
+                // live event arrived (e.g. the slide runtime wasn't streaming), fall
+                // back to the replay so we never do worse than Route A. The
                 // authoritative deck is still attached to the manifest below.
-                if (!ROUTER_DECK_STREAMING) {
+                if (!ROUTER_DECK_STREAMING || !relayedDeckEvent) {
                   yield* emitDeckProgressEvents(capturedDeck);
                 }
               }
