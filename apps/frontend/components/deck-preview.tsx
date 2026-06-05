@@ -3,7 +3,10 @@
 import DOMPurify from 'dompurify';
 import { ChevronLeftIcon, ChevronRightIcon, PresentationIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { AnimatedSlideOverlay } from '@/components/animated-slide-overlay';
 import { Button } from '@/components/ui/button';
+import { useReducedMotion } from '@/hooks/use-reduced-motion';
+import { type AnimBox, animTotalMs, changedAnimBoxes } from '@/lib/deck-anim';
 import {
   buildSlideInnerSvg,
   COMPOSE_VERSION,
@@ -70,6 +73,12 @@ export function DeckSlideFrame({
   const [compose, setCompose] = useState<ComposeData | null>(null);
   const [errored, setErrored] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  // AnimatedSlidePreview (Epic #424): animate changed components over the static
+  // SVG. First appearance animates every component; a composeUrl update animates
+  // only the backend-marked `changed` ones. Skipped under prefers-reduced-motion.
+  const reducedMotion = useReducedMotion();
+  const [animBoxes, setAnimBoxes] = useState<AnimBox[]>([]);
+  const seenComposeRef = useRef(false);
 
   // Fetch this slide's compose payload.
   useEffect(() => {
@@ -104,6 +113,28 @@ export function DeckSlideFrame({
     };
   }, [defs, compose]);
 
+  // Drive the animation overlay when a *new* compose payload renders. Gated on a
+  // genuine compose change (not a reducedMotion toggle) so flipping motion off
+  // doesn't replay an already-shown slide.
+  const prevComposeRef = useRef<ComposeData | null>(null);
+  useEffect(() => {
+    if (!compose) return;
+    const composeChanged = prevComposeRef.current !== compose;
+    prevComposeRef.current = compose;
+    if (reducedMotion) {
+      setAnimBoxes([]);
+      return;
+    }
+    if (!composeChanged) return;
+    const isFirst = !seenComposeRef.current;
+    seenComposeRef.current = true;
+    const boxes = changedAnimBoxes(compose, isFirst);
+    setAnimBoxes(boxes);
+    if (boxes.length === 0) return;
+    const timer = setTimeout(() => setAnimBoxes([]), animTotalMs(boxes.length) + 100);
+    return () => clearTimeout(timer);
+  }, [compose, reducedMotion]);
+
   const canRenderSvg = Boolean(defs && compose);
   const showError = errored || defsErrored;
 
@@ -117,6 +148,9 @@ export function DeckSlideFrame({
         data-testid="deck-slide-svg"
         className={cn('absolute inset-0', canRenderSvg ? 'opacity-100' : 'opacity-0')}
       />
+      {canRenderSvg && animBoxes.length > 0 ? (
+        <AnimatedSlideOverlay boxes={animBoxes} />
+      ) : null}
       {!canRenderSvg ? (
         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs">
           {showError ? 'プレビューを読み込めませんでした' : 'プレビューを生成中…'}
@@ -153,7 +187,13 @@ export function DeckPreview({ deck, className }: DeckPreviewProps) {
         </span>
       </div>
 
-      <DeckSlideFrame defs={defs} defsErrored={defsErrored} slide={current} />
+      {/* key per slug: remount on slide change so first-appearance animation resets. */}
+      <DeckSlideFrame
+        key={current.slug}
+        defs={defs}
+        defsErrored={defsErrored}
+        slide={current}
+      />
 
       {slides.length > 1 ? (
         <div className="flex items-center justify-between gap-2">
