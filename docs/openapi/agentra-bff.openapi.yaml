@@ -2443,6 +2443,7 @@ components:
             - composing
         detail:
           type: string
+          maxLength: 200
     DeckPreviewEvent:
       oneOf:
         - $ref: '#/components/schemas/DeckPreviewStartedEvent'

@@ -146,6 +146,7 @@ export function deckStreamReducer(
       return {
         ...state,
         phase: 'completed',
+        genPhase: null, // clear the in-progress label on a terminal state
         totalSlides: event.totalSlides ?? state.totalSlides,
       };
 
@@ -155,6 +156,7 @@ export function deckStreamReducer(
         ...state,
         deckId: state.deckId ?? event.deckId,
         phase: 'failed',
+        genPhase: null, // clear the in-progress label on a terminal state
         failedReason: event.reason,
       };
 

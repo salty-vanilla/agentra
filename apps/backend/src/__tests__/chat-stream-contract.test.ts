@@ -166,6 +166,8 @@ describe('chat stream contract', () => {
       },
       { type: 'deck_preview_completed', deckId: 'deck-1', totalSlides: 3 },
       { type: 'deck_preview_failed', deckId: 'deck-1', reason: 'compose failed' },
+      { type: 'deck_preview_phase', phase: 'authoring' },
+      { type: 'deck_preview_phase', phase: 'composing', detail: 'スライド合成中' },
     ];
     for (const event of events) {
       expect(

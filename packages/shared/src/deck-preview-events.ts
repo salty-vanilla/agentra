@@ -80,7 +80,7 @@ export const deckPreviewPhaseEventSchema = z.object({
   type: z.literal('deck_preview_phase'),
   phase: deckPhase,
   /** Optional short human-readable detail (no secrets / no raw URLs). */
-  detail: z.string().optional(),
+  detail: z.string().max(200).optional(),
 });
 
 export type DeckPreviewPhaseEvent = z.infer<typeof deckPreviewPhaseEventSchema>;

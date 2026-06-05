@@ -13,5 +13,6 @@ import type { DeckPreviewPhaseEventType } from './deckPreviewPhaseEventType';
 export interface DeckPreviewPhaseEvent {
   type: DeckPreviewPhaseEventType;
   phase: DeckPreviewPhaseEventPhase;
+  /** @maxLength 200 */
   detail?: string;
 }

@@ -108,7 +108,10 @@ export async function executeCreatePresentationTool(
   // Coarse phase progress (Epic #425) — surfaced via the same onDeckEvent sink
   // (#420/#421 transport) so the UI shows movement during the long authoring wait,
   // before any slide compose event can exist. Best-effort; never breaks the PPTX.
+  // Gated on deck preview being enabled: otherwise no started/completed event ever
+  // follows, and the client shell would be stuck showing a phase that never resolves.
   const emitPhase = (phase: DeckPhase, detail?: string): void => {
+    if (!envDeckPreviewEnabled) return;
     try {
       opts.onDeckEvent?.({
         type: 'deck_preview_phase',
