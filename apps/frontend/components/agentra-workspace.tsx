@@ -184,11 +184,24 @@ export function AgentraWorkspace() {
     });
   }, []);
 
-  const handleDeckProgressEvent = useCallback((event: DeckPreviewEvent) => {
-    setStreamingDeckState((prev) => deckStreamReducer(prev, event));
-    // SSE event = refetch trigger for the authoritative snapshot (Epic #423).
-    setDeckRefetchKey((key) => key + 1);
+  // Debounce the snapshot refetch trigger: a burst of deck_progress events (one
+  // per slide) collapses into a single poll instead of one HTTP request each.
+  const refetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bumpDeckRefetch = useCallback(() => {
+    if (refetchDebounceRef.current) clearTimeout(refetchDebounceRef.current);
+    refetchDebounceRef.current = setTimeout(() => {
+      setDeckRefetchKey((key) => key + 1);
+    }, 150);
   }, []);
+
+  const handleDeckProgressEvent = useCallback(
+    (event: DeckPreviewEvent) => {
+      setStreamingDeckState((prev) => deckStreamReducer(prev, event));
+      // SSE event = (debounced) refetch trigger for the authoritative snapshot.
+      bumpDeckRefetch();
+    },
+    [bumpDeckRefetch],
+  );
 
   // Poll the authoritative deck snapshot while generating (Epic #423). The SSE
   // stream above only triggers refetches; the snapshot is the source of truth,

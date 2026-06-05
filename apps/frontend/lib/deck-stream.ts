@@ -207,13 +207,20 @@ export function mergeSnapshotIntoDeckState(
   if (state.deckId !== null && state.deckId !== snapshot.deckId) return state;
   if (state.slides.length > snapshot.slides.length) return state;
 
+  const bySlug = new Map(snapshot.slides.map((s) => [s.slug, s]));
+  // Order by the snapshot's canonical slideOrder, falling back to slides order.
+  const ordered =
+    snapshot.slideOrder.length === snapshot.slides.length
+      ? snapshot.slideOrder.map((slug) => bySlug.get(slug)).filter((s) => s !== undefined)
+      : snapshot.slides;
+
   return {
     ...state,
     deckId: snapshot.deckId,
     name: state.name ?? snapshot.name,
     defsUrl: snapshot.defsUrl ?? state.defsUrl,
     totalSlides: Math.max(snapshot.slides.length, state.totalSlides ?? 0),
-    slides: snapshot.slides.map((s) => ({
+    slides: ordered.map((s) => ({
       slug: s.slug,
       index: s.index,
       composeUrl: s.composeUrl,
