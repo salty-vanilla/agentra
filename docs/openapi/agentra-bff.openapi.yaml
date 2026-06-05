@@ -240,6 +240,38 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /threads/{threadId}/decks/{deckId}:
+    get:
+      operationId: getDeckSnapshot
+      tags: [threads]
+      summary: Authoritative deck workspace snapshot (source of truth for live preview)
+      parameters:
+        - $ref: '#/components/parameters/ThreadId'
+        - name: deckId
+          in: path
+          required: true
+          schema:
+            type: string
+            minLength: 1
+      responses:
+        '200':
+          description: Current deck snapshot with epoch-versioned presigned URLs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeckSnapshotResponse'
+        '404':
+          description: Thread or deck not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '503':
+          description: Deck storage not configured
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /admin/observability/overview:
     get:
       operationId: getAdminOverview
@@ -2453,6 +2485,69 @@ components:
         - $ref: '#/components/schemas/DeckPreviewPhaseEvent'
       discriminator:
         propertyName: type
+    DeckSnapshotSlide:
+      type: object
+      additionalProperties: false
+      required:
+        - slug
+        - index
+        - epoch
+        - composeUrl
+        - previewUrl
+      properties:
+        slug:
+          type: string
+          minLength: 1
+        index:
+          type: integer
+          minimum: 1
+        epoch:
+          type: integer
+          minimum: 0
+        composeUrl:
+          type: string
+          nullable: true
+        previewUrl:
+          type: string
+          nullable: true
+    DeckSnapshotResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - deckId
+        - name
+        - language
+        - slideOrder
+        - defsUrl
+        - defsEpoch
+        - slides
+        - epoch
+      properties:
+        deckId:
+          type: string
+          minLength: 1
+        name:
+          type: string
+        language:
+          type: string
+          enum: [ja, en]
+        slideOrder:
+          type: array
+          items:
+            type: string
+        defsUrl:
+          type: string
+          nullable: true
+        defsEpoch:
+          type: integer
+          minimum: 0
+        slides:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeckSnapshotSlide'
+        epoch:
+          type: integer
+          minimum: 0
     ChatStreamDeckProgressEvent:
       type: object
       additionalProperties: false

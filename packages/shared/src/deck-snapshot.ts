@@ -1,12 +1,17 @@
-import {
-  GetObjectCommand,
-  ListObjectsV2Command,
-  type S3Client,
-} from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import { DECK_PREFIX } from './workspace.js';
+/**
+ * Deck Workspace authoritative snapshot (Epic #417/#422).
+ *
+ * The persisted deck under `decks/<id>/...` (written by the slide runtime) is the
+ * **source of truth** for the live preview: the SSE deck_progress stream (#421)
+ * is only a trigger, while this snapshot carries the real slides / composeUrl /
+ * previewUrl / defs / epoch. Lives in `@agentra/shared` so the BFF can project it
+ * without depending on the heavy `@agentra/presentation-author` runtime package.
+ *
+ * Pure: parsing is I/O-free; reading injects its S3 surface (see DeckSnapshotDeps).
+ */
 
-const DEFAULT_PRESIGN_EXPIRES_SECONDS = 3600;
+/** S3 prefix for persisted deck workspaces (must match the runtime deck-store). */
+const DECK_PREFIX = 'decks';
 
 export interface DeckSnapshotSlideKeys {
   slug: string;
@@ -44,9 +49,9 @@ function slugIndex(slug: string): number {
 
 /**
  * Project the raw S3 keys under a deck prefix into the latest-epoch view of the
- * deck (Epic #422). Pure — no I/O. Handles both the batch layout (stable keys)
- * and the per-slide streaming layout (`<slug>.<epoch>.compose.json`,
- * `defs.<epoch>.json`), always preferring the highest epoch per slide.
+ * deck. Pure — no I/O. Handles both the batch layout (stable keys) and the
+ * per-slide streaming layout (`<slug>.<epoch>.compose.json`, `defs.<epoch>.json`),
+ * always preferring the highest epoch per slide.
  */
 export function parseDeckKeys(deckId: string, keys: readonly string[]): ParsedDeckKeys {
   const prefix = `${DECK_PREFIX}/${deckId}/`;
@@ -126,18 +131,23 @@ export interface DeckSnapshot {
   epoch: number;
 }
 
-/** I/O surface for {@link getDeckSnapshot}; injectable for tests. */
+/** I/O surface for {@link getDeckSnapshot}; injectable for tests / any S3 client. */
 export interface DeckSnapshotDeps {
   listKeys: (prefix: string) => Promise<string[]>;
   readJson: (key: string) => Promise<Record<string, unknown> | null>;
   presign: (key: string) => Promise<string | null>;
 }
 
+/** S3 prefix for a deck's persisted workspace (for the caller's listKeys). */
+export function deckSnapshotPrefix(deckId: string): string {
+  return `${DECK_PREFIX}/${deckId}/`;
+}
+
 /**
  * Read the persisted deck workspace and project it into an authoritative
- * snapshot (Epic #422) — the source of truth for the client's deck state, with
- * fresh presigned URLs and an epoch the client can diff against. Returns null
- * when the deck does not exist. Never throws on a missing/partial deck.
+ * snapshot — the source of truth for the client's deck state, with fresh
+ * presigned URLs and an epoch the client can diff against. Returns null when the
+ * deck does not exist. Never throws on a missing/partial deck.
  */
 export async function getDeckSnapshot(
   input: { deckId: string },
@@ -145,7 +155,7 @@ export async function getDeckSnapshot(
 ): Promise<DeckSnapshot | null> {
   const parsed = parseDeckKeys(
     input.deckId,
-    await deps.listKeys(`${DECK_PREFIX}/${input.deckId}/`),
+    await deps.listKeys(deckSnapshotPrefix(input.deckId)),
   );
   if (!parsed.deckJsonKey && parsed.slides.length === 0) return null;
 
@@ -177,56 +187,5 @@ export async function getDeckSnapshot(
     defsEpoch: parsed.defsEpoch,
     slides,
     epoch: parsed.epoch,
-  };
-}
-
-/** Build the real S3-backed deps for {@link getDeckSnapshot}. */
-export function createS3DeckSnapshotDeps(opts: {
-  s3Client: S3Client;
-  bucketName: string;
-  presignExpiresSeconds?: number | undefined;
-}): DeckSnapshotDeps {
-  const expiresIn = opts.presignExpiresSeconds ?? DEFAULT_PRESIGN_EXPIRES_SECONDS;
-  return {
-    async listKeys(prefix: string): Promise<string[]> {
-      const keys: string[] = [];
-      let token: string | undefined;
-      do {
-        const res = await opts.s3Client.send(
-          new ListObjectsV2Command({
-            Bucket: opts.bucketName,
-            Prefix: prefix,
-            ContinuationToken: token,
-          }),
-        );
-        for (const obj of res.Contents ?? []) {
-          if (obj.Key) keys.push(obj.Key);
-        }
-        token = res.IsTruncated ? res.NextContinuationToken : undefined;
-      } while (token);
-      return keys;
-    },
-    async readJson(key: string): Promise<Record<string, unknown> | null> {
-      try {
-        const res = await opts.s3Client.send(
-          new GetObjectCommand({ Bucket: opts.bucketName, Key: key }),
-        );
-        const body = await res.Body?.transformToString();
-        return body ? (JSON.parse(body) as Record<string, unknown>) : null;
-      } catch {
-        return null;
-      }
-    },
-    async presign(key: string): Promise<string | null> {
-      try {
-        return await getSignedUrl(
-          opts.s3Client,
-          new GetObjectCommand({ Bucket: opts.bucketName, Key: key }),
-          { expiresIn },
-        );
-      } catch {
-        return null;
-      }
-    },
   };
 }

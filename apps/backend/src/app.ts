@@ -3,9 +3,11 @@ import {
   APP_VERSION,
   type ArtifactManifest,
   type ChatObservationSummary,
+  type DeckSnapshotDeps,
   GetArtifactDownloadUrlResponse,
   GetHealthResponse,
   GetThreadResponse,
+  getDeckSnapshot,
   ListThreadArtifactsResponse,
   ListThreadMessagesResponse,
   ListThreadsResponse,
@@ -13,7 +15,7 @@ import {
   type ThreadSummary,
   UpdateThreadBody,
 } from '@agentra/shared';
-import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, ListObjectsV2Command, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
@@ -778,6 +780,94 @@ app.get('/threads/:threadId/artifacts/:artifactId/download-url', async (context)
 
   const response = GetArtifactDownloadUrlResponse.parse({ url, expiresAt });
   return jsonWithValidation(context, 'getArtifactDownloadUrl', 200, response);
+});
+
+const DECK_SNAPSHOT_PRESIGN_EXPIRY_SECONDS = 900;
+
+/** Build the S3-backed snapshot deps (list/read/presign) for a bucket. */
+function deckSnapshotDeps(s3: S3Client, bucketName: string): DeckSnapshotDeps {
+  return {
+    async listKeys(prefix) {
+      const keys: string[] = [];
+      let token: string | undefined;
+      do {
+        const res = await s3.send(
+          new ListObjectsV2Command({
+            Bucket: bucketName,
+            Prefix: prefix,
+            ContinuationToken: token,
+          }),
+        );
+        for (const obj of res.Contents ?? []) {
+          if (obj.Key) keys.push(obj.Key);
+        }
+        token = res.IsTruncated ? res.NextContinuationToken : undefined;
+      } while (token);
+      return keys;
+    },
+    async readJson(key) {
+      try {
+        const res = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+        const body = await res.Body?.transformToString();
+        return body ? (JSON.parse(body) as Record<string, unknown>) : null;
+      } catch {
+        return null;
+      }
+    },
+    async presign(key) {
+      return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucketName, Key: key }), {
+        expiresIn: DECK_SNAPSHOT_PRESIGN_EXPIRY_SECONDS,
+      });
+    },
+  };
+}
+
+// Authoritative Deck Workspace snapshot (Epic #422): the source of truth for the
+// live preview. The SSE deck_progress stream (#421) is only a refetch trigger;
+// reloads and reconnects restore the full state from this endpoint alone.
+app.get('/threads/:threadId/decks/:deckId', async (context) => {
+  const validationResponse = await validateRequest(context, 'getDeckSnapshot');
+  if (validationResponse) {
+    return validationResponse;
+  }
+
+  const threadId = context.req.param('threadId');
+  const deckId = context.req.param('deckId');
+  const thread = await getThread(threadId, context.get('userId'));
+  if (!thread) {
+    return jsonWithValidation(context, 'getDeckSnapshot', 404, {
+      error: 'Thread not found.',
+    });
+  }
+
+  // Authorize the deck against the thread: it must be referenced by one of the
+  // thread's message manifests (prevents reading an arbitrary deck by id).
+  const messages = await getThreadMessages(threadId);
+  const ownsDeck = messages.some((m) => m.artifactManifest?.deck?.deckId === deckId);
+  if (!ownsDeck) {
+    return jsonWithValidation(context, 'getDeckSnapshot', 404, {
+      error: 'Deck not found.',
+    });
+  }
+
+  const bucketName = process.env.ARTIFACT_BUCKET_NAME;
+  if (!bucketName) {
+    return jsonWithValidation(context, 'getDeckSnapshot', 503, {
+      error: 'Deck storage not configured.',
+    });
+  }
+
+  const snapshot = await getDeckSnapshot(
+    { deckId },
+    deckSnapshotDeps(new S3Client({}), bucketName),
+  );
+  if (!snapshot) {
+    return jsonWithValidation(context, 'getDeckSnapshot', 404, {
+      error: 'Deck not found.',
+    });
+  }
+
+  return jsonWithValidation(context, 'getDeckSnapshot', 200, snapshot);
 });
 
 app.patch('/threads/:threadId', async (context) => {

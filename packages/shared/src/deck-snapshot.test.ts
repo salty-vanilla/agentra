@@ -3,7 +3,7 @@ import {
   type DeckSnapshotDeps,
   getDeckSnapshot,
   parseDeckKeys,
-} from '../deck-snapshot.js';
+} from './deck-snapshot.js';
 
 const DECK = 'deck-1';
 const k = (rel: string) => `decks/${DECK}/${rel}`;
