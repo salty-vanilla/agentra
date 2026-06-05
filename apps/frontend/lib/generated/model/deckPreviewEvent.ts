@@ -9,7 +9,8 @@ This spec is the source of truth for frontend client generation and API mocks.
  */
 import type { DeckPreviewCompletedEvent } from './deckPreviewCompletedEvent';
 import type { DeckPreviewFailedEvent } from './deckPreviewFailedEvent';
+import type { DeckPreviewPhaseEvent } from './deckPreviewPhaseEvent';
 import type { DeckPreviewStartedEvent } from './deckPreviewStartedEvent';
 import type { DeckSlideComposeReadyEvent } from './deckSlideComposeReadyEvent';
 
-export type DeckPreviewEvent = DeckPreviewStartedEvent | DeckSlideComposeReadyEvent | DeckPreviewCompletedEvent | DeckPreviewFailedEvent;
+export type DeckPreviewEvent = DeckPreviewStartedEvent | DeckSlideComposeReadyEvent | DeckPreviewCompletedEvent | DeckPreviewFailedEvent | DeckPreviewPhaseEvent;

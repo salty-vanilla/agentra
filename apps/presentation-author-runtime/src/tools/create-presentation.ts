@@ -4,7 +4,7 @@ import {
   createPresentation,
   type DeckResult,
 } from '@agentra/presentation-author';
-import type { DeckPreviewEvent } from '@agentra/shared';
+import type { DeckPhase, DeckPreviewEvent } from '@agentra/shared';
 import { S3Client } from '@aws-sdk/client-s3';
 import { tool } from '@strands-agents/sdk';
 import { uuidv7 } from 'uuidv7';
@@ -105,6 +105,22 @@ export async function executeCreatePresentationTool(
     revision: input.revision ?? envRevision,
   });
 
+  // Coarse phase progress (Epic #425) — surfaced via the same onDeckEvent sink
+  // (#420/#421 transport) so the UI shows movement during the long authoring wait,
+  // before any slide compose event can exist. Best-effort; never breaks the PPTX.
+  const emitPhase = (phase: DeckPhase, detail?: string): void => {
+    try {
+      opts.onDeckEvent?.({
+        type: 'deck_preview_phase',
+        phase,
+        ...(detail ? { detail } : {}),
+      });
+    } catch {
+      // phase events are advisory only
+    }
+  };
+  emitPhase('planning');
+
   const styleGuide = input.styleGuide
     ? `${input.styleGuide}\n\n${FONT_POLICY_STYLE_GUIDE}`
     : FONT_POLICY_STYLE_GUIDE;
@@ -132,8 +148,11 @@ export async function executeCreatePresentationTool(
   };
 
   try {
+    emitPhase('authoring');
     const result = await createPresentation(toolInput, { llm: llmClient });
     const durationMs = Date.now() - startTime;
+    // PPTX authored; the deck preview (export/compose) is the next visible phase.
+    emitPhase('composing');
 
     if (result.success) {
       logger.debug({

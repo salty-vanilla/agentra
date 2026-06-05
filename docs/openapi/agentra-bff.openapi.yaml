@@ -2422,12 +2422,34 @@ components:
         reason:
           type: string
           minLength: 1
+    DeckPreviewPhaseEvent:
+      type: object
+      additionalProperties: false
+      required:
+        - type
+        - phase
+      properties:
+        type:
+          type: string
+          enum:
+            - deck_preview_phase
+        phase:
+          type: string
+          enum:
+            - planning
+            - authoring
+            - rendering
+            - reviewing
+            - composing
+        detail:
+          type: string
     DeckPreviewEvent:
       oneOf:
         - $ref: '#/components/schemas/DeckPreviewStartedEvent'
         - $ref: '#/components/schemas/DeckSlideComposeReadyEvent'
         - $ref: '#/components/schemas/DeckPreviewCompletedEvent'
         - $ref: '#/components/schemas/DeckPreviewFailedEvent'
+        - $ref: '#/components/schemas/DeckPreviewPhaseEvent'
       discriminator:
         propertyName: type
     ChatStreamDeckProgressEvent:
