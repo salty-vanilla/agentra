@@ -32,6 +32,16 @@ export interface AgentraSlideRuntimeStackProps extends StackProps {
    * shared dev/stg until smoke-tested (see issue #412).
    */
   deckPreviewEnabled?: boolean;
+  /**
+   * Opt-in (Epic #420): stream per-slide deck progress as SSE from the slide
+   * runtime instead of returning a single JSON result. Sets SLIDE_RUNTIME_STREAMING.
+   */
+  slideRuntimeStreaming?: boolean;
+  /**
+   * Opt-in (Epic #419): build the deck preview with the per-slide pipeline (split
+   * → export → compose → upload per slide). Sets PRESENTATION_DECK_PREVIEW_STREAMING.
+   */
+  deckPreviewStreaming?: boolean;
 }
 
 export class AgentraSlideRuntimeStack extends Stack {
@@ -228,6 +238,10 @@ export class AgentraSlideRuntimeStack extends Stack {
         PRESENTATION_ARTIFACT_URL_EXPIRES_SECONDS: '3600',
         // Deck Live Preview (opt-in per environment; default off — issue #412).
         PRESENTATION_DECK_PREVIEW_ENABLED: props.deckPreviewEnabled ? 'true' : 'false',
+        SLIDE_RUNTIME_STREAMING: props.slideRuntimeStreaming ? 'true' : 'false',
+        PRESENTATION_DECK_PREVIEW_STREAMING: props.deckPreviewStreaming
+          ? 'true'
+          : 'false',
         PRESENTATION_DECK_PREVIEW_BUDGET_MS: '45000',
         PRESENTATION_IMAGE_RETRIEVAL_ENABLED: thirdPartyApiKeysSecret ? 'true' : 'false',
         PRESENTATION_IMAGE_GENERATION_ENABLED: 'false',

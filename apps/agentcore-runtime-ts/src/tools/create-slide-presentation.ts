@@ -1,6 +1,11 @@
+import { deckPreviewEventSchema } from '@agentra/agent-tools';
 import { tool } from '@strands-agents/sdk';
 import { z } from 'zod';
-import { invokeSlideRuntime } from './slide-runtime-client.js';
+import { emitDeckRelayEvent, isDeckRelayActive } from './deck-relay.js';
+import {
+  invokeSlideRuntime,
+  invokeSlideRuntimeStreaming,
+} from './slide-runtime-client.js';
 
 const createSlidePresentationTool = tool({
   name: 'create_slide_presentation',
@@ -33,12 +38,20 @@ const createSlidePresentationTool = tool({
     );
 
     try {
-      const result = await invokeSlideRuntime({
+      const invokeInput = {
         prompt: input.prompt,
         language: input.language ?? undefined,
         traceId,
         brandFrameId: input.brandFrameId ?? undefined,
-      });
+      };
+      // When the router set up a relay (Epic #421), stream the slide-runtime's
+      // real-time deck events out to the client; otherwise invoke non-streaming.
+      const result = isDeckRelayActive()
+        ? await invokeSlideRuntimeStreaming(invokeInput, (raw) => {
+            const parsed = deckPreviewEventSchema.safeParse(raw);
+            if (parsed.success) emitDeckRelayEvent(parsed.data);
+          })
+        : await invokeSlideRuntime(invokeInput);
 
       const durationMs = Date.now() - startTime;
 

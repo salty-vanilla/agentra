@@ -13,7 +13,12 @@ import { createRuntimeSessionManager } from './memory/session-manager-factory.js
 import { ObservationCollector } from './observability.js';
 import { RequestSchema } from './request-schema.js';
 import { RuntimeLogger } from './runtime-logger.js';
+import { createDeckMergedStream } from './tools/deck-merge.js';
 import type { SubAgentProgressEvent } from './tools/invoke-manufacturing-line-agent.tool.js';
+
+// Opt-in (default off): relay the slide-runtime's real-time deck-progress events
+// (Epic #421) instead of replaying the completed deck at the end (Route A).
+const ROUTER_DECK_STREAMING = process.env.ROUTER_DECK_STREAMING === 'true';
 
 /**
  * Walk a tool-result content structure and yield every plain object that could
@@ -280,6 +285,10 @@ const app = new BedrockAgentCoreApp({
       // Deck Live Preview captured from a create_slide_presentation result, to be
       // attached to the next artifact manifest the model emits.
       let pendingDeck: DeckResult | undefined;
+      // Whether any *live* deck event was relayed this turn (#421). If streaming
+      // was on but nothing streamed (e.g. the slide runtime wasn't streaming),
+      // we fall back to the Route A replay so we never do worse than replaying.
+      let relayedDeckEvent = false;
 
       logger.logInvocationStart({
         userId,
@@ -289,16 +298,28 @@ const app = new BedrockAgentCoreApp({
       });
 
       try {
-        const stream = agent.stream(finalPrompt);
-        while (true) {
-          const { value, done } = await stream.next();
-          if (done) {
-            observability.onAgentMetrics(value.metrics);
+        // Merge the agent stream with the slide-runtime's real-time deck events
+        // (#421). With ROUTER_DECK_STREAMING off, the relay is inactive and this
+        // simply forwards agent events (deck queue stays empty) — pre-#421 behavior.
+        const { stream: merged } = createDeckMergedStream(agent.stream(finalPrompt), {
+          relay: ROUTER_DECK_STREAMING,
+        });
+        for await (const item of merged) {
+          if (item.source === 'deck') {
+            relayedDeckEvent = true;
+            yield {
+              event: 'message',
+              data: { type: 'deck_progress', event: item.event },
+            };
+            continue;
+          }
+          if (item.source === 'agent-done') {
+            observability.onAgentMetrics(item.value.metrics);
             observability.finalizeMissingToolCounts();
             break;
           }
 
-          const event = value;
+          const event = item.value;
           observability.logStreamEventType(event.type);
 
           if (
@@ -423,10 +444,17 @@ const app = new BedrockAgentCoreApp({
               const capturedDeck = parseDeckFromSlideResult(event.result.content);
               if (capturedDeck) {
                 pendingDeck = capturedDeck;
-                // Streaming Deck Preview (Epic #403): replay deck progress so the
-                // client reveals slides incrementally. The authoritative deck is
-                // still attached to the artifact manifest below.
-                yield* emitDeckProgressEvents(capturedDeck);
+                // Route A (Epic #403): replay the completed deck's progress so the
+                // client reveals slides incrementally. With ROUTER_DECK_STREAMING
+                // on (#421) the real per-slide events already streamed live through
+                // the merge, so skip the replay to avoid duplicate events — but
+                // only if we actually relayed something. If streaming was on yet no
+                // live event arrived (e.g. the slide runtime wasn't streaming), fall
+                // back to the replay so we never do worse than Route A. The
+                // authoritative deck is still attached to the manifest below.
+                if (!ROUTER_DECK_STREAMING || !relayedDeckEvent) {
+                  yield* emitDeckProgressEvents(capturedDeck);
+                }
               }
             }
             if (toolName === 'create_artifact_manifest' && toolStatus === 'success') {

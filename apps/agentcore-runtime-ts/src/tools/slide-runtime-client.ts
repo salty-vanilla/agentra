@@ -10,6 +10,7 @@ import {
   formatTelemetryLog,
   TimeoutError,
 } from '../lib/timeout-handler.js';
+import { createSlideSseParser } from './slide-sse-parser.js';
 
 // --- Types ---
 
@@ -283,6 +284,113 @@ export async function invokeSlideRuntime(
 
     const logMessage = formatTelemetryLog('slide-runtime-invoke', telemetry);
     console.error(`[slide-runtime] ${logMessage}`);
+    throw error;
+  }
+}
+
+function decodeChunk(chunk: unknown): string {
+  if (chunk instanceof Uint8Array) return new TextDecoder().decode(chunk);
+  if (typeof chunk === 'string') return chunk;
+  return String(chunk ?? '');
+}
+
+/**
+ * Streaming variant (Epic #421): invoke the slide runtime with
+ * `accept: text/event-stream`, forward each `deck_progress` event to
+ * `onDeckEvent` in real time, and return the final result once the stream ends.
+ *
+ * Degrades like the non-streaming path: a runtime that does not stream simply
+ * yields its single JSON result frame, which the SSE parser still decodes.
+ */
+export async function invokeSlideRuntimeStreaming(
+  input: InvokeSlideRuntimeInput,
+  onDeckEvent: (event: unknown) => void,
+  abortSignal?: AbortSignal,
+): Promise<InvokeSlideRuntimeResult> {
+  if (!SLIDE_RUNTIME_ARN) {
+    throw new Error(
+      'SLIDE_AGENTCORE_RUNTIME_ARN is not configured. Cannot invoke Slide Runtime.',
+    );
+  }
+
+  const telemetry = createCallTelemetry();
+  const sessionId = input.sessionId ?? uuidv7();
+
+  try {
+    const payload = {
+      prompt: input.prompt,
+      ...(input.language ? { language: input.language } : {}),
+      ...(input.traceId ? { traceId: input.traceId } : {}),
+      ...(input.brandFrameId ? { brandFrameId: input.brandFrameId } : {}),
+    };
+
+    const command = new InvokeAgentRuntimeCommand({
+      agentRuntimeArn: SLIDE_RUNTIME_ARN,
+      qualifier: SLIDE_RUNTIME_QUALIFIER,
+      runtimeSessionId: sessionId,
+      contentType: 'application/json',
+      accept: 'text/event-stream',
+      payload: new TextEncoder().encode(JSON.stringify(payload)),
+    });
+
+    const rawText = await executeWithTimeout(
+      async (signal) => {
+        const response = await client.send(command, { abortSignal: signal });
+        const parser = createSlideSseParser();
+        let resultPayload: unknown;
+
+        const consume = (chunkText: string): void => {
+          for (const msg of parser.push(chunkText)) {
+            if (msg.kind === 'deck_progress') onDeckEvent(msg.event);
+            else resultPayload = msg.result;
+          }
+        };
+
+        const body = response.response as
+          | { transformToString?: () => Promise<string> }
+          | AsyncIterable<unknown>
+          | undefined;
+
+        if (body && Symbol.asyncIterator in (body as object)) {
+          for await (const chunk of body as AsyncIterable<unknown>) {
+            if (signal.aborted) throw new Error('Request was cancelled');
+            consume(decodeChunk(chunk));
+          }
+        } else if (body && 'transformToString' in body && body.transformToString) {
+          consume(await body.transformToString());
+        }
+        for (const msg of parser.flush()) {
+          if (msg.kind === 'deck_progress') onDeckEvent(msg.event);
+          else resultPayload = msg.result;
+        }
+
+        // Hand the captured result frame back through the shared parser so the
+        // streaming and non-streaming paths return an identical shape.
+        return resultPayload === undefined ? '' : JSON.stringify(resultPayload);
+      },
+      {
+        timeoutMs: SLIDE_RUNTIME_TIMEOUT_MS,
+        onTimeout: (reason) => console.warn(`[slide-runtime] timeout: ${reason}`),
+      },
+      telemetry,
+    );
+
+    return parseSlideRuntimeResponse(rawText);
+  } catch (error) {
+    if (error instanceof TimeoutError) {
+      console.error(
+        `[slide-runtime] ${formatTelemetryLog('slide-runtime-invoke', telemetry)}`,
+      );
+      throw new Error(
+        `Slide Runtime invocation timed out after ${SLIDE_RUNTIME_TIMEOUT_MS}ms`,
+      );
+    }
+    if (abortSignal?.aborted) {
+      throw new Error('Slide Runtime invocation was cancelled');
+    }
+    console.error(
+      `[slide-runtime] ${formatTelemetryLog('slide-runtime-invoke', telemetry)}`,
+    );
     throw error;
   }
 }
