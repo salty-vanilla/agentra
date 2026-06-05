@@ -1,5 +1,6 @@
 import { cleanup } from '@testing-library/react';
 import { afterAll, afterEach, beforeAll, vi } from 'vitest';
+import { resetDeckMockState } from '@/mocks/fixtures/deck';
 import { mswServer } from './msw-server';
 
 // jsdom does not implement matchMedia; next-themes (and other media-query aware
@@ -21,6 +22,7 @@ beforeAll(() => mswServer.listen({ onUnhandledRequest: 'warn' }));
 afterEach(() => {
   cleanup();
   mswServer.resetHandlers();
+  resetDeckMockState(); // reset the progressive deck-snapshot poll counters (#423)
   // Reset theme side-effects: next-themes mutates the <html> class and
   // color-scheme style and persists the choice to localStorage. Clear them so
   // theme-aware tests never leak into later (light-assuming) tests.

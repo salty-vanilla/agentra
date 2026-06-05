@@ -18,6 +18,7 @@ import type { ModelKey } from '@/components/model-selector';
 import { ServerThreadSidebar } from '@/components/server-thread-sidebar';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { SidebarInset, SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { useDeckWorkspace } from '@/hooks/use-deck-workspace';
 import {
   classifyChatError,
   createThread,
@@ -30,6 +31,7 @@ import { isMockApiMode } from '@/lib/api-config';
 import {
   deckStreamReducer,
   initialDeckStreamState,
+  mergeSnapshotIntoDeckState,
   type StreamingDeckState,
 } from '@/lib/deck-stream';
 import type {
@@ -110,6 +112,9 @@ export function AgentraWorkspace() {
   // Streaming Deck Preview (Epic #403): live state folded from deck_progress events.
   const [streamingDeckState, setStreamingDeckState] =
     useState<StreamingDeckState>(initialDeckStreamState);
+  // Deck Workspace polling (Epic #423): SSE is the trigger, the polled snapshot
+  // (#422) is the source of truth. Bump on each deck_progress to refetch fast.
+  const [deckRefetchKey, setDeckRefetchKey] = useState(0);
   const progressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const progressIndexRef = useRef(0);
   // Use a ref so the memoized modelAdapter can read the latest model key without
@@ -179,9 +184,40 @@ export function AgentraWorkspace() {
     });
   }, []);
 
-  const handleDeckProgressEvent = useCallback((event: DeckPreviewEvent) => {
-    setStreamingDeckState((prev) => deckStreamReducer(prev, event));
+  // Debounce the snapshot refetch trigger: a burst of deck_progress events (one
+  // per slide) collapses into a single poll instead of one HTTP request each.
+  const refetchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bumpDeckRefetch = useCallback(() => {
+    if (refetchDebounceRef.current) clearTimeout(refetchDebounceRef.current);
+    refetchDebounceRef.current = setTimeout(() => {
+      setDeckRefetchKey((key) => key + 1);
+    }, 150);
   }, []);
+
+  const handleDeckProgressEvent = useCallback(
+    (event: DeckPreviewEvent) => {
+      setStreamingDeckState((prev) => deckStreamReducer(prev, event));
+      // SSE event = (debounced) refetch trigger for the authoritative snapshot.
+      bumpDeckRefetch();
+    },
+    [bumpDeckRefetch],
+  );
+
+  // Poll the authoritative deck snapshot while generating (Epic #423). The SSE
+  // stream above only triggers refetches; the snapshot is the source of truth,
+  // so slides survive a reload from the poll alone.
+  const deckActive =
+    streamingDeckState.phase === 'planning' || streamingDeckState.phase === 'generating';
+  const { snapshot: deckSnapshot } = useDeckWorkspace({
+    threadId: selectedThreadId,
+    deckId: streamingDeckState.deckId,
+    active: deckActive,
+    refetchKey: deckRefetchKey,
+  });
+  const renderedDeckState = useMemo(
+    () => mergeSnapshotIntoDeckState(streamingDeckState, deckSnapshot),
+    [streamingDeckState, deckSnapshot],
+  );
 
   const stopProgressSimulation = useCallback(
     (error?: boolean) => {
@@ -832,7 +868,7 @@ export function AgentraWorkspace() {
                   onSlideDialogOpenChange={setSlideDialogOpen}
                   progressEvents={progressEvents}
                   subAgentProgressEvents={subAgentProgressEvents}
-                  streamingDeckState={streamingDeckState}
+                  streamingDeckState={renderedDeckState}
                   {...(activeProgressPhase ? { activeProgressPhase } : {})}
                 />
               </section>

@@ -177,3 +177,54 @@ export function reduceDeckStream(
 export function isStreamingDeckActive(state: StreamingDeckState): boolean {
   return state.phase !== 'idle';
 }
+
+/** Minimal shape of the authoritative deck snapshot (Epic #422) we render from. */
+export interface DeckWorkspaceSnapshot {
+  deckId: string;
+  name: string;
+  defsUrl: string | null;
+  slideOrder: string[];
+  slides: Array<{
+    slug: string;
+    index: number;
+    composeUrl: string | null;
+    previewUrl: string | null;
+  }>;
+}
+
+/**
+ * Overlay the authoritative snapshot (#422, source of truth) onto the live SSE
+ * state (#421, the trigger/narration): slides, defs and identity come from the
+ * snapshot, while the in-flight phase/genPhase/failed labels stay from SSE.
+ * The SSE state wins only when it is *ahead* of the snapshot (more slides), to
+ * avoid a momentary flicker-back between an SSE event and the next poll.
+ */
+export function mergeSnapshotIntoDeckState(
+  state: StreamingDeckState,
+  snapshot: DeckWorkspaceSnapshot | null,
+): StreamingDeckState {
+  if (!snapshot) return state;
+  if (state.deckId !== null && state.deckId !== snapshot.deckId) return state;
+  if (state.slides.length > snapshot.slides.length) return state;
+
+  const bySlug = new Map(snapshot.slides.map((s) => [s.slug, s]));
+  // Order by the snapshot's canonical slideOrder, falling back to slides order.
+  const ordered =
+    snapshot.slideOrder.length === snapshot.slides.length
+      ? snapshot.slideOrder.map((slug) => bySlug.get(slug)).filter((s) => s !== undefined)
+      : snapshot.slides;
+
+  return {
+    ...state,
+    deckId: snapshot.deckId,
+    name: state.name ?? snapshot.name,
+    defsUrl: snapshot.defsUrl ?? state.defsUrl,
+    totalSlides: Math.max(snapshot.slides.length, state.totalSlides ?? 0),
+    slides: ordered.map((s) => ({
+      slug: s.slug,
+      index: s.index,
+      composeUrl: s.composeUrl,
+      previewUrl: s.previewUrl,
+    })),
+  };
+}

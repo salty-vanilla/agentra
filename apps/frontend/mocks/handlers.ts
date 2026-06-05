@@ -1,6 +1,11 @@
 import { APP_VERSION } from '@agentra/shared';
 import { HttpResponse, http } from 'msw';
 import { uuidv7 } from 'uuidv7';
+import {
+  DECK_MOCK_ASSET_PATTERN,
+  mockDeckSnapshot,
+  resolveDeckMockAsset,
+} from '@/mocks/fixtures/deck';
 import { observabilityFixtures } from '@/mocks/fixtures/observability';
 import {
   getCreateThreadMockHandler,
@@ -14,6 +19,7 @@ import {
   getGetAdminTraceDetailMockHandler,
   getGetAdminTracesMockHandler,
   getGetAdminUsersMockHandler,
+  getGetDeckSnapshotMockHandler,
   getGetHealthMockHandler,
   getGetKbStatusMockHandler,
   getGetThreadMockHandler,
@@ -36,6 +42,7 @@ import type {
   ChatObservationSummary,
   ChatRequest,
   CreateThreadRequest,
+  DeckSnapshotResponse,
   HealthResponse,
   IngestionJobSummary,
   KbDocument,
@@ -513,6 +520,20 @@ export const handlers = [
     return {
       thread,
     };
+  }),
+  // Deck Workspace snapshot (Epic #423): grows the slide count over successive
+  // polls so the live-preview polling UX is exercisable in mock mode.
+  getGetDeckSnapshotMockHandler(({ params }): DeckSnapshotResponse => {
+    return mockDeckSnapshot(String(params.deckId));
+  }),
+  // Serve the mock compose/defs assets the snapshot URLs point at, so the
+  // renderer draws real (minimal) slides.
+  http.get(DECK_MOCK_ASSET_PATTERN, ({ request }) => {
+    const body = resolveDeckMockAsset(new URL(request.url).pathname);
+    if (body === null) {
+      return HttpResponse.json({ error: 'Not found.' }, { status: 404 });
+    }
+    return HttpResponse.json(body);
   }),
   getListThreadMessagesMockHandler(({ params }): ThreadMessagesResponse => {
     const threadId = String(params.threadId);

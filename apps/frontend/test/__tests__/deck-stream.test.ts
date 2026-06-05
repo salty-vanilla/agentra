@@ -3,6 +3,7 @@ import {
   deckStreamReducer,
   initialDeckStreamState,
   isStreamingDeckActive,
+  mergeSnapshotIntoDeckState,
   reduceDeckStream,
 } from '@/lib/deck-stream';
 import type { DeckPreviewEvent } from '@/lib/generated/model';
@@ -188,5 +189,61 @@ describe('deckStreamReducer', () => {
     expect(state.phase).toBe('generating');
     expect(state.genPhase).toBe('composing');
     expect(state.slides).toHaveLength(1);
+  });
+});
+
+describe('mergeSnapshotIntoDeckState (Epic #423)', () => {
+  const snapshot = {
+    deckId: 'deck-1',
+    name: 'スナップショット',
+    defsUrl: 'https://cdn/defs.5.json',
+    slideOrder: ['slide-1', 'slide-2'],
+    slides: [
+      {
+        slug: 'slide-1',
+        index: 1,
+        composeUrl: 'https://cdn/s1.5.json',
+        previewUrl: null,
+      },
+      {
+        slug: 'slide-2',
+        index: 2,
+        composeUrl: 'https://cdn/s2.5.json',
+        previewUrl: null,
+      },
+    ],
+  };
+
+  it('returns state unchanged when there is no snapshot', () => {
+    const state = reduceDeckStream([started]);
+    expect(mergeSnapshotIntoDeckState(state, null)).toBe(state);
+  });
+
+  it('overlays authoritative slides/defs while keeping the SSE phase label', () => {
+    const state = reduceDeckStream([
+      started,
+      { type: 'deck_preview_phase', phase: 'composing' },
+    ]);
+    const merged = mergeSnapshotIntoDeckState(state, snapshot);
+    expect(merged.slides.map((s) => s.slug)).toEqual(['slide-1', 'slide-2']);
+    expect(merged.defsUrl).toBe('https://cdn/defs.5.json');
+    expect(merged.genPhase).toBe('composing'); // SSE label preserved
+  });
+
+  it('keeps the SSE state when it is ahead of the snapshot (no flicker-back)', () => {
+    const state = reduceDeckStream([
+      started,
+      slide(1, 'a'),
+      slide(2, 'b'),
+      slide(3, 'c'),
+    ]);
+    // snapshot only has 2 slides; SSE has 3 → keep SSE.
+    expect(mergeSnapshotIntoDeckState(state, snapshot).slides).toHaveLength(3);
+  });
+
+  it('ignores a snapshot for a different deck', () => {
+    const state = reduceDeckStream([started]);
+    const other = { ...snapshot, deckId: 'deck-2' };
+    expect(mergeSnapshotIntoDeckState(state, other)).toBe(state);
   });
 });
