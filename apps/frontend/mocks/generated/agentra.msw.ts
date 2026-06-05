@@ -22,6 +22,7 @@ import type {
   ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
+  DeckSnapshotResponse,
   DeleteKbDocumentParams,
   ErrorResponse,
   GetAdminAgentsParams,
@@ -560,6 +561,62 @@ export const getArtifactDownloadUrl = async (threadId: string,
 
   const data: getArtifactDownloadUrlResponse['data'] = body ? JSON.parse(body) : {}
   return { data, status: res.status, headers: res.headers } as getArtifactDownloadUrlResponse
+}
+
+
+
+/**
+ * @summary Authoritative deck workspace snapshot (source of truth for live preview)
+ */
+export type getDeckSnapshotResponse200 = {
+  data: DeckSnapshotResponse
+  status: 200
+}
+
+export type getDeckSnapshotResponse404 = {
+  data: ErrorResponse
+  status: 404
+}
+
+export type getDeckSnapshotResponse503 = {
+  data: ErrorResponse
+  status: 503
+}
+
+export type getDeckSnapshotResponseSuccess = (getDeckSnapshotResponse200) & {
+  headers: Headers;
+};
+export type getDeckSnapshotResponseError = (getDeckSnapshotResponse404 | getDeckSnapshotResponse503) & {
+  headers: Headers;
+};
+
+export type getDeckSnapshotResponse = (getDeckSnapshotResponseSuccess | getDeckSnapshotResponseError)
+
+export const getGetDeckSnapshotUrl = (threadId: string,
+    deckId: string,) => {
+
+
+
+
+  return `/threads/${threadId}/decks/${deckId}`
+}
+
+export const getDeckSnapshot = async (threadId: string,
+    deckId: string, options?: RequestInit): Promise<getDeckSnapshotResponse> => {
+
+  const res = await fetch(getGetDeckSnapshotUrl(threadId,deckId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+)
+
+  const body = [204, 205, 304].includes(res.status) ? null : await res.text();
+
+  const data: getDeckSnapshotResponse['data'] = body ? JSON.parse(body) : {}
+  return { data, status: res.status, headers: res.headers } as getDeckSnapshotResponse
 }
 
 
@@ -1809,6 +1866,8 @@ export const getListThreadArtifactsResponseMock = (overrideResponse: Partial<Ext
 
 export const getGetArtifactDownloadUrlResponseMock = (overrideResponse: Partial<Extract<ArtifactDownloadUrlResponse, object>> = {}): ArtifactDownloadUrlResponse => ({url: faker.internet.url(), expiresAt: faker.date.past().toISOString().slice(0, 19) + 'Z', ...overrideResponse})
 
+export const getGetDeckSnapshotResponseMock = (overrideResponse: Partial<Extract<DeckSnapshotResponse, object>> = {}): DeckSnapshotResponse => ({deckId: faker.string.alpha({length: {min: 1, max: 20}}), name: faker.string.alpha({length: {min: 10, max: 20}}), language: faker.helpers.arrayElement(['ja','en'] as const), slideOrder: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => (faker.string.alpha({length: {min: 10, max: 20}}))), defsUrl: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), null]), defsEpoch: faker.number.int({min: 0}), slides: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({slug: faker.string.alpha({length: {min: 1, max: 20}}), index: faker.number.int({min: 1}), epoch: faker.number.int({min: 0}), composeUrl: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), null]), previewUrl: faker.helpers.arrayElement([faker.helpers.arrayElement([faker.string.alpha({length: {min: 10, max: 20}}), null]), null])})), epoch: faker.number.int({min: 0}), ...overrideResponse})
+
 export const getGetAdminOverviewResponseMock = (overrideResponse: Partial<Extract<AdminOverviewResponse, object>> = {}): AdminOverviewResponse => ({requestCount: faker.number.int({min: 0}), activeUserCount: faker.number.int({min: 0}), totalTokens: faker.number.int({min: 0}), avgDurationMs: faker.number.int({min: 0}), p95DurationMs: faker.number.int({min: 0}), errorRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), totalToolCalls: faker.number.int({min: 0}), toolFailureRate: faker.number.float({min: 0, max: 1, fractionDigits: 2}), estimatedCostUsd: faker.number.float({min: 0, fractionDigits: 2}), period: {from: faker.string.alpha({length: {min: 10, max: 20}}), to: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
 
 export const getGetAdminTimeseriesResponseMock = (overrideResponse: Partial<Extract<AdminTimeseriesResponse, object>> = {}): AdminTimeseriesResponse => ({buckets: Array.from({ length: faker.number.int({min: 1, max: 10}) }, (_, i) => i + 1).map(() => ({bucketStart: faker.date.past().toISOString().slice(0, 19) + 'Z', requestCount: faker.number.int({min: 0}), successCount: faker.number.int({min: 0}), errorCount: faker.number.int({min: 0}), cancelledCount: faker.number.int({min: 0}), avgDurationMs: faker.number.float({min: 0, fractionDigits: 2}), p95DurationMs: faker.number.float({min: 0, fractionDigits: 2}), totalTokens: faker.number.int({min: 0}), inputTokens: faker.number.int({min: 0}), outputTokens: faker.number.int({min: 0}), toolCallCount: faker.number.int({min: 0}), toolFailureCount: faker.number.int({min: 0})})), period: {from: faker.string.alpha({length: {min: 10, max: 20}}), to: faker.string.alpha({length: {min: 10, max: 20}})}, ...overrideResponse})
@@ -1966,6 +2025,18 @@ export const getGetArtifactDownloadUrlMockHandler = (overrideResponse?: Artifact
     return HttpResponse.json(overrideResponse !== undefined
     ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
     : getGetArtifactDownloadUrlResponseMock(),
+      { status: 200
+      })
+  }, options)
+}
+
+export const getGetDeckSnapshotMockHandler = (overrideResponse?: DeckSnapshotResponse | ((info: Parameters<Parameters<typeof http.get>[1]>[0]) => Promise<DeckSnapshotResponse> | DeckSnapshotResponse), options?: RequestHandlerOptions) => {
+  return http.get('*/threads/:threadId/decks/:deckId', async (info: Parameters<Parameters<typeof http.get>[1]>[0]) => {await delay(200);
+
+
+    return HttpResponse.json(overrideResponse !== undefined
+    ? (typeof overrideResponse === "function" ? await overrideResponse(info) : overrideResponse)
+    : getGetDeckSnapshotResponseMock(),
       { status: 200
       })
   }, options)
@@ -2231,6 +2302,7 @@ export const getAgentraBFFAPIMock = () => [
   getListThreadMessagesMockHandler(),
   getListThreadArtifactsMockHandler(),
   getGetArtifactDownloadUrlMockHandler(),
+  getGetDeckSnapshotMockHandler(),
   getGetAdminOverviewMockHandler(),
   getGetAdminTimeseriesMockHandler(),
   getGetAdminUsersMockHandler(),

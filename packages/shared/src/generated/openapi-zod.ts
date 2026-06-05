@@ -378,6 +378,47 @@ export const GetArtifactDownloadUrlResponse = zod.object({
 
 
 /**
+ * @summary Authoritative deck workspace snapshot (source of truth for live preview)
+ */
+
+
+
+
+export const GetDeckSnapshotParams = zod.object({
+  "threadId": zod.string().min(1),
+  "deckId": zod.string().min(1)
+})
+
+
+export const getDeckSnapshotResponseDefsEpochMin = 0;
+
+
+
+export const getDeckSnapshotResponseSlidesItemEpochMin = 0;
+
+export const getDeckSnapshotResponseEpochMin = 0;
+
+
+
+export const GetDeckSnapshotResponse = zod.object({
+  "deckId": zod.string().min(1),
+  "name": zod.string(),
+  "language": zod.enum(['ja', 'en']),
+  "slideOrder": zod.array(zod.string()),
+  "defsUrl": zod.string().nullable(),
+  "defsEpoch": zod.number().min(getDeckSnapshotResponseDefsEpochMin),
+  "slides": zod.array(zod.object({
+  "slug": zod.string().min(1),
+  "index": zod.number().min(1),
+  "epoch": zod.number().min(getDeckSnapshotResponseSlidesItemEpochMin),
+  "composeUrl": zod.string().nullable(),
+  "previewUrl": zod.string().nullable()
+})),
+  "epoch": zod.number().min(getDeckSnapshotResponseEpochMin)
+})
+
+
+/**
  * @summary Get observability overview stats
  */
 export const getAdminOverviewQueryFromRegExp = new RegExp('^\\d{4}-\\d{2}-\\d{2}$');

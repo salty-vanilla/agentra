@@ -21,6 +21,7 @@ import type {
   ArtifactDownloadUrlResponse,
   ChatRequest,
   CreateThreadRequest,
+  DeckSnapshotResponse,
   DeleteKbDocumentParams,
   GetAdminAgentsParams,
   GetAdminOverviewParams,
@@ -285,6 +286,32 @@ export const getArtifactDownloadUrl = async (threadId: string,
     artifactId: string, options?: RequestInit): Promise<ArtifactDownloadUrlResponse> => {
 
   return fetchMutator<ArtifactDownloadUrlResponse>(getGetArtifactDownloadUrlUrl(threadId,artifactId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+/**
+ * @summary Authoritative deck workspace snapshot (source of truth for live preview)
+ */
+export const getGetDeckSnapshotUrl = (threadId: string,
+    deckId: string,) => {
+
+
+
+
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://127.0.0.1:8787'}/threads/${threadId}/decks/${deckId}`
+}
+
+export const getDeckSnapshot = async (threadId: string,
+    deckId: string, options?: RequestInit): Promise<DeckSnapshotResponse> => {
+
+  return fetchMutator<DeckSnapshotResponse>(getGetDeckSnapshotUrl(threadId,deckId),
   {
     ...options,
     method: 'GET'
