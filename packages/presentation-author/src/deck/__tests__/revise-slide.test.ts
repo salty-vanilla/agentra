@@ -25,9 +25,11 @@ describe('markComposeChanged', () => {
     expect(out).not.toBe(composeJson);
   });
 
-  it('passes through a payload without a components array', () => {
+  it('returns a fresh object even without a components array', () => {
     const odd = { version: 1 } as unknown as typeof composeJson;
-    expect(markComposeChanged(odd)).toEqual(odd);
+    const out = markComposeChanged(odd);
+    expect(out).toEqual(odd);
+    expect(out).not.toBe(odd); // distinct reference, safe to mutate
   });
 });
 
@@ -97,5 +99,19 @@ describe('reviseSlide', () => {
       d,
     );
     expect(result).toBeNull();
+  });
+
+  it('degrades to null (no throw) when persist throws', async () => {
+    const d = deps({
+      persistRevised: vi.fn(async () => {
+        throw new Error('s3 down');
+      }),
+    });
+    await expect(
+      reviseSlide(
+        { deckId: 'deck-1', slug: 'slide-1', index: 1, composePath: '/w/x.json' },
+        d,
+      ),
+    ).resolves.toBeNull();
   });
 });

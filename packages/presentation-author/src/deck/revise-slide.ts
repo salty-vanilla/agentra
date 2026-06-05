@@ -26,7 +26,8 @@ interface ComposeLike {
  * slide has `changed: false` everywhere, so a revision flips them on.
  */
 export function markComposeChanged<T extends ComposeLike>(compose: T): T {
-  if (!Array.isArray(compose.components)) return compose;
+  // Always return a fresh object so the result is safe to mutate independently.
+  if (!Array.isArray(compose.components)) return { ...compose };
   return {
     ...compose,
     components: compose.components.map((component) => ({
@@ -82,19 +83,28 @@ export async function reviseSlide(
   }
 
   const changed = markComposeChanged(compose);
-  const result = await deps.persistRevised({
-    deckId: input.deckId,
-    slug: input.slug,
-    index: input.index,
-    epoch: Date.now(),
-    compose: changed,
-  });
+  let result: PerSlidePersistedSlide | null;
+  try {
+    result = await deps.persistRevised({
+      deckId: input.deckId,
+      slug: input.slug,
+      index: input.index,
+      // `+ 1` keeps the revision epoch strictly greater than any prior run's
+      // (the original was minted with Date.now() earlier), so parseDeckKeys'
+      // `>=` max-epoch pick always selects the revised slide even on a clock
+      // with coarse (>=1ms) resolution.
+      epoch: Date.now() + 1,
+      compose: changed,
+    });
+  } catch {
+    return null; // persist failure → degrade, never throw
+  }
   if (!result) return null;
 
   try {
     deps.onSlideReady?.(result);
   } catch {
-    // a throwing listener must never break the revision
+    // A throwing listener is the listener's bug — never break the revision.
   }
   return result;
 }
