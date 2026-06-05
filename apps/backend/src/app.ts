@@ -815,9 +815,16 @@ function deckSnapshotDeps(s3: S3Client, bucketName: string): DeckSnapshotDeps {
       }
     },
     async presign(key) {
-      return getSignedUrl(s3, new GetObjectCommand({ Bucket: bucketName, Key: key }), {
-        expiresIn: DECK_SNAPSHOT_PRESIGN_EXPIRY_SECONDS,
-      });
+      try {
+        return await getSignedUrl(
+          s3,
+          new GetObjectCommand({ Bucket: bucketName, Key: key }),
+          { expiresIn: DECK_SNAPSHOT_PRESIGN_EXPIRY_SECONDS },
+        );
+      } catch {
+        // Honour the DeckSnapshotDeps contract: never throw, degrade to null.
+        return null;
+      }
     },
   };
 }
@@ -833,6 +840,13 @@ app.get('/threads/:threadId/decks/:deckId', async (context) => {
 
   const threadId = context.req.param('threadId');
   const deckId = context.req.param('deckId');
+  // Defence in depth: a deckId is a uuid-like safe segment. Reject anything that
+  // could traverse the S3 prefix before any ownership lookup or S3 call.
+  if (!/^[A-Za-z0-9._-]+$/.test(deckId) || deckId.includes('..')) {
+    return jsonWithValidation(context, 'getDeckSnapshot', 404, {
+      error: 'Deck not found.',
+    });
+  }
   const thread = await getThread(threadId, context.get('userId'));
   if (!thread) {
     return jsonWithValidation(context, 'getDeckSnapshot', 404, {

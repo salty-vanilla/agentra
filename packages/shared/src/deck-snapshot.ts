@@ -10,8 +10,9 @@
  * Pure: parsing is I/O-free; reading injects its S3 surface (see DeckSnapshotDeps).
  */
 
-/** S3 prefix for persisted deck workspaces (must match the runtime deck-store). */
-const DECK_PREFIX = 'decks';
+/** S3 prefix for persisted deck workspaces. Single source of truth — the
+ * runtime deck-store (`@agentra/presentation-author`) re-exports this. */
+export const DECK_PREFIX = 'decks';
 
 export interface DeckSnapshotSlideKeys {
   slug: string;
@@ -41,10 +42,12 @@ function splitEpoch(base: string): [string, number] {
   return [base, 0];
 }
 
-/** 1-based index from a `slide-N` style slug; trailing digits, else 0. */
+/** 1-based index from a `slide-N` style slug; trailing digits, else 1. Clamped
+ * to >= 1 so a non-`slide-N` slug still satisfies the response schema. */
 function slugIndex(slug: string): number {
   const match = slug.match(/(\d+)$/);
-  return match ? Number.parseInt(match[1] as string, 10) : 0;
+  const parsed = match ? Number.parseInt(match[1] as string, 10) : 1;
+  return parsed >= 1 ? parsed : 1;
 }
 
 /**

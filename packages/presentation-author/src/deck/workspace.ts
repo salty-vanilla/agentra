@@ -1,7 +1,8 @@
+import { DECK_PREFIX } from '@agentra/shared';
 import type { DeckSlideManifest } from './types.js';
 
-/** S3 prefix for persisted deck workspaces (kept separate from volatile `runs/`). */
-export const DECK_PREFIX = 'decks';
+// Re-export the single source of truth so existing importers keep working.
+export { DECK_PREFIX };
 
 const JSON_CONTENT_TYPE = 'application/json';
 const MARKDOWN_CONTENT_TYPE = 'text/markdown; charset=utf-8';
