@@ -164,4 +164,29 @@ describe('deckStreamReducer', () => {
     // the late slide is still recorded (degrade, not drop)
     expect(failedFirst.slides).toHaveLength(1);
   });
+
+  it('activates the shell on a phase event before any deck exists (Epic #425)', () => {
+    const state = reduceDeckStream([
+      { type: 'deck_preview_phase', phase: 'planning' },
+      { type: 'deck_preview_phase', phase: 'authoring' },
+    ]);
+    // The shell becomes active (not idle) and shows the latest generation phase,
+    // even though no deck_preview_started/slide has arrived yet.
+    expect(state.phase).toBe('planning');
+    expect(state.genPhase).toBe('authoring');
+    expect(state.deckId).toBeNull();
+    expect(state.slides).toHaveLength(0);
+    expect(isStreamingDeckActive(state)).toBe(true);
+  });
+
+  it('lets a phase event update only the label once the deck is generating', () => {
+    const state = reduceDeckStream([
+      started,
+      slide(1, 'cover'),
+      { type: 'deck_preview_phase', phase: 'composing' },
+    ]);
+    expect(state.phase).toBe('generating');
+    expect(state.genPhase).toBe('composing');
+    expect(state.slides).toHaveLength(1);
+  });
 });

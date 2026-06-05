@@ -3,7 +3,11 @@
 import { Loader2Icon, PresentationIcon, TriangleAlertIcon } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { DeckSlideFrame, useDeckDefs } from '@/components/deck-preview';
-import type { StreamingDeckPhase, StreamingDeckState } from '@/lib/deck-stream';
+import type {
+  DeckGenPhase,
+  StreamingDeckPhase,
+  StreamingDeckState,
+} from '@/lib/deck-stream';
 import type { DeckSlidePreview } from '@/lib/generated/model';
 import { cn } from '@/lib/utils';
 
@@ -25,7 +29,22 @@ const PHASE_LABEL: Record<StreamingDeckPhase, string> = {
   failed: '一部のプレビュー生成に失敗しました',
 };
 
-function StatusBadge({ phase }: { phase: StreamingDeckPhase }) {
+/** Coarse generation phase labels (Epic #425) shown during the authoring wait. */
+const GEN_PHASE_LABEL: Record<DeckGenPhase, string> = {
+  planning: '構成を計画中…',
+  authoring: 'スライドを作成中…',
+  rendering: 'レンダリング中…',
+  reviewing: '校正中…',
+  composing: 'プレビューを生成中…',
+};
+
+function StatusBadge({
+  phase,
+  genPhase,
+}: {
+  phase: StreamingDeckPhase;
+  genPhase: DeckGenPhase | null;
+}) {
   if (phase === 'failed') {
     return (
       <span className="flex shrink-0 items-center gap-1 text-amber-600 text-xs dark:text-amber-500">
@@ -41,10 +60,14 @@ function StatusBadge({ phase }: { phase: StreamingDeckPhase }) {
       </span>
     );
   }
+  // Prefer the granular generation phase (Epic #425) while in progress.
+  const label = genPhase
+    ? GEN_PHASE_LABEL[genPhase]
+    : PHASE_LABEL[phase] || PHASE_LABEL.generating;
   return (
     <span className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
       <Loader2Icon className="size-3.5 animate-spin" aria-hidden />
-      {PHASE_LABEL[phase] || PHASE_LABEL.generating}
+      {label}
     </span>
   );
 }
@@ -97,7 +120,7 @@ export function StreamingDeckPreview({ state, className }: StreamingDeckPreviewP
             {state.name || 'プレゼンテーション'}
           </span>
         </div>
-        <StatusBadge phase={phase} />
+        <StatusBadge phase={phase} genPhase={state.genPhase} />
       </div>
 
       {/* Main frame: newest ready slide, or a planning placeholder. */}

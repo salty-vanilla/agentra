@@ -24,10 +24,20 @@ export interface StreamingDeckSlide {
   previewUrl: string | null;
 }
 
+/** Coarse generation phase label (Epic #425) shown during the authoring wait. */
+export type DeckGenPhase =
+  | 'planning'
+  | 'authoring'
+  | 'rendering'
+  | 'reviewing'
+  | 'composing';
+
 export interface StreamingDeckState {
   deckId: string | null;
   name: string | null;
   phase: StreamingDeckPhase;
+  /** Latest coarse generation phase (Epic #425), for a progress label. */
+  genPhase: DeckGenPhase | null;
   totalSlides: number | null;
   /** Deck-wide shared defs, carried on each slide event (last non-null wins). */
   defsUrl: string | null;
@@ -40,6 +50,7 @@ export const initialDeckStreamState: StreamingDeckState = {
   deckId: null,
   name: null,
   phase: 'idle',
+  genPhase: null,
   totalSlides: null,
   defsUrl: null,
   slides: [],
@@ -56,6 +67,8 @@ function startedState(
     deckId,
     name,
     phase: 'planning',
+    // A deck that has started is in (or past) the composing phase.
+    genPhase: 'composing',
     totalSlides,
     defsUrl: null,
     slides: [],
@@ -85,6 +98,16 @@ export function deckStreamReducer(
   event: DeckPreviewEvent,
 ): StreamingDeckState {
   switch (event.type) {
+    case 'deck_preview_phase':
+      // Coarse phase (Epic #425) — fires during the authoring wait, before any
+      // deck exists. Activate the shell so the user sees movement, and record
+      // the label. Doesn't touch deckId/slides.
+      return {
+        ...state,
+        genPhase: event.phase,
+        phase: state.phase === 'idle' ? 'planning' : state.phase,
+      };
+
     case 'deck_preview_started':
       return startedState(event.deckId, event.name, event.totalSlides ?? null);
 
@@ -123,6 +146,7 @@ export function deckStreamReducer(
       return {
         ...state,
         phase: 'completed',
+        genPhase: null, // clear the in-progress label on a terminal state
         totalSlides: event.totalSlides ?? state.totalSlides,
       };
 
@@ -132,6 +156,7 @@ export function deckStreamReducer(
         ...state,
         deckId: state.deckId ?? event.deckId,
         phase: 'failed',
+        genPhase: null, // clear the in-progress label on a terminal state
         failedReason: event.reason,
       };
 

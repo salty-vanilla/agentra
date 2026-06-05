@@ -64,11 +64,33 @@ export const deckPreviewFailedEventSchema = z.object({
 
 export type DeckPreviewFailedEvent = z.infer<typeof deckPreviewFailedEventSchema>;
 
+/** Coarse generation phases (Epic #425) — surface progress during the long
+ * authoring wait, before any slide compose event can exist. Ordered roughly:
+ * planning → authoring → rendering → reviewing → composing. */
+export const deckPhase = z.enum([
+  'planning',
+  'authoring',
+  'rendering',
+  'reviewing',
+  'composing',
+]);
+export type DeckPhase = z.infer<typeof deckPhase>;
+
+export const deckPreviewPhaseEventSchema = z.object({
+  type: z.literal('deck_preview_phase'),
+  phase: deckPhase,
+  /** Optional short human-readable detail (no secrets / no raw URLs). */
+  detail: z.string().max(200).optional(),
+});
+
+export type DeckPreviewPhaseEvent = z.infer<typeof deckPreviewPhaseEventSchema>;
+
 export const deckPreviewEventSchema = z.discriminatedUnion('type', [
   deckPreviewStartedEventSchema,
   deckSlideComposeReadyEventSchema,
   deckPreviewCompletedEventSchema,
   deckPreviewFailedEventSchema,
+  deckPreviewPhaseEventSchema,
 ]);
 
 export type DeckPreviewEvent = z.infer<typeof deckPreviewEventSchema>;
