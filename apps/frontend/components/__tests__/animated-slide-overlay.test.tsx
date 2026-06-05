@@ -17,12 +17,12 @@ function box(index: number): AnimBox {
 
 describe('AnimatedSlideOverlay', () => {
   it('renders nothing when there are no boxes', () => {
-    const { container } = render(<AnimatedSlideOverlay boxes={[]} runKey="x" />);
+    const { container } = render(<AnimatedSlideOverlay boxes={[]} />);
     expect(container.firstChild).toBeNull();
   });
 
   it('renders a wireframe + cursor per box, aria-hidden', () => {
-    render(<AnimatedSlideOverlay boxes={[box(0), box(1)]} runKey="c1" />);
+    render(<AnimatedSlideOverlay boxes={[box(0), box(1)]} />);
     const overlay = screen.getByTestId('animated-slide-overlay');
     expect(overlay).toHaveAttribute('aria-hidden');
     // 2 boxes → 2 wrapper divs each holding a wireframe + a cursor.

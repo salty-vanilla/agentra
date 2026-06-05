@@ -24,11 +24,11 @@ export interface AnimBox {
 
 function viewBoxDims(viewBox: string): { w: number; h: number } {
   const parts = viewBox.split(/\s+/).map(Number);
-  const w = parts[2];
-  const h = parts[3];
+  const w = parts[2] ?? 0;
+  const h = parts[3] ?? 0;
   return {
-    w: Number.isFinite(w) && (w as number) > 0 ? (w as number) : 0,
-    h: Number.isFinite(h) && (h as number) > 0 ? (h as number) : 0,
+    w: Number.isFinite(w) && w > 0 ? w : 0,
+    h: Number.isFinite(h) && h > 0 ? h : 0,
   };
 }
 
@@ -44,22 +44,22 @@ export function changedAnimBoxes(
   const { w, h } = viewBoxDims(compose.viewBox);
   if (w === 0 || h === 0) return [];
 
-  const boxes: AnimBox[] = [];
-  compose.components.forEach((component, index) => {
-    if (!component.bbox) return;
-    if (!isFirstAppearance && !component.changed) return;
+  return compose.components.flatMap((component, index) => {
+    if (!component.bbox) return [];
+    if (!isFirstAppearance && !component.changed) return [];
     const { x, y, w: bw, h: bh } = component.bbox;
-    boxes.push({
-      index,
-      leftPct: (x / w) * 100,
-      topPct: (y / h) * 100,
-      widthPct: (bw / w) * 100,
-      heightPct: (bh / h) * 100,
-      cxPct: ((x + bw / 2) / w) * 100,
-      cyPct: ((y + bh / 2) / h) * 100,
-    });
+    return [
+      {
+        index,
+        leftPct: (x / w) * 100,
+        topPct: (y / h) * 100,
+        widthPct: (bw / w) * 100,
+        heightPct: (bh / h) * 100,
+        cxPct: ((x + bw / 2) / w) * 100,
+        cyPct: ((y + bh / 2) / h) * 100,
+      },
+    ];
   });
-  return boxes;
 }
 
 /** Per-box stagger (ms) so changed components reveal in sequence. */

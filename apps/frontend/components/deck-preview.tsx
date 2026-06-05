@@ -113,15 +113,21 @@ export function DeckSlideFrame({
     };
   }, [defs, compose]);
 
-  // Drive the animation overlay when a new compose payload renders.
+  // Drive the animation overlay when a *new* compose payload renders. Gated on a
+  // genuine compose change (not a reducedMotion toggle) so flipping motion off
+  // doesn't replay an already-shown slide.
+  const prevComposeRef = useRef<ComposeData | null>(null);
   useEffect(() => {
     if (!compose) return;
-    const isFirst = !seenComposeRef.current;
-    seenComposeRef.current = true;
+    const composeChanged = prevComposeRef.current !== compose;
+    prevComposeRef.current = compose;
     if (reducedMotion) {
       setAnimBoxes([]);
       return;
     }
+    if (!composeChanged) return;
+    const isFirst = !seenComposeRef.current;
+    seenComposeRef.current = true;
     const boxes = changedAnimBoxes(compose, isFirst);
     setAnimBoxes(boxes);
     if (boxes.length === 0) return;
@@ -143,7 +149,7 @@ export function DeckSlideFrame({
         className={cn('absolute inset-0', canRenderSvg ? 'opacity-100' : 'opacity-0')}
       />
       {canRenderSvg && animBoxes.length > 0 ? (
-        <AnimatedSlideOverlay boxes={animBoxes} runKey={slide.composeUrl ?? ''} />
+        <AnimatedSlideOverlay boxes={animBoxes} />
       ) : null}
       {!canRenderSvg ? (
         <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-xs">
@@ -181,7 +187,13 @@ export function DeckPreview({ deck, className }: DeckPreviewProps) {
         </span>
       </div>
 
-      <DeckSlideFrame defs={defs} defsErrored={defsErrored} slide={current} />
+      {/* key per slug: remount on slide change so first-appearance animation resets. */}
+      <DeckSlideFrame
+        key={current.slug}
+        defs={defs}
+        defsErrored={defsErrored}
+        slide={current}
+      />
 
       {slides.length > 1 ? (
         <div className="flex items-center justify-between gap-2">

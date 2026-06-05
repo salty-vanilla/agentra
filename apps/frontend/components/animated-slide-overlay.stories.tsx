@@ -4,8 +4,8 @@ import { AnimatedSlideOverlay } from './animated-slide-overlay';
 
 /**
  * The transient animation overlay (Epic #424). In Storybook it plays on a plain
- * 16:9 frame so each box's wireframe-draw + cursor-tap is visible. Change the
- * `runKey` control to replay.
+ * 16:9 frame so each box's wireframe-draw + cursor-tap is visible. Switch stories
+ * (or remount) to replay.
  */
 const meta = {
   title: 'Deck/AnimatedSlideOverlay',
@@ -45,7 +45,6 @@ const box = (
 /** First appearance: every component draws on, staggered. */
 export const FirstAppearance: Story = {
   args: {
-    runKey: 'first',
     boxes: [box(0, 8, 10, 84, 22), box(1, 8, 40, 50, 14), box(2, 8, 60, 84, 28)],
   },
 };
@@ -53,7 +52,6 @@ export const FirstAppearance: Story = {
 /** A revision: only the single changed component animates. */
 export const SingleChanged: Story = {
   args: {
-    runKey: 'revised',
     boxes: [box(1, 8, 40, 50, 14)],
   },
 };
@@ -61,7 +59,6 @@ export const SingleChanged: Story = {
 /** No changes → nothing renders. */
 export const NoChanges: Story = {
   args: {
-    runKey: 'none',
     boxes: [],
   },
 };

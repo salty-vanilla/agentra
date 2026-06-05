@@ -126,6 +126,7 @@ export function StreamingDeckPreview({ state, className }: StreamingDeckPreviewP
       {/* Main frame: newest ready slide, or a planning placeholder. */}
       {activeSlide ? (
         <DeckSlideFrame
+          key={activeSlide.slug}
           defs={defs}
           defsErrored={defsErrored}
           slide={activeSlide satisfies DeckSlidePreview}

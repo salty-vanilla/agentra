@@ -26,15 +26,15 @@ const KEYFRAMES = `
 
 export interface AnimatedSlideOverlayProps {
   boxes: AnimBox[];
-  /** Changing this (e.g. composeUrl) replays the animation. */
-  runKey: string | number;
 }
 
-export function AnimatedSlideOverlay({ boxes, runKey }: AnimatedSlideOverlayProps) {
+// Replay happens via the parent's null → non-null remount cycle (it sets
+// animBoxes to [] then to a fresh array on each new compose), which resets the
+// CSS animations — no key prop is needed here.
+export function AnimatedSlideOverlay({ boxes }: AnimatedSlideOverlayProps) {
   if (boxes.length === 0) return null;
   return (
     <div
-      key={runKey}
       aria-hidden
       data-testid="animated-slide-overlay"
       className="pointer-events-none absolute inset-0 overflow-hidden"
