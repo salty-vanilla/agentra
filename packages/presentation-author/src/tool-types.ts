@@ -93,6 +93,16 @@ export interface CreatePresentationToolOutput {
   contactSheetPath?: string | undefined;
   renderedSlidePaths?: string[] | undefined;
 
+  /**
+   * SDPM Workspace directory (sdpm-skill engine only). The runtime reads this to
+   * sync the Deck Workspace and connect the deck preview (#446 / #448).
+   */
+  workspaceDir?: string | undefined;
+  /** Path to the SDPM `deck.json` (sdpm-skill engine only). */
+  deckJsonPath?: string | undefined;
+  /** Paths to the SDPM `slides/{slug}.json` (sdpm-skill engine only). */
+  slideJsonPaths?: string[] | undefined;
+
   diagnosticsStatus?: 'pass' | 'warn' | 'fail' | undefined;
   revisionAttempted?: boolean | undefined;
   revisionSucceeded?: boolean | undefined;

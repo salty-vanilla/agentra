@@ -61,11 +61,24 @@ describe('runPresentationAuthorEngine', () => {
     expect(result.authorResult?.pptxPath).toBe('/tmp/work/deck.pptx');
   });
 
-  it('degrades with a clear error when sdpm-skill is selected', async () => {
+  it('degrades with a clear error when sdpm-skill cannot generate', async () => {
+    const sdpm = createSdpmSkillAdapter({
+      authorWorkspace: async () => ({
+        deck: {},
+        slides: [{ slug: 'a', message: 'm', json: {} }],
+      }),
+      runGenerate: async () => ({
+        success: false,
+        pptxPath: null,
+        warnings: ['SDPM skill directory not configured'],
+        stdout: '',
+        stderr: '',
+      }),
+    });
     await expect(
       runPresentationAuthorEngine(input, deps, {
         engine: 'sdpm-skill',
-        adapters: { 'sdpm-skill': createSdpmSkillAdapter() },
+        adapters: { 'sdpm-skill': sdpm },
       }),
     ).rejects.toBeInstanceOf(PresentationAuthorEngineNotImplementedError);
   });
@@ -78,12 +91,25 @@ describe('runPresentationAuthorEngine', () => {
 
   it('does not invoke the agentra engine when sdpm-skill is selected', async () => {
     const runAuthor = vi.fn().mockResolvedValue(fakeAuthorResult());
+    const sdpm = createSdpmSkillAdapter({
+      authorWorkspace: async () => ({
+        deck: {},
+        slides: [{ slug: 'a', message: 'm', json: {} }],
+      }),
+      runGenerate: async () => ({
+        success: false,
+        pptxPath: null,
+        warnings: ['no skill'],
+        stdout: '',
+        stderr: '',
+      }),
+    });
     await expect(
       runPresentationAuthorEngine(input, deps, {
         engine: 'sdpm-skill',
         adapters: {
           'agentra-pptxgenjs': createAgentraPptxgenjsAdapter(runAuthor),
-          'sdpm-skill': createSdpmSkillAdapter(),
+          'sdpm-skill': sdpm,
         },
       }),
     ).rejects.toBeInstanceOf(PresentationAuthorEngineNotImplementedError);
