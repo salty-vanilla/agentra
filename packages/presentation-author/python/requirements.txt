@@ -3,3 +3,9 @@ Pillow>=10.0.0
 python-pptx>=0.6.21
 numpy>=1.24.0
 lxml>=5.0.0
+# SDPM Skill (sdpm-skill engine, #442/#448) — vendored under
+# vendor/sdpm-skill. python-pptx/Pillow/lxml above are shared; these three are
+# the only SDPM-specific additions.
+qrcode>=7.4
+pygments>=2.19.2
+defusedxml>=0.7.1
