@@ -1,5 +1,7 @@
 # SDPM Slide Capability Integration Plan
 
+> **⚠️ 方針転換あり (2026-06):** 本ドキュメントの「compose/defs だけを移植する」縦スライス方針は、Epic [#442](https://github.com/) で **SDPM Skill (Layer 1) を `PresentationAuthorEngine` 候補として取り込む** 方向へ更新された。最新の本線方針は [sdpm-skill-pivot.md](./sdpm-skill-pivot.md) を参照。本ドキュメントは #382 / #403 / #417 の表示・配信基盤の設計記録として有効。
+>
 > **Status:** Design only (no implementation yet)
 > **Goal:** Bring SDPM's spec-driven slide generation + Live Preview capability into the **Agentra Slide Runtime** as an *SDPM-compatible generation/preview substrate* — not as a transplanted app.
 > **Source:** [aws-samples/sample-spec-driven-presentation-maker](https://github.com/aws-samples/sample-spec-driven-presentation-maker) (MIT-0)
