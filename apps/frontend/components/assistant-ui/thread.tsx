@@ -51,11 +51,13 @@ import { StreamingDeckPreview } from '@/components/streaming-deck-preview';
 import { SubAgentProgressCard } from '@/components/sub-agent-progress-card';
 import { Button } from '@/components/ui/button';
 import { WelcomePromptCards } from '@/components/welcome-prompt-cards';
+import { WorkspacePreviewPanel } from '@/components/workspace-preview-panel';
 import type { StreamingDeckState } from '@/lib/deck-stream';
 import { isStreamingDeckActive } from '@/lib/deck-stream';
 import type {
   ArtifactManifest,
   ChatCommand,
+  DeckSnapshotResponse,
   ProgressSummaryEvent,
   SubAgentProgressEvent,
 } from '@/lib/generated/model';
@@ -105,6 +107,7 @@ export const Thread: FC<{
   activeProgressPhase?: string;
   subAgentProgressEvents?: SubAgentProgressEvent[];
   streamingDeckState?: StreamingDeckState;
+  deckSnapshot?: DeckSnapshotResponse | null;
 }> = ({
   modelValue,
   onModelChange,
@@ -118,6 +121,7 @@ export const Thread: FC<{
   activeProgressPhase,
   subAgentProgressEvents,
   streamingDeckState,
+  deckSnapshot,
 }) => {
   const composerInputRef = useRef<HTMLTextAreaElement>(null);
   const focusComposerInput = useCallback(() => {
@@ -165,6 +169,14 @@ export const Thread: FC<{
               {subAgentProgressEvents && subAgentProgressEvents.length > 0 && (
                 <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
                   <SubAgentProgressCard events={subAgentProgressEvents} />
+                </div>
+              )}
+              {/* SDPM Workspace Preview (Epic #442 / #447): brief / outline /
+                  slide skeletons while the deck is authored. Self-hides for
+                  agentra-pptxgenjs decks (no workspace in the snapshot). */}
+              {deckSnapshot?.workspace && (
+                <div className="mx-auto w-full max-w-(--thread-max-width) px-2">
+                  <WorkspacePreviewPanel snapshot={deckSnapshot} />
                 </div>
               )}
               {/* Streaming Deck Preview while a deck is being built. Once it
