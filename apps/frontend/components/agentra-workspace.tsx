@@ -869,6 +869,7 @@ export function AgentraWorkspace() {
                   progressEvents={progressEvents}
                   subAgentProgressEvents={subAgentProgressEvents}
                   streamingDeckState={renderedDeckState}
+                  deckSnapshot={deckSnapshot}
                   {...(activeProgressPhase ? { activeProgressPhase } : {})}
                 />
               </section>
