@@ -3,7 +3,11 @@ import {
   extractContactSheetPath,
   extractRenderedSlidePaths,
 } from './artifacts.js';
-import { runPresentationAuthor } from './runner.js';
+import {
+  PresentationAuthorEngineNotImplementedError,
+  runPresentationAuthorEngine,
+  UnknownPresentationAuthorEngineError,
+} from './engine/index.js';
 import type {
   CreatePresentationToolInput,
   CreatePresentationToolOutput,
@@ -59,6 +63,12 @@ export function mapErrorToToolError(
   const message = error instanceof Error ? error.message : String(error);
   const truncated = message.slice(0, 500);
 
+  if (
+    error instanceof PresentationAuthorEngineNotImplementedError ||
+    error instanceof UnknownPresentationAuthorEngineError
+  ) {
+    return { message: truncated, phase: 'engine-selection' };
+  }
   if (/validation|dangerous/i.test(message)) {
     return { message: truncated, phase: 'script-validation' };
   }
@@ -140,7 +150,7 @@ export async function createPresentation(
   const language = input.language ?? inferLanguage(input.prompt);
 
   try {
-    const result = await runPresentationAuthor(
+    const engineResult = await runPresentationAuthorEngine(
       {
         prompt: input.prompt,
         language,
@@ -155,7 +165,19 @@ export async function createPresentation(
         images: input.images,
       },
       deps,
+      { engine: input.engine },
     );
+
+    // The default `agentra-pptxgenjs` engine always returns the full author
+    // result. Engines that do not (future `sdpm-skill`) are connected to the
+    // artifact pipeline in #448; until then they degrade before reaching here.
+    const result = engineResult.authorResult;
+    if (!result) {
+      throw new PresentationAuthorEngineNotImplementedError(
+        engineResult.engine,
+        'Engine did not return an author result; artifact pipeline connection is pending.',
+      );
+    }
 
     const contactSheetPath = extractContactSheetPath(result.diagnostics);
     const renderedSlidePaths = extractRenderedSlidePaths(result.diagnostics);
@@ -181,6 +203,7 @@ export async function createPresentation(
     return {
       success: true,
       summary,
+      engine: engineResult.engine,
       workDir: result.workDir,
       pptxPath: result.pptxPath,
       sourceJsPath: result.sourceJsPath,

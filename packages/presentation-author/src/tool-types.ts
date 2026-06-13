@@ -1,4 +1,5 @@
 import type { ArtifactRef } from '@agentra/shared';
+import type { PresentationAuthorEngine } from './engine/types.js';
 import type { IconConfig, IconResultMetadata } from './icons/types.js';
 import type { ImageResultMetadata, PresentationImagesInput } from './images/types.js';
 
@@ -62,6 +63,13 @@ export interface CreatePresentationToolInput {
    * If omitted, images are disabled by default.
    */
   images?: PresentationImagesInput | undefined;
+
+  /**
+   * Optional authoring engine override.
+   * Precedence: this field > `PRESENTATION_AUTHOR_ENGINE` env > default
+   * (`agentra-pptxgenjs`). Omit to preserve existing behaviour.
+   */
+  engine?: PresentationAuthorEngine | undefined;
 }
 
 export type CreatePresentationArtifact = ArtifactRef;
@@ -73,6 +81,11 @@ export interface CreatePresentationToolOutput {
    * Human-readable compact summary for agent/user.
    */
   summary: string;
+
+  /**
+   * Engine that produced this result. Present on success.
+   */
+  engine?: PresentationAuthorEngine | undefined;
 
   workDir: string;
   pptxPath?: string | undefined;
@@ -104,6 +117,7 @@ export interface CreatePresentationToolOutput {
         message: string;
         phase:
           | 'input-validation'
+          | 'engine-selection'
           | 'llm-generation'
           | 'script-validation'
           | 'script-execution'

@@ -5,6 +5,7 @@ export * from './contact-sheet.js';
 export * from './create-presentation-tool.js';
 export * from './deck/index.js';
 export * from './diagnostics.js';
+export * from './engine/index.js';
 export * from './executor.js';
 export * from './icons/index.js';
 export * from './images/index.js';
