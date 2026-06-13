@@ -814,6 +814,15 @@ function deckSnapshotDeps(s3: S3Client, bucketName: string): DeckSnapshotDeps {
         return null;
       }
     },
+    async readText(key) {
+      // Used for `specs/outline.md` to derive slide skeleton messages (#446).
+      try {
+        const res = await s3.send(new GetObjectCommand({ Bucket: bucketName, Key: key }));
+        return (await res.Body?.transformToString()) ?? null;
+      } catch {
+        return null;
+      }
+    },
     async presign(key) {
       try {
         return await getSignedUrl(

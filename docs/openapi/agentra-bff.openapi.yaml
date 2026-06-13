@@ -2548,6 +2548,70 @@ components:
         epoch:
           type: integer
           minimum: 0
+        workspace:
+          # Optional SDPM Workspace projection (Epic #442 / #446). Present only
+          # for decks authored by the sdpm-skill engine; omitted otherwise so
+          # existing agentra-pptxgenjs decks are unaffected.
+          $ref: '#/components/schemas/DeckWorkspaceSnapshot'
+    DeckWorkspaceSpecs:
+      type: object
+      additionalProperties: false
+      required:
+        - briefUrl
+        - outlineUrl
+        - artDirectionUrl
+      properties:
+        briefUrl:
+          type: string
+          nullable: true
+        outlineUrl:
+          type: string
+          nullable: true
+        artDirectionUrl:
+          type: string
+          nullable: true
+    DeckWorkspaceSlideSkeleton:
+      type: object
+      additionalProperties: false
+      required:
+        - slug
+        - index
+        - status
+      properties:
+        slug:
+          type: string
+          minLength: 1
+        index:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          nullable: true
+        message:
+          type: string
+          nullable: true
+        layoutIntent:
+          type: string
+          nullable: true
+        visualIntent:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [skeleton, ready]
+    DeckWorkspaceSnapshot:
+      type: object
+      additionalProperties: false
+      required:
+        - specs
+        - slides
+      properties:
+        specs:
+          $ref: '#/components/schemas/DeckWorkspaceSpecs'
+        slides:
+          type: array
+          items:
+            $ref: '#/components/schemas/DeckWorkspaceSlideSkeleton'
     ChatStreamDeckProgressEvent:
       type: object
       additionalProperties: false

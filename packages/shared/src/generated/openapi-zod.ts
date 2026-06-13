@@ -400,6 +400,8 @@ export const getDeckSnapshotResponseEpochMin = 0;
 
 
 
+
+
 export const GetDeckSnapshotResponse = zod.object({
   "deckId": zod.string().min(1),
   "name": zod.string(),
@@ -414,7 +416,23 @@ export const GetDeckSnapshotResponse = zod.object({
   "composeUrl": zod.string().nullable(),
   "previewUrl": zod.string().nullable()
 })),
-  "epoch": zod.number().min(getDeckSnapshotResponseEpochMin)
+  "epoch": zod.number().min(getDeckSnapshotResponseEpochMin),
+  "workspace": zod.object({
+  "specs": zod.object({
+  "briefUrl": zod.string().nullable(),
+  "outlineUrl": zod.string().nullable(),
+  "artDirectionUrl": zod.string().nullable()
+}),
+  "slides": zod.array(zod.object({
+  "slug": zod.string().min(1),
+  "index": zod.number().min(1),
+  "title": zod.string().nullish(),
+  "message": zod.string().nullish(),
+  "layoutIntent": zod.string().nullish(),
+  "visualIntent": zod.string().nullish(),
+  "status": zod.enum(['skeleton', 'ready'])
+}))
+}).optional()
 })
 
 
