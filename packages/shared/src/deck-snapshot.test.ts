@@ -262,6 +262,38 @@ describe('getDeckSnapshot — SDPM workspace projection', () => {
     ]);
   });
 
+  it('joins semantic workspace slugs to positional compose slides by index', async () => {
+    // SDPM authoring uses semantic slugs (cover/features/summary); LibreOffice
+    // compose uses positional slugs (slide-1/2/3). They must merge by index into
+    // 3 slides (not 6), each ready once its positional compose exists.
+    const keys = [
+      k('deck.json'),
+      k('specs/brief.md'),
+      k('specs/outline.md'),
+      k('slides/cover.json'),
+      k('slides/features.json'),
+      k('slides/summary.json'),
+      k('slides/slide-1.compose.json'),
+      k('slides/slide-2.compose.json'),
+    ];
+    const snap = await getDeckSnapshot(
+      { deckId: DECK },
+      sdpmDeps(keys, {
+        outline: '- [cover] 表紙\n- [features] 特徴\n- [summary] まとめ\n',
+        slideJson: { cover: { layout: 'Title' }, features: {}, summary: {} },
+      }),
+    );
+    const ws = snap?.workspace?.slides ?? [];
+    expect(ws.map((s) => s.slug)).toEqual(['cover', 'features', 'summary']);
+    expect(ws.map((s) => [s.index, s.status])).toEqual([
+      [1, 'ready'], // compose at index 1 (slide-1)
+      [2, 'ready'], // compose at index 2 (slide-2)
+      [3, 'skeleton'], // no compose at index 3 yet
+    ]);
+    // Compose previews remain under their positional slugs in `slides`.
+    expect(snap?.slides.map((s) => s.slug)).toEqual(['slide-1', 'slide-2']);
+  });
+
   it('degrades on a partial workspace (brief only, no slides)', async () => {
     const snap = await getDeckSnapshot(
       { deckId: DECK },

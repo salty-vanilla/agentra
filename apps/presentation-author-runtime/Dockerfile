@@ -103,6 +103,11 @@ ENV PRESENTATION_SANDBOX_RUNTIME_DIR=/opt/presentation-sandbox-runtime
 # Ensure HOME is writable for LibreOffice profile
 ENV HOME=/tmp
 
+# SDPM Skill (sdpm-skill engine, #442/#448): the vendored skill is included via
+# the `vendor/` COPY above. Point the engine at it. The engine is still opt-in —
+# it only runs when PRESENTATION_AUTHOR_ENGINE=sdpm-skill is set.
+ENV SDPM_SKILL_DIR=/app/packages/presentation-author/vendor/sdpm-skill
+
 # Copy skill definitions (SKILL.md files read at runtime by AgentSkills plugin)
 COPY apps/presentation-author-runtime/skills/ apps/presentation-author-runtime/skills/
 

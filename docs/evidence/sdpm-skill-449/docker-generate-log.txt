@@ -1,0 +1,15 @@
+# SDPM skill generate inside production-like image
+date: 2026-06-13T11:00:28Z
+python: Python 3.11.15
+image base: python:3.11-slim-bookworm + packages/presentation-author/python/requirements.txt + vendored skill (pinned de5b13f, v0.3.8)
+deps import OK: qrcode,pygments,defusedxml,python-pptx,lxml,Pillow
+Generated: /out/sdpm-docker-deck.pptx
+page01 - (no title)
+page02 - (no title)
+⚠️  Layout bias detected (2 slides):
+  page01 (Blank) offset: -30.2% (top-heavy)
+  page02 (Blank) offset: -32.7% (top-heavy)
+  → MUST FIX unless the layout type is intentionally asymmetric.
+generate elapsed: s
+slide xml count: 2
+pptx bytes: 34599

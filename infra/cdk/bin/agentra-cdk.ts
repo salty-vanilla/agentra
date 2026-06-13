@@ -87,6 +87,15 @@ if (previewContext) {
   const deckPreviewStreaming = boolCtx('deckPreviewStreaming');
   const routerDeckStreaming = boolCtx('routerDeckStreaming');
 
+  // Opt-in Presentation Author Engine selection (Epic #442). Default unset →
+  // agentra-pptxgenjs. `-c presentationAuthorEngine=sdpm-skill` for ephemeral.
+  const presentationAuthorEngineCtx = app.node.tryGetContext('presentationAuthorEngine');
+  const presentationAuthorEngine =
+    typeof presentationAuthorEngineCtx === 'string' &&
+    presentationAuthorEngineCtx.trim().length > 0
+      ? presentationAuthorEngineCtx.trim()
+      : undefined;
+
   const parseCsvContext = (key: string): string[] => {
     const value = app.node.tryGetContext(key);
     if (!value || typeof value !== 'string') {
@@ -156,6 +165,7 @@ if (previewContext) {
       deckPreviewEnabled,
       slideRuntimeStreaming,
       deckPreviewStreaming,
+      ...(presentationAuthorEngine ? { presentationAuthorEngine } : {}),
       ...(thirdPartyApiKeysSecretArn ? { thirdPartyApiKeysSecretArn } : {}),
     },
   );

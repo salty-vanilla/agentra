@@ -336,11 +336,15 @@ async function buildWorkspaceSnapshot(
   ]);
 
   const outlineEntries = outlineText ? parseOutlineEntries(outlineText) : [];
-  const composeSlugs = new Set(parsed.slides.map((s) => s.slug));
   const slideJsonBySlug = new Map(parsed.slideJsonKeys.map((s) => [s.slug, s.key]));
+  // Compose lives under positional slugs (`slide-N`) while the workspace uses
+  // semantic slugs (`cover`). They are joined by 1-based **index**: a workspace
+  // slide is "ready" once a compose exists at its position (see #448).
+  const composeIndices = new Set(parsed.slides.map((s) => s.index));
 
-  // Canonical order: outline order first, then any slide JSON / compose slugs
-  // not named in the outline (sorted by index), so partial workspaces degrade.
+  // Semantic workspace slugs only (outline order, then any slide JSON not named
+  // in the outline). Positional compose slugs are NOT added as separate entries —
+  // they are surfaced via `snapshot.slides` and joined here by index.
   const orderedSlugs: string[] = [];
   const seen = new Set<string>();
   const pushSlug = (slug: string) => {
@@ -351,24 +355,24 @@ async function buildWorkspaceSnapshot(
   };
   for (const entry of outlineEntries) pushSlug(entry.slug);
   for (const s of parsed.slideJsonKeys) pushSlug(s.slug);
-  for (const s of parsed.slides) pushSlug(s.slug);
 
   const messageBySlug = new Map(outlineEntries.map((e) => [e.slug, e.message]));
 
   const slides: DeckWorkspaceSlideSkeleton[] = await Promise.all(
     orderedSlugs.map(async (slug, i) => {
+      const index = i + 1;
       const jsonKey = slideJsonBySlug.get(slug);
       const slideJson = jsonKey ? await deps.readJson(jsonKey) : null;
       const message = messageBySlug.get(slug) ?? null;
       return {
         slug,
-        index: i + 1,
+        index,
         title: slideTitle(slideJson),
         message: message && message.length > 0 ? message : null,
         layoutIntent: asString(slideJson?.layout),
         visualIntent:
           asString(slideJson?.visualIntent) ?? asString(slideJson?.visual_intent),
-        status: composeSlugs.has(slug) ? ('ready' as const) : ('skeleton' as const),
+        status: composeIndices.has(index) ? ('ready' as const) : ('skeleton' as const),
       };
     }),
   );

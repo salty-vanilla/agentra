@@ -42,6 +42,12 @@ export interface AgentraSlideRuntimeStackProps extends StackProps {
    * → export → compose → upload per slide). Sets PRESENTATION_DECK_PREVIEW_STREAMING.
    */
   deckPreviewStreaming?: boolean;
+  /**
+   * Opt-in (Epic #442): select the Presentation Author Engine. Omit (default) to
+   * use `agentra-pptxgenjs`. Set to `sdpm-skill` to use the SDPM Skill engine in
+   * an ephemeral environment only. Sets PRESENTATION_AUTHOR_ENGINE.
+   */
+  presentationAuthorEngine?: string | undefined;
 }
 
 export class AgentraSlideRuntimeStack extends Stack {
@@ -247,6 +253,11 @@ export class AgentraSlideRuntimeStack extends Stack {
         PRESENTATION_IMAGE_GENERATION_ENABLED: 'false',
         CLOUDWATCH_LOG_GROUP: `/aws/bedrock-agentcore/runtimes/agentra-slide-${props.stage}`,
         LOG_LEVEL: 'info',
+        // Presentation Author Engine selection (Epic #442). Omitted → default
+        // agentra-pptxgenjs. Set per ephemeral environment to opt into sdpm-skill.
+        ...(props.presentationAuthorEngine
+          ? { PRESENTATION_AUTHOR_ENGINE: props.presentationAuthorEngine }
+          : {}),
         ...thirdPartyEnvVars,
       },
       agentRuntimeArtifact: {
