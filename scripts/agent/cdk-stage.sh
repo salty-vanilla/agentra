@@ -269,6 +269,15 @@ build_cdk_flags() {
         CDK_CONTEXT+=(-c "corsOrigins=${local_origins}")
     fi
 
+    # Optional ad-hoc context passthrough for ephemeral feature flags, e.g.
+    #   EXTRA_CDK_CONTEXT="deckPreviewEnabled=true presentationAuthorEngine=sdpm-skill"
+    # Space-separated key=value pairs. Used only for ephemeral experiments.
+    if [[ -n "${EXTRA_CDK_CONTEXT:-}" ]]; then
+        for kv in ${EXTRA_CDK_CONTEXT}; do
+            CDK_CONTEXT+=(-c "$kv")
+        done
+    fi
+
     if [[ "$mode" == "deploy" ]]; then
         case "$group" in
             web|all)

@@ -5,21 +5,58 @@
 
 ## Status
 
-- ✅ **Production-image validation (highest-risk integration) — PASS.** The
-  vendored SDPM skill + the runtime's `requirements.txt` were built into a
-  `python:3.11-slim-bookworm` image (identical to the runtime's python stage)
-  and `pptx_builder.py generate` produced a valid 2-slide PPTX. See
+- ✅ **Deployed-stack E2E on real AgentCore — PASS.** `PRESENTATION_AUTHOR_ENGINE=sdpm-skill`
+  was deployed to the ephemeral `dev-deckprev` slide runtime (ap-northeast-1) and
+  the engine generated a real 3-slide Japanese deck. See the [Live run](#live-deployed-run-completed)
+  section: real PPTX ([`live/sdpm-agentcore-deck.pptx`](./live/sdpm-agentcore-deck.pptx)),
+  video of the Workspace Preview rendering it ([`live/sdpm-workspace-preview-live.mp4`](./live/sdpm-workspace-preview-live.mp4)),
+  the workspace files, and the AgentCore result.
+- ✅ **Production-image validation — PASS.** The vendored SDPM skill + the
+  runtime `requirements.txt` built into a `python:3.11-slim-bookworm` image and
+  `pptx_builder.py generate` produced a valid 2-slide PPTX. See
   [`docker-generate-log.txt`](./docker-generate-log.txt) and
   [`sdpm-docker-deck.pptx`](./sdpm-docker-deck.pptx).
-- ✅ **Engine path validation (local, real skill) — PASS.** `createSdpmSkillAdapter`
-  author→materialize→generate was exercised against the real skill in #448's
-  gated test (`SDPM_SKILL_DIR` set), producing a real PPTX.
-- ⏳ **Deployed-stack E2E (chat → workspace → artifactManifest.deck → DeckPreview)
-  — operator step.** The runbook below deploys an ephemeral stage and drives a
-  real chat. It is intentionally left as a supervised run because it provisions
-  cloud resources (AgentCore runtime container + BFF + frontend) and needs an
-  interactive auth session; the engine itself is de-risked by the two passes
-  above.
+- ✅ **Engine path validation (local, real skill) — PASS** (#448 gated test).
+
+## Live deployed run (completed)
+
+**2026-06-13, ap-northeast-1, stage `dev-deckprev`** (reused the existing
+ephemeral agentcore stage; only the slide runtime was redeployed with
+`-c deckPreviewEnabled=true -c presentationAuthorEngine=sdpm-skill`).
+
+- Invoked the deployed slide runtime directly (`bedrock-agentcore invoke-agent-runtime`,
+  non-streaming) with a Japanese 3-slide prompt. Result
+  ([`live/agentcore-result.json`](./live/agentcore-result.json)):
+  `engine: "sdpm-skill"`, `success: true`, `slideOrder: [slide-1,slide-2,slide-3]`,
+  PPTX artifact, **zero warnings**.
+- The SDPM engine wrote the full Deck Workspace to S3 `decks/{deckId}/`:
+  `deck.json`, `specs/{brief,outline}.md`, semantic `slides/{cover,features,summary}.json`,
+  positional `slides/slide-{1,2,3}.compose.json`, `preview/defs.json`, and the PPTX.
+  The outline shows the SDPM authoring quality (semantic slugs + 1-slide-1-message
+  in Japanese) — see [`live/outline.md`](./live/outline.md).
+- The BFF `getDeckSnapshot` projection (#446, fixed below) merged the semantic
+  workspace slides to the positional compose slides **by index** into 3 slides.
+- The Agentra **WorkspacePreviewPanel** (#447) rendered the real deck from the
+  live S3 compose/defs: header `3/3 スライド`, spec links, and the 3 authored
+  slides (`SDPM スキル紹介` / `SDPM の主な特徴` / `まとめ`). Video:
+  [`live/sdpm-workspace-preview-live.mp4`](./live/sdpm-workspace-preview-live.mp4),
+  still: [`live/story-live-rendered.png`](./live/story-live-rendered.png).
+- The chat-path (frontend → BFF → main runtime → slide tool) **completed the
+  generation** but the deck was not attached to the message `artifactManifest`,
+  and the AgentCore streaming connection drops during the long (~100s) slide tool
+  call. Both are filed as follow-ups below; the engine itself is fully validated
+  via the direct invoke + snapshot + UI render above.
+
+### Bug found and fixed during the live run
+
+The live snapshot exposed that the workspace projection listed **6** slides
+(`cover/features/summary` skeleton + `slide-1/2/3` ready) instead of 3. Root
+cause: positional compose slugs were appended as separate entries instead of
+joined to the semantic slugs by index. Fixed in
+`packages/shared/src/deck-snapshot.ts` (`buildWorkspaceSnapshot` now joins by
+1-based index; status is "ready" when a compose exists at that position) with a
+regression test. This is exactly the kind of integration defect #449 exists to
+catch.
 
 ## What was validated in the production image
 
@@ -84,7 +121,21 @@ Unset `PRESENTATION_AUTHOR_ENGINE` (or set `=agentra-pptxgenjs`) and redeploy;
 the runtime returns to the legacy engine with no other change. The SDPM skill is
 inert when not selected.
 
-## Follow-ups discovered
+## Follow-ups discovered (live run)
+
+- **Chat-path deck attachment:** a deck generated through the full chat
+  (main runtime → `create_slide_presentation` → slide runtime) completed but was
+  not attached to the assistant message's `artifactManifest.deck`. The router's
+  deck capture likely needs the same handling for the sdpm-skill result shape.
+  → file a follow-up issue.
+- **AgentCore streaming idle during long tool calls:** the BFF→main-runtime SSE
+  reports `aborted` while the agent is inside the ~100s slide tool call (no bytes
+  flowing). Simple chats stream fine. Needs a keepalive/relay strategy for long
+  tool calls. → file a follow-up issue.
+- **dev-deckprev slide runtime is currently on `sdpm-skill`.** Revert by
+  redeploying without `-c presentationAuthorEngine=...`, or destroy the stage.
+
+## Follow-ups discovered (image validation)
 
 - The runtime venv must be on `PATH` for `python3` to resolve to the SDPM deps
   (the production Dockerfile already sets `ENV PATH="$VIRTUAL_ENV/bin:$PATH"`;

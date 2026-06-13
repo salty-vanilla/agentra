@@ -1,0 +1,34 @@
+{
+  "success": true,
+  "summary": "Presentation created successfully.",
+  "engine": "sdpm-skill",
+  "pptxPath": "/tmp/sdpm-ws-9oT13X/deck.pptx",
+  "workspaceDir": "/tmp/sdpm-ws-9oT13X",
+  "deckJsonPath": "/tmp/sdpm-ws-9oT13X/deck.json",
+  "slideJsonPaths": [
+    "/tmp/sdpm-ws-9oT13X/slides/cover.json",
+    "/tmp/sdpm-ws-9oT13X/slides/features.json",
+    "/tmp/sdpm-ws-9oT13X/slides/summary.json"
+  ],
+  "warnings": [],
+  "deck": {
+    "deckId": "019ec0f4-1686-7ba8-8443-24e719433f6d",
+    "name": "SDPMスキルの紹介資料を日本語で3枚にまとめてください。表紙・特徴・まとめの3部構成で、簡潔に。",
+    "language": "ja",
+    "slideOrder": [
+      "slide-1",
+      "slide-2",
+      "slide-3"
+    ],
+    "version": 1,
+    "slides_count": 3,
+    "specs_present": {
+      "briefUrl": false,
+      "outlineUrl": true,
+      "artDirectionUrl": false
+    }
+  },
+  "artifact_kinds": [
+    "pptx"
+  ]
+}
