@@ -13,6 +13,7 @@ import type { UploadedPresentationArtifact } from '../artifacts/artifact-upload-
 import { uploadPresentationArtifacts } from '../artifacts/s3-artifact-uploader.js';
 import { deriveDeckName, generateDeckPreview } from '../deck/deck-preview.js';
 import { generateDeckPreviewStreaming } from '../deck/deck-preview-streaming.js';
+import { generateSdpmDeckPreview } from '../deck/sdpm-deck-preview.js';
 import { FONT_POLICY_STYLE_GUIDE } from '../font-policy.js';
 import { createPresentationAuthorLlmClient } from '../llm-adapter.js';
 import { logger } from '../logger.js';
@@ -148,6 +149,9 @@ export async function executeCreatePresentationTool(
       retrievalEnabled: envImageRetrievalEnabled,
       generationEnabled: envImageGenerationEnabled,
     },
+    // Engine selection: per-request override; falls back to PRESENTATION_AUTHOR_ENGINE
+    // (then the default agentra-pptxgenjs) inside the package.
+    engine: input.engine,
   };
 
   try {
@@ -271,12 +275,24 @@ export async function executeCreatePresentationTool(
           // Race against a hard budget: a slow-but-succeeding deck preview must
           // not push the whole invocation past the runtime cap and lose the PPTX.
           // Per-slide (#419) is opt-in and self-degrades to the batch pipeline.
+          // The sdpm-skill engine produces a Deck Workspace but no Agentra
+          // compose/defs, so connect it via the PPTX→SVG→compose fallback and
+          // additionally sync the SDPM workspace files (#448). Streaming compose
+          // is not applicable to that path.
+          const isSdpm = result.engine === 'sdpm-skill' && !!result.workspaceDir;
           const previewPromise: Promise<{
             deck?: DeckResult | undefined;
             warnings: string[];
-          }> = envDeckPreviewStreaming
-            ? generateDeckPreviewStreaming(previewInput, { s3Client, onDeckEvent }).then(
-                async (streamed) => {
+          }> = isSdpm
+            ? generateSdpmDeckPreview(
+                { ...previewInput, workspaceDir: result.workspaceDir as string },
+                { s3Client, onDeckEvent },
+              )
+            : envDeckPreviewStreaming
+              ? generateDeckPreviewStreaming(previewInput, {
+                  s3Client,
+                  onDeckEvent,
+                }).then(async (streamed) => {
                   if (streamed.streamed && streamed.deck) return streamed;
                   // No slide produced — fall back to the batch pipeline.
                   const batch = await generateDeckPreview(previewInput, {
@@ -287,9 +303,8 @@ export async function executeCreatePresentationTool(
                     deck: batch.deck,
                     warnings: [...streamed.warnings, ...batch.warnings],
                   };
-                },
-              )
-            : generateDeckPreview(previewInput, { s3Client, onDeckEvent });
+                })
+              : generateDeckPreview(previewInput, { s3Client, onDeckEvent });
           const budget = new Promise<'timeout'>((resolve) => {
             setTimeout(() => resolve('timeout'), envDeckPreviewBudgetMs).unref?.();
           });

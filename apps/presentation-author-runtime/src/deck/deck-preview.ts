@@ -4,6 +4,7 @@ import {
   buildDeckWorkspace,
   type DeckMeta,
   type DeckResult,
+  type DeckUploadItem,
   composeSvg as realComposeSvg,
   exportSvg as realExportSvg,
   persistDeck as realPersistDeck,
@@ -19,6 +20,14 @@ export interface GenerateDeckPreviewInput {
   language: 'ja' | 'en';
   bucketName: string;
   presignExpiresSeconds?: number | undefined;
+  /**
+   * Additional upload items persisted under the same `decks/{deckId}/...` prefix
+   * (Epic #442 / #448). Used to attach the SDPM Workspace files (specs, slide
+   * JSON, richer deck.json/outline) alongside the compose-derived preview, so the
+   * BFF snapshot's workspace projection (#446) is populated. Appended after the
+   * compose items, so duplicate keys (deck.json, outline.md) let these win.
+   */
+  extraUploadItems?: DeckUploadItem[] | undefined;
 }
 
 export interface GenerateDeckPreviewDeps {
@@ -110,6 +119,13 @@ export async function generateDeckPreview(
         composePath: s.composePath,
       })),
     });
+
+    // Attach any extra (SDPM Workspace) items under the same deck prefix. Later
+    // items win on duplicate keys, so the richer SDPM deck.json / outline.md
+    // override the compose-derived placeholders.
+    if (input.extraUploadItems && input.extraUploadItems.length > 0) {
+      workspace.items.push(...input.extraUploadItems);
+    }
 
     const persisted = await persistDeck(
       {

@@ -168,15 +168,39 @@ export async function createPresentation(
       { engine: input.engine },
     );
 
-    // The default `agentra-pptxgenjs` engine always returns the full author
-    // result. Engines that do not (future `sdpm-skill`) are connected to the
-    // artifact pipeline in #448; until then they degrade before reaching here.
+    // Engines without a full author result (e.g. `sdpm-skill`) return only the
+    // engine boundary (pptx + workspace). Build a minimal success output and let
+    // the runtime connect the deck preview (#448).
     const result = engineResult.authorResult;
     if (!result) {
-      throw new PresentationAuthorEngineNotImplementedError(
-        engineResult.engine,
-        'Engine did not return an author result; artifact pipeline connection is pending.',
-      );
+      if (!engineResult.pptxPath) {
+        throw new PresentationAuthorEngineNotImplementedError(
+          engineResult.engine,
+          'Engine returned no PPTX.',
+        );
+      }
+      const workDir = engineResult.workspaceDir ?? '';
+      const artifacts = await collectPresentationArtifacts({
+        workDir,
+        pptxPath: engineResult.pptxPath,
+      });
+      return {
+        success: true,
+        summary: buildCreatePresentationSummary({
+          success: true,
+          prompt: input.prompt,
+          pptxPath: engineResult.pptxPath,
+          warnings: engineResult.warnings,
+        }),
+        engine: engineResult.engine,
+        workDir,
+        pptxPath: engineResult.pptxPath,
+        workspaceDir: engineResult.workspaceDir,
+        deckJsonPath: engineResult.deckJsonPath,
+        slideJsonPaths: engineResult.slideJsonPaths,
+        artifacts,
+        warnings: engineResult.warnings,
+      };
     }
 
     const contactSheetPath = extractContactSheetPath(result.diagnostics);
