@@ -37,6 +37,9 @@ export interface DeckComposeArtifacts {
 export type DeckUploadRole =
   | 'deck-json'
   | 'spec-outline'
+  | 'spec-brief'
+  | 'spec-art-direction'
+  | 'slide-json'
   | 'defs'
   | 'compose'
   | 'preview'

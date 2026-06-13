@@ -9,6 +9,7 @@ This spec is the source of truth for frontend client generation and API mocks.
  */
 import type { DeckSnapshotResponseLanguage } from './deckSnapshotResponseLanguage';
 import type { DeckSnapshotSlide } from './deckSnapshotSlide';
+import type { DeckWorkspaceSnapshot } from './deckWorkspaceSnapshot';
 
 export interface DeckSnapshotResponse {
   /** @minLength 1 */
@@ -23,4 +24,5 @@ export interface DeckSnapshotResponse {
   slides: DeckSnapshotSlide[];
   /** @minimum 0 */
   epoch: number;
+  workspace?: DeckWorkspaceSnapshot;
 }
